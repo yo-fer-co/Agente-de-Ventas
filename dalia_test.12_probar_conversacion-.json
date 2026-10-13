@@ -1,0 +1,201 @@
+{
+  "id": "MzjnxwLsbMmUp1na",
+  "name": "DALIA_TEST.12_Probar_conversacion",
+  "active": false,
+  "activeVersionId": null,
+  "createdAt": "2026-10-06T00:56:52.384Z",
+  "updatedAt": "2026-10-06T03:28:00.156Z",
+  "isArchived": false,
+  "versionId": "6c51f75c-f1fc-48d0-b8ef-9c160e64efa9",
+  "triggerCount": 0,
+  "nodes": [
+    {
+      "id": "090e97b7-5255-44dc-9830-6b9d08faa2b3",
+      "name": "Probar conversacion",
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [
+        0,
+        0
+      ],
+      "parameters": {}
+    },
+    {
+      "id": "f9d1a36b-13e1-4921-8840-969a19108d02",
+      "name": "Datos de prueba",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        224,
+        0
+      ],
+      "parameters": {
+        "mode": "manual",
+        "includeOtherFields": false,
+        "assignments": {
+          "assignments": [
+            {
+              "id": "d1",
+              "name": "numero",
+              "value": "573000000000",
+              "type": "string"
+            },
+            {
+              "id": "d2",
+              "name": "conversacion",
+              "value": "test12-573000000000",
+              "type": "string"
+            },
+            {
+              "id": "d3",
+              "name": "texto",
+              "value": "Hola, ¿qué productos tienen?",
+              "type": "string"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "86db18de-2e84-4aad-8b6d-72305eda5859",
+      "name": "Rafaga de prueba",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        448,
+        0
+      ],
+      "parameters": {
+        "mode": "manual",
+        "includeOtherFields": false,
+        "assignments": {
+          "assignments": [
+            {
+              "id": "r1",
+              "name": "conversation_id",
+              "value": "={{ $json.conversacion }}",
+              "type": "string"
+            },
+            {
+              "id": "r2",
+              "name": "channel",
+              "value": "whatsapp",
+              "type": "string"
+            },
+            {
+              "id": "r3",
+              "name": "external_id",
+              "value": "={{ $json.numero }}",
+              "type": "string"
+            },
+            {
+              "id": "r4",
+              "name": "burst_seq",
+              "value": "={{ $now.toMillis() }}",
+              "type": "number"
+            },
+            {
+              "id": "r5",
+              "name": "messages",
+              "value": "={{ [ { channel_message_id: \"test12-\" + $now.toMillis(), type: \"text\", text: $json.texto, at: $now.toISO() } ] }}",
+              "type": "array"
+            },
+            {
+              "id": "r6",
+              "name": "burst_closed_at",
+              "value": "={{ $now.toISO() }}",
+              "type": "string"
+            },
+            {
+              "id": "r7",
+              "name": "envelope",
+              "value": "={{ { trace_id: \"test12-\" + $now.toMillis(), correlation_id: $json.conversacion } }}",
+              "type": "object"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "8cdd9af3-3ecb-4ec8-9a58-539ffc65c027",
+      "name": "Llamar M2.01",
+      "type": "n8n-nodes-base.executeWorkflow",
+      "typeVersion": 1.3,
+      "position": [
+        672,
+        0
+      ],
+      "parameters": {
+        "mode": "each",
+        "source": "database",
+        "workflowId": {
+          "__rl": true,
+          "mode": "id",
+          "value": "3pbxdp2jPBwAdzQm"
+        },
+        "options": {
+          "waitForSubWorkflow": true
+        }
+      }
+    }
+  ],
+  "connections": {
+    "Probar conversacion": {
+      "main": [
+        [
+          {
+            "node": "Datos de prueba",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Datos de prueba": {
+      "main": [
+        [
+          {
+            "node": "Rafaga de prueba",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Rafaga de prueba": {
+      "main": [
+        [
+          {
+            "node": "Llamar M2.01",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "nodeGroups": [],
+  "settings": {
+    "executionOrder": "v1",
+    "availableInMCP": true,
+    "timezone": "America/Bogota",
+    "callerPolicy": "workflowsFromSameOwner"
+  },
+  "staticData": null,
+  "pinData": null,
+  "meta": {
+    "aiBuilderAssisted": true,
+    "builderVariant": "mcp"
+  },
+  "tags": [],
+  "shared": [
+    {
+      "role": "workflow:owner",
+      "workflowId": "MzjnxwLsbMmUp1na",
+      "projectId": "tRHCC8ts4mkRGXGn",
+      "createdAt": "2026-10-09T21:09:17.855Z",
+      "updatedAt": "2026-10-09T21:09:17.855Z"
+    }
+  ],
+  "activeVersion": null
+}
