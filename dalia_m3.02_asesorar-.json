@@ -1,0 +1,1375 @@
+{
+  "id": "cIJW9FzCrXSD5OlM",
+  "name": "DALIA_M3.02_Asesorar",
+  "active": true,
+  "activeVersionId": "f12a48d7-405b-4d07-8c27-db61056c61f4",
+  "createdAt": "2026-10-04T14:08:11.947Z",
+  "updatedAt": "2026-10-04T14:52:46.212Z",
+  "isArchived": false,
+  "versionId": "f12a48d7-405b-4d07-8c27-db61056c61f4",
+  "triggerCount": 0,
+  "nodes": [
+    {
+      "id": "ba343f92-5fe5-4cba-bfd5-c4064b7d1897",
+      "name": "Entrada",
+      "type": "n8n-nodes-base.executeWorkflowTrigger",
+      "typeVersion": 1.2,
+      "position": [
+        0,
+        272
+      ],
+      "parameters": {
+        "inputSource": "passthrough"
+      }
+    },
+    {
+      "id": "b7b286db-6f53-4eb7-b6d4-1bcb37ab260b",
+      "name": "Iniciar ejecucion",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.7,
+      "position": [
+        224,
+        272
+      ],
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "select dalia.m3_begin_run($1, $2::jsonb) as r;",
+        "options": {
+          "queryReplacement": "={{ [ $json.kind ?? \"advise\", JSON.stringify($json) ] }}"
+        }
+      },
+      "credentials": {
+        "postgres": {
+          "id": "HfCgVAjUygK1vrkU",
+          "name": "DALIA dev Supabase"
+        }
+      },
+      "onError": "continueErrorOutput"
+    },
+    {
+      "id": "a89102c1-79dd-49fc-983d-7e072b532224",
+      "name": "Lista para generar",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        448,
+        176
+      ],
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose"
+          },
+          "conditions": [
+            {
+              "leftValue": "={{ $json.r.status === \"ready\" }}",
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        }
+      }
+    },
+    {
+      "id": "1a4a73f3-5bbd-4a26-8eb4-51edd03c66fb",
+      "name": "Requiere conocimiento",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        672,
+        80
+      ],
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose"
+          },
+          "conditions": [
+            {
+              "leftValue": "={{ $json.r.needs.knowledge === true }}",
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        }
+      }
+    },
+    {
+      "id": "6a1e2185-e616-4a5c-b3b0-e7c47350e1d7",
+      "name": "Solicitud de conocimiento",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        896,
+        0
+      ],
+      "parameters": {
+        "mode": "manual",
+        "includeOtherFields": false,
+        "assignments": {
+          "assignments": [
+            {
+              "id": "k1",
+              "name": "query",
+              "value": "={{ $json.r.plan.knowledge.query }}",
+              "type": "string"
+            },
+            {
+              "id": "k2",
+              "name": "collections",
+              "value": "={{ $json.r.plan.knowledge.collections }}",
+              "type": "array"
+            },
+            {
+              "id": "k3",
+              "name": "assignment_key",
+              "value": "={{ $json.r.plan.knowledge.assignment_key }}",
+              "type": "string"
+            },
+            {
+              "id": "k4",
+              "name": "limit",
+              "value": "={{ $json.r.plan.knowledge.limit }}",
+              "type": "number"
+            },
+            {
+              "id": "k5",
+              "name": "filters",
+              "value": "={{ $json.r.plan.knowledge.filters ?? {} }}",
+              "type": "object"
+            },
+            {
+              "id": "k6",
+              "name": "purpose",
+              "value": "={{ $json.r.plan.knowledge.purpose }}",
+              "type": "string"
+            },
+            {
+              "id": "k7",
+              "name": "envelope",
+              "value": "={{ $json.r.plan.knowledge.envelope ?? {} }}",
+              "type": "object"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "7a200a2b-a921-4906-86a1-3c5e68848227",
+      "name": "Recuperar conocimiento (M9.05)",
+      "type": "n8n-nodes-base.executeWorkflow",
+      "typeVersion": 1.3,
+      "position": [
+        1120,
+        0
+      ],
+      "parameters": {
+        "mode": "each",
+        "source": "database",
+        "workflowId": {
+          "__rl": true,
+          "mode": "id",
+          "value": "W64Nazq98jdMAbsW"
+        },
+        "options": {
+          "waitForSubWorkflow": true
+        }
+      },
+      "onError": "continueRegularOutput"
+    },
+    {
+      "id": "3f9612cf-e425-49ee-a291-832458ab807f",
+      "name": "Registrar conocimiento",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.7,
+      "position": [
+        1344,
+        0
+      ],
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "select dalia.m3_record_knowledge($1::uuid, $2::jsonb) as k;",
+        "options": {
+          "queryReplacement": "={{ [ $(\"Iniciar ejecucion\").first().json.r.run_id, JSON.stringify($json.result ?? { status: \"unavailable\", error: $json.error ?? null }) ] }}"
+        }
+      },
+      "credentials": {
+        "postgres": {
+          "id": "HfCgVAjUygK1vrkU",
+          "name": "DALIA dev Supabase"
+        }
+      }
+    },
+    {
+      "id": "e03c37d1-31f4-4d8c-8589-a243e0b56394",
+      "name": "Requiere catalogo",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        1568,
+        80
+      ],
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose"
+          },
+          "conditions": [
+            {
+              "leftValue": "={{ $(\"Iniciar ejecucion\").first().json.r.needs.catalog === true }}",
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        }
+      }
+    },
+    {
+      "id": "083aa9f3-46eb-4e7a-9074-ba8f0ba88f46",
+      "name": "Resultado sin generar",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        672,
+        272
+      ],
+      "parameters": {
+        "mode": "manual",
+        "includeOtherFields": false,
+        "assignments": {
+          "assignments": [
+            {
+              "id": "r1",
+              "name": "result",
+              "value": "={{ $json.r.status === \"replay\" ? $json.r.result : $json.r }}",
+              "type": "object"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "996cee86-0680-41d3-a498-7674dd1e7f23",
+      "name": "Preparar busqueda en catalogo",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        1792,
+        0
+      ],
+      "parameters": {
+        "mode": "manual",
+        "includeOtherFields": false,
+        "assignments": {
+          "assignments": [
+            {
+              "id": "p1",
+              "name": "port",
+              "value": "={{ ($(\"Registrar conocimiento\").isExecuted && $(\"Registrar conocimiento\").first().json.k.catalog ? $(\"Registrar conocimiento\").first().json.k.catalog : $(\"Iniciar ejecucion\").first().json.r.plan.catalog).port }}",
+              "type": "string"
+            },
+            {
+              "id": "p2",
+              "name": "operation",
+              "value": "={{ ($(\"Registrar conocimiento\").isExecuted && $(\"Registrar conocimiento\").first().json.k.catalog ? $(\"Registrar conocimiento\").first().json.k.catalog : $(\"Iniciar ejecucion\").first().json.r.plan.catalog).operation }}",
+              "type": "string"
+            },
+            {
+              "id": "p3",
+              "name": "input",
+              "value": "={{ ($(\"Registrar conocimiento\").isExecuted && $(\"Registrar conocimiento\").first().json.k.catalog ? $(\"Registrar conocimiento\").first().json.k.catalog : $(\"Iniciar ejecucion\").first().json.r.plan.catalog).input }}",
+              "type": "object"
+            },
+            {
+              "id": "p4",
+              "name": "envelope",
+              "value": "={{ $(\"Entrada\").first().json.envelope ?? {} }}",
+              "type": "object"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "7015e2ee-b602-49f5-bf14-e4fe85c6ae23",
+      "name": "Catalogo por INT.port",
+      "type": "n8n-nodes-base.executeWorkflow",
+      "typeVersion": 1.3,
+      "position": [
+        2016,
+        0
+      ],
+      "parameters": {
+        "mode": "each",
+        "source": "database",
+        "workflowId": {
+          "__rl": true,
+          "mode": "id",
+          "value": "5gbpWhv0zIA8bZ0w"
+        },
+        "options": {
+          "waitForSubWorkflow": true
+        }
+      }
+    },
+    {
+      "id": "3e2fe97c-dd28-47a9-a618-29430dbbc97a",
+      "name": "Registrar catalogo",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.7,
+      "position": [
+        2240,
+        0
+      ],
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "select dalia.m3_record_catalog($1::uuid, $2::jsonb) as c;",
+        "options": {
+          "queryReplacement": "={{ [ $(\"Iniciar ejecucion\").first().json.r.run_id, JSON.stringify($json) ] }}"
+        }
+      },
+      "credentials": {
+        "postgres": {
+          "id": "HfCgVAjUygK1vrkU",
+          "name": "DALIA dev Supabase"
+        }
+      }
+    },
+    {
+      "id": "426ac491-b7b0-4c36-a767-c9812b4acb8b",
+      "name": "Preparar generacion",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.7,
+      "position": [
+        2464,
+        80
+      ],
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "select dalia.m3_prepare_generation($1::uuid, $2::jsonb) as g;",
+        "options": {
+          "queryReplacement": "={{ [ $(\"Iniciar ejecucion\").first().json.r.run_id, JSON.stringify($(\"Entrada\").first().json.context ?? null) ] }}"
+        }
+      },
+      "credentials": {
+        "postgres": {
+          "id": "HfCgVAjUygK1vrkU",
+          "name": "DALIA dev Supabase"
+        }
+      }
+    },
+    {
+      "id": "4ca7347a-9a29-4b10-9854-6449115d0cf3",
+      "name": "Preparar llamada al modelo",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        2688,
+        80
+      ],
+      "parameters": {
+        "mode": "manual",
+        "includeOtherFields": false,
+        "assignments": {
+          "assignments": [
+            {
+              "id": "p1",
+              "name": "port",
+              "value": "={{ $json.g.llm_request.port }}",
+              "type": "string"
+            },
+            {
+              "id": "p2",
+              "name": "operation",
+              "value": "={{ $json.g.llm_request.operation }}",
+              "type": "string"
+            },
+            {
+              "id": "p3",
+              "name": "input",
+              "value": "={{ $json.g.llm_request.input }}",
+              "type": "object"
+            },
+            {
+              "id": "p4",
+              "name": "envelope",
+              "value": "={{ $(\"Entrada\").first().json.envelope ?? {} }}",
+              "type": "object"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "cfd692c8-dc51-453f-80ae-1159f7bd255a",
+      "name": "Modelo por INT.port",
+      "type": "n8n-nodes-base.executeWorkflow",
+      "typeVersion": 1.3,
+      "position": [
+        2912,
+        80
+      ],
+      "parameters": {
+        "mode": "each",
+        "source": "database",
+        "workflowId": {
+          "__rl": true,
+          "mode": "id",
+          "value": "5gbpWhv0zIA8bZ0w"
+        },
+        "options": {
+          "waitForSubWorkflow": true
+        }
+      }
+    },
+    {
+      "id": "b5fb7602-614b-4dae-9ce3-f276e7cccbf7",
+      "name": "Validar y completar",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.7,
+      "position": [
+        3136,
+        80
+      ],
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "select dalia.m3_complete_run($1::uuid, $2::jsonb) as result;",
+        "options": {
+          "queryReplacement": "={{ [ $(\"Iniciar ejecucion\").first().json.r.run_id, JSON.stringify($json) ] }}"
+        }
+      },
+      "credentials": {
+        "postgres": {
+          "id": "HfCgVAjUygK1vrkU",
+          "name": "DALIA dev Supabase"
+        }
+      }
+    },
+    {
+      "id": "b7c7f3c5-73a0-424e-8f52-a31de626b57f",
+      "name": "Solicitud invalida",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        448,
+        368
+      ],
+      "parameters": {
+        "mode": "manual",
+        "includeOtherFields": false,
+        "assignments": {
+          "assignments": [
+            {
+              "id": "r1",
+              "name": "result",
+              "value": "={{ { status: \"invalid\", outcome: null, error: $json.error?.message ?? $json.error ?? \"solicitud inválida\" } }}",
+              "type": "object"
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "connections": {
+    "Entrada": {
+      "main": [
+        [
+          {
+            "node": "Iniciar ejecucion",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Iniciar ejecucion": {
+      "main": [
+        [
+          {
+            "node": "Lista para generar",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Solicitud invalida",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Lista para generar": {
+      "main": [
+        [
+          {
+            "node": "Requiere conocimiento",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Resultado sin generar",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Requiere conocimiento": {
+      "main": [
+        [
+          {
+            "node": "Solicitud de conocimiento",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Requiere catalogo",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Solicitud de conocimiento": {
+      "main": [
+        [
+          {
+            "node": "Recuperar conocimiento (M9.05)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Recuperar conocimiento (M9.05)": {
+      "main": [
+        [
+          {
+            "node": "Registrar conocimiento",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Registrar conocimiento": {
+      "main": [
+        [
+          {
+            "node": "Requiere catalogo",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Requiere catalogo": {
+      "main": [
+        [
+          {
+            "node": "Preparar busqueda en catalogo",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Preparar generacion",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Preparar busqueda en catalogo": {
+      "main": [
+        [
+          {
+            "node": "Catalogo por INT.port",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Catalogo por INT.port": {
+      "main": [
+        [
+          {
+            "node": "Registrar catalogo",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Registrar catalogo": {
+      "main": [
+        [
+          {
+            "node": "Preparar generacion",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Preparar generacion": {
+      "main": [
+        [
+          {
+            "node": "Preparar llamada al modelo",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Preparar llamada al modelo": {
+      "main": [
+        [
+          {
+            "node": "Modelo por INT.port",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Modelo por INT.port": {
+      "main": [
+        [
+          {
+            "node": "Validar y completar",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "nodeGroups": [],
+  "settings": {
+    "executionOrder": "v1",
+    "availableInMCP": true,
+    "errorWorkflow": "cjjQno2MxMTT3Icc",
+    "timezone": "America/Bogota",
+    "saveDataSuccessExecution": "none",
+    "callerPolicy": "workflowsFromSameOwner"
+  },
+  "staticData": null,
+  "pinData": null,
+  "meta": {
+    "aiBuilderAssisted": true,
+    "builderVariant": "mcp"
+  },
+  "tags": [],
+  "shared": [
+    {
+      "role": "workflow:owner",
+      "workflowId": "cIJW9FzCrXSD5OlM",
+      "projectId": "tRHCC8ts4mkRGXGn",
+      "createdAt": "2026-10-09T21:09:17.812Z",
+      "updatedAt": "2026-10-09T21:09:17.812Z"
+    }
+  ],
+  "activeVersion": {
+    "versionId": "f12a48d7-405b-4d07-8c27-db61056c61f4",
+    "workflowId": "cIJW9FzCrXSD5OlM",
+    "nodes": [
+      {
+        "id": "ba343f92-5fe5-4cba-bfd5-c4064b7d1897",
+        "name": "Entrada",
+        "type": "n8n-nodes-base.executeWorkflowTrigger",
+        "typeVersion": 1.2,
+        "position": [
+          0,
+          272
+        ],
+        "parameters": {
+          "inputSource": "passthrough"
+        }
+      },
+      {
+        "id": "b7b286db-6f53-4eb7-b6d4-1bcb37ab260b",
+        "name": "Iniciar ejecucion",
+        "type": "n8n-nodes-base.postgres",
+        "typeVersion": 2.7,
+        "position": [
+          224,
+          272
+        ],
+        "parameters": {
+          "operation": "executeQuery",
+          "query": "select dalia.m3_begin_run($1, $2::jsonb) as r;",
+          "options": {
+            "queryReplacement": "={{ [ $json.kind ?? \"advise\", JSON.stringify($json) ] }}"
+          }
+        },
+        "credentials": {
+          "postgres": {
+            "id": "HfCgVAjUygK1vrkU",
+            "name": "DALIA dev Supabase"
+          }
+        },
+        "onError": "continueErrorOutput"
+      },
+      {
+        "id": "a89102c1-79dd-49fc-983d-7e072b532224",
+        "name": "Lista para generar",
+        "type": "n8n-nodes-base.if",
+        "typeVersion": 2.2,
+        "position": [
+          448,
+          176
+        ],
+        "parameters": {
+          "conditions": {
+            "options": {
+              "caseSensitive": true,
+              "leftValue": "",
+              "typeValidation": "loose"
+            },
+            "conditions": [
+              {
+                "leftValue": "={{ $json.r.status === \"ready\" }}",
+                "operator": {
+                  "type": "boolean",
+                  "operation": "true",
+                  "singleValue": true
+                }
+              }
+            ],
+            "combinator": "and"
+          }
+        }
+      },
+      {
+        "id": "1a4a73f3-5bbd-4a26-8eb4-51edd03c66fb",
+        "name": "Requiere conocimiento",
+        "type": "n8n-nodes-base.if",
+        "typeVersion": 2.2,
+        "position": [
+          672,
+          80
+        ],
+        "parameters": {
+          "conditions": {
+            "options": {
+              "caseSensitive": true,
+              "leftValue": "",
+              "typeValidation": "loose"
+            },
+            "conditions": [
+              {
+                "leftValue": "={{ $json.r.needs.knowledge === true }}",
+                "operator": {
+                  "type": "boolean",
+                  "operation": "true",
+                  "singleValue": true
+                }
+              }
+            ],
+            "combinator": "and"
+          }
+        }
+      },
+      {
+        "id": "6a1e2185-e616-4a5c-b3b0-e7c47350e1d7",
+        "name": "Solicitud de conocimiento",
+        "type": "n8n-nodes-base.set",
+        "typeVersion": 3.4,
+        "position": [
+          896,
+          0
+        ],
+        "parameters": {
+          "mode": "manual",
+          "includeOtherFields": false,
+          "assignments": {
+            "assignments": [
+              {
+                "id": "k1",
+                "name": "query",
+                "value": "={{ $json.r.plan.knowledge.query }}",
+                "type": "string"
+              },
+              {
+                "id": "k2",
+                "name": "collections",
+                "value": "={{ $json.r.plan.knowledge.collections }}",
+                "type": "array"
+              },
+              {
+                "id": "k3",
+                "name": "assignment_key",
+                "value": "={{ $json.r.plan.knowledge.assignment_key }}",
+                "type": "string"
+              },
+              {
+                "id": "k4",
+                "name": "limit",
+                "value": "={{ $json.r.plan.knowledge.limit }}",
+                "type": "number"
+              },
+              {
+                "id": "k5",
+                "name": "filters",
+                "value": "={{ $json.r.plan.knowledge.filters ?? {} }}",
+                "type": "object"
+              },
+              {
+                "id": "k6",
+                "name": "purpose",
+                "value": "={{ $json.r.plan.knowledge.purpose }}",
+                "type": "string"
+              },
+              {
+                "id": "k7",
+                "name": "envelope",
+                "value": "={{ $json.r.plan.knowledge.envelope ?? {} }}",
+                "type": "object"
+              }
+            ]
+          }
+        }
+      },
+      {
+        "id": "7a200a2b-a921-4906-86a1-3c5e68848227",
+        "name": "Recuperar conocimiento (M9.05)",
+        "type": "n8n-nodes-base.executeWorkflow",
+        "typeVersion": 1.3,
+        "position": [
+          1120,
+          0
+        ],
+        "parameters": {
+          "mode": "each",
+          "source": "database",
+          "workflowId": {
+            "__rl": true,
+            "mode": "id",
+            "value": "W64Nazq98jdMAbsW"
+          },
+          "options": {
+            "waitForSubWorkflow": true
+          }
+        },
+        "onError": "continueRegularOutput"
+      },
+      {
+        "id": "3f9612cf-e425-49ee-a291-832458ab807f",
+        "name": "Registrar conocimiento",
+        "type": "n8n-nodes-base.postgres",
+        "typeVersion": 2.7,
+        "position": [
+          1344,
+          0
+        ],
+        "parameters": {
+          "operation": "executeQuery",
+          "query": "select dalia.m3_record_knowledge($1::uuid, $2::jsonb) as k;",
+          "options": {
+            "queryReplacement": "={{ [ $(\"Iniciar ejecucion\").first().json.r.run_id, JSON.stringify($json.result ?? { status: \"unavailable\", error: $json.error ?? null }) ] }}"
+          }
+        },
+        "credentials": {
+          "postgres": {
+            "id": "HfCgVAjUygK1vrkU",
+            "name": "DALIA dev Supabase"
+          }
+        }
+      },
+      {
+        "id": "e03c37d1-31f4-4d8c-8589-a243e0b56394",
+        "name": "Requiere catalogo",
+        "type": "n8n-nodes-base.if",
+        "typeVersion": 2.2,
+        "position": [
+          1568,
+          80
+        ],
+        "parameters": {
+          "conditions": {
+            "options": {
+              "caseSensitive": true,
+              "leftValue": "",
+              "typeValidation": "loose"
+            },
+            "conditions": [
+              {
+                "leftValue": "={{ $(\"Iniciar ejecucion\").first().json.r.needs.catalog === true }}",
+                "operator": {
+                  "type": "boolean",
+                  "operation": "true",
+                  "singleValue": true
+                }
+              }
+            ],
+            "combinator": "and"
+          }
+        }
+      },
+      {
+        "id": "083aa9f3-46eb-4e7a-9074-ba8f0ba88f46",
+        "name": "Resultado sin generar",
+        "type": "n8n-nodes-base.set",
+        "typeVersion": 3.4,
+        "position": [
+          672,
+          272
+        ],
+        "parameters": {
+          "mode": "manual",
+          "includeOtherFields": false,
+          "assignments": {
+            "assignments": [
+              {
+                "id": "r1",
+                "name": "result",
+                "value": "={{ $json.r.status === \"replay\" ? $json.r.result : $json.r }}",
+                "type": "object"
+              }
+            ]
+          }
+        }
+      },
+      {
+        "id": "996cee86-0680-41d3-a498-7674dd1e7f23",
+        "name": "Preparar busqueda en catalogo",
+        "type": "n8n-nodes-base.set",
+        "typeVersion": 3.4,
+        "position": [
+          1792,
+          0
+        ],
+        "parameters": {
+          "mode": "manual",
+          "includeOtherFields": false,
+          "assignments": {
+            "assignments": [
+              {
+                "id": "p1",
+                "name": "port",
+                "value": "={{ ($(\"Registrar conocimiento\").isExecuted && $(\"Registrar conocimiento\").first().json.k.catalog ? $(\"Registrar conocimiento\").first().json.k.catalog : $(\"Iniciar ejecucion\").first().json.r.plan.catalog).port }}",
+                "type": "string"
+              },
+              {
+                "id": "p2",
+                "name": "operation",
+                "value": "={{ ($(\"Registrar conocimiento\").isExecuted && $(\"Registrar conocimiento\").first().json.k.catalog ? $(\"Registrar conocimiento\").first().json.k.catalog : $(\"Iniciar ejecucion\").first().json.r.plan.catalog).operation }}",
+                "type": "string"
+              },
+              {
+                "id": "p3",
+                "name": "input",
+                "value": "={{ ($(\"Registrar conocimiento\").isExecuted && $(\"Registrar conocimiento\").first().json.k.catalog ? $(\"Registrar conocimiento\").first().json.k.catalog : $(\"Iniciar ejecucion\").first().json.r.plan.catalog).input }}",
+                "type": "object"
+              },
+              {
+                "id": "p4",
+                "name": "envelope",
+                "value": "={{ $(\"Entrada\").first().json.envelope ?? {} }}",
+                "type": "object"
+              }
+            ]
+          }
+        }
+      },
+      {
+        "id": "7015e2ee-b602-49f5-bf14-e4fe85c6ae23",
+        "name": "Catalogo por INT.port",
+        "type": "n8n-nodes-base.executeWorkflow",
+        "typeVersion": 1.3,
+        "position": [
+          2016,
+          0
+        ],
+        "parameters": {
+          "mode": "each",
+          "source": "database",
+          "workflowId": {
+            "__rl": true,
+            "mode": "id",
+            "value": "5gbpWhv0zIA8bZ0w"
+          },
+          "options": {
+            "waitForSubWorkflow": true
+          }
+        }
+      },
+      {
+        "id": "3e2fe97c-dd28-47a9-a618-29430dbbc97a",
+        "name": "Registrar catalogo",
+        "type": "n8n-nodes-base.postgres",
+        "typeVersion": 2.7,
+        "position": [
+          2240,
+          0
+        ],
+        "parameters": {
+          "operation": "executeQuery",
+          "query": "select dalia.m3_record_catalog($1::uuid, $2::jsonb) as c;",
+          "options": {
+            "queryReplacement": "={{ [ $(\"Iniciar ejecucion\").first().json.r.run_id, JSON.stringify($json) ] }}"
+          }
+        },
+        "credentials": {
+          "postgres": {
+            "id": "HfCgVAjUygK1vrkU",
+            "name": "DALIA dev Supabase"
+          }
+        }
+      },
+      {
+        "id": "426ac491-b7b0-4c36-a767-c9812b4acb8b",
+        "name": "Preparar generacion",
+        "type": "n8n-nodes-base.postgres",
+        "typeVersion": 2.7,
+        "position": [
+          2464,
+          80
+        ],
+        "parameters": {
+          "operation": "executeQuery",
+          "query": "select dalia.m3_prepare_generation($1::uuid, $2::jsonb) as g;",
+          "options": {
+            "queryReplacement": "={{ [ $(\"Iniciar ejecucion\").first().json.r.run_id, JSON.stringify($(\"Entrada\").first().json.context ?? null) ] }}"
+          }
+        },
+        "credentials": {
+          "postgres": {
+            "id": "HfCgVAjUygK1vrkU",
+            "name": "DALIA dev Supabase"
+          }
+        }
+      },
+      {
+        "id": "4ca7347a-9a29-4b10-9854-6449115d0cf3",
+        "name": "Preparar llamada al modelo",
+        "type": "n8n-nodes-base.set",
+        "typeVersion": 3.4,
+        "position": [
+          2688,
+          80
+        ],
+        "parameters": {
+          "mode": "manual",
+          "includeOtherFields": false,
+          "assignments": {
+            "assignments": [
+              {
+                "id": "p1",
+                "name": "port",
+                "value": "={{ $json.g.llm_request.port }}",
+                "type": "string"
+              },
+              {
+                "id": "p2",
+                "name": "operation",
+                "value": "={{ $json.g.llm_request.operation }}",
+                "type": "string"
+              },
+              {
+                "id": "p3",
+                "name": "input",
+                "value": "={{ $json.g.llm_request.input }}",
+                "type": "object"
+              },
+              {
+                "id": "p4",
+                "name": "envelope",
+                "value": "={{ $(\"Entrada\").first().json.envelope ?? {} }}",
+                "type": "object"
+              }
+            ]
+          }
+        }
+      },
+      {
+        "id": "cfd692c8-dc51-453f-80ae-1159f7bd255a",
+        "name": "Modelo por INT.port",
+        "type": "n8n-nodes-base.executeWorkflow",
+        "typeVersion": 1.3,
+        "position": [
+          2912,
+          80
+        ],
+        "parameters": {
+          "mode": "each",
+          "source": "database",
+          "workflowId": {
+            "__rl": true,
+            "mode": "id",
+            "value": "5gbpWhv0zIA8bZ0w"
+          },
+          "options": {
+            "waitForSubWorkflow": true
+          }
+        }
+      },
+      {
+        "id": "b5fb7602-614b-4dae-9ce3-f276e7cccbf7",
+        "name": "Validar y completar",
+        "type": "n8n-nodes-base.postgres",
+        "typeVersion": 2.7,
+        "position": [
+          3136,
+          80
+        ],
+        "parameters": {
+          "operation": "executeQuery",
+          "query": "select dalia.m3_complete_run($1::uuid, $2::jsonb) as result;",
+          "options": {
+            "queryReplacement": "={{ [ $(\"Iniciar ejecucion\").first().json.r.run_id, JSON.stringify($json) ] }}"
+          }
+        },
+        "credentials": {
+          "postgres": {
+            "id": "HfCgVAjUygK1vrkU",
+            "name": "DALIA dev Supabase"
+          }
+        }
+      },
+      {
+        "id": "b7c7f3c5-73a0-424e-8f52-a31de626b57f",
+        "name": "Solicitud invalida",
+        "type": "n8n-nodes-base.set",
+        "typeVersion": 3.4,
+        "position": [
+          448,
+          368
+        ],
+        "parameters": {
+          "mode": "manual",
+          "includeOtherFields": false,
+          "assignments": {
+            "assignments": [
+              {
+                "id": "r1",
+                "name": "result",
+                "value": "={{ { status: \"invalid\", outcome: null, error: $json.error?.message ?? $json.error ?? \"solicitud inválida\" } }}",
+                "type": "object"
+              }
+            ]
+          }
+        }
+      }
+    ],
+    "connections": {
+      "Entrada": {
+        "main": [
+          [
+            {
+              "node": "Iniciar ejecucion",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Iniciar ejecucion": {
+        "main": [
+          [
+            {
+              "node": "Lista para generar",
+              "type": "main",
+              "index": 0
+            }
+          ],
+          [
+            {
+              "node": "Solicitud invalida",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Lista para generar": {
+        "main": [
+          [
+            {
+              "node": "Requiere conocimiento",
+              "type": "main",
+              "index": 0
+            }
+          ],
+          [
+            {
+              "node": "Resultado sin generar",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Requiere conocimiento": {
+        "main": [
+          [
+            {
+              "node": "Solicitud de conocimiento",
+              "type": "main",
+              "index": 0
+            }
+          ],
+          [
+            {
+              "node": "Requiere catalogo",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Solicitud de conocimiento": {
+        "main": [
+          [
+            {
+              "node": "Recuperar conocimiento (M9.05)",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Recuperar conocimiento (M9.05)": {
+        "main": [
+          [
+            {
+              "node": "Registrar conocimiento",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Registrar conocimiento": {
+        "main": [
+          [
+            {
+              "node": "Requiere catalogo",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Requiere catalogo": {
+        "main": [
+          [
+            {
+              "node": "Preparar busqueda en catalogo",
+              "type": "main",
+              "index": 0
+            }
+          ],
+          [
+            {
+              "node": "Preparar generacion",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Preparar busqueda en catalogo": {
+        "main": [
+          [
+            {
+              "node": "Catalogo por INT.port",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Catalogo por INT.port": {
+        "main": [
+          [
+            {
+              "node": "Registrar catalogo",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Registrar catalogo": {
+        "main": [
+          [
+            {
+              "node": "Preparar generacion",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Preparar generacion": {
+        "main": [
+          [
+            {
+              "node": "Preparar llamada al modelo",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Preparar llamada al modelo": {
+        "main": [
+          [
+            {
+              "node": "Modelo por INT.port",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Modelo por INT.port": {
+        "main": [
+          [
+            {
+              "node": "Validar y completar",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      }
+    },
+    "nodeGroups": [],
+    "authors": "Fabian Bocanegra (via MCP)",
+    "name": "H-L7-03 catálogo por SKU de la evidencia",
+    "description": "La búsqueda en el catálogo usa la solicitud que devuelve m3_record_knowledge (SKU de la evidencia OR consulta del intérprete) cuando hubo conocimiento.",
+    "autosaved": false,
+    "createdAt": "2026-10-04T14:52:46.213Z",
+    "updatedAt": "2026-10-04T14:52:46.213Z"
+  }
+}
