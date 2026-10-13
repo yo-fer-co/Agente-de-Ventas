@@ -1,0 +1,392 @@
+{
+  "id": "mujgzGNmAvkitaL1",
+  "name": "whatsapp_message_processing",
+  "active": false,
+  "activeVersionId": null,
+  "createdAt": "2026-09-04T15:27:35.189Z",
+  "updatedAt": "2026-09-04T15:55:46.000Z",
+  "isArchived": true,
+  "versionId": "5d769d12-c18a-41ab-8e09-73356f9b3283",
+  "triggerCount": 0,
+  "nodes": [
+    {
+      "parameters": {},
+      "type": "n8n-nodes-base.executeWorkflowTrigger",
+      "typeVersion": 1.2,
+      "position": [
+        96,
+        16
+      ],
+      "id": "1cd92f7c-4412-4939-ad5e-9bc183d54d04",
+      "name": "When Executed by Another Workflow"
+    },
+    {
+      "parameters": {
+        "workflowId": {
+          "__rl": true,
+          "value": "moR2mUZuRnJIiNZq",
+          "mode": "list",
+          "cachedResultUrl": "/workflow/moR2mUZuRnJIiNZq",
+          "cachedResultName": "Babys World — Flujo de enviar mensaje (DEV)"
+        },
+        "workflowInputs": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "session_id": "={{ $('When Executed by Another Workflow').item.json.phone_to_message }}",
+            "text_body": "={{ $('When Executed by Another Workflow').item.json.message }}"
+          },
+          "matchingColumns": [],
+          "schema": [
+            {
+              "id": "session_id",
+              "displayName": "session_id",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string"
+            },
+            {
+              "id": "text_body",
+              "displayName": "text_body",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string"
+            },
+            {
+              "id": "caption",
+              "displayName": "caption",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string"
+            },
+            {
+              "id": "imagen no disponible",
+              "displayName": "imagen no disponible",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string"
+            },
+            {
+              "id": "environment",
+              "displayName": "environment",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string"
+            },
+            {
+              "id": "channel",
+              "displayName": "channel",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string"
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": true
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.executeWorkflow",
+      "typeVersion": 1.3,
+      "position": [
+        672,
+        -368
+      ],
+      "id": "c977883c-8d2c-4946-a3d5-8467aee4405a",
+      "name": "Call 'Flujo de enviar mensaje (DEV)'",
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "rules": {
+          "values": [
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 3
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $('When Executed by Another Workflow').item.json.mime_type }}",
+                    "rightValue": "text",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    },
+                    "id": "53790546-979b-4bcc-944b-e056752c12d8"
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "Text"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 3
+                },
+                "conditions": [
+                  {
+                    "id": "8677cefb-70ca-4b6a-8870-46c0081c0a4b",
+                    "leftValue": "={{ $('When Executed by Another Workflow').item.json.mime_type }}",
+                    "rightValue": "image",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals",
+                      "name": "filter.operator.equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "Image"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 3
+                },
+                "conditions": [
+                  {
+                    "id": "97e80b4e-09ee-498b-8ffc-297bd37e7765",
+                    "leftValue": "={{ $('When Executed by Another Workflow').item.json.mime_type }}",
+                    "rightValue": "audio",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals",
+                      "name": "filter.operator.equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "Audio"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 3
+                },
+                "conditions": [
+                  {
+                    "id": "9f71255e-270a-4dbe-a066-b6818ec785da",
+                    "leftValue": "={{ $('When Executed by Another Workflow').item.json.mime_type }}",
+                    "rightValue": "video",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals",
+                      "name": "filter.operator.equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "Video"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 3.4,
+      "position": [
+        368,
+        -16
+      ],
+      "id": "7ca47e79-535f-4977-838c-0fb936cd0767",
+      "name": "Switch2"
+    },
+    {
+      "parameters": {
+        "operation": "send",
+        "phoneNumberId": "992551847276777",
+        "recipientPhoneNumber": "={{ $('When Executed by Another Workflow').item.json.phone_to_message }}",
+        "messageType": "image",
+        "mediaPath": "useMediaId",
+        "mediaId": "={{ $('When Executed by Another Workflow').item.json.id_media }}",
+        "additionalFields": {}
+      },
+      "type": "n8n-nodes-base.whatsApp",
+      "typeVersion": 1.1,
+      "position": [
+        672,
+        -176
+      ],
+      "id": "d7a3d55e-8727-4a36-947d-1aaacc8d77ba",
+      "name": "Send image",
+      "webhookId": "998b1c67-df38-46e6-b6aa-6ee414fdfc45",
+      "credentials": {
+        "whatsAppApi": {
+          "id": "VkoCC1dvkFgJX0Kc",
+          "name": "Pruebas nuevo numero enviar mensaje"
+        }
+      },
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "operation": "send",
+        "phoneNumberId": "992551847276777",
+        "recipientPhoneNumber": "={{ $('When Executed by Another Workflow').item.json.phone_to_message }}",
+        "messageType": "audio",
+        "mediaPath": "useMediaId",
+        "mediaId": "={{ $('When Executed by Another Workflow').item.json.id_media }}",
+        "additionalFields": {}
+      },
+      "type": "n8n-nodes-base.whatsApp",
+      "typeVersion": 1.1,
+      "position": [
+        672,
+        16
+      ],
+      "id": "e9ee29ef-b729-4209-9f54-170432915965",
+      "name": "Send audio",
+      "webhookId": "998b1c67-df38-46e6-b6aa-6ee414fdfc45",
+      "credentials": {
+        "whatsAppApi": {
+          "id": "VkoCC1dvkFgJX0Kc",
+          "name": "Pruebas nuevo numero enviar mensaje"
+        }
+      },
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "operation": "send",
+        "phoneNumberId": "992551847276777",
+        "recipientPhoneNumber": "={{ $('When Executed by Another Workflow').item.json.phone_to_message }}",
+        "messageType": "video",
+        "mediaPath": "useMediaId",
+        "mediaId": "={{ $('When Executed by Another Workflow').item.json.id_media }}",
+        "additionalFields": {}
+      },
+      "type": "n8n-nodes-base.whatsApp",
+      "typeVersion": 1.1,
+      "position": [
+        672,
+        192
+      ],
+      "id": "a5b92d53-3c0a-4bfd-8441-bf732ba0d65e",
+      "name": "Send video",
+      "webhookId": "998b1c67-df38-46e6-b6aa-6ee414fdfc45",
+      "credentials": {
+        "whatsAppApi": {
+          "id": "VkoCC1dvkFgJX0Kc",
+          "name": "Pruebas nuevo numero enviar mensaje"
+        }
+      },
+      "onError": "continueRegularOutput"
+    }
+  ],
+  "connections": {
+    "Call 'Flujo de enviar mensaje (DEV)'": {
+      "main": [
+        []
+      ]
+    },
+    "Switch2": {
+      "main": [
+        [
+          {
+            "node": "Call 'Flujo de enviar mensaje (DEV)'",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Send image",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Send audio",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Send video",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "When Executed by Another Workflow": {
+      "main": [
+        [
+          {
+            "node": "Switch2",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Send image": {
+      "main": [
+        []
+      ]
+    },
+    "Send audio": {
+      "main": [
+        []
+      ]
+    },
+    "Send video": {
+      "main": [
+        []
+      ]
+    }
+  },
+  "nodeGroups": [],
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate"
+  },
+  "staticData": null,
+  "pinData": {},
+  "meta": null,
+  "tags": [],
+  "shared": [
+    {
+      "role": "workflow:owner",
+      "workflowId": "mujgzGNmAvkitaL1",
+      "projectId": "8h8pwWGcWlnGEym3",
+      "createdAt": "2026-09-04T15:27:35.190Z",
+      "updatedAt": "2026-09-04T15:27:35.190Z"
+    }
+  ],
+  "activeVersion": null
+}
