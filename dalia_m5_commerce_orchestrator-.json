@@ -1,0 +1,721 @@
+{
+  "id": "b4IBoTA7gIdZ40cX",
+  "name": "DALIA_M5_Commerce_Orchestrator",
+  "active": false,
+  "activeVersionId": null,
+  "createdAt": "2026-08-21T03:25:42.204Z",
+  "updatedAt": "2026-08-21T03:25:48.614Z",
+  "isArchived": false,
+  "versionId": "100cc2ee-d3d4-4d7a-af14-546ba338b6ac",
+  "triggerCount": 0,
+  "nodes": [
+    {
+      "parameters": {},
+      "id": "91f0ee98-0597-4e4e-bb9b-12d751ad78aa",
+      "name": "M5_Input",
+      "type": "n8n-nodes-base.subworkflowTrigger",
+      "typeVersion": 1,
+      "position": [
+        -144,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const items = $input.all();\nif (items.length !== 1) throw new Error(`M5_EXPECTED_ONE_ITEM: Se esperaba 1 elemento y se recibieron ${items.length}.`);\nconst raw = items[0]?.json ?? {};\nfunction isPlainObject(value) { return value !== null && typeof value === 'object' && !Array.isArray(value); }\nfunction objectOrEmpty(value) { return isPlainObject(value) ? value : {}; }\nfunction arrayOrEmpty(value) { return Array.isArray(value) ? value : []; }\nfunction nullableTrimmedString(value) { if (typeof value !== 'string') return value ?? null; const normalized = value.trim(); return normalized.length > 0 ? normalized : null; }\nfunction normalizeEmail(value) { const email = nullableTrimmedString(value); return email ? email.toLowerCase() : null; }\nfunction generateTraceId() { const randomPart = Math.random().toString(36).slice(2, 10); return `trace_${Date.now()}_${randomPart}`; }\nconst request = objectOrEmpty(raw.request);\nconst context = objectOrEmpty(raw.context);\nconst customer = objectOrEmpty(raw.customer);\nconst commercialSelection = objectOrEmpty(raw.commercial_selection);\nconst advisorValidation = objectOrEmpty(raw.advisor_validation);\nconst businessConfiguration = objectOrEmpty(raw.business_configuration);\nconst transactionContext = objectOrEmpty(raw.transaction_context);\nconst normalizedInput = {\n  request: {\n    request_id: nullableTrimmedString(request.request_id),\n    action: nullableTrimmedString(request.action)?.toLowerCase() ?? null,\n    requested_at: nullableTrimmedString(request.requested_at) ?? new Date().toISOString(),\n    source_module: nullableTrimmedString(request.source_module) ?? 'UNKNOWN',\n    trace_id: nullableTrimmedString(request.trace_id) ?? generateTraceId()\n  },\n  context: {\n    business_id: nullableTrimmedString(context.business_id),\n    session_id: nullableTrimmedString(context.session_id),\n    conversation_id: nullableTrimmedString(context.conversation_id),\n    channel: nullableTrimmedString(context.channel)?.toLowerCase() ?? 'unknown',\n    locale: nullableTrimmedString(context.locale) ?? 'es-CO',\n    timezone: nullableTrimmedString(context.timezone) ?? 'America/Bogota'\n  },\n  customer: { customer_id: nullableTrimmedString(customer.customer_id), name: nullableTrimmedString(customer.name), phone: nullableTrimmedString(customer.phone), email: normalizeEmail(customer.email), city: nullableTrimmedString(customer.city), address: customer.address ?? null, metadata: objectOrEmpty(customer.metadata) },\n  commercial_selection: { currency: nullableTrimmedString(commercialSelection.currency)?.toUpperCase() ?? 'COP', items: arrayOrEmpty(commercialSelection.items), commercial_terms: objectOrEmpty(commercialSelection.commercial_terms), customer_confirmation: objectOrEmpty(commercialSelection.customer_confirmation) },\n  advisor_validation: advisorValidation,\n  business_configuration: { payment: objectOrEmpty(businessConfiguration.payment), invoicing: objectOrEmpty(businessConfiguration.invoicing), fulfillment: objectOrEmpty(businessConfiguration.fulfillment), completion: objectOrEmpty(businessConfiguration.completion), automation: objectOrEmpty(businessConfiguration.automation) },\n  transaction_context: { transaction_id: nullableTrimmedString(transactionContext.transaction_id), status: nullableTrimmedString(transactionContext.status), sub_status: nullableTrimmedString(transactionContext.sub_status), next_action: nullableTrimmedString(transactionContext.next_action) },\n  external_event: raw.external_event === null || raw.external_event === undefined ? null : objectOrEmpty(raw.external_event)\n};\nreturn [{ json: { input: normalizedInput, orchestration: { received_at: new Date().toISOString(), workflow: 'DALIA_M5_Commerce_Orchestrator', stage: 'input_normalized' } } }];"
+      },
+      "id": "d5c09b9c-29ef-453a-94ee-c597e6209c0e",
+      "name": "01_Normalize_Input",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -144,
+        704
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const items = $input.all();\nif (items.length !== 1) throw new Error(`Expected 1 item, got ${items.length}`);\nconst payload = items[0].json;\nconst input = payload.input ?? {};\nconst missingFields = [];\nconst invalidFields = [];\nconst allowedActions = new Set(['start_transaction', 'continue_transaction', 'validate_transaction', 'create_payment', 'create_order', 'issue_invoice', 'resolve_fulfillment', 'complete_transaction']);\nfunction isNonEmptyString(value) { return typeof value === 'string' && value.trim().length > 0; }\nfunction requireNonEmptyString(value, fieldPath) { if (!isNonEmptyString(value)) missingFields.push(fieldPath); }\nfunction requireObject(value, fieldPath) { if (value === null || typeof value !== 'object' || Array.isArray(value)) invalidFields.push({ field: fieldPath, reason: 'must_be_object' }); }\nrequireNonEmptyString(input.request?.request_id, 'request.request_id');\nrequireNonEmptyString(input.request?.action, 'request.action');\nrequireNonEmptyString(input.request?.trace_id, 'request.trace_id');\nrequireNonEmptyString(input.context?.business_id, 'context.business_id');\nrequireNonEmptyString(input.context?.session_id, 'context.session_id');\nif (isNonEmptyString(input.request?.action) && !allowedActions.has(input.request.action)) { invalidFields.push({ field: 'request.action', reason: 'unsupported_action', value: input.request.action }); }\nconst action = input.request?.action;\nconst transactionId = input.transaction_context?.transaction_id;\nif (action && action !== 'start_transaction' && !isNonEmptyString(transactionId)) { missingFields.push('transaction_context.transaction_id'); }\nif (action === 'start_transaction') { if (!Array.isArray(input.commercial_selection?.items) || input.commercial_selection.items.length === 0) missingFields.push('commercial_selection.items'); requireObject(input.advisor_validation, 'advisor_validation'); requireObject(input.business_configuration, 'business_configuration'); }\nconst uniqueMissingFields = [...new Set(missingFields)];\nconst uniqueInvalidFields = Array.from(new Map(invalidFields.map((item) => [`${item.field}:${item.reason}`, item])).values());\nconst valid = uniqueMissingFields.length === 0 && uniqueInvalidFields.length === 0;\nreturn [{ json: { ...payload, contract_validation: { valid, missing_fields: uniqueMissingFields, invalid_fields: uniqueInvalidFields, validated_at: new Date().toISOString() }, orchestration: { ...payload.orchestration, stage: 'input_contract_validated' } } }];"
+      },
+      "id": "dc367e06-d8f9-478e-81a6-1201e798a60f",
+      "name": "02_Validate_Contract",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        80,
+        704
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "boolean": [
+            {
+              "value1": "={{ $json.contract_validation.valid }}",
+              "operation": "true"
+            }
+          ]
+        }
+      },
+      "id": "05ad3d26-0c5c-46db-93fb-98ac279ac03d",
+      "name": "03_Input_Is_Valid",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 1,
+      "position": [
+        304,
+        704
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "boolean": [
+            {
+              "value1": "={{ Boolean($json.input.transaction_context.transaction_id) }}",
+              "operation": "true"
+            }
+          ]
+        }
+      },
+      "id": "67f5ca4f-d504-49a1-a568-2e22172666a3",
+      "name": "04_Has_Transaction_ID",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 1,
+      "position": [
+        528,
+        800
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "SELECT commerce.create_transaction($1::text, $2::text, $3::text, $4::char(3), $5::jsonb, $6::jsonb) as transaction_id, $7::jsonb as input, 'created'::text as transaction_resolution;",
+        "options": {}
+      },
+      "id": "85c2b91c-02ff-4d14-ae9e-55baf0ea90e5",
+      "name": "05_Create_Transaction",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2,
+      "position": [
+        752,
+        400
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const payload = $input.first().json;\nconst input = payload.input ?? {};\nconst transactionId = input.transaction_context?.transaction_id;\nconst uuidPattern = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;\nif (typeof transactionId !== 'string' || !uuidPattern.test(transactionId)) { return [{ json: { ...payload, transaction_resolution: { valid: false, reason: 'invalid_transaction_id', transaction_id: transactionId ?? null } } }]; }\nreturn [{ json: { transaction_id: transactionId, input, transaction_resolution: 'existing' } }];"
+      },
+      "id": "a87eb67c-6def-4be6-8aa4-ad30647e7e65",
+      "name": "06_Use_Existing_Transaction",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        752,
+        896
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "WITH requested AS (SELECT $1::uuid as transaction_id, $2::text as business_id, $3::jsonb as input), transaction_data AS (SELECT t.* FROM commerce.transactions t INNER JOIN requested r ON r.transaction_id = t.id AND r.business_id = t.business_id) SELECT r.transaction_id, r.business_id, r.input, CASE WHEN t.id IS NOT NULL THEN TRUE ELSE FALSE END as transaction_found, CASE WHEN t.id IS NULL THEN NULL ELSE jsonb_build_object('transaction', to_jsonb(t), 'items', COALESCE((SELECT jsonb_agg(to_jsonb(i) ORDER BY i.created_at) FROM commerce.transaction_items i WHERE i.transaction_id = t.id), '[]'::jsonb)) END as transaction_context FROM requested r LEFT JOIN transaction_data t ON t.id = r.transaction_id;",
+        "options": {}
+      },
+      "id": "fb1a3502-e090-421a-8ab5-1f9c5e46523c",
+      "name": "07_Load_Transaction_Context",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2,
+      "position": [
+        976,
+        800
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "boolean": [
+            {
+              "value1": "={{ $json.transaction_found }}",
+              "operation": "true"
+            }
+          ]
+        }
+      },
+      "id": "4aff1ef8-3d6d-4997-8f30-afb19c79636f",
+      "name": "08_Transaction_Was_Found",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 1,
+      "position": [
+        1200,
+        800
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const payload = $input.first().json;\nconst input = payload.input ?? {};\nconst transactionContext = payload.transaction_context ?? {};\nconst transaction = transactionContext.transaction ?? {};\nconst metadata = transaction.metadata && typeof transaction.metadata === 'object' && !Array.isArray(transaction.metadata) ? transaction.metadata : {};\nconst persistedConfiguration = metadata.business_configuration && typeof metadata.business_configuration === 'object' && !Array.isArray(metadata.business_configuration) ? metadata.business_configuration : null;\nconst receivedConfiguration = input.business_configuration && typeof input.business_configuration === 'object' && !Array.isArray(input.business_configuration) ? input.business_configuration : null;\nconst errors = [];\nconst warnings = [];\nfunction isPlainObject(value) { return value !== null && typeof value === 'object' && !Array.isArray(value); }\nconst effectiveConfiguration = persistedConfiguration ?? receivedConfiguration ?? null;\nlet configurationSource = null;\nif (persistedConfiguration) { configurationSource = 'transaction_snapshot'; if (receivedConfiguration && JSON.stringify(receivedConfiguration) !== JSON.stringify(persistedConfiguration)) { warnings.push({ field: 'business_configuration', reason: 'received_configuration_differs_from_transaction_snapshot' }); } } else if (receivedConfiguration) { configurationSource = 'request'; warnings.push({ field: 'business_configuration', reason: 'transaction_snapshot_not_found_using_request_configuration' }); } else { errors.push({ field: 'business_configuration', reason: 'configuration_not_found' }); }\nlet payment = {}; let invoicing = {}; let fulfillment = {}; let completion = {}; let automation = {};\nif (effectiveConfiguration) { payment = isPlainObject(effectiveConfiguration.payment) ? effectiveConfiguration.payment : {}; invoicing = isPlainObject(effectiveConfiguration.invoicing) ? effectiveConfiguration.invoicing : {}; fulfillment = isPlainObject(effectiveConfiguration.fulfillment) ? effectiveConfiguration.fulfillment : {}; completion = isPlainObject(effectiveConfiguration.completion) ? effectiveConfiguration.completion : {}; automation = isPlainObject(effectiveConfiguration.automation) ? effectiveConfiguration.automation : {}; }\nconst normalizedEffectiveConfiguration = effectiveConfiguration ? { payment: { required: payment.required ?? false, mode: payment.mode ?? 'not_applicable', provider: payment.provider ?? null }, invoicing: { required: invoicing.required ?? false, mode: invoicing.mode ?? 'not_applicable', provider: invoicing.provider ?? null }, fulfillment: { mode: fulfillment.mode ?? 'not_applicable', requires_address: fulfillment.requires_address === true, requires_city: fulfillment.requires_city === true, requires_phone: fulfillment.requires_phone === true, requires_email: fulfillment.requires_email === true }, completion: { completion_state: completion.completion_state ?? null }, automation: { allow_human_handoff: automation.allow_human_handoff !== false, max_retries: Number.isInteger(automation.max_retries) ? automation.max_retries : 3 } } : null;\nreturn [{ json: { ...payload, effective_configuration: normalizedEffectiveConfiguration, configuration_resolution: { valid: errors.length === 0, source: configurationSource, errors, warnings, resolved_at: new Date().toISOString() }, orchestration: { ...payload.orchestration, stage: 'configuration_resolved' } } }];"
+      },
+      "id": "1af127d4-83b9-47d5-a5fe-285c73db2980",
+      "name": "09_Resolve_Effective_Configuration",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1424,
+        896
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "boolean": [
+            {
+              "value1": "={{ $json.configuration_resolution.valid }}",
+              "operation": "true"
+            }
+          ]
+        }
+      },
+      "id": "ebc0f7e1-1b38-46c8-a8ec-ba9be83b0642",
+      "name": "10_Configuration_Is_Valid",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 1,
+      "position": [
+        1648,
+        896
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const payload = $input.first().json;\nconst validation = payload.configuration_resolution ?? {};\nreturn [{ json: { result: { success: false, outcome: 'transaction_failed' }, transaction: { transaction_id: payload.transaction_context?.transaction?.id ?? null, previous_status: payload.transaction_context?.transaction?.status ?? null, current_status: payload.transaction_context?.transaction?.status ?? null, sub_status: null, next_action: null }, route: { selected_flow: null, effective_action: 'handle_error', reason: 'invalid_business_configuration' }, response: { message_required: false, message_type: null, reply_text: null, requested_fields: [] }, data: { configuration_resolution: validation }, error: { code: 'INVALID_BUSINESS_CONFIGURATION', category: 'configuration', message: 'La configuración efectiva de la transacción no es válida.', retryable: false, details: { errors: validation.errors ?? [], warnings: validation.warnings ?? [] } }, trace: { trace_id: payload.input?.request?.trace_id ?? null, request_id: payload.input?.request?.request_id ?? null, workflow: 'DALIA_M5_Commerce_Orchestrator', stage: 'configuration_rejected', processed_at: new Date().toISOString() } } }];"
+      },
+      "id": "8d31fa0a-0704-4314-8d49-754f9bd5cea3",
+      "name": "10A_Build_Configuration_Error",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        2768,
+        608
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const payload = $input.first().json;\nconst input = payload.input ?? {};\nreturn [{ json: { result: { success: false, outcome: 'transaction_failed' }, transaction: { transaction_id: payload.transaction_context?.transaction?.id ?? input.transaction_context?.transaction_id ?? null, previous_status: payload.transaction_context?.transaction?.status ?? null, current_status: null, sub_status: null, next_action: null }, route: { selected_flow: null, effective_action: input.request?.action ?? null, reason: 'transaction_not_found_or_not_accessible' }, response: { message_required: false, message_type: null, reply_text: null, requested_fields: [] }, data: null, error: { code: 'TRANSACTION_NOT_FOUND', category: 'business_rule', message: 'La transacción no existe o no pertenece al negocio indicado.', retryable: false, details: { transaction_id: payload.transaction_id ?? null, business_id: payload.business_id ?? null } }, trace: { trace_id: input.request?.trace_id ?? null, request_id: input.request?.request_id ?? null, workflow: 'DALIA_M5_Commerce_Orchestrator', stage: 'transaction_resolution_failed', processed_at: new Date().toISOString() } } }];"
+      },
+      "id": "12c2e3ea-5c72-493d-b6b6-16a313c87dbf",
+      "name": "08A_Build_Transaction_Not_Found_Error",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        2768,
+        416
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const payload = $input.first().json;\nconst input = payload.input ?? {};\nconst validation = payload.contract_validation ?? {};\nreturn [{ json: { result: { success: false, outcome: 'transaction_failed' }, transaction: { transaction_id: null, previous_status: null, current_status: null, sub_status: null, next_action: null }, route: { selected_flow: null, effective_action: input.request?.action ?? null, reason: 'invalid_input_contract' }, response: { message_required: false, message_type: null, reply_text: null, requested_fields: validation.missing_fields ?? [] }, data: { contract_validation: validation }, error: { code: 'INVALID_M5_INPUT', category: 'validation', message: 'El contrato de entrada de M5 no es válido.', retryable: false, details: { missing_fields: validation.missing_fields ?? [], invalid_fields: validation.invalid_fields ?? [] } }, trace: { trace_id: input.request?.trace_id ?? null, request_id: input.request?.request_id ?? null, workflow: 'DALIA_M5_Commerce_Orchestrator', stage: 'input_rejected', processed_at: new Date().toISOString() } } }];"
+      },
+      "id": "9657fa25-ed1b-4705-91f9-ea1906cb276e",
+      "name": "03A_Build_Input_Error",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        2768,
+        224
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const payload = $input.first().json;\nreturn [{ json: { ...payload, validation_execution: { ...payload.validation_execution, stage: 'ready_for_orchestration' } } }];"
+      },
+      "id": "28db0b80-c7fe-4ca2-aca5-02a1a41a67e2",
+      "name": "11_Validate_State_And_Action",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1872,
+        1088
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "boolean": [
+            {
+              "value1": "={{ true }}",
+              "operation": "true"
+            }
+          ]
+        }
+      },
+      "id": "076f5ecc-8b1a-4503-8d95-bbffed37fc4f",
+      "name": "12_Action_Is_Allowed",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 1,
+      "position": [
+        2096,
+        1088
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const payload = $input.first().json;\nconst input = payload.input ?? {};\nconst routeMap = { 'validate_transaction': { route_key: 'validation', selected_flow: 'DALIA_M5_01_Pretransaction_Validation' }, 'create_payment': { route_key: 'payment', selected_flow: 'DALIA_M5_02_Payment_Management' }, 'create_order': { route_key: 'order', selected_flow: 'DALIA_M5_03_Order_Management' }, 'issue_invoice': { route_key: 'invoice', selected_flow: 'DALIA_M5_04_Invoicing' }, 'resolve_fulfillment': { route_key: 'fulfillment', selected_flow: 'DALIA_M5_05_Fulfillment' }, 'complete_transaction': { route_key: 'completion', selected_flow: 'DALIA_M5_06_Completion' }, 'handle_error': { route_key: 'error', selected_flow: 'DALIA_M5_07_Error_Handler' } };\nconst action = input.request?.action ?? 'validate_transaction';\nconst selectedRoute = routeMap[action] ?? { route_key: 'fallback', selected_flow: null };\nreturn [{ json: { ...payload, route: { route_key: selectedRoute.route_key, selected_flow: selectedRoute.selected_flow, effective_action: action, reason: 'resolved_action' }, orchestration: { ...payload.orchestration, stage: 'route_resolved' } } }];"
+      },
+      "id": "209b9b67-e993-4bb0-b210-b14734a68a6e",
+      "name": "13_Resolve_Route",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        2320,
+        1088
+      ]
+    },
+    {
+      "parameters": {},
+      "id": "682f2615-e4ff-4c98-86f3-6c6f5d261710",
+      "name": "14_Route_By_Next_Action",
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 1,
+      "position": [
+        2544,
+        1056
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "return [{ json: { ...($input.first().json ?? {}), placeholder: 'M5.01 placeholder - reemplazar con Execute Sub-workflow' } }];"
+      },
+      "id": "2f61041d-ca7d-4ee2-9a44-c485b3d6efaa",
+      "name": "16A_Execute_M5_01_Validation",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        2768,
+        800
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "return [{ json: { ...($input.first().json ?? {}), placeholder: 'M5.02 placeholder - reemplazar con Execute Sub-workflow' } }];"
+      },
+      "id": "be162048-250a-4314-b7b3-34184fb9f6cb",
+      "name": "16B_Execute_M5_02_Payment",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        2768,
+        992
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "return [{ json: { ...($input.first().json ?? {}), placeholder: 'M5.03 placeholder - reemplazar con Execute Sub-workflow' } }];"
+      },
+      "id": "9c3d4ba4-3d95-4ffc-93aa-feda41dc0071",
+      "name": "16C_Execute_M5_03_Order",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        2768,
+        1184
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "return [{ json: { ...($input.first().json ?? {}), placeholder: 'M5.04 placeholder - reemplazar con Execute Sub-workflow' } }];"
+      },
+      "id": "156a0c74-78af-402e-a2c0-29ef792341d3",
+      "name": "16D_Execute_M5_04_Invoicing",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        2768,
+        1376
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "return [{ json: { ...($input.first().json ?? {}), placeholder: 'M5.05 placeholder - reemplazar con Execute Sub-workflow' } }];"
+      },
+      "id": "03e621df-b7f6-4441-bbf1-ad75ff5b5570",
+      "name": "16E_Execute_M5_05_Fulfillment",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        2768,
+        1568
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "return [{ json: { ...($input.first().json ?? {}), placeholder: 'M5.06 placeholder - reemplazar con Execute Sub-workflow' } }];"
+      },
+      "id": "8b3dbbc8-eb95-46cf-8ef7-43bc01a2d463",
+      "name": "16F_Execute_M5_06_Completion",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        2768,
+        1760
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "return [{ json: { ...($input.first().json ?? {}), placeholder: 'M5.07 placeholder - reemplazar con Execute Sub-workflow' } }];"
+      },
+      "id": "eb82ee8c-c41c-44b0-9555-003e01143d8f",
+      "name": "16G_Execute_M5_07_Error_Handler",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        2768,
+        1952
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const output = $input.first().json;\nreturn [{ json: { result: output.result ?? { success: false, outcome: 'transaction_failed' }, transaction: output.transaction ?? { transaction_id: null, previous_status: null, current_status: null, sub_status: null, next_action: null }, route: output.route ?? { selected_flow: null, effective_action: null, reason: null }, response: output.response ?? { message_required: false, message_type: null, reply_text: null, requested_fields: [] }, data: output.data ?? null, error: output.error ?? null, trace: output.trace ?? { trace_id: null, request_id: null, workflow: 'DALIA_M5_Commerce_Orchestrator', stage: 'returned', processed_at: new Date().toISOString() } } }];"
+      },
+      "id": "c2951f89-0450-42a8-bee6-edf0177cb7b0",
+      "name": "19_Return_Output",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        2992,
+        1088
+      ]
+    }
+  ],
+  "connections": {
+    "01_Normalize_Input": {
+      "main": [
+        [
+          {
+            "node": "02_Validate_Contract",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "02_Validate_Contract": {
+      "main": [
+        [
+          {
+            "node": "03_Input_Is_Valid",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "03_Input_Is_Valid": {
+      "main": [
+        [
+          {
+            "node": "04_Has_Transaction_ID",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "03A_Build_Input_Error",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "04_Has_Transaction_ID": {
+      "main": [
+        [
+          {
+            "node": "06_Use_Existing_Transaction",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "05_Create_Transaction",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "05_Create_Transaction": {
+      "main": [
+        [
+          {
+            "node": "07_Load_Transaction_Context",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "06_Use_Existing_Transaction": {
+      "main": [
+        [
+          {
+            "node": "07_Load_Transaction_Context",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "07_Load_Transaction_Context": {
+      "main": [
+        [
+          {
+            "node": "08_Transaction_Was_Found",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "08_Transaction_Was_Found": {
+      "main": [
+        [
+          {
+            "node": "09_Resolve_Effective_Configuration",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "08A_Build_Transaction_Not_Found_Error",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "09_Resolve_Effective_Configuration": {
+      "main": [
+        [
+          {
+            "node": "10_Configuration_Is_Valid",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "10_Configuration_Is_Valid": {
+      "main": [
+        [
+          {
+            "node": "11_Validate_State_And_Action",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "10A_Build_Configuration_Error",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "11_Validate_State_And_Action": {
+      "main": [
+        [
+          {
+            "node": "12_Action_Is_Allowed",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "12_Action_Is_Allowed": {
+      "main": [
+        [
+          {
+            "node": "13_Resolve_Route",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "13_Resolve_Route": {
+      "main": [
+        [
+          {
+            "node": "14_Route_By_Next_Action",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "14_Route_By_Next_Action": {
+      "main": [
+        [
+          {
+            "node": "16A_Execute_M5_01_Validation",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "16B_Execute_M5_02_Payment",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "16C_Execute_M5_03_Order",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "16D_Execute_M5_04_Invoicing",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "16A_Execute_M5_01_Validation": {
+      "main": [
+        [
+          {
+            "node": "19_Return_Output",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "16B_Execute_M5_02_Payment": {
+      "main": [
+        [
+          {
+            "node": "19_Return_Output",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "16C_Execute_M5_03_Order": {
+      "main": [
+        [
+          {
+            "node": "19_Return_Output",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "16D_Execute_M5_04_Invoicing": {
+      "main": [
+        [
+          {
+            "node": "19_Return_Output",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "16E_Execute_M5_05_Fulfillment": {
+      "main": [
+        [
+          {
+            "node": "19_Return_Output",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "16F_Execute_M5_06_Completion": {
+      "main": [
+        [
+          {
+            "node": "19_Return_Output",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "16G_Execute_M5_07_Error_Handler": {
+      "main": [
+        [
+          {
+            "node": "19_Return_Output",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "03A_Build_Input_Error": {
+      "main": [
+        [
+          {
+            "node": "19_Return_Output",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "10A_Build_Configuration_Error": {
+      "main": [
+        [
+          {
+            "node": "19_Return_Output",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "08A_Build_Transaction_Not_Found_Error": {
+      "main": [
+        [
+          {
+            "node": "19_Return_Output",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "nodeGroups": [],
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate",
+    "availableInMCP": false
+  },
+  "staticData": null,
+  "pinData": {},
+  "meta": null,
+  "tags": [],
+  "shared": [
+    {
+      "role": "workflow:owner",
+      "workflowId": "b4IBoTA7gIdZ40cX",
+      "projectId": "8h8pwWGcWlnGEym3",
+      "createdAt": "2026-08-21T03:25:42.212Z",
+      "updatedAt": "2026-08-21T03:25:42.212Z"
+    }
+  ],
+  "activeVersion": null
+}
