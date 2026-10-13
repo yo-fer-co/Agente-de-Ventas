@@ -1,0 +1,545 @@
+{
+  "id": "4dUaxCmdh3U5qbhI",
+  "name": "M3 - Asesor (nueva configuración)",
+  "active": false,
+  "activeVersionId": null,
+  "createdAt": "2026-05-08T03:52:21.725Z",
+  "updatedAt": "2026-05-27T18:28:19.000Z",
+  "isArchived": true,
+  "versionId": "aae33c1c-89ac-4822-9e11-1cfd8f46ee91",
+  "triggerCount": 0,
+  "nodes": [
+    {
+      "parameters": {
+        "inputSource": "passthrough"
+      },
+      "type": "n8n-nodes-base.executeWorkflowTrigger",
+      "typeVersion": 1.1,
+      "position": [
+        224,
+        16
+      ],
+      "id": "298eb380-3ba7-4877-86c5-a4f6f155fd38",
+      "name": "When Executed by Another Workflow"
+    },
+    {
+      "parameters": {
+        "jsCode": "// 1. Traemos la configuración y lo que pidió el usuario\nconst request = $('Build Advisor Request').first().json.advisor_request;\nconst config = $('Load M3 Config1').first().json;\n\n// 2. Traemos los productos de Qdrant (Nodo 5) de forma segura\nlet catalogItems = [];\ntry {\n    // Busca los resultados, si vienen dentro de 'metadata' o en la raíz\n    catalogItems = $('Retrieve Catalog Context').all().map(item => item.json.metadata || item.json);\n} catch (e) {\n    // Si no encontró nada, no pasa nada, se queda vacío\n}\n\n// 3. Traemos el conocimiento de Qdrant (Nodo 6) de forma segura\nlet knowledgeItems = [];\ntry {\n    knowledgeItems = $('Retrieve Knowledge Context').all().map(item => item.json.metadata || item.json);\n} catch (e) {}\n\n// 4. Formateamos el catálogo en texto fácil de leer para la IA\nlet catalogText = \"No se encontraron productos relevantes en el catálogo para esta consulta.\";\nif (catalogItems.length > 0) {\n    catalogText = catalogItems.map(item => \n        `- Producto: ${item.titulo || item.name || 'Sin nombre'}\\n  Precio: $${item.precio || item.price || 'N/A'}\\n  Stock: ${item.stock || 'Consultar'}\\n  Desc: ${item.descripcion || item.description || 'Sin descripción'}`\n    ).join('\\n\\n');\n}\n\n// 5. Formateamos el conocimiento (FAQs) en texto para la IA\nlet knowledgeText = \"No se requiere información adicional de políticas para esta consulta.\";\nif (knowledgeItems.length > 0) {\n    knowledgeText = knowledgeItems.map(item => \n        `- Info: ${item.respuesta || item.contenido || item.pageContent || item.text || 'Dato interno'}`\n    ).join('\\n\\n');\n}\n\n// 6. Construimos el mega-contexto final y se lo mandamos a la IA\nreturn {\n    json: {\n        advisor_context: {\n            user_intent: request.intent,\n            mode: request.mode,\n            commercial_stage: request.commercial_stage,\n            user_message: request.user_message,\n            extracted_entities: {\n                product: request.product_candidate,\n                category: request.category_candidate,\n                city: request.city\n            },\n            available_catalog: catalogText,\n            business_knowledge: knowledgeText,\n            system_config: config\n        }\n    }\n};"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1696,
+        0
+      ],
+      "id": "8c070f03-5e05-4a79-bb7c-25cb38dd2c09",
+      "name": "Build Advisor Context"
+    },
+    {
+      "parameters": {
+        "jsCode": "return {\n  json: {\n    advisor_request: {\n      mode: \"recommendation\",\n      user_message: \"busco una silla para mi bebé\",\n      intent: \"product_search\",\n      commercial_stage: \"consideration\",\n      category_candidate: \"silla\",\n      product_candidate: null,\n      preference: null,\n      city: null,\n      quantity: null\n    }\n  }\n};"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        912,
+        0
+      ],
+      "id": "daf3bb69-28db-4f08-ae2e-9d15ea467db9",
+      "name": "Build Advisor Request"
+    },
+    {
+      "parameters": {
+        "jsCode": "return {\n  json: {\n    advisor_name: \"DALIA\",\n    mode: \"demo_lite\",\n    language: \"es\"\n  }\n};"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        688,
+        0
+      ],
+      "id": "fe6cacb5-9c80-4a42-a380-b4c0ce028d2e",
+      "name": "Load M3 Config"
+    },
+    {
+      "parameters": {
+        "mode": "load",
+        "qdrantCollection": {
+          "__rl": true,
+          "value": "YoEco_Catalogo_DEMO",
+          "mode": "list",
+          "cachedResultName": "YoEco_Catalogo_DEMO"
+        },
+        "prompt": "={{ [ $('Build Advisor Request').item.json.advisor_request.user_message, $('Build Advisor Request').item.json.advisor_request.intent, $('Build Advisor Request').item.json.advisor_request.category_candidate, $('Build Advisor Request').item.json.advisor_request.product_candidate, $('Build Advisor Request').item.json.advisor_request.preference ].filter(Boolean).join(' ') }}",
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.vectorStoreQdrant",
+      "typeVersion": 1.3,
+      "position": [
+        1104,
+        0
+      ],
+      "id": "b2c9121f-311c-411f-8e80-4fbe26f518f0",
+      "name": "Retrieve Catalog Context",
+      "credentials": {
+        "qdrantApi": {
+          "id": "9oUogOvtDqsTDKBQ",
+          "name": "QdrantApi TEST"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "mode": "load",
+        "qdrantCollection": {
+          "__rl": true,
+          "value": "YoEco_Business_DEMO",
+          "mode": "list",
+          "cachedResultName": "YoEco_Business_DEMO"
+        },
+        "prompt": "=={{ $('Build Advisor Request').item.json.advisor_request.user_message }}",
+        "topK": 2,
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.vectorStoreQdrant",
+      "typeVersion": 1.3,
+      "position": [
+        1376,
+        0
+      ],
+      "id": "3bc81aa2-4356-49cf-91c6-11cf3bf8ec23",
+      "name": "Retrieve Knowledge Context",
+      "credentials": {
+        "qdrantApi": {
+          "id": "9oUogOvtDqsTDKBQ",
+          "name": "QdrantApi TEST"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.embeddingsOpenAi",
+      "typeVersion": 1.2,
+      "position": [
+        1104,
+        160
+      ],
+      "id": "7871aa57-eecf-49e1-b11f-191d714c2249",
+      "name": "Embeddings OpenAI",
+      "credentials": {
+        "openAiApi": {
+          "id": "CxN1M3GiHPXWR4gx",
+          "name": "OpenAi TEST"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.embeddingsOpenAi",
+      "typeVersion": 1.2,
+      "position": [
+        1376,
+        160
+      ],
+      "id": "ce0e4858-e45b-4c08-a705-9ad01c290855",
+      "name": "Embeddings OpenAI1",
+      "credentials": {
+        "openAiApi": {
+          "id": "CxN1M3GiHPXWR4gx",
+          "name": "OpenAi TEST"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "=Contexto del asesor:\n\nModo:\n{{ $json.advisor_context.mode }}\n\nMensaje del usuario:\n{{ $json.advisor_context.user_message }}\n\nIntención original:\n{{ $json.advisor_context.user_intent }}\n\nEtapa comercial:\n{{ $json.advisor_context.commercial_stage }}\n\nEntidades candidatas:\n{{ JSON.stringify($json.advisor_context.extracted_entities) }}\n\nContexto de catálogo demo:\n{{ JSON.stringify($json.advisor_context.catalog_context) }}\n\nConocimiento demo:\n{{ JSON.stringify($json.advisor_context.knowledge_context) }}\n\nMemoria de sesión:\n{{ JSON.stringify($json.advisor_context.session_memory) }}\n\nReglas configuradas:\n{{ JSON.stringify($json.advisor_context.advisor_config) }}\n",
+        "options": {
+          "systemMessage": "Eres DALIA, una asesora comercial AI en versión Lite Demo.\n\nTu función es ayudar al cliente a explorar productos, entender necesidades, recomendar opciones del catálogo demo y responder sobre productos concretos.\n\nNo eres el coordinador del flujo.\nNo decides rutas estructurales.\nNo ejecutas compras.\nNo generas órdenes.\nNo haces pagos.\nNo haces handoff directamente.\nTu salida será consumida por otros módulos.\n\nTONO\n- Natural, cálido, claro y comercial.\n- Responde de forma breve y útil.\n- Acompaña al cliente sin presionarlo.\n- Haz máximo una pregunta al final.\n- No hables como sistema técnico.\n- No menciones herramientas, RAG, memoria, módulos, workflows, Qdrant, n8n ni arquitectura.\n\nALCANCE\nSolo puedes responder con información del catálogo demo y del conocimiento demo recuperado.\nNo inventes productos.\nNo inventes precios.\nNo inventes stock.\nNo inventes políticas.\nNo muestres SKU al cliente.\nNo afirmes disponibilidad real si no está en la información entregada.\n\nCOMPORTAMIENTO SEGÚN MODO\n1. discovery:\n  - Ayuda al usuario a descubrir categorías o tipos de productos disponibles.\n  - No listes demasiadas opciones.\n  - Invita a precisar necesidad o categoría.\n\n2. recommendation:\n  - Recomienda productos relevantes del catálogo demo según necesidad, categoría o preferencia.\n  - Explica brevemente por qué cada opción aplica.\n  - Máximo 3 productos.\n\n3. product_detail:\n  - Responde solo si el producto existe en el catálogo demo recuperado.\n  - Da información puntual.\n  - Prepara la respuesta para que pueda mostrarse imagen si hay asset disponible.\n\nSI NO HAY INFORMACIÓN SUFICIENTE\n- No inventes.\n- Pide aclaración de forma breve.\n- Ofrece revisar opciones disponibles del catálogo demo.\n\nFORMATO DE SALIDA\nDevuelve únicamente JSON válido con esta estructura:\n\n{\n \"schema_version\": \"dalia.m3.advisor_response.v1\",\n \"response\": {\n   \"replyText\": \"\",\n   \"response_type\": \"discovery|recommendation|product_detail|clarification|out_of_scope\",\n   \"next_step\": \"ask_clarification|show_options|show_product|invite_purchase|handoff_suggested|none\"\n },\n \"catalog\": {\n   \"used_catalog\": true,\n   \"matched\": false,\n   \"match_type\": \"category|product|none\",\n   \"items\": []\n },\n \"presentation\": {\n   \"sendImage\": false,\n   \"image_mode\": \"none|single|multiple\",\n   \"image_candidates\": []\n },\n \"memory_update\": {\n   \"product_consulted\": null,\n   \"preference_detected\": null,\n   \"city_detected\": null\n },\n \"control\": {\n   \"can_continue\": true,\n   \"handoff_suggested\": false,\n   \"purchase_signal_detected\": false,\n   \"fallback_reason\": null\n }\n}\n"
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 3.1,
+      "position": [
+        1904,
+        0
+      ],
+      "id": "f1757945-8dcb-4835-8de6-1c12b6d33cc3",
+      "name": "AI Agent"
+    },
+    {
+      "parameters": {
+        "model": {
+          "__rl": true,
+          "mode": "list",
+          "value": "gpt-5-mini"
+        },
+        "builtInTools": {},
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatOpenAi",
+      "typeVersion": 1.3,
+      "position": [
+        1904,
+        208
+      ],
+      "id": "9e0ceaec-1e34-4f69-b5f3-af9d63af6871",
+      "name": "OpenAI Chat Model",
+      "credentials": {
+        "openAiApi": {
+          "id": "CxN1M3GiHPXWR4gx",
+          "name": "OpenAi TEST"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "sessionIdType": "customKey"
+      },
+      "type": "@n8n/n8n-nodes-langchain.memoryBufferWindow",
+      "typeVersion": 1.3,
+      "position": [
+        2000,
+        224
+      ],
+      "id": "6e6f003f-a806-4e2c-a96a-25682b1db96b",
+      "name": "Simple Memory"
+    },
+    {
+      "parameters": {
+        "jsCode": "const m2Input = $('Validate M2 Input').item.json.m2_input || $('Execute Workflow Trigger').item.json;\nconst llmRaw = $json;\n\nfunction safeParse(value) {\n if (typeof value === 'object' && value !== null) return value;\n\n if (typeof value === 'string') {\n   try {\n     return JSON.parse(value);\n   } catch (e) {\n     const match = value.match(/\\{[\\s\\S]*\\}/);\n     if (match) {\n       try {\n         return JSON.parse(match[0]);\n       } catch (_) {}\n     }\n   }\n }\n\n return {};\n}\n\nconst parsed = safeParse(\n llmRaw.output ||\n llmRaw.text ||\n llmRaw.response ||\n llmRaw.message ||\n llmRaw\n);\n\nconst allowedResponseTypes = [\n 'discovery',\n 'recommendation',\n 'product_detail',\n 'clarification',\n 'out_of_scope'\n];\n\nconst allowedNextSteps = [\n 'ask_clarification',\n 'show_options',\n 'show_product',\n 'invite_purchase',\n 'handoff_suggested',\n 'none'\n];\n\nconst response = parsed.response || {};\nconst catalog = parsed.catalog || {};\nconst presentation = parsed.presentation || {};\nconst memoryUpdate = parsed.memory_update || {};\nconst control = parsed.control || {};\n\nconst responseType = allowedResponseTypes.includes(response.response_type)\n ? response.response_type\n : 'clarification';\n\nconst nextStep = allowedNextSteps.includes(response.next_step)\n ? response.next_step\n : 'ask_clarification';\n\nconst replyText = String(response.replyText || '').trim() ||\n 'Para orientarte mejor, ¿me cuentas qué tipo de producto estás buscando?';\n\nreturn [\n {\n   json: {\n     schema_version: 'dalia.m3.advisor_response.v1',\n     trace: {\n       event_id: m2Input.trace?.event_id || null,\n       conversation_id: m2Input.trace?.conversation_id || null,\n       session_id: m2Input.trace?.session_id || null\n     },\n     context: {\n       environment: m2Input.context?.environment || null,\n       business_id: m2Input.context?.business_id || null,\n       channel: m2Input.context?.channel || null,\n       user_id: m2Input.context?.user_id || null,\n       display_name: m2Input.context?.display_name || null\n     },\n     response: {\n       replyText,\n       response_type: responseType,\n       next_step: nextStep\n     },\n     catalog: {\n       used_catalog: catalog.used_catalog !== false,\n       matched: Boolean(catalog.matched),\n       match_type: catalog.match_type || 'none',\n       items: Array.isArray(catalog.items) ? catalog.items : []\n     },\n     presentation: {\n       sendImage: Boolean(presentation.sendImage),\n       image_mode: presentation.image_mode || 'none',\n       image_candidates: Array.isArray(presentation.image_candidates)\n         ? presentation.image_candidates\n         : []\n     },\n     memory_update: {\n       product_consulted: memoryUpdate.product_consulted || null,\n       preference_detected: memoryUpdate.preference_detected || null,\n       city_detected: memoryUpdate.city_detected || null\n     },\n     control: {\n       can_continue: control.can_continue !== false,\n       handoff_suggested: Boolean(control.handoff_suggested),\n       purchase_signal_detected: Boolean(control.purchase_signal_detected),\n       fallback_reason: control.fallback_reason || null\n     }\n   }\n }\n];\n"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        2272,
+        0
+      ],
+      "id": "f4f7215c-aee1-42aa-9210-a606d2c85939",
+      "name": "Normalize Advisor Response1"
+    },
+    {
+      "parameters": {
+        "jsCode": "const output = $json;\n\nconst replyText = String(output.response?.replyText || '');\nconst lower = replyText.toLowerCase();\n\nconst forbiddenTerms = [\n 'sku',\n 'qdrant',\n 'rag',\n 'n8n',\n 'workflow',\n 'módulo',\n 'modulo',\n 'herramienta interna',\n 'base vectorial',\n 'embedding'\n];\n\nconst violations = [];\n\nif (!replyText.trim()) {\n violations.push('empty_reply');\n}\n\nfor (const term of forbiddenTerms) {\n if (lower.includes(term)) {\n   violations.push(`forbidden_term_${term}`);\n }\n}\n\nconst mentionsPrice =\n /\\$\\s?\\d+|\\bprecio\\b|\\bvale\\b|\\bcop\\b|\\bpesos\\b/i.test(replyText);\n\nif (mentionsPrice && !output.catalog?.items?.some(item => item.price)) {\n violations.push('possible_price_invention');\n}\n\nconst mentionsStock =\n /\\bstock\\b|\\bdisponible\\b|\\binventario\\b|\\bhay unidades\\b/i.test(replyText);\n\nif (mentionsStock && !output.catalog?.items?.some(item => item.stock_status)) {\n violations.push('possible_stock_invention');\n}\n\nif (output.presentation?.sendImage === true) {\n const candidates = output.presentation?.image_candidates || [];\n if (!Array.isArray(candidates) || candidates.length === 0) {\n   violations.push('send_image_without_candidate');\n }\n}\n\nif (\n output.response?.response_type === 'product_detail' &&\n (!output.catalog?.items || output.catalog.items.length === 0)\n) {\n violations.push('product_detail_without_catalog_item');\n}\n\nif (violations.length > 0) {\n return [\n   {\n     json: {\n       ...output,\n       response: {\n         replyText: 'No tengo suficiente información confiable sobre ese producto dentro del catálogo demo. Puedo ayudarte a revisar las opciones disponibles.',\n         response_type: 'out_of_scope',\n         next_step: 'ask_clarification'\n       },\n       catalog: {\n         used_catalog: true,\n         matched: false,\n         match_type: 'none',\n         items: []\n       },\n       presentation: {\n         sendImage: false,\n         image_mode: 'none',\n         image_candidates: []\n       },\n       control: {\n         can_continue: true,\n         handoff_suggested: false,\n         purchase_signal_detected: false,\n         fallback_reason: 'guardrail_validation_failed'\n       },\n       guardrail: {\n         passed: false,\n         violations\n       }\n     }\n   }\n ];\n}\n\nreturn [\n {\n   json: {\n     ...output,\n     guardrail: {\n       passed: true,\n       violations: []\n     }\n   }\n }\n];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        2480,
+        0
+      ],
+      "id": "d115153b-59fd-4eb0-a0de-7fdc828359af",
+      "name": "Validate Guardrails1"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "7d262add-87b4-4628-b149-191c4adfad4b",
+              "leftValue": "={{ $json.decision.destination }}",
+              "rightValue": "m3_advisor",
+              "operator": {
+                "type": "string",
+                "operation": "equals"
+              }
+            },
+            {
+              "id": "14b423e9-edc8-43e6-94a7-de3ac373189c",
+              "leftValue": "",
+              "rightValue": "",
+              "operator": {
+                "type": "string",
+                "operation": "equals",
+                "name": "filter.operator.equals"
+              }
+            },
+            {
+              "id": "1f9f0226-b933-4a4e-883c-5b70dd8586ef",
+              "leftValue": "={{[\"general_inquiry\",\"product_search\",\"product_specific\"].includes($json.decision.intent)}}",
+              "rightValue": "",
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            },
+            {
+              "id": "08737574-97ba-4504-8705-a8a1722d5e5d",
+              "leftValue": "={{ $json.input.text }}{{ $json.trace.session_id }}{{ $json.context.user_id }}",
+              "rightValue": "",
+              "operator": {
+                "type": "string",
+                "operation": "notEmpty",
+                "singleValue": true
+              }
+            },
+            {
+              "id": "86a06e42-827c-4b4a-8d22-98200d00efe0",
+              "leftValue": "={{ $json.input.processing_status }}",
+              "rightValue": "ready",
+              "operator": {
+                "type": "string",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        448,
+        16
+      ],
+      "id": "bb558571-5aad-4ed2-9cdf-d143546dd782",
+      "name": "Validate M2 Input"
+    },
+    {
+      "parameters": {},
+      "type": "n8n-nodes-base.noOp",
+      "typeVersion": 1,
+      "position": [
+        640,
+        240
+      ],
+      "id": "36616931-3498-4a72-b635-89091d6e939d",
+      "name": "No Operation, do nothing"
+    }
+  ],
+  "connections": {
+    "When Executed by Another Workflow": {
+      "main": [
+        [
+          {
+            "node": "Validate M2 Input",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Build Advisor Request": {
+      "main": [
+        [
+          {
+            "node": "Retrieve Catalog Context",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Load M3 Config": {
+      "main": [
+        [
+          {
+            "node": "Build Advisor Request",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Retrieve Catalog Context": {
+      "main": [
+        [
+          {
+            "node": "Retrieve Knowledge Context",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Embeddings OpenAI": {
+      "ai_embedding": [
+        [
+          {
+            "node": "Retrieve Catalog Context",
+            "type": "ai_embedding",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Embeddings OpenAI1": {
+      "ai_embedding": [
+        [
+          {
+            "node": "Retrieve Knowledge Context",
+            "type": "ai_embedding",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Retrieve Knowledge Context": {
+      "main": [
+        [
+          {
+            "node": "Build Advisor Context",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Build Advisor Context": {
+      "main": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "OpenAI Chat Model": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Simple Memory": {
+      "ai_memory": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_memory",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "AI Agent": {
+      "main": [
+        [
+          {
+            "node": "Normalize Advisor Response1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Normalize Advisor Response1": {
+      "main": [
+        [
+          {
+            "node": "Validate Guardrails1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Validate M2 Input": {
+      "main": [
+        [
+          {
+            "node": "Load M3 Config",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "No Operation, do nothing",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "nodeGroups": [],
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate"
+  },
+  "staticData": null,
+  "pinData": {
+    "When Executed by Another Workflow": [
+      {
+        "json": {
+          "schema_version": "dalia.m2.routing_decision.v1",
+          "trace": {
+            "event_id": "evt_1778277169753",
+            "conversation_id": "conv_wa_1104496126080610_573192563967",
+            "session_id": "wa_demo_1104496126080610_573192563967"
+          },
+          "context": {
+            "environment": "demo",
+            "business_id": "business_demo",
+            "channel": "whatsapp",
+            "user_id": "573192563967",
+            "display_name": "Em"
+          },
+          "input": {
+            "message_id": "wamid.HBgMNTczMTkyNTYzOTY3FQIAEhgWM0VCMDAzODI2NjU2RjA2RTI2Q0RDRAA=",
+            "type": "text",
+            "text": "hola",
+            "timestamp": "2026-05-07T17:16:14.000Z",
+            "processing_status": "ready"
+          },
+          "decision": {
+            "intent": "general_inquiry",
+            "destination": "m3_advisor",
+            "confidence": 0.7,
+            "commercial_stage": "exploration",
+            "reason": "Saludo simple, posible inicio de interacción sin un requerimiento específico."
+          },
+          "extracted": {
+            "category_candidate": null,
+            "product_candidate": null,
+            "quantity": null,
+            "city": null,
+            "preference": null
+          },
+          "control": {
+            "needs_clarification": false,
+            "needs_memory_lookup": false,
+            "requires_handoff": false,
+            "fallback_reason": null
+          }
+        },
+        "pairedItem": {
+          "item": 0
+        }
+      }
+    ]
+  },
+  "meta": {
+    "templateCredsSetupCompleted": true
+  },
+  "tags": [],
+  "shared": [
+    {
+      "role": "workflow:owner",
+      "workflowId": "4dUaxCmdh3U5qbhI",
+      "projectId": "tRHCC8ts4mkRGXGn",
+      "createdAt": "2026-05-08T03:52:21.729Z",
+      "updatedAt": "2026-05-08T03:52:21.729Z"
+    }
+  ],
+  "activeVersion": null
+}
