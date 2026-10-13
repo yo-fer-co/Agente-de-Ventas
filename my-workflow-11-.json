@@ -1,0 +1,124 @@
+{
+  "id": "TdTPBxlWev9Apppb",
+  "name": "My workflow 11",
+  "active": false,
+  "activeVersionId": null,
+  "createdAt": "2025-12-23T22:41:21.665Z",
+  "updatedAt": "2026-01-21T03:02:11.000Z",
+  "isArchived": true,
+  "versionId": "60b0d6ce-409c-4d06-bb36-e73b7d377461",
+  "triggerCount": 0,
+  "nodes": [
+    {
+      "parameters": {
+        "path": "e6c744fc-f99a-4ad5-a475-f5ab25dc5b0e"
+      },
+      "type": "@n8n/n8n-nodes-langchain.mcpTrigger",
+      "typeVersion": 2,
+      "position": [
+        224,
+        432
+      ],
+      "id": "c7443bd8-ce0b-4a29-821c-1bc95ec5a06b",
+      "name": "MCP Server Trigger",
+      "webhookId": "e6c744fc-f99a-4ad5-a475-f5ab25dc5b0e"
+    },
+    {
+      "parameters": {
+        "descriptionType": "manual",
+        "toolDescription": "Reads product data from Google Sheets. Use this to get the latest product information including ID, title, description, price, and inventory before updating products in Shopify.",
+        "documentId": {
+          "__rl": true,
+          "value": "1z3iO_NUqb9Se5x2q_7TxobJccftx3iRKD_AukhQdQrU",
+          "mode": "list",
+          "cachedResultName": "Levantamiento de atributos_Catálogo",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1z3iO_NUqb9Se5x2q_7TxobJccftx3iRKD_AukhQdQrU/edit?usp=drivesdk"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": 635472354,
+          "mode": "list",
+          "cachedResultName": "Hoja 7",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1z3iO_NUqb9Se5x2q_7TxobJccftx3iRKD_AukhQdQrU/edit#gid=635472354"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleSheetsTool",
+      "typeVersion": 4.7,
+      "position": [
+        240,
+        656
+      ],
+      "id": "52437dd4-7b9b-4b23-9d2a-b37ba7da9ef6",
+      "name": "Get row(s) in sheet in Google Sheets",
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "Pf0TYy2joLTmqt2C",
+          "name": "Google Sheets account 3"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "descriptionType": "manual",
+        "toolDescription": "Updates a product in Baby's World Shopify store. Use this to update product information like title, description, price, and inventory after reading data from Google Sheets.",
+        "resource": "product",
+        "operation": "update",
+        "productId": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('Product_ID', `Shopify product ID to update`, 'string') }}",
+        "updateFields": {}
+      },
+      "id": "700e61e1-9d6d-4441-b6e4-429f60b2d796",
+      "name": "Update Products in Baby's World Shopify",
+      "type": "n8n-nodes-base.shopifyTool",
+      "typeVersion": 1,
+      "position": [
+        368,
+        656
+      ]
+    }
+  ],
+  "connections": {
+    "Get row(s) in sheet in Google Sheets": {
+      "ai_tool": [
+        [
+          {
+            "node": "MCP Server Trigger",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Update Products in Baby's World Shopify": {
+      "ai_tool": [
+        [
+          {
+            "node": "MCP Server Trigger",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "nodeGroups": [],
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "staticData": null,
+  "pinData": {},
+  "meta": {
+    "templateCredsSetupCompleted": true
+  },
+  "tags": [],
+  "shared": [
+    {
+      "role": "workflow:owner",
+      "workflowId": "TdTPBxlWev9Apppb",
+      "projectId": "8h8pwWGcWlnGEym3",
+      "createdAt": "2025-12-23T22:41:21.667Z",
+      "updatedAt": "2025-12-23T22:41:21.667Z"
+    }
+  ],
+  "activeVersion": null
+}
