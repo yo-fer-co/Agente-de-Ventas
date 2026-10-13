@@ -1,0 +1,407 @@
+{
+  "id": "utnQfoflAlLrlVVx",
+  "name": "DALIA_SYS.03_Receptor_de_callbacks",
+  "active": true,
+  "activeVersionId": "8499d3d2-b729-40e1-a257-713ff2256339",
+  "createdAt": "2026-10-03T01:56:18.161Z",
+  "updatedAt": "2026-10-03T16:46:51.237Z",
+  "isArchived": false,
+  "versionId": "8499d3d2-b729-40e1-a257-713ff2256339",
+  "triggerCount": 0,
+  "nodes": [
+    {
+      "id": "5be00d82-2a13-4fea-b1b9-89fa5380e58e",
+      "name": "Callback normalizado",
+      "type": "n8n-nodes-base.executeWorkflowTrigger",
+      "typeVersion": 1.2,
+      "position": [
+        0,
+        80
+      ],
+      "parameters": {
+        "inputSource": "passthrough"
+      }
+    },
+    {
+      "id": "90c66269-9c27-4be3-b5d3-80a018835596",
+      "name": "Registrar en inbox",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.7,
+      "position": [
+        224,
+        80
+      ],
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "select * from dalia.sys_inbox_accept($1, $2, $3, $4::boolean, $5::jsonb, $6::jsonb, null);",
+        "options": {
+          "queryReplacement": "={{ [ $json.source, $json.external_event_id, $json.event_type, String($json.signature_valid === true), JSON.stringify($json.payload ?? {}), JSON.stringify($json.envelope ?? {}) ] }}"
+        }
+      },
+      "credentials": {
+        "postgres": {
+          "id": "HfCgVAjUygK1vrkU",
+          "name": "DALIA dev Supabase"
+        }
+      }
+    },
+    {
+      "id": "12d6412e-3d3d-444b-84cc-389a4927afbd",
+      "name": "Se creo job",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        448,
+        80
+      ],
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict"
+          },
+          "conditions": [
+            {
+              "leftValue": "={{ $json.inbox_status }}",
+              "operator": {
+                "type": "string",
+                "operation": "equals"
+              },
+              "rightValue": "ROUTED"
+            }
+          ],
+          "combinator": "and"
+        }
+      }
+    },
+    {
+      "id": "ea2a92ad-df37-4ba5-b223-8674f8d7cb7e",
+      "name": "Empujar despachador",
+      "type": "n8n-nodes-base.executeWorkflow",
+      "typeVersion": 1.3,
+      "position": [
+        672,
+        0
+      ],
+      "parameters": {
+        "mode": "each",
+        "source": "database",
+        "workflowId": {
+          "__rl": true,
+          "mode": "id",
+          "value": "PTbCajv1e5AZI7vI"
+        },
+        "options": {
+          "waitForSubWorkflow": false
+        }
+      }
+    },
+    {
+      "id": "80ef73d5-ff92-4489-8bad-54bb0d77db0d",
+      "name": "Resultado",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        896,
+        80
+      ],
+      "parameters": {
+        "mode": "manual",
+        "includeOtherFields": false,
+        "assignments": {
+          "assignments": [
+            {
+              "id": "r1",
+              "name": "inbox_id",
+              "value": "={{ $('Registrar en inbox').item.json.inbox_id }}",
+              "type": "string"
+            },
+            {
+              "id": "r2",
+              "name": "is_duplicate",
+              "value": "={{ $('Registrar en inbox').item.json.is_duplicate }}",
+              "type": "boolean"
+            },
+            {
+              "id": "r3",
+              "name": "inbox_status",
+              "value": "={{ $('Registrar en inbox').item.json.inbox_status }}",
+              "type": "string"
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "connections": {
+    "Callback normalizado": {
+      "main": [
+        [
+          {
+            "node": "Registrar en inbox",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Registrar en inbox": {
+      "main": [
+        [
+          {
+            "node": "Se creo job",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Se creo job": {
+      "main": [
+        [
+          {
+            "node": "Empujar despachador",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Resultado",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Empujar despachador": {
+      "main": [
+        [
+          {
+            "node": "Resultado",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "nodeGroups": [],
+  "settings": {
+    "executionOrder": "v1",
+    "availableInMCP": true,
+    "errorWorkflow": "cjjQno2MxMTT3Icc",
+    "timezone": "America/Bogota",
+    "saveManualExecutions": true,
+    "saveDataErrorExecution": "all",
+    "saveDataSuccessExecution": "all",
+    "callerPolicy": "workflowsFromSameOwner"
+  },
+  "staticData": null,
+  "pinData": null,
+  "meta": {
+    "aiBuilderAssisted": true,
+    "builderVariant": "mcp"
+  },
+  "tags": [],
+  "shared": [
+    {
+      "role": "workflow:owner",
+      "workflowId": "utnQfoflAlLrlVVx",
+      "projectId": "tRHCC8ts4mkRGXGn",
+      "createdAt": "2026-10-09T21:09:17.749Z",
+      "updatedAt": "2026-10-09T21:09:17.749Z"
+    }
+  ],
+  "activeVersion": {
+    "versionId": "8499d3d2-b729-40e1-a257-713ff2256339",
+    "workflowId": "utnQfoflAlLrlVVx",
+    "nodes": [
+      {
+        "id": "5be00d82-2a13-4fea-b1b9-89fa5380e58e",
+        "name": "Callback normalizado",
+        "type": "n8n-nodes-base.executeWorkflowTrigger",
+        "typeVersion": 1.2,
+        "position": [
+          0,
+          80
+        ],
+        "parameters": {
+          "inputSource": "passthrough"
+        }
+      },
+      {
+        "id": "90c66269-9c27-4be3-b5d3-80a018835596",
+        "name": "Registrar en inbox",
+        "type": "n8n-nodes-base.postgres",
+        "typeVersion": 2.7,
+        "position": [
+          224,
+          80
+        ],
+        "parameters": {
+          "operation": "executeQuery",
+          "query": "select * from dalia.sys_inbox_accept($1, $2, $3, $4::boolean, $5::jsonb, $6::jsonb, null);",
+          "options": {
+            "queryReplacement": "={{ [ $json.source, $json.external_event_id, $json.event_type, String($json.signature_valid === true), JSON.stringify($json.payload ?? {}), JSON.stringify($json.envelope ?? {}) ] }}"
+          }
+        },
+        "credentials": {
+          "postgres": {
+            "id": "HfCgVAjUygK1vrkU",
+            "name": "DALIA dev Supabase"
+          }
+        }
+      },
+      {
+        "id": "12d6412e-3d3d-444b-84cc-389a4927afbd",
+        "name": "Se creo job",
+        "type": "n8n-nodes-base.if",
+        "typeVersion": 2.2,
+        "position": [
+          448,
+          80
+        ],
+        "parameters": {
+          "conditions": {
+            "options": {
+              "caseSensitive": true,
+              "leftValue": "",
+              "typeValidation": "strict"
+            },
+            "conditions": [
+              {
+                "leftValue": "={{ $json.inbox_status }}",
+                "operator": {
+                  "type": "string",
+                  "operation": "equals"
+                },
+                "rightValue": "ROUTED"
+              }
+            ],
+            "combinator": "and"
+          }
+        }
+      },
+      {
+        "id": "ea2a92ad-df37-4ba5-b223-8674f8d7cb7e",
+        "name": "Empujar despachador",
+        "type": "n8n-nodes-base.executeWorkflow",
+        "typeVersion": 1.3,
+        "position": [
+          672,
+          0
+        ],
+        "parameters": {
+          "mode": "each",
+          "source": "database",
+          "workflowId": {
+            "__rl": true,
+            "mode": "id",
+            "value": "PTbCajv1e5AZI7vI"
+          },
+          "options": {
+            "waitForSubWorkflow": false
+          }
+        }
+      },
+      {
+        "id": "80ef73d5-ff92-4489-8bad-54bb0d77db0d",
+        "name": "Resultado",
+        "type": "n8n-nodes-base.set",
+        "typeVersion": 3.4,
+        "position": [
+          896,
+          80
+        ],
+        "parameters": {
+          "mode": "manual",
+          "includeOtherFields": false,
+          "assignments": {
+            "assignments": [
+              {
+                "id": "r1",
+                "name": "inbox_id",
+                "value": "={{ $('Registrar en inbox').item.json.inbox_id }}",
+                "type": "string"
+              },
+              {
+                "id": "r2",
+                "name": "is_duplicate",
+                "value": "={{ $('Registrar en inbox').item.json.is_duplicate }}",
+                "type": "boolean"
+              },
+              {
+                "id": "r3",
+                "name": "inbox_status",
+                "value": "={{ $('Registrar en inbox').item.json.inbox_status }}",
+                "type": "string"
+              }
+            ]
+          }
+        }
+      }
+    ],
+    "connections": {
+      "Callback normalizado": {
+        "main": [
+          [
+            {
+              "node": "Registrar en inbox",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Registrar en inbox": {
+        "main": [
+          [
+            {
+              "node": "Se creo job",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Se creo job": {
+        "main": [
+          [
+            {
+              "node": "Empujar despachador",
+              "type": "main",
+              "index": 0
+            }
+          ],
+          [
+            {
+              "node": "Resultado",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Empujar despachador": {
+        "main": [
+          [
+            {
+              "node": "Resultado",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      }
+    },
+    "nodeGroups": [],
+    "authors": "Fabian Bocanegra (via MCP)",
+    "name": "DALIA v1.0 lote 1 · instalación DEV",
+    "description": "Created with 5 nodes: Callback normalizado, Registrar en inbox, Se creo job, Empujar despachador, Resultado",
+    "autosaved": false,
+    "createdAt": "2026-10-03T01:56:18.163Z",
+    "updatedAt": "2026-10-03T01:56:18.163Z"
+  }
+}
