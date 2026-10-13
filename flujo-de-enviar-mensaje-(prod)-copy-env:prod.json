@@ -1,0 +1,275 @@
+{
+  "id": "rtCZ8WKfYI8YpzKX",
+  "name": "Flujo de enviar mensaje (PROD) copy",
+  "active": false,
+  "activeVersionId": null,
+  "createdAt": "2026-10-08T03:59:36.242Z",
+  "updatedAt": "2026-10-08T03:59:36.242Z",
+  "isArchived": false,
+  "versionId": "dd632db4-5638-40cb-9ef6-52741836c213",
+  "triggerCount": 0,
+  "nodes": [
+    {
+      "parameters": {
+        "workflowInputs": {
+          "values": [
+            {
+              "name": "session_id"
+            },
+            {
+              "name": "text_body"
+            },
+            {
+              "name": "caption"
+            },
+            {
+              "name": "imagen no disponible"
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.executeWorkflowTrigger",
+      "typeVersion": 1.1,
+      "position": [
+        272,
+        -64
+      ],
+      "id": "a4644ac1-a16e-4022-b9f5-1bfeaf01846f",
+      "name": "When Executed by Another Workflow"
+    },
+    {
+      "parameters": {
+        "operation": "send",
+        "phoneNumberId": "900258723180080",
+        "recipientPhoneNumber": "={{ $('When Executed by Another Workflow').item.json.session_id }}",
+        "textBody": "={{ $('When Executed by Another Workflow').item.json.text_body }}",
+        "additionalFields": {}
+      },
+      "type": "n8n-nodes-base.whatsApp",
+      "typeVersion": 1.1,
+      "position": [
+        864,
+        -112
+      ],
+      "id": "505e2864-9f6c-42d9-958f-c266ce89b662",
+      "name": "Send message",
+      "webhookId": "0758224a-c642-4c57-a991-1de02a0bd6ff",
+      "credentials": {
+        "whatsAppApi": {
+          "id": "uxjDDXCt5mDphQ1e",
+          "name": "WhatsApp_BW:Dalia_sendMessage"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "send",
+        "phoneNumberId": "900258723180080",
+        "recipientPhoneNumber": "={{ $('When Executed by Another Workflow').item.json.session_id }}",
+        "messageType": "image",
+        "mediaPath": "useMedian8n",
+        "additionalFields": {
+          "mediaCaption": "={{ $('When Executed by Another Workflow').item.json.caption }}"
+        }
+      },
+      "type": "n8n-nodes-base.whatsApp",
+      "typeVersion": 1.1,
+      "position": [
+        864,
+        -272
+      ],
+      "id": "0f6ab588-44f5-4c35-b3e7-2f34eff0c380",
+      "name": "Send message1",
+      "webhookId": "4e742373-9c3e-4ec1-bd3e-6b717e2186f0",
+      "credentials": {
+        "whatsAppApi": {
+          "id": "uxjDDXCt5mDphQ1e",
+          "name": "WhatsApp_BW:Dalia_sendMessage"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "rules": {
+          "values": [
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 3
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $json.caption }}",
+                    "rightValue": "",
+                    "operator": {
+                      "type": "string",
+                      "operation": "notEmpty",
+                      "singleValue": true
+                    },
+                    "id": "3f9b7f50-d633-40e9-9f1c-52d70d5cff37"
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "imagen"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 3
+                },
+                "conditions": [
+                  {
+                    "id": "421b1481-2e9d-41df-bce8-243948aba6e1",
+                    "leftValue": "={{ $json.text_body }}",
+                    "rightValue": "",
+                    "operator": {
+                      "type": "string",
+                      "operation": "notEmpty",
+                      "singleValue": true
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "Texto"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 3
+                },
+                "conditions": [
+                  {
+                    "id": "c21d24fa-3558-4303-8993-38687d8c01ae",
+                    "leftValue": "={{ $json['imagen no disponible'] }}",
+                    "rightValue": "",
+                    "operator": {
+                      "type": "string",
+                      "operation": "notEmpty",
+                      "singleValue": true
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "Imagen no disponible"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 3.4,
+      "position": [
+        512,
+        -80
+      ],
+      "id": "0ed94cd9-ca77-4fba-87ec-9fa0f57c16db",
+      "name": "Switch"
+    },
+    {
+      "parameters": {
+        "operation": "send",
+        "phoneNumberId": "900258723180080",
+        "recipientPhoneNumber": "={{ $('When Executed by Another Workflow').item.json.session_id }}",
+        "textBody": "={{ $('When Executed by Another Workflow').item.json['imagen no disponible'] }}",
+        "additionalFields": {}
+      },
+      "type": "n8n-nodes-base.whatsApp",
+      "typeVersion": 1.1,
+      "position": [
+        864,
+        48
+      ],
+      "id": "909e60f8-e4c4-4437-b2e5-c8a423fecdb6",
+      "name": "Send message2",
+      "webhookId": "6ba2b185-10a2-42c1-8de3-b8ed9bb2e9de",
+      "credentials": {
+        "whatsAppApi": {
+          "id": "uxjDDXCt5mDphQ1e",
+          "name": "WhatsApp_BW:Dalia_sendMessage"
+        }
+      }
+    }
+  ],
+  "connections": {
+    "When Executed by Another Workflow": {
+      "main": [
+        [
+          {
+            "node": "Switch",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Switch": {
+      "main": [
+        [
+          {
+            "node": "Send message1",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Send message",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Send message2",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "nodeGroups": [],
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate",
+    "availableInMCP": false
+  },
+  "staticData": null,
+  "pinData": {},
+  "meta": {
+    "templateCredsSetupCompleted": true
+  },
+  "tags": [
+    {
+      "id": "2nDb4zfpAXOj9Pvx",
+      "name": "env:prod",
+      "createdAt": "2026-02-25T21:45:46.330Z",
+      "updatedAt": "2026-02-25T21:45:46.330Z"
+    }
+  ],
+  "shared": [
+    {
+      "role": "workflow:owner",
+      "workflowId": "rtCZ8WKfYI8YpzKX",
+      "projectId": "8h8pwWGcWlnGEym3",
+      "createdAt": "2026-10-08T03:59:36.244Z",
+      "updatedAt": "2026-10-08T03:59:36.244Z"
+    }
+  ],
+  "activeVersion": null
+}
