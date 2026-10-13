@@ -1,0 +1,35 @@
+{
+  "id": "oOUUJDEaMPogDJex",
+  "name": "DALIA - Demo Speed (Baby's World)",
+  "active": false,
+  "activeVersionId": null,
+  "createdAt": "2026-03-27T18:37:56.442Z",
+  "updatedAt": "2026-03-27T22:17:41.000Z",
+  "isArchived": true,
+  "versionId": "ce1d0ecb-d675-4e08-9c0d-26a2dfc0d563",
+  "triggerCount": 0,
+  "nodes": [],
+  "connections": {},
+  "nodeGroups": [],
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate",
+    "availableInMCP": false
+  },
+  "staticData": null,
+  "pinData": {},
+  "meta": {
+    "templateCredsSetupCompleted": true
+  },
+  "tags": [],
+  "shared": [
+    {
+      "role": "workflow:owner",
+      "workflowId": "oOUUJDEaMPogDJex",
+      "projectId": "8h8pwWGcWlnGEym3",
+      "createdAt": "2026-03-27T18:37:56.443Z",
+      "updatedAt": "2026-03-27T18:37:56.443Z"
+    }
+  ],
+  "activeVersion": null
+}
