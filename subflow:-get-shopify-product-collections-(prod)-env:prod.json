@@ -1,0 +1,313 @@
+{
+  "id": "12AJ8IreT01EGVZx",
+  "name": "Subflow: Get Shopify Product Collections (PROD)",
+  "active": true,
+  "activeVersionId": "0420db43-3469-43c6-a5bf-211807788735",
+  "createdAt": "2026-10-08T23:16:07.499Z",
+  "updatedAt": "2026-10-09T00:06:29.207Z",
+  "isArchived": false,
+  "versionId": "0420db43-3469-43c6-a5bf-211807788735",
+  "triggerCount": 0,
+  "nodes": [
+    {
+      "parameters": {
+        "content": "## Subflow: Get Shopify Product Collections\n\nNuevo (2026-08-25). Resuelve la brecha de 'categoria' documentada en el plan (secciones 8, 14 y 16): las collections de Shopify (no product_type ni una categoria curada) son el campo que de verdad reemplaza a la columna 'Categoria' del Sheet viejo. El problema es que Shopify NO manda las collections de un producto en el webhook products/create ni products/update -- hay que pedirlas aparte.\n\nSolucion recomendada por soporte de Shopify (opcion 1 de 3, la mas robusta para este stack, confirmada con el equipo el 2026-08-25): al recibir el webhook, con el product_id ya en mano, hacer una llamada adicional a la Admin GraphQL API pidiendo solo las collections de ese producto. Se descartaron las otras 2 opciones que sugirio soporte: escuchar el webhook collections/update (el timing puede no coincidir con el guardado del producto) y Shopify Flow + n8n (dependencia nueva innecesaria pudiendo resolverlo con una llamada HTTP mas dentro de Product_Management).\n\nRequiere la variable de n8n $vars.SHOPIFY_ADMIN_TOKEN (token privado shpat_... con scope read_products, el mismo tipo de token que ya usa el script de descarga del catalogo -- todavia no existe esta variable, hay que crearla antes de activar). El dominio de la tienda y la version de la Admin API quedan fijos en el nodo HTTP (mismo dominio y version que uso el equipo para probar la query GraphQL manualmente).\n\nDiseñado para no bloquear el guardado del producto si esta llamada falla (red caida, GraphQL con error, token invalido, etc.): devuelve collections/collection_titles vacios en vez de cortar la ejecucion de Product_Management -- el producto se sigue guardando en Qdrant, solo queda sin categoria hasta el proximo evento.\n\nInput: product_id (string).\nOutput: { collections: [{id, title, handle}], collection_titles: string[] }.",
+        "height": 460,
+        "width": 480,
+        "color": 5
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        144,
+        -64
+      ],
+      "id": "d78efb8a-08d8-449c-8186-77752627f87a",
+      "name": "Sticky_Get_Collections_Note"
+    },
+    {
+      "parameters": {
+        "workflowInputs": {
+          "values": [
+            {
+              "name": "product_id"
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.executeWorkflowTrigger",
+      "typeVersion": 1.1,
+      "position": [
+        656,
+        80
+      ],
+      "id": "8c0ed267-eb57-44d7-b778-87373e561d3d",
+      "name": "When Executed by Another Workflow"
+    },
+    {
+      "parameters": {
+        "jsCode": "const input = $input.first().json ?? {};\nconst productId = input.product_id;\n\nif (productId === undefined || productId === null || String(productId).trim() === '') {\n  return [{ json: { error: 'missing_product_id', collections: [], collection_titles: [] } }];\n}\n\nreturn [{ json: { gid: `gid://shopify/Product/${productId}` } }];\n"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        912,
+        80
+      ],
+      "id": "6ab04796-f87f-4e3c-8c77-351e3c0c4b5f",
+      "name": "Build_Product_GID"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://9j7ghx-5q.myshopify.com/admin/api/2024-10/graphql.json",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            },
+            {
+              "name": "X-Shopify-Access-Token",
+              "value": "={{ $vars.SHOPIFY_ADMIN_TOKEN }}"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ { query: \"query getProductCollections($id: ID!) { product(id: $id) { collections(first: 20) { edges { node { id title handle } } } } }\", variables: { id: $json.gid } } }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        1168,
+        80
+      ],
+      "id": "3e98ccec-bcae-4b10-a86f-fbfd00066bda",
+      "name": "Get_Product_Collections_GraphQL",
+      "continueOnFail": true,
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Se ejecuta despues de la llamada GraphQL. Con continueOnFail=true en ese nodo,\n// un error de red/HTTP llega aca como { error: {...} } en vez de cortar el workflow --\n// en ese caso (y ante cualquier otra forma de respuesta inesperada, incluyendo errores\n// a nivel GraphQL en vez de HTTP) se devuelve una lista vacia en vez de tumbar la\n// creacion/actualizacion del producto completa por un problema en este enriquecimiento\n// adicional, que es secundario al guardado del producto en si.\nconst input = $input.first().json ?? {};\n\nif (input.error) {\n  return [{ json: { collections: [], collection_titles: [], warning: 'graphql_call_failed' } }];\n}\n\nconst graphqlErrors = input.errors;\nif (Array.isArray(graphqlErrors) && graphqlErrors.length > 0) {\n  return [{ json: { collections: [], collection_titles: [], warning: 'graphql_errors', detail: graphqlErrors } }];\n}\n\nconst edges = input?.data?.product?.collections?.edges ?? [];\nconst collections = edges.map((e) => ({\n  id: e.node?.id ?? null,\n  title: e.node?.title ?? null,\n  handle: e.node?.handle ?? null\n})).filter((c) => c.title);\n\nreturn [{ json: { collections, collection_titles: collections.map((c) => c.title) } }];\n"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1424,
+        80
+      ],
+      "id": "caed8ff0-0e56-4b20-b83c-f8443ad65b08",
+      "name": "Parse_Collections"
+    }
+  ],
+  "connections": {
+    "When Executed by Another Workflow": {
+      "main": [
+        [
+          {
+            "node": "Build_Product_GID",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Build_Product_GID": {
+      "main": [
+        [
+          {
+            "node": "Get_Product_Collections_GraphQL",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get_Product_Collections_GraphQL": {
+      "main": [
+        [
+          {
+            "node": "Parse_Collections",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "nodeGroups": [],
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate",
+    "availableInMCP": false,
+    "timeSavedMode": "fixed",
+    "errorWorkflow": "GZN4CJ6QgYxm77J7",
+    "callerPolicy": "workflowsFromSameOwner"
+  },
+  "staticData": null,
+  "pinData": {},
+  "meta": null,
+  "tags": [
+    {
+      "id": "2nDb4zfpAXOj9Pvx",
+      "name": "env:prod",
+      "createdAt": "2026-02-25T21:45:46.330Z",
+      "updatedAt": "2026-02-25T21:45:46.330Z"
+    }
+  ],
+  "shared": [
+    {
+      "role": "workflow:owner",
+      "workflowId": "12AJ8IreT01EGVZx",
+      "projectId": "8h8pwWGcWlnGEym3",
+      "createdAt": "2026-10-08T23:16:07.501Z",
+      "updatedAt": "2026-10-08T23:16:07.501Z"
+    }
+  ],
+  "activeVersion": {
+    "versionId": "0420db43-3469-43c6-a5bf-211807788735",
+    "workflowId": "12AJ8IreT01EGVZx",
+    "nodes": [
+      {
+        "parameters": {
+          "content": "## Subflow: Get Shopify Product Collections\n\nNuevo (2026-08-25). Resuelve la brecha de 'categoria' documentada en el plan (secciones 8, 14 y 16): las collections de Shopify (no product_type ni una categoria curada) son el campo que de verdad reemplaza a la columna 'Categoria' del Sheet viejo. El problema es que Shopify NO manda las collections de un producto en el webhook products/create ni products/update -- hay que pedirlas aparte.\n\nSolucion recomendada por soporte de Shopify (opcion 1 de 3, la mas robusta para este stack, confirmada con el equipo el 2026-08-25): al recibir el webhook, con el product_id ya en mano, hacer una llamada adicional a la Admin GraphQL API pidiendo solo las collections de ese producto. Se descartaron las otras 2 opciones que sugirio soporte: escuchar el webhook collections/update (el timing puede no coincidir con el guardado del producto) y Shopify Flow + n8n (dependencia nueva innecesaria pudiendo resolverlo con una llamada HTTP mas dentro de Product_Management).\n\nRequiere la variable de n8n $vars.SHOPIFY_ADMIN_TOKEN (token privado shpat_... con scope read_products, el mismo tipo de token que ya usa el script de descarga del catalogo -- todavia no existe esta variable, hay que crearla antes de activar). El dominio de la tienda y la version de la Admin API quedan fijos en el nodo HTTP (mismo dominio y version que uso el equipo para probar la query GraphQL manualmente).\n\nDiseñado para no bloquear el guardado del producto si esta llamada falla (red caida, GraphQL con error, token invalido, etc.): devuelve collections/collection_titles vacios en vez de cortar la ejecucion de Product_Management -- el producto se sigue guardando en Qdrant, solo queda sin categoria hasta el proximo evento.\n\nInput: product_id (string).\nOutput: { collections: [{id, title, handle}], collection_titles: string[] }.",
+          "height": 460,
+          "width": 480,
+          "color": 5
+        },
+        "type": "n8n-nodes-base.stickyNote",
+        "typeVersion": 1,
+        "position": [
+          144,
+          -64
+        ],
+        "id": "d78efb8a-08d8-449c-8186-77752627f87a",
+        "name": "Sticky_Get_Collections_Note"
+      },
+      {
+        "parameters": {
+          "workflowInputs": {
+            "values": [
+              {
+                "name": "product_id"
+              }
+            ]
+          }
+        },
+        "type": "n8n-nodes-base.executeWorkflowTrigger",
+        "typeVersion": 1.1,
+        "position": [
+          656,
+          80
+        ],
+        "id": "8c0ed267-eb57-44d7-b778-87373e561d3d",
+        "name": "When Executed by Another Workflow"
+      },
+      {
+        "parameters": {
+          "jsCode": "const input = $input.first().json ?? {};\nconst productId = input.product_id;\n\nif (productId === undefined || productId === null || String(productId).trim() === '') {\n  return [{ json: { error: 'missing_product_id', collections: [], collection_titles: [] } }];\n}\n\nreturn [{ json: { gid: `gid://shopify/Product/${productId}` } }];\n"
+        },
+        "type": "n8n-nodes-base.code",
+        "typeVersion": 2,
+        "position": [
+          912,
+          80
+        ],
+        "id": "6ab04796-f87f-4e3c-8c77-351e3c0c4b5f",
+        "name": "Build_Product_GID"
+      },
+      {
+        "parameters": {
+          "method": "POST",
+          "url": "https://9j7ghx-5q.myshopify.com/admin/api/2024-10/graphql.json",
+          "sendHeaders": true,
+          "headerParameters": {
+            "parameters": [
+              {
+                "name": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "name": "X-Shopify-Access-Token",
+                "value": "={{ $vars.SHOPIFY_ADMIN_TOKEN }}"
+              }
+            ]
+          },
+          "sendBody": true,
+          "specifyBody": "json",
+          "jsonBody": "={{ { query: \"query getProductCollections($id: ID!) { product(id: $id) { collections(first: 20) { edges { node { id title handle } } } } }\", variables: { id: $json.gid } } }}",
+          "options": {}
+        },
+        "type": "n8n-nodes-base.httpRequest",
+        "typeVersion": 4.2,
+        "position": [
+          1168,
+          80
+        ],
+        "id": "3e98ccec-bcae-4b10-a86f-fbfd00066bda",
+        "name": "Get_Product_Collections_GraphQL",
+        "continueOnFail": true,
+        "onError": "continueRegularOutput"
+      },
+      {
+        "parameters": {
+          "jsCode": "// Se ejecuta despues de la llamada GraphQL. Con continueOnFail=true en ese nodo,\n// un error de red/HTTP llega aca como { error: {...} } en vez de cortar el workflow --\n// en ese caso (y ante cualquier otra forma de respuesta inesperada, incluyendo errores\n// a nivel GraphQL en vez de HTTP) se devuelve una lista vacia en vez de tumbar la\n// creacion/actualizacion del producto completa por un problema en este enriquecimiento\n// adicional, que es secundario al guardado del producto en si.\nconst input = $input.first().json ?? {};\n\nif (input.error) {\n  return [{ json: { collections: [], collection_titles: [], warning: 'graphql_call_failed' } }];\n}\n\nconst graphqlErrors = input.errors;\nif (Array.isArray(graphqlErrors) && graphqlErrors.length > 0) {\n  return [{ json: { collections: [], collection_titles: [], warning: 'graphql_errors', detail: graphqlErrors } }];\n}\n\nconst edges = input?.data?.product?.collections?.edges ?? [];\nconst collections = edges.map((e) => ({\n  id: e.node?.id ?? null,\n  title: e.node?.title ?? null,\n  handle: e.node?.handle ?? null\n})).filter((c) => c.title);\n\nreturn [{ json: { collections, collection_titles: collections.map((c) => c.title) } }];\n"
+        },
+        "type": "n8n-nodes-base.code",
+        "typeVersion": 2,
+        "position": [
+          1424,
+          80
+        ],
+        "id": "caed8ff0-0e56-4b20-b83c-f8443ad65b08",
+        "name": "Parse_Collections"
+      }
+    ],
+    "connections": {
+      "When Executed by Another Workflow": {
+        "main": [
+          [
+            {
+              "node": "Build_Product_GID",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Build_Product_GID": {
+        "main": [
+          [
+            {
+              "node": "Get_Product_Collections_GraphQL",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Get_Product_Collections_GraphQL": {
+        "main": [
+          [
+            {
+              "node": "Parse_Collections",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      }
+    },
+    "nodeGroups": [],
+    "authors": "Michelo Vaca Cardozo",
+    "name": "Version 0420db43",
+    "description": "",
+    "autosaved": false,
+    "createdAt": "2026-10-08T23:16:07.503Z",
+    "updatedAt": "2026-10-09T00:07:29.000Z"
+  }
+}
