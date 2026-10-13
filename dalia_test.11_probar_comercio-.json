@@ -1,0 +1,352 @@
+{
+  "id": "S0xCF4C00wINGCqZ",
+  "name": "DALIA_TEST.11_Probar_comercio",
+  "active": false,
+  "activeVersionId": null,
+  "createdAt": "2026-10-05T20:03:18.413Z",
+  "updatedAt": "2026-10-05T20:21:57.674Z",
+  "isArchived": false,
+  "versionId": "af49889c-1dc2-4425-9f5c-da91626b3025",
+  "triggerCount": 0,
+  "nodes": [
+    {
+      "id": "e9b176c5-9d95-4158-91c1-a568bf18782f",
+      "name": "Probar comercio",
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [
+        0,
+        0
+      ],
+      "parameters": {}
+    },
+    {
+      "id": "fc206bf2-da3a-482e-9dff-3c9b623f5393",
+      "name": "Datos de prueba",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        224,
+        0
+      ],
+      "parameters": {
+        "mode": "manual",
+        "includeOtherFields": false,
+        "assignments": {
+          "assignments": [
+            {
+              "id": "d1",
+              "name": "variante",
+              "value": "gid://shopify/ProductVariant/47600756818134",
+              "type": "string"
+            },
+            {
+              "id": "d2",
+              "name": "cantidad",
+              "value": 1,
+              "type": "number"
+            },
+            {
+              "id": "d3",
+              "name": "nombre",
+              "value": "Cliente de Prueba",
+              "type": "string"
+            },
+            {
+              "id": "d4",
+              "name": "telefono",
+              "value": "573000000000",
+              "type": "string"
+            },
+            {
+              "id": "d5",
+              "name": "correo",
+              "value": "pruebas@example.com",
+              "type": "string"
+            },
+            {
+              "id": "d6",
+              "name": "documento",
+              "value": "1000000000",
+              "type": "string"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "cf970599-0dd2-4740-aa41-8f50cceab38a",
+      "name": "Comando abrir",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        448,
+        0
+      ],
+      "parameters": {
+        "mode": "manual",
+        "includeOtherFields": false,
+        "assignments": {
+          "assignments": [
+            {
+              "id": "a1",
+              "name": "command",
+              "value": "open",
+              "type": "string"
+            },
+            {
+              "id": "a2",
+              "name": "idempotency_key",
+              "value": "={{ \"test11-\" + $now.toMillis() }}",
+              "type": "string"
+            },
+            {
+              "id": "a3",
+              "name": "origin",
+              "value": "operator",
+              "type": "string"
+            },
+            {
+              "id": "a4",
+              "name": "conversation_id",
+              "value": "={{ \"test11-\" + $now.toMillis() }}",
+              "type": "string"
+            },
+            {
+              "id": "a5",
+              "name": "data",
+              "value": "={{ { lines: [ { variant_ref: $json.variante, qty: $json.cantidad } ], customer: { name: $json.nombre, phone: $json.telefono, email: $json.correo, document_type: \"CC\", document_number: $json.documento }, shipping_address: { address1: \"Calle de prueba 123\", city: \"Bogota\", country_code: \"CO\" } } }}",
+              "type": "object"
+            },
+            {
+              "id": "a6",
+              "name": "envelope",
+              "value": "={{ { trace_id: \"test11-\" + $now.toMillis(), correlation_id: \"test11\" } }}",
+              "type": "object"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "4dd94a79-1153-45ab-8556-9677c0055d22",
+      "name": "Abrir pedido (M5.01)",
+      "type": "n8n-nodes-base.executeWorkflow",
+      "typeVersion": 1.3,
+      "position": [
+        672,
+        0
+      ],
+      "parameters": {
+        "mode": "each",
+        "source": "database",
+        "workflowId": {
+          "__rl": true,
+          "mode": "id",
+          "value": "yYPgdUrGfC19JLbu"
+        },
+        "options": {
+          "waitForSubWorkflow": true
+        }
+      }
+    },
+    {
+      "id": "f18b0f04-5820-499c-ba35-2249f46eeb57",
+      "name": "Listo para confirmar",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        896,
+        0
+      ],
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose"
+          },
+          "conditions": [
+            {
+              "leftValue": "={{ $json.result.transaction?.status === \"ready\" }}",
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        }
+      }
+    },
+    {
+      "id": "c59fa8fb-32f6-4258-8604-f11c81c261a0",
+      "name": "Comando confirmar",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        1120,
+        0
+      ],
+      "parameters": {
+        "mode": "manual",
+        "includeOtherFields": false,
+        "assignments": {
+          "assignments": [
+            {
+              "id": "c1",
+              "name": "command",
+              "value": "confirm",
+              "type": "string"
+            },
+            {
+              "id": "c2",
+              "name": "idempotency_key",
+              "value": "={{ $(\"Comando abrir\").first().json.idempotency_key + \":confirm\" }}",
+              "type": "string"
+            },
+            {
+              "id": "c3",
+              "name": "origin",
+              "value": "operator",
+              "type": "string"
+            },
+            {
+              "id": "c4",
+              "name": "transaction_id",
+              "value": "={{ $json.result.transaction_id }}",
+              "type": "string"
+            },
+            {
+              "id": "c5",
+              "name": "data",
+              "value": "={{ { quote_version: $json.result.transaction.quote.version } }}",
+              "type": "object"
+            },
+            {
+              "id": "c6",
+              "name": "envelope",
+              "value": "={{ $(\"Comando abrir\").first().json.envelope }}",
+              "type": "object"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "957d429c-17f1-463c-b4b7-aec5ef3e0d15",
+      "name": "Confirmar pedido (M5.01)",
+      "type": "n8n-nodes-base.executeWorkflow",
+      "typeVersion": 1.3,
+      "position": [
+        1344,
+        0
+      ],
+      "parameters": {
+        "mode": "each",
+        "source": "database",
+        "workflowId": {
+          "__rl": true,
+          "mode": "id",
+          "value": "yYPgdUrGfC19JLbu"
+        },
+        "options": {
+          "waitForSubWorkflow": true
+        }
+      }
+    }
+  ],
+  "connections": {
+    "Probar comercio": {
+      "main": [
+        [
+          {
+            "node": "Datos de prueba",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Datos de prueba": {
+      "main": [
+        [
+          {
+            "node": "Comando abrir",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Comando abrir": {
+      "main": [
+        [
+          {
+            "node": "Abrir pedido (M5.01)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Abrir pedido (M5.01)": {
+      "main": [
+        [
+          {
+            "node": "Listo para confirmar",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Listo para confirmar": {
+      "main": [
+        [
+          {
+            "node": "Comando confirmar",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Comando confirmar": {
+      "main": [
+        [
+          {
+            "node": "Confirmar pedido (M5.01)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "nodeGroups": [],
+  "settings": {
+    "executionOrder": "v1",
+    "availableInMCP": true,
+    "timezone": "America/Bogota",
+    "callerPolicy": "workflowsFromSameOwner"
+  },
+  "staticData": null,
+  "pinData": null,
+  "meta": {
+    "aiBuilderAssisted": true,
+    "builderVariant": "mcp"
+  },
+  "tags": [],
+  "shared": [
+    {
+      "role": "workflow:owner",
+      "workflowId": "S0xCF4C00wINGCqZ",
+      "projectId": "tRHCC8ts4mkRGXGn",
+      "createdAt": "2026-10-09T21:09:17.847Z",
+      "updatedAt": "2026-10-09T21:09:17.847Z"
+    }
+  ],
+  "activeVersion": null
+}
