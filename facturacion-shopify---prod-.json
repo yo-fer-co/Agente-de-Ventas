@@ -1,0 +1,1298 @@
+{
+  "id": "M2ySmxaY5hi1Wr9T",
+  "name": "Facturacion Shopify - PROD",
+  "active": true,
+  "activeVersionId": "78350829-a4a4-4bc1-bccb-b4dfba086bf9",
+  "createdAt": "2026-10-08T22:35:16.883Z",
+  "updatedAt": "2026-10-08T22:36:41.666Z",
+  "isArchived": false,
+  "versionId": "78350829-a4a4-4bc1-bccb-b4dfba086bf9",
+  "triggerCount": 1,
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "Facturas-Shopify-PROD",
+        "options": {}
+      },
+      "id": "dc9755f0-6ecd-4112-8be6-50fe92b4264c",
+      "name": "Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2.1,
+      "position": [
+        -880,
+        176
+      ],
+      "webhookId": "f3d0bb7e-a693-491f-b8e5-bd8244b90917"
+    },
+    {
+      "parameters": {
+        "jsCode": "// 1. Función para limpiar el texto de caracteres invisibles\nfunction limpiarTexto(texto) {\n    if (typeof texto !== 'string') return texto;\n    \n    // Elimina caracteres invisibles (Zero-width, Word joiners, etc.)\n    let limpio = texto.replace(/[\\u200B-\\u200D\\uFEFF\\u2060\\u200E\\u200F]/g, ' ');\n    \n    // Reemplaza múltiples espacios en blanco seguidos por un solo espacio\n    limpio = limpio.replace(/\\s+/g, ' ').trim();\n    \n    return limpio;\n}\n\n// 2. Función recursiva para recorrer todo el JSON (listas y sub-objetos)\nfunction limpiarObjeto(obj) {\n    // Si es nulo o indefinido, lo dejamos igual\n    if (obj === null || obj === undefined) {\n        return obj;\n    }\n    \n    // Si es un texto, lo limpiamos\n    if (typeof obj === 'string') {\n        return limpiarTexto(obj);\n    }\n    \n    // Si es una lista (Array), limpiamos cada elemento por dentro\n    if (Array.isArray(obj)) {\n        return obj.map(item => limpiarObjeto(item));\n    }\n    \n    // Si es un objeto (JSON), limpiamos cada una de sus llaves\n    if (typeof obj === 'object') {\n        const nuevoObjeto = {};\n        for (const key in obj) {\n            nuevoObjeto[key] = limpiarObjeto(obj[key]);\n        }\n        return nuevoObjeto;\n    }\n    \n    // Si es un número o booleano (true/false), se queda igual\n    return obj;\n}\n\n// 3. Aplicamos la limpieza a los datos que entran al nodo en n8n\nfor (let item of $input.all()) {\n  item.json = limpiarObjeto(item.json);\n}\n\n// 4. Retornamos los datos ya limpios para el siguiente nodo\nreturn $input.all();"
+      },
+      "id": "fa4cc92d-f4aa-4b9d-85fe-c75ece60e10f",
+      "name": "Data_Clensing",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -672,
+        176
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://private-anon-aa97ae1521-siigoapi.apiary-proxy.com/auth",
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "username",
+              "value": "babysworldcolombia01@gmail.com"
+            },
+            {
+              "name": "access_key",
+              "value": "=MTFhNjQ5NmQtOWU1Ni00ZDc4LWJkNTctOTcxNjA3OWRjMGJkOj1uYkxaP001UVE="
+            }
+          ]
+        },
+        "options": {
+          "response": {
+            "response": {
+              "fullResponse": true
+            }
+          }
+        }
+      },
+      "id": "cf83c16b-8086-4509-b96f-592c4891198a",
+      "name": "Authorization_key_generator",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.5,
+      "position": [
+        -464,
+        176
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Node: Mapear Items\nconst body = $(\"Data_Clensing\").first().json.body;\nconst lineItems = body.line_items || [];\nconst items = lineItems.map(li => {\n  const quantity = Number(li.quantity) || 1;\n  // tax_lines es un array: sumamos el IVA total de esta linea\n  const lineTax = (li.tax_lines || []).reduce(\n    (sum, t) => sum + parseFloat(t?.price_set?.shop_money?.amount ?? t?.price ?? 0), 0);\n  // Precio unitario sin IVA (Shopify envia precios con IVA incluido)\n  const unitPrice = parseFloat(li.price || 0) - lineTax / quantity;\n  return {\n    code: li.sku || String(li.variant_id || li.product_id || \"\"),\n    description: li.name || li.title || \"\",\n    quantity: li.quantity,\n    price: Math.round(unitPrice * 100) / 100,\n    discount: parseFloat(li.total_discount || 0),\n    taxes: [{ id: 7192 }],\n  };\n});\n\nreturn { json: { items } };"
+      },
+      "id": "4e0f252b-dbb7-47b6-bd9c-6094703dd429",
+      "name": "ArrayItems",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -240,
+        176
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Node: Mapear Documento (sin items)\nconst body = $('Data_Clensing').first().json.body;\n\nconst billing = body.billing_address || {};\nconst customer = body.customer || {};\nconst contactEmail = body.contact_email || body.email || \"\";\nconst phoneRaw = billing.phone || customer.phone || \"\";\nconst phoneDigits = phoneRaw.replace(/\\D/g, \"\");\n\n// Separar indicativo (asumiendo Colombia = 57) si el número ya lo incluye\nlet indicative = \"57\";\nlet phoneNumber = phoneDigits;\nif (phoneDigits.startsWith(\"57\") && phoneDigits.length > 10) {\n  phoneNumber = phoneDigits.slice(2);\n}\n\n// Código postal puede venir null desde Shopify\nconst zip = String(billing.zip || \"1111111\").replace(/\\D/g, \"\");\nconst stateCode = zip.length >= 2 ? zip.slice(0, 2) : \"11\";\nconst cityCode = zip.length >= 2 ? zip.slice(0, 2) + \"001\" : \"11001\";\n\nconst firstName = billing.first_name || customer.first_name || \"\";\nconst lastName = billing.last_name || customer.last_name || \"\";\n\nconst result = {\n  resultado:{\n  document: {\n    id: 13370\n  },\n  date: (body.processed_at || body.created_at || \"\").slice(0, 10),\n  customer: {\n    person_type: \"Person\",\n    id_type: \"13\",\n    identification: billing.company,\n    branch_office: 0,\n    name: [firstName, lastName].filter(Boolean),\n    address: {\n      address: [billing.address1, billing.address2].filter(Boolean).join(\" \"),\n      city: {\n        country_code: billing.country_code || \"COL\",\n        country_name: billing.country || \"Colombia\",\n        state_code: stateCode,\n        state_name: \"Bogotá, D.C.\",\n        city_code: cityCode,\n        city_name: billing.city || \"\"\n      },\n      postal_code: zip\n    },\n    phones: [\n      {\n        indicative: indicative,\n        number: phoneNumber,\n        extension: \"\"\n      }\n    ],\n    contacts: [\n      {\n        first_name: firstName,\n        last_name: lastName,\n        email: contactEmail,\n        phone: {\n          indicative: indicative,\n          number: phoneNumber,\n          extension: \"\"\n        }\n      }\n    ]\n  },\n  seller: 798,\n  stamp: {\n    send: false\n  },\n  mail: {\n    send: true\n  },\n  items:$input.first().json.items,\n  payments: [\n    {\n      id: 13680,\n      value: parseFloat(body.total_price   || body.current_total_price || 0),\n      due_date: (body.processed_at || body.created_at || \"\").slice(0, 10)\n    }\n  ]\n},\n};\n\nreturn { json: result };"
+      },
+      "id": "a8005253-0b6f-40b5-84c3-4bbcc129db29",
+      "name": "Billing_Contract",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        0,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://private-anon-aa97ae1521-siigoapi.apiary-proxy.com/v1/invoices",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "={{ $('Authorization_key_generator').item.json.body.access_token }}"
+            },
+            {
+              "name": "Partner-Id",
+              "value": "shopify"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ $('Billing_Contract').item.json.resultado.toJsonString() }}\n\n",
+        "options": {
+          "response": {
+            "response": {
+              "fullResponse": true
+            }
+          }
+        }
+      },
+      "id": "e6362331-9e51-475f-aa2f-b37bd488352a",
+      "name": "Billing_creation",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.5,
+      "position": [
+        224,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Array donde guardaremos los nuevos ítems de n8n\nconst result = [];\n\n// Recorremos cada ítem de entrada\nfor (const item of $input.all()) {\n  // Verificamos si existe la propiedad 'items' y si es un array\n  if (item.json.items && Array.isArray(item.json.items)) {\n    for (const producto of item.json.items) {\n      result.push({\n        json: producto\n      });\n    }\n  }\n}\n\nreturn result;"
+      },
+      "id": "9ef705f7-27ad-4cb6-be81-8ac63abc16c6",
+      "name": "items_split",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -16,
+        272
+      ]
+    },
+    {
+      "parameters": {
+        "url": "https://private-anon-a92629d473-siigoapi.apiary-proxy.com/v1/products",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            {
+              "name": "page_size",
+              "value": "100"
+            },
+            {
+              "name": "code",
+              "value": "={{ $json.code }}"
+            }
+          ]
+        },
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "={{ $('Authorization_key_generator').item.json.body.access_token }}"
+            },
+            {
+              "name": "Partner-Id",
+              "value": "shopify"
+            }
+          ]
+        },
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {}
+          ]
+        },
+        "options": {
+          "response": {
+            "response": {
+              "fullResponse": true
+            }
+          }
+        }
+      },
+      "id": "a406043d-9145-4105-bd73-57d6048e7e13",
+      "name": "item_consult",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.5,
+      "position": [
+        432,
+        288
+      ]
+    },
+    {
+      "parameters": {
+        "method": "PUT",
+        "url": "=https://api.siigo.com/v1/products/{{ $json.body.results[0].id }}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "={{ $('Authorization_key_generator').item.json.body.access_token }}"
+            },
+            {
+              "name": "Partner-Id",
+              "value": "shopify"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"code\": \"{{ $json.body.results[0].code }}\",\n  \"name\": \"{{ $json.body.results[0].name }}\",\n  \"account_group\": {{ $json.body.results[0].account_group.id }},\n  \"type\": \"Product\",\n  \"stock_control\": true,\n  \"active\": true,\n  \"tax_classification\": \"Taxed\",\n  \"tax_included\": false,\n  \"tax_consumption_value\": 0,\n  \"prices\": [\n    {\n      \"currency_code\": \"COP\",\n      \"price_list\": [\n        {\n          \"position\": {{ $json.body.results[0].prices[0].price_list[0].position }},\n          \"value\": {{ $json.body.results[0].prices[0].price_list[0].value }}\n        }\n      ]\n    }\n  ],\n  \"unit\": \"{{ $json.body.results[0].unit.code }}\",\n  \"unit_label\": \"{{ $json.body.results[0].unit_label }}\",\n  \"additional_fields\": {\n    \"barcode\": \"{{ $json.body.results[0].additional_fields.barcode }}\"\n  },\n  \"available_quantity\":{{ $json.body.results[0].available_quantity + $('ArrayItems').item.json.items[0].quantity }}\n}",
+        "options": {
+          "response": {
+            "response": {
+              "fullResponse": true
+            }
+          }
+        }
+      },
+      "id": "3bc18e84-0a3b-4c96-bd38-6b3bdbfead8b",
+      "name": "Stock_update",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.5,
+      "position": [
+        640,
+        288
+      ]
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "id": "7db1125a-16b8-4c7a-a1c8-bf1fe482b89e",
+      "name": "Loop Over Items",
+      "type": "n8n-nodes-base.splitInBatches",
+      "typeVersion": 3,
+      "position": [
+        208,
+        272
+      ]
+    },
+    {
+      "parameters": {
+        "content": "Manejo de inventario",
+        "height": 224,
+        "width": 960
+      },
+      "id": "a8b6d5bc-a264-4883-ac3f-84d3366a5907",
+      "name": "Sticky Note",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        -64,
+        208
+      ]
+    }
+  ],
+  "connections": {
+    "Webhook": {
+      "main": [
+        [
+          {
+            "node": "Data_Clensing",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Data_Clensing": {
+      "main": [
+        [
+          {
+            "node": "Authorization_key_generator",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Authorization_key_generator": {
+      "main": [
+        [
+          {
+            "node": "ArrayItems",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "ArrayItems": {
+      "main": [
+        [
+          {
+            "node": "Billing_Contract",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "items_split",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Billing_Contract": {
+      "main": [
+        [
+          {
+            "node": "Billing_creation",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "items_split": {
+      "main": [
+        [
+          {
+            "node": "Loop Over Items",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "item_consult": {
+      "main": [
+        [
+          {
+            "node": "Stock_update",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Stock_update": {
+      "main": [
+        [
+          {
+            "node": "Loop Over Items",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Loop Over Items": {
+      "main": [
+        [],
+        [
+          {
+            "node": "item_consult",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "nodeGroups": [],
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate"
+  },
+  "staticData": null,
+  "pinData": {
+    "Webhook": [
+      {
+        "json": {
+          "headers": {
+            "host": "yoeco.app.n8n.cloud",
+            "user-agent": "Shopify-Captain-Hook",
+            "content-length": "9105",
+            "accept": "*/*",
+            "accept-encoding": "gzip, br",
+            "cdn-loop": "cloudflare; loops=1; subreqs=1",
+            "cf-connecting-ip": "34.59.197.9",
+            "cf-ew-via": "15",
+            "cf-ipcountry": "US",
+            "cf-ray": "a45f9f76ebc9c714-ORD",
+            "cf-visitor": "{\"scheme\":\"https\"}",
+            "cf-worker": "n8n.cloud",
+            "content-type": "application/json",
+            "x-forwarded-for": "34.59.197.9, 172.70.126.117",
+            "x-forwarded-host": "yoeco.app.n8n.cloud",
+            "x-forwarded-port": "443",
+            "x-forwarded-proto": "https",
+            "x-forwarded-server": "traefik-prod-users-gwc-32-6dbd8ff6-jh88t",
+            "x-is-trusted": "yes",
+            "x-real-ip": "34.59.197.9",
+            "x-shopify-api-version": "2026-07",
+            "x-shopify-event-id": "7a0b29c0-7bf1-4659-8776-b7c51c573a41",
+            "x-shopify-hmac-sha256": "Sv2p2weZEr0v3rvfxJ1cMokYvT8ZJijTFIAHglNTD2Q=",
+            "x-shopify-order-id": "18933598781654",
+            "x-shopify-shop-domain": "9j7ghx-5q.myshopify.com",
+            "x-shopify-test": "true",
+            "x-shopify-topic": "orders/paid",
+            "x-shopify-triggered-at": "2026-10-05T21:47:04.648402183Z",
+            "x-shopify-webhook-id": "a3836490-1d1b-555e-835f-29148f2a7423"
+          },
+          "params": {},
+          "query": {},
+          "body": {
+            "id": 18933598781654,
+            "admin_graphql_api_id": "gid://shopify/Order/18933598781654",
+            "app_id": 580111,
+            "browser_ip": "190.26.50.223",
+            "buyer_accepts_marketing": false,
+            "cancel_reason": null,
+            "cancelled_at": null,
+            "cart_token": "hWNHdLuo41aHUrFQUatoIVJx",
+            "checkout_token": "70c35a8681e8dbfb21952126145f0f5e",
+            "client_details": {
+              "accept_language": "es-CO",
+              "browser_height": null,
+              "browser_ip": "190.26.50.223",
+              "browser_width": null,
+              "session_hash": null,
+              "user_agent": "Mozilla/5.0 (X11; Linux x86_64; rv:156.0) Gecko/20100101 Firefox/156.0"
+            },
+            "closed_at": null,
+            "company": null,
+            "confirmation_number": "KH6LQ20T7",
+            "confirmed": true,
+            "contact_email": "emmanuel@yoeco.com.co",
+            "created_at": "2026-10-05T16:47:04-05:00",
+            "currency": "COP",
+            "current_shipping_price_set": {
+              "shop_money": {
+                "amount": "0.00",
+                "currency_code": "COP"
+              },
+              "presentment_money": {
+                "amount": "0.00",
+                "currency_code": "COP"
+              }
+            },
+            "current_subtotal_price": "520000.00",
+            "current_subtotal_price_set": {
+              "shop_money": {
+                "amount": "520000.00",
+                "currency_code": "COP"
+              },
+              "presentment_money": {
+                "amount": "520000.00",
+                "currency_code": "COP"
+              }
+            },
+            "current_total_additional_fees_set": null,
+            "current_total_discounts": "0.00",
+            "current_total_discounts_set": {
+              "shop_money": {
+                "amount": "0.00",
+                "currency_code": "COP"
+              },
+              "presentment_money": {
+                "amount": "0.00",
+                "currency_code": "COP"
+              }
+            },
+            "current_total_duties_set": null,
+            "current_total_price": "520000.00",
+            "current_total_price_set": {
+              "shop_money": {
+                "amount": "520000.00",
+                "currency_code": "COP"
+              },
+              "presentment_money": {
+                "amount": "520000.00",
+                "currency_code": "COP"
+              }
+            },
+            "current_total_tax": "83025.21",
+            "current_total_tax_set": {
+              "shop_money": {
+                "amount": "83025.21",
+                "currency_code": "COP"
+              },
+              "presentment_money": {
+                "amount": "83025.21",
+                "currency_code": "COP"
+              }
+            },
+            "customer_locale": "es-CO",
+            "device_id": null,
+            "discount_codes": [],
+            "duties_included": false,
+            "email": "emmanuel@yoeco.com.co",
+            "estimated_taxes": false,
+            "financial_status": "paid",
+            "fulfillment_status": null,
+            "landing_site": "/cart/47600757375190:1?attributes[from]=new-customer-accounts&country=CO&storefront=true",
+            "landing_site_ref": null,
+            "location_id": null,
+            "merchant_business_entity_id": "18364039382",
+            "merchant_of_record_app_id": null,
+            "name": "#1036",
+            "note": null,
+            "note_attributes": [],
+            "number": 36,
+            "order_number": 1036,
+            "order_status_url": "https://babysworld.com.co/78433288406/orders/1e8d08a51fa94a943017628c864f43f1/authenticate?key=8ddcdd591e8cd282c4e08e2e4b47b270",
+            "original_total_additional_fees_set": null,
+            "original_total_duties_set": null,
+            "payment_gateway_names": [
+              "Wompi"
+            ],
+            "phone": null,
+            "po_number": null,
+            "presentment_currency": "COP",
+            "processed_at": "2026-10-05T16:47:03-05:00",
+            "reference": null,
+            "referring_site": "https://shopify.com/",
+            "source_identifier": null,
+            "source_name": "web",
+            "source_url": null,
+            "subtotal_price": "520000.00",
+            "subtotal_price_set": {
+              "shop_money": {
+                "amount": "520000.00",
+                "currency_code": "COP"
+              },
+              "presentment_money": {
+                "amount": "520000.00",
+                "currency_code": "COP"
+              }
+            },
+            "tags": "",
+            "tax_exempt": false,
+            "tax_lines": [
+              {
+                "price": "83025.21",
+                "rate": 0.19,
+                "title": "VAT",
+                "price_set": {
+                  "shop_money": {
+                    "amount": "83025.21",
+                    "currency_code": "COP"
+                  },
+                  "presentment_money": {
+                    "amount": "83025.21",
+                    "currency_code": "COP"
+                  }
+                },
+                "channel_liable": false
+              }
+            ],
+            "taxes_included": true,
+            "test": true,
+            "token": "1e8d08a51fa94a943017628c864f43f1",
+            "total_cash_rounding_payment_adjustment_set": {
+              "shop_money": {
+                "amount": "0.00",
+                "currency_code": "COP"
+              },
+              "presentment_money": {
+                "amount": "0.00",
+                "currency_code": "COP"
+              }
+            },
+            "total_cash_rounding_refund_adjustment_set": {
+              "shop_money": {
+                "amount": "0.00",
+                "currency_code": "COP"
+              },
+              "presentment_money": {
+                "amount": "0.00",
+                "currency_code": "COP"
+              }
+            },
+            "total_discounts": "0.00",
+            "total_discounts_set": {
+              "shop_money": {
+                "amount": "0.00",
+                "currency_code": "COP"
+              },
+              "presentment_money": {
+                "amount": "0.00",
+                "currency_code": "COP"
+              }
+            },
+            "total_line_items_price": "520000.00",
+            "total_line_items_price_set": {
+              "shop_money": {
+                "amount": "520000.00",
+                "currency_code": "COP"
+              },
+              "presentment_money": {
+                "amount": "520000.00",
+                "currency_code": "COP"
+              }
+            },
+            "total_outstanding": "0.00",
+            "total_price": "520000.00",
+            "total_price_set": {
+              "shop_money": {
+                "amount": "520000.00",
+                "currency_code": "COP"
+              },
+              "presentment_money": {
+                "amount": "520000.00",
+                "currency_code": "COP"
+              }
+            },
+            "total_shipping_price_set": {
+              "shop_money": {
+                "amount": "0.00",
+                "currency_code": "COP"
+              },
+              "presentment_money": {
+                "amount": "0.00",
+                "currency_code": "COP"
+              }
+            },
+            "total_tax": "83025.21",
+            "total_tax_set": {
+              "shop_money": {
+                "amount": "83025.21",
+                "currency_code": "COP"
+              },
+              "presentment_money": {
+                "amount": "83025.21",
+                "currency_code": "COP"
+              }
+            },
+            "total_tip_received": "0.00",
+            "total_weight": 0,
+            "updated_at": "2026-10-05T16:47:04-05:00",
+            "user_id": null,
+            "billing_address": {
+              "first_name": "Emmanuel",
+              "address1": "calle1",
+              "phone": "+573192563967",
+              "city": "Bogota",
+              "zip": null,
+              "province": "Bogotá, D.C.",
+              "country": "Colombia",
+              "last_name": "Arevalo",
+              "address2": "casa roja",
+              "company": "1011088289",
+              "latitude": 4.5944763,
+              "longitude": -74.0973541,
+              "name": "Emmanuel Arevalo",
+              "country_code": "CO",
+              "province_code": "DC"
+            },
+            "customer": {
+              "id": 9443403563222,
+              "created_at": "2026-09-16T18:24:08-05:00",
+              "updated_at": "2026-10-05T16:47:04-05:00",
+              "first_name": "Emmanuel",
+              "last_name": "Arevalo",
+              "state": "disabled",
+              "note": null,
+              "verified_email": true,
+              "multipass_identifier": null,
+              "tax_exempt": false,
+              "email": "emmanuel@yoeco.com.co",
+              "phone": null,
+              "currency": "COP",
+              "tax_exemptions": [],
+              "admin_graphql_api_id": "gid://shopify/Customer/9443403563222",
+              "default_address": {
+                "id": 11044704911574,
+                "customer_id": 9443403563222,
+                "first_name": "Emmanuel",
+                "last_name": "Arevalo",
+                "company": null,
+                "address1": "calle1",
+                "address2": "casa roja",
+                "city": "Bogota",
+                "province": "Bogotá, D.C.",
+                "country": "Colombia",
+                "zip": "1111111",
+                "phone": "+573192563967",
+                "name": "Emmanuel Arevalo",
+                "province_code": "DC",
+                "country_code": "CO",
+                "country_name": "Colombia",
+                "default": true
+              }
+            },
+            "discount_applications": [],
+            "fulfillments": [],
+            "line_items": [
+              {
+                "id": 50771468583126,
+                "admin_graphql_api_id": "gid://shopify/LineItem/50771468583126",
+                "attributed_staffs": [],
+                "current_quantity": 1,
+                "fulfillable_quantity": 1,
+                "fulfillment_service": "manual",
+                "fulfillment_status": null,
+                "gift_card": false,
+                "grams": 0,
+                "name": "SILLA MECEDORA NACIONAL BORBUJA - ROSADO",
+                "price": "70000.00",
+                "price_set": {
+                  "shop_money": {
+                    "amount": "70000.00",
+                    "currency_code": "COP"
+                  },
+                  "presentment_money": {
+                    "amount": "70000.00",
+                    "currency_code": "COP"
+                  }
+                },
+                "product_exists": true,
+                "product_id": 9192613707990,
+                "properties": [],
+                "quantity": 1,
+                "requires_shipping": true,
+                "sales_line_item_group_id": null,
+                "sku": "BW-20261822",
+                "taxable": true,
+                "title": "SILLA MECEDORA NACIONAL BORBUJA",
+                "total_discount": "0.00",
+                "total_discount_set": {
+                  "shop_money": {
+                    "amount": "0.00",
+                    "currency_code": "COP"
+                  },
+                  "presentment_money": {
+                    "amount": "0.00",
+                    "currency_code": "COP"
+                  }
+                },
+                "variant_id": 47600756916438,
+                "variant_inventory_management": null,
+                "variant_title": "ROSADO",
+                "vendor": "Baby's World",
+                "tax_lines": [
+                  {
+                    "channel_liable": false,
+                    "price": "11176.47",
+                    "price_set": {
+                      "shop_money": {
+                        "amount": "11176.47",
+                        "currency_code": "COP"
+                      },
+                      "presentment_money": {
+                        "amount": "11176.47",
+                        "currency_code": "COP"
+                      }
+                    },
+                    "rate": 0.19,
+                    "title": "VAT"
+                  }
+                ],
+                "duties": [],
+                "discount_allocations": []
+              },
+              {
+                "id": 50771468615894,
+                "admin_graphql_api_id": "gid://shopify/LineItem/50771468615894",
+                "attributed_staffs": [],
+                "current_quantity": 1,
+                "fulfillable_quantity": 1,
+                "fulfillment_service": "manual",
+                "fulfillment_status": null,
+                "gift_card": false,
+                "grams": 0,
+                "name": "SILLA COMEDOR ESCRITORIO MAXY BABY - GRIS",
+                "price": "450000.00",
+                "price_set": {
+                  "shop_money": {
+                    "amount": "450000.00",
+                    "currency_code": "COP"
+                  },
+                  "presentment_money": {
+                    "amount": "450000.00",
+                    "currency_code": "COP"
+                  }
+                },
+                "product_exists": true,
+                "product_id": 9192613871830,
+                "properties": [],
+                "quantity": 1,
+                "requires_shipping": true,
+                "sales_line_item_group_id": null,
+                "sku": "BW-20261914",
+                "taxable": true,
+                "title": "SILLA COMEDOR ESCRITORIO MAXY BABY",
+                "total_discount": "0.00",
+                "total_discount_set": {
+                  "shop_money": {
+                    "amount": "0.00",
+                    "currency_code": "COP"
+                  },
+                  "presentment_money": {
+                    "amount": "0.00",
+                    "currency_code": "COP"
+                  }
+                },
+                "variant_id": 47600757375190,
+                "variant_inventory_management": null,
+                "variant_title": "GRIS",
+                "vendor": "Baby's World",
+                "tax_lines": [
+                  {
+                    "channel_liable": false,
+                    "price": "71848.74",
+                    "price_set": {
+                      "shop_money": {
+                        "amount": "71848.74",
+                        "currency_code": "COP"
+                      },
+                      "presentment_money": {
+                        "amount": "71848.74",
+                        "currency_code": "COP"
+                      }
+                    },
+                    "rate": 0.19,
+                    "title": "VAT"
+                  }
+                ],
+                "duties": [],
+                "discount_allocations": []
+              }
+            ],
+            "payment_terms": null,
+            "refunds": [],
+            "shipping_address": {
+              "first_name": "Emmanuel",
+              "address1": "calle1",
+              "phone": "+573192563967",
+              "city": "Bogota",
+              "zip": null,
+              "province": "Bogotá, D.C.",
+              "country": "Colombia",
+              "last_name": "Arevalo",
+              "address2": "casa roja",
+              "company": "1011088289",
+              "latitude": 4.5944763,
+              "longitude": -74.0973541,
+              "name": "Emmanuel Arevalo",
+              "country_code": "CO",
+              "province_code": "DC"
+            },
+            "shipping_lines": [
+              {
+                "id": 18377584902358,
+                "carrier_identifier": null,
+                "code": "Standard",
+                "current_discounted_price_set": {
+                  "shop_money": {
+                    "amount": "0.00",
+                    "currency_code": "COP"
+                  },
+                  "presentment_money": {
+                    "amount": "0.00",
+                    "currency_code": "COP"
+                  }
+                },
+                "discounted_price": "0.00",
+                "discounted_price_set": {
+                  "shop_money": {
+                    "amount": "0.00",
+                    "currency_code": "COP"
+                  },
+                  "presentment_money": {
+                    "amount": "0.00",
+                    "currency_code": "COP"
+                  }
+                },
+                "is_removed": false,
+                "phone": null,
+                "price": "0.00",
+                "price_set": {
+                  "shop_money": {
+                    "amount": "0.00",
+                    "currency_code": "COP"
+                  },
+                  "presentment_money": {
+                    "amount": "0.00",
+                    "currency_code": "COP"
+                  }
+                },
+                "requested_fulfillment_service_id": null,
+                "source": "shopify",
+                "title": "Standard",
+                "tax_lines": [],
+                "discount_allocations": []
+              }
+            ],
+            "returns": [],
+            "line_item_groups": []
+          },
+          "webhookUrl": "https://yoeco.app.n8n.cloud/webhook/Facturas-Shopify",
+          "executionMode": "production"
+        }
+      }
+    ]
+  },
+  "meta": null,
+  "tags": [],
+  "shared": [
+    {
+      "role": "workflow:owner",
+      "workflowId": "M2ySmxaY5hi1Wr9T",
+      "projectId": "8h8pwWGcWlnGEym3",
+      "createdAt": "2026-10-08T22:35:16.884Z",
+      "updatedAt": "2026-10-08T22:35:16.884Z"
+    }
+  ],
+  "activeVersion": {
+    "versionId": "78350829-a4a4-4bc1-bccb-b4dfba086bf9",
+    "workflowId": "M2ySmxaY5hi1Wr9T",
+    "nodes": [
+      {
+        "parameters": {
+          "httpMethod": "POST",
+          "path": "Facturas-Shopify-PROD",
+          "options": {}
+        },
+        "id": "dc9755f0-6ecd-4112-8be6-50fe92b4264c",
+        "name": "Webhook",
+        "type": "n8n-nodes-base.webhook",
+        "typeVersion": 2.1,
+        "position": [
+          -880,
+          176
+        ],
+        "webhookId": "f3d0bb7e-a693-491f-b8e5-bd8244b90917"
+      },
+      {
+        "parameters": {
+          "jsCode": "// 1. Función para limpiar el texto de caracteres invisibles\nfunction limpiarTexto(texto) {\n    if (typeof texto !== 'string') return texto;\n    \n    // Elimina caracteres invisibles (Zero-width, Word joiners, etc.)\n    let limpio = texto.replace(/[\\u200B-\\u200D\\uFEFF\\u2060\\u200E\\u200F]/g, ' ');\n    \n    // Reemplaza múltiples espacios en blanco seguidos por un solo espacio\n    limpio = limpio.replace(/\\s+/g, ' ').trim();\n    \n    return limpio;\n}\n\n// 2. Función recursiva para recorrer todo el JSON (listas y sub-objetos)\nfunction limpiarObjeto(obj) {\n    // Si es nulo o indefinido, lo dejamos igual\n    if (obj === null || obj === undefined) {\n        return obj;\n    }\n    \n    // Si es un texto, lo limpiamos\n    if (typeof obj === 'string') {\n        return limpiarTexto(obj);\n    }\n    \n    // Si es una lista (Array), limpiamos cada elemento por dentro\n    if (Array.isArray(obj)) {\n        return obj.map(item => limpiarObjeto(item));\n    }\n    \n    // Si es un objeto (JSON), limpiamos cada una de sus llaves\n    if (typeof obj === 'object') {\n        const nuevoObjeto = {};\n        for (const key in obj) {\n            nuevoObjeto[key] = limpiarObjeto(obj[key]);\n        }\n        return nuevoObjeto;\n    }\n    \n    // Si es un número o booleano (true/false), se queda igual\n    return obj;\n}\n\n// 3. Aplicamos la limpieza a los datos que entran al nodo en n8n\nfor (let item of $input.all()) {\n  item.json = limpiarObjeto(item.json);\n}\n\n// 4. Retornamos los datos ya limpios para el siguiente nodo\nreturn $input.all();"
+        },
+        "id": "fa4cc92d-f4aa-4b9d-85fe-c75ece60e10f",
+        "name": "Data_Clensing",
+        "type": "n8n-nodes-base.code",
+        "typeVersion": 2,
+        "position": [
+          -672,
+          176
+        ]
+      },
+      {
+        "parameters": {
+          "method": "POST",
+          "url": "https://private-anon-aa97ae1521-siigoapi.apiary-proxy.com/auth",
+          "sendBody": true,
+          "bodyParameters": {
+            "parameters": [
+              {
+                "name": "username",
+                "value": "babysworldcolombia01@gmail.com"
+              },
+              {
+                "name": "access_key",
+                "value": "=MTFhNjQ5NmQtOWU1Ni00ZDc4LWJkNTctOTcxNjA3OWRjMGJkOj1uYkxaP001UVE="
+              }
+            ]
+          },
+          "options": {
+            "response": {
+              "response": {
+                "fullResponse": true
+              }
+            }
+          }
+        },
+        "id": "cf83c16b-8086-4509-b96f-592c4891198a",
+        "name": "Authorization_key_generator",
+        "type": "n8n-nodes-base.httpRequest",
+        "typeVersion": 4.5,
+        "position": [
+          -464,
+          176
+        ]
+      },
+      {
+        "parameters": {
+          "jsCode": "// Node: Mapear Items\nconst body = $(\"Data_Clensing\").first().json.body;\nconst lineItems = body.line_items || [];\nconst items = lineItems.map(li => {\n  const quantity = Number(li.quantity) || 1;\n  // tax_lines es un array: sumamos el IVA total de esta linea\n  const lineTax = (li.tax_lines || []).reduce(\n    (sum, t) => sum + parseFloat(t?.price_set?.shop_money?.amount ?? t?.price ?? 0), 0);\n  // Precio unitario sin IVA (Shopify envia precios con IVA incluido)\n  const unitPrice = parseFloat(li.price || 0) - lineTax / quantity;\n  return {\n    code: li.sku || String(li.variant_id || li.product_id || \"\"),\n    description: li.name || li.title || \"\",\n    quantity: li.quantity,\n    price: Math.round(unitPrice * 100) / 100,\n    discount: parseFloat(li.total_discount || 0),\n    taxes: [{ id: 7192 }],\n  };\n});\n\nreturn { json: { items } };"
+        },
+        "id": "4e0f252b-dbb7-47b6-bd9c-6094703dd429",
+        "name": "ArrayItems",
+        "type": "n8n-nodes-base.code",
+        "typeVersion": 2,
+        "position": [
+          -240,
+          176
+        ]
+      },
+      {
+        "parameters": {
+          "jsCode": "// Node: Mapear Documento (sin items)\nconst body = $('Data_Clensing').first().json.body;\n\nconst billing = body.billing_address || {};\nconst customer = body.customer || {};\nconst contactEmail = body.contact_email || body.email || \"\";\nconst phoneRaw = billing.phone || customer.phone || \"\";\nconst phoneDigits = phoneRaw.replace(/\\D/g, \"\");\n\n// Separar indicativo (asumiendo Colombia = 57) si el número ya lo incluye\nlet indicative = \"57\";\nlet phoneNumber = phoneDigits;\nif (phoneDigits.startsWith(\"57\") && phoneDigits.length > 10) {\n  phoneNumber = phoneDigits.slice(2);\n}\n\n// Código postal puede venir null desde Shopify\nconst zip = String(billing.zip || \"1111111\").replace(/\\D/g, \"\");\nconst stateCode = zip.length >= 2 ? zip.slice(0, 2) : \"11\";\nconst cityCode = zip.length >= 2 ? zip.slice(0, 2) + \"001\" : \"11001\";\n\nconst firstName = billing.first_name || customer.first_name || \"\";\nconst lastName = billing.last_name || customer.last_name || \"\";\n\nconst result = {\n  resultado:{\n  document: {\n    id: 13370\n  },\n  date: (body.processed_at || body.created_at || \"\").slice(0, 10),\n  customer: {\n    person_type: \"Person\",\n    id_type: \"13\",\n    identification: billing.company,\n    branch_office: 0,\n    name: [firstName, lastName].filter(Boolean),\n    address: {\n      address: [billing.address1, billing.address2].filter(Boolean).join(\" \"),\n      city: {\n        country_code: billing.country_code || \"COL\",\n        country_name: billing.country || \"Colombia\",\n        state_code: stateCode,\n        state_name: \"Bogotá, D.C.\",\n        city_code: cityCode,\n        city_name: billing.city || \"\"\n      },\n      postal_code: zip\n    },\n    phones: [\n      {\n        indicative: indicative,\n        number: phoneNumber,\n        extension: \"\"\n      }\n    ],\n    contacts: [\n      {\n        first_name: firstName,\n        last_name: lastName,\n        email: contactEmail,\n        phone: {\n          indicative: indicative,\n          number: phoneNumber,\n          extension: \"\"\n        }\n      }\n    ]\n  },\n  seller: 798,\n  stamp: {\n    send: false\n  },\n  mail: {\n    send: true\n  },\n  items:$input.first().json.items,\n  payments: [\n    {\n      id: 13680,\n      value: parseFloat(body.total_price   || body.current_total_price || 0),\n      due_date: (body.processed_at || body.created_at || \"\").slice(0, 10)\n    }\n  ]\n},\n};\n\nreturn { json: result };"
+        },
+        "id": "a8005253-0b6f-40b5-84c3-4bbcc129db29",
+        "name": "Billing_Contract",
+        "type": "n8n-nodes-base.code",
+        "typeVersion": 2,
+        "position": [
+          0,
+          0
+        ]
+      },
+      {
+        "parameters": {
+          "method": "POST",
+          "url": "https://private-anon-aa97ae1521-siigoapi.apiary-proxy.com/v1/invoices",
+          "sendHeaders": true,
+          "headerParameters": {
+            "parameters": [
+              {
+                "name": "Authorization",
+                "value": "={{ $('Authorization_key_generator').item.json.body.access_token }}"
+              },
+              {
+                "name": "Partner-Id",
+                "value": "shopify"
+              }
+            ]
+          },
+          "sendBody": true,
+          "specifyBody": "json",
+          "jsonBody": "={{ $('Billing_Contract').item.json.resultado.toJsonString() }}\n\n",
+          "options": {
+            "response": {
+              "response": {
+                "fullResponse": true
+              }
+            }
+          }
+        },
+        "id": "e6362331-9e51-475f-aa2f-b37bd488352a",
+        "name": "Billing_creation",
+        "type": "n8n-nodes-base.httpRequest",
+        "typeVersion": 4.5,
+        "position": [
+          224,
+          0
+        ]
+      },
+      {
+        "parameters": {
+          "jsCode": "// Array donde guardaremos los nuevos ítems de n8n\nconst result = [];\n\n// Recorremos cada ítem de entrada\nfor (const item of $input.all()) {\n  // Verificamos si existe la propiedad 'items' y si es un array\n  if (item.json.items && Array.isArray(item.json.items)) {\n    for (const producto of item.json.items) {\n      result.push({\n        json: producto\n      });\n    }\n  }\n}\n\nreturn result;"
+        },
+        "id": "9ef705f7-27ad-4cb6-be81-8ac63abc16c6",
+        "name": "items_split",
+        "type": "n8n-nodes-base.code",
+        "typeVersion": 2,
+        "position": [
+          -16,
+          272
+        ]
+      },
+      {
+        "parameters": {
+          "url": "https://private-anon-a92629d473-siigoapi.apiary-proxy.com/v1/products",
+          "sendQuery": true,
+          "queryParameters": {
+            "parameters": [
+              {
+                "name": "page_size",
+                "value": "100"
+              },
+              {
+                "name": "code",
+                "value": "={{ $json.code }}"
+              }
+            ]
+          },
+          "sendHeaders": true,
+          "headerParameters": {
+            "parameters": [
+              {
+                "name": "Authorization",
+                "value": "={{ $('Authorization_key_generator').item.json.body.access_token }}"
+              },
+              {
+                "name": "Partner-Id",
+                "value": "shopify"
+              }
+            ]
+          },
+          "sendBody": true,
+          "bodyParameters": {
+            "parameters": [
+              {}
+            ]
+          },
+          "options": {
+            "response": {
+              "response": {
+                "fullResponse": true
+              }
+            }
+          }
+        },
+        "id": "a406043d-9145-4105-bd73-57d6048e7e13",
+        "name": "item_consult",
+        "type": "n8n-nodes-base.httpRequest",
+        "typeVersion": 4.5,
+        "position": [
+          432,
+          288
+        ]
+      },
+      {
+        "parameters": {
+          "method": "PUT",
+          "url": "=https://api.siigo.com/v1/products/{{ $json.body.results[0].id }}",
+          "sendHeaders": true,
+          "headerParameters": {
+            "parameters": [
+              {
+                "name": "Authorization",
+                "value": "={{ $('Authorization_key_generator').item.json.body.access_token }}"
+              },
+              {
+                "name": "Partner-Id",
+                "value": "shopify"
+              }
+            ]
+          },
+          "sendBody": true,
+          "specifyBody": "json",
+          "jsonBody": "={\n  \"code\": \"{{ $json.body.results[0].code }}\",\n  \"name\": \"{{ $json.body.results[0].name }}\",\n  \"account_group\": {{ $json.body.results[0].account_group.id }},\n  \"type\": \"Product\",\n  \"stock_control\": true,\n  \"active\": true,\n  \"tax_classification\": \"Taxed\",\n  \"tax_included\": false,\n  \"tax_consumption_value\": 0,\n  \"prices\": [\n    {\n      \"currency_code\": \"COP\",\n      \"price_list\": [\n        {\n          \"position\": {{ $json.body.results[0].prices[0].price_list[0].position }},\n          \"value\": {{ $json.body.results[0].prices[0].price_list[0].value }}\n        }\n      ]\n    }\n  ],\n  \"unit\": \"{{ $json.body.results[0].unit.code }}\",\n  \"unit_label\": \"{{ $json.body.results[0].unit_label }}\",\n  \"additional_fields\": {\n    \"barcode\": \"{{ $json.body.results[0].additional_fields.barcode }}\"\n  },\n  \"available_quantity\":{{ $json.body.results[0].available_quantity + $('ArrayItems').item.json.items[0].quantity }}\n}",
+          "options": {
+            "response": {
+              "response": {
+                "fullResponse": true
+              }
+            }
+          }
+        },
+        "id": "3bc18e84-0a3b-4c96-bd38-6b3bdbfead8b",
+        "name": "Stock_update",
+        "type": "n8n-nodes-base.httpRequest",
+        "typeVersion": 4.5,
+        "position": [
+          640,
+          288
+        ]
+      },
+      {
+        "parameters": {
+          "options": {}
+        },
+        "id": "7db1125a-16b8-4c7a-a1c8-bf1fe482b89e",
+        "name": "Loop Over Items",
+        "type": "n8n-nodes-base.splitInBatches",
+        "typeVersion": 3,
+        "position": [
+          208,
+          272
+        ]
+      },
+      {
+        "parameters": {
+          "content": "Manejo de inventario",
+          "height": 224,
+          "width": 960
+        },
+        "id": "a8b6d5bc-a264-4883-ac3f-84d3366a5907",
+        "name": "Sticky Note",
+        "type": "n8n-nodes-base.stickyNote",
+        "typeVersion": 1,
+        "position": [
+          -64,
+          208
+        ]
+      }
+    ],
+    "connections": {
+      "Webhook": {
+        "main": [
+          [
+            {
+              "node": "Data_Clensing",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Data_Clensing": {
+        "main": [
+          [
+            {
+              "node": "Authorization_key_generator",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Authorization_key_generator": {
+        "main": [
+          [
+            {
+              "node": "ArrayItems",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "ArrayItems": {
+        "main": [
+          [
+            {
+              "node": "Billing_Contract",
+              "type": "main",
+              "index": 0
+            },
+            {
+              "node": "items_split",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Billing_Contract": {
+        "main": [
+          [
+            {
+              "node": "Billing_creation",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "items_split": {
+        "main": [
+          [
+            {
+              "node": "Loop Over Items",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "item_consult": {
+        "main": [
+          [
+            {
+              "node": "Stock_update",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Stock_update": {
+        "main": [
+          [
+            {
+              "node": "Loop Over Items",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Loop Over Items": {
+        "main": [
+          [],
+          [
+            {
+              "node": "item_consult",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      }
+    },
+    "nodeGroups": [],
+    "authors": "Emmanuel Arevalo",
+    "name": "Version 78350829",
+    "description": "",
+    "autosaved": true,
+    "createdAt": "2026-10-08T22:36:41.668Z",
+    "updatedAt": "2026-10-08T22:37:36.000Z"
+  }
+}
