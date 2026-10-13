@@ -1,0 +1,1449 @@
+{
+  "id": "a0b4Tr1zYv68C1Cf",
+  "name": "Subflow: Upsert Qdrant Point (PROD)",
+  "active": true,
+  "activeVersionId": "09d2c441-bd0c-4bbf-9a52-3b087b87a59f",
+  "createdAt": "2026-10-08T22:46:11.297Z",
+  "updatedAt": "2026-10-09T00:06:44.538Z",
+  "isArchived": false,
+  "versionId": "09d2c441-bd0c-4bbf-9a52-3b087b87a59f",
+  "triggerCount": 0,
+  "nodes": [
+    {
+      "parameters": {
+        "content": "## Subflow: Upsert Qdrant Point\n\nReemplaza el patron actual de 'Flujo Catalogo En Qdrant' (Check if Point Exists -> Point Exists? -> Delete Point -> HTTP Request insert, con un UUID aleatorio nuevo cada vez) por un id deterministico (UUIDv5). Con id determinista, un solo PUT hace upsert: si el punto ya existe, Qdrant lo reemplaza; si no existe, lo crea. Ya no hace falta buscar y borrar antes.\n\nUsa la misma coleccion y credencial Qdrant que ya usa el proyecto (BabysWorld_Catalogo / QdrantApi account 3).\n\nNOTA (actualizado 2026-08-13): se guardan TODAS las variantes, tengan o no SKU asignado en Shopify.\n\nNOTA (cambio de diseno, 2026-08-13, mismo dia): el id determinista ya NO se calcula a partir del SKU en ningun caso — se calcula SIEMPRE a partir de `variant-${variant_id}` (el variant_id de Shopify, asignado una sola vez por variante y estable de por vida). Antes se usaba el SKU cuando existia y variant_id solo como fallback; eso hacia que el id cambiara el dia que a una variante sin SKU se le agregaba uno, dejando un punto viejo huerfano y duplicado en Qdrant. El SKU se sigue guardando como dato dentro del payload, pero ya no participa del calculo del id.\n\nNOTA: 'Subflow: Delete Qdrant Point' NO usa este id deterministico — el webhook real products/delete de Shopify no trae variantes, asi que el borrado se hace por FILTRO de product_id en vez de por id exacto. El payload de cada punto (abajo) debe seguir incluyendo product_id para que ese filtro funcione.\n\nInput: sku (string, puede venir vacio/null), payload (objeto: titulo/precio/inventario/categoria/product_id/variant_id/urls de imagen), vector (number[], ya generado por 'Subflow: Generate OpenAI Embedding').\nOutput: sku, payload, vector, qdrant_point_id + respuesta cruda de Qdrant.\n\nNOTA (fix, 2026-09-03, ejecucion 99346): antes, si la coleccion \"Baby'sWorld_Catalogo_Test\" no existia (por ejemplo, justo despues de un reset con 'Setup: Wipe Qdrant Test Collection', o en un ambiente nuevo que arranca con Qdrant vacio), el upsert fallaba con 404 y el evento de Shopify se perdia -- el pipeline dependia de que alguien hubiera corrido antes, a mano, 'Setup: Create Qdrant Payload Indexes'. Eso esta mal: el proceso de escucha de eventos de Shopify no deberia depender de un paso manual previo. Fix: si 'Qdrant_Upsert_Point' falla porque la coleccion no existe, el subflujo la autoprovisiona en el momento (copiando la config de vectores de la coleccion real 'BabysWorld_Catalogo' y recreando los indices de payload, igual que hace 'Setup: Create Qdrant Payload Indexes') y reintenta el mismo upsert una vez. Cualquier otro tipo de error (no relacionado con que falte la coleccion) sigue fallando la ejecucion normalmente, igual que antes.\n\nNOTA (fix, 2026-09-08, ejecuciones 106953/106962/106982): se detecto que un 'Setup: Wipe Qdrant Test Collection' seguido de un evento real de Shopify recreaba la coleccion + los 6 indices originales via self-heal, pero SIN los 3 indices anidados del dual-write (metadata.categoria/metadata.titulo/metadata.descripcion, ver 'Setup: Create Qdrant Metadata Indexes (Dual-Write)') -- dejando la busqueda de 'Catalogo Qdrant (DEV)' rota silenciosamente hasta que alguien corriera ese setup a mano de nuevo. Fix: se agregaron los 3 'Qdrant_Ensure_Index_Metadata_*' a esta misma cadena de self-heal, despues de 'Qdrant_Ensure_Index_Collections' y antes del reintento -- ahora un wipe + auto-provisioning deja la coleccion con los 9 indices completos (6 del esquema plano + 3 del espejo dual-write), sin depender de que nadie corra el setup de indices de metadata a mano.\n\nNOTA (2026-09-29): se agrego Qdrant_Ensure_Index_Sku (field_schema keyword, para filtro exacto por SKU) a la cadena de auto-reparacion, despues de los 3 indices metadata.*. Sin esto, un wipe de la coleccion dejaba la busqueda por SKU con 'Index required'.",
+        "height": 620,
+        "width": 440,
+        "color": 5
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        5056,
+        160
+      ],
+      "id": "e16147d6-fbd1-49ca-8a2c-d4f87d35e4e6",
+      "name": "Sticky_2d2e9c45"
+    },
+    {
+      "parameters": {
+        "workflowInputs": {
+          "values": [
+            {
+              "name": "sku"
+            },
+            {
+              "name": "payload",
+              "type": "object"
+            },
+            {
+              "name": "vector",
+              "type": "array"
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.executeWorkflowTrigger",
+      "typeVersion": 1.1,
+      "position": [
+        5104,
+        1104
+      ],
+      "id": "50737c67-6746-4782-b3e7-660008040bad",
+      "name": "When Executed by Another Workflow"
+    },
+    {
+      "parameters": {
+        "jsCode": "const crypto = require('crypto');\n\nfunction uuidv5(name, namespaceHex) {\n  const namespaceBytes = Buffer.from(namespaceHex.replace(/-/g, ''), 'hex');\n  const nameBytes = Buffer.from(name, 'utf8');\n  const hash = crypto.createHash('sha1').update(Buffer.concat([namespaceBytes, nameBytes])).digest();\n  const bytes = Buffer.from(hash.subarray(0, 16));\n  bytes[6] = (bytes[6] & 0x0f) | 0x50; // version 5\n  bytes[8] = (bytes[8] & 0x3f) | 0x80; // variant RFC4122\n  const hex = bytes.toString('hex');\n  return `${hex.substring(0,8)}-${hex.substring(8,12)}-${hex.substring(12,16)}-${hex.substring(16,20)}-${hex.substring(20)}`;\n}\n\n// Namespace fijo y arbitrario, propio de Baby's World, para no chocar con otros usos de UUIDv5.\nconst NAMESPACE = '2b3c1a10-babe-5c00-8f00-babysworldns0';\n// crypto.createHash necesita un namespace valido en hex de 16 bytes; se deriva uno estable a partir del texto anterior.\nconst NAMESPACE_HEX = crypto.createHash('md5').update(NAMESPACE).digest('hex');\n\nconst input = $input.first().json ?? {};\nconst variantId = input.payload?.variant_id ?? null;\n\n// Cambio de diseno (2026-08-13): el id deterministico SIEMPRE se calcula a partir de\n// variant_id, nunca del SKU. variant_id lo asigna Shopify una sola vez por variante y\n// no cambia en toda su vida, aunque despues le agreguen o editen el SKU -- asi el id de\n// Qdrant queda estable desde el primer evento. Si se usara el SKU cuando existe y\n// variant_id solo como fallback, el id cambiaria el dia que a una variante sin SKU se le\n// agrega uno, dejando un punto viejo huerfano y duplicado en Qdrant (el flujo de upsert\n// no sabe que antes esa variante vivia en otro id). El SKU se sigue guardando como dato\n// dentro del payload, pero ya no participa del calculo del id.\nconst key = (variantId !== null && variantId !== undefined && String(variantId).trim() !== '') ? `variant-${variantId}` : '';\n\nif (!key) {\n  return [{ json: { ...input, qdrant_point_id: null, id_error: 'missing_variant_id' } }];\n}\n\nconst qdrantPointId = uuidv5(`babysworld-product-${key}`, NAMESPACE_HEX);\n\nreturn [{ json: { ...input, qdrant_point_id: qdrantPointId } }];\n"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        5360,
+        1104
+      ],
+      "id": "4c6e27a6-de97-46f6-b467-36b5ad20caec",
+      "name": "Build_Deterministic_Id"
+    },
+    {
+      "parameters": {
+        "method": "PUT",
+        "url": "https://1537c683-48da-4631-ab76-ad698b6b9881.us-east-1-0.aws.cloud.qdrant.io:6333/collections/BabysWorld_Catalogo/points",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "qdrantApi",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ {\n  points: [\n    {\n      id: $json.qdrant_point_id,\n      vector: $json.vector,\n      payload: $json.payload\n    }\n  ]\n} }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        5616,
+        1104
+      ],
+      "id": "fd9968d8-16af-46b1-b059-59e3746ffbc4",
+      "name": "Qdrant_Upsert_Point",
+      "credentials": {
+        "qdrantApi": {
+          "id": "ZYv8vdr6tkTS4jYz",
+          "name": "QdrantApi account 3"
+        }
+      },
+      "continueOnFail": true,
+      "onError": "continueErrorOutput"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Rama de error de 'Qdrant_Upsert_Point'. El shape exacto del item de error puede\n// variar segun la version de n8n, asi que se revisa el JSON completo como texto en\n// vez de asumir una key especifica.\nconst err = $input.first().json;\nconst text = JSON.stringify(err ?? {}).toLowerCase();\nconst missing = text.includes(\"doesn't exist\") || text.includes('does not exist');\n\nreturn [{ json: { collection_missing: missing, error_raw: err } }];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        5856,
+        1136
+      ],
+      "id": "2102eb63-3b65-4090-bd4f-4a2842d5b065",
+      "name": "Check_Collection_Missing"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "f1a2b3c4-2222-4333-9444-555566667010",
+              "leftValue": "={{ $json.collection_missing }}",
+              "rightValue": "",
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        6112,
+        1136
+      ],
+      "id": "cb41ee83-ac17-436f-87a1-6ea4dec15cd5",
+      "name": "If_Collection_Missing"
+    },
+    {
+      "parameters": {
+        "jsCode": "// La coleccion SI existe -- el error de 'Qdrant_Upsert_Point' es otra cosa (credenciales,\n// payload invalido, etc.). No se autoprovisiona nada: se relanza el error original tal\n// cual, para que la ejecucion quede en estado de error como antes de este fix.\nconst err = $json.error_raw;\nthrow new Error(typeof err === 'string' ? err : JSON.stringify(err));"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        6368,
+        1232
+      ],
+      "id": "7036b0ad-6b5f-4e4b-8e30-28a1681e9b9b",
+      "name": "Fail_With_Original_Error"
+    },
+    {
+      "parameters": {
+        "url": "https://1537c683-48da-4631-ab76-ad698b6b9881.us-east-1-0.aws.cloud.qdrant.io:6333/collections/BabysWorld_Catalogo",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "qdrantApi",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        6368,
+        1040
+      ],
+      "id": "7509de78-9f9b-4723-b7bb-df4dee06272a",
+      "name": "Qdrant_Get_Prod_Vector_Config",
+      "credentials": {
+        "qdrantApi": {
+          "id": "ZYv8vdr6tkTS4jYz",
+          "name": "QdrantApi account 3"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "method": "PUT",
+        "url": "https://1537c683-48da-4631-ab76-ad698b6b9881.us-east-1-0.aws.cloud.qdrant.io:6333/collections/BabysWorld_Catalogo",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "qdrantApi",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ { vectors: $json.result.config.params.vectors } }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        6624,
+        1040
+      ],
+      "id": "749e4569-4077-406e-ba75-73376257bada",
+      "name": "Qdrant_Ensure_Test_Collection",
+      "credentials": {
+        "qdrantApi": {
+          "id": "ZYv8vdr6tkTS4jYz",
+          "name": "QdrantApi account 3"
+        }
+      },
+      "continueOnFail": true,
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "method": "PUT",
+        "url": "https://1537c683-48da-4631-ab76-ad698b6b9881.us-east-1-0.aws.cloud.qdrant.io:6333/collections/BabysWorld_Catalogo/index",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "qdrantApi",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ { field_name: 'product_id', field_schema: 'integer' } }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        6880,
+        912
+      ],
+      "id": "8c3984b3-cd98-485a-be7c-2e877ee97211",
+      "name": "Qdrant_Ensure_Index_Product_Id",
+      "credentials": {
+        "qdrantApi": {
+          "id": "ZYv8vdr6tkTS4jYz",
+          "name": "QdrantApi account 3"
+        }
+      },
+      "continueOnFail": true,
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "method": "PUT",
+        "url": "https://1537c683-48da-4631-ab76-ad698b6b9881.us-east-1-0.aws.cloud.qdrant.io:6333/collections/BabysWorld_Catalogo/index",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "qdrantApi",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ { field_name: 'variant_id', field_schema: 'integer' } }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        7136,
+        912
+      ],
+      "id": "f765ef0c-19cd-4919-9fce-c6055e1951f0",
+      "name": "Qdrant_Ensure_Index_Variant_Id",
+      "credentials": {
+        "qdrantApi": {
+          "id": "ZYv8vdr6tkTS4jYz",
+          "name": "QdrantApi account 3"
+        }
+      },
+      "continueOnFail": true,
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "method": "PUT",
+        "url": "https://1537c683-48da-4631-ab76-ad698b6b9881.us-east-1-0.aws.cloud.qdrant.io:6333/collections/BabysWorld_Catalogo/index",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "qdrantApi",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ { field_name: 'product_type', field_schema: 'text' } }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        7392,
+        912
+      ],
+      "id": "fceda810-b623-4172-9f4b-6d3f03a25e2e",
+      "name": "Qdrant_Ensure_Index_Product_Type",
+      "credentials": {
+        "qdrantApi": {
+          "id": "ZYv8vdr6tkTS4jYz",
+          "name": "QdrantApi account 3"
+        }
+      },
+      "continueOnFail": true,
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "method": "PUT",
+        "url": "https://1537c683-48da-4631-ab76-ad698b6b9881.us-east-1-0.aws.cloud.qdrant.io:6333/collections/BabysWorld_Catalogo/index",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "qdrantApi",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ { field_name: 'title', field_schema: 'text' } }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        7648,
+        912
+      ],
+      "id": "be3ec00a-a663-4e11-845d-e17cbaffd23b",
+      "name": "Qdrant_Ensure_Index_Title",
+      "credentials": {
+        "qdrantApi": {
+          "id": "ZYv8vdr6tkTS4jYz",
+          "name": "QdrantApi account 3"
+        }
+      },
+      "continueOnFail": true,
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "method": "PUT",
+        "url": "https://1537c683-48da-4631-ab76-ad698b6b9881.us-east-1-0.aws.cloud.qdrant.io:6333/collections/BabysWorld_Catalogo/index",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "qdrantApi",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ { field_name: 'descripcion', field_schema: 'text' } }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        7904,
+        912
+      ],
+      "id": "e3b47c7e-6c01-4ccf-8ead-8540d2c90392",
+      "name": "Qdrant_Ensure_Index_Descripcion",
+      "credentials": {
+        "qdrantApi": {
+          "id": "ZYv8vdr6tkTS4jYz",
+          "name": "QdrantApi account 3"
+        }
+      },
+      "continueOnFail": true,
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "method": "PUT",
+        "url": "https://1537c683-48da-4631-ab76-ad698b6b9881.us-east-1-0.aws.cloud.qdrant.io:6333/collections/BabysWorld_Catalogo/index",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "qdrantApi",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ { field_name: 'collections', field_schema: 'text' } }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        8160,
+        912
+      ],
+      "id": "fcfe38ac-b3d2-485c-a2ab-76d24055e359",
+      "name": "Qdrant_Ensure_Index_Collections",
+      "credentials": {
+        "qdrantApi": {
+          "id": "ZYv8vdr6tkTS4jYz",
+          "name": "QdrantApi account 3"
+        }
+      },
+      "continueOnFail": true,
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "method": "PUT",
+        "url": "https://1537c683-48da-4631-ab76-ad698b6b9881.us-east-1-0.aws.cloud.qdrant.io:6333/collections/BabysWorld_Catalogo/index",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "qdrantApi",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ { field_name: 'metadata.categoria', field_schema: 'text' } }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        8416,
+        912
+      ],
+      "id": "042c6de3-f6d8-481a-8c96-a782a0e7a8bd",
+      "name": "Qdrant_Ensure_Index_Metadata_Categoria",
+      "credentials": {
+        "qdrantApi": {
+          "id": "ZYv8vdr6tkTS4jYz",
+          "name": "QdrantApi account 3"
+        }
+      },
+      "continueOnFail": true,
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "method": "PUT",
+        "url": "https://1537c683-48da-4631-ab76-ad698b6b9881.us-east-1-0.aws.cloud.qdrant.io:6333/collections/BabysWorld_Catalogo/index",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "qdrantApi",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ { field_name: 'metadata.titulo', field_schema: 'text' } }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        8672,
+        912
+      ],
+      "id": "6e181743-5b3e-4a2d-8fe9-0f12f2264c50",
+      "name": "Qdrant_Ensure_Index_Metadata_Titulo",
+      "credentials": {
+        "qdrantApi": {
+          "id": "ZYv8vdr6tkTS4jYz",
+          "name": "QdrantApi account 3"
+        }
+      },
+      "continueOnFail": true,
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "method": "PUT",
+        "url": "https://1537c683-48da-4631-ab76-ad698b6b9881.us-east-1-0.aws.cloud.qdrant.io:6333/collections/BabysWorld_Catalogo/index",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "qdrantApi",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ { field_name: 'metadata.descripcion', field_schema: 'text' } }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        8928,
+        912
+      ],
+      "id": "8adca76a-e578-4fe9-8d1d-51f92f179d49",
+      "name": "Qdrant_Ensure_Index_Metadata_Descripcion",
+      "credentials": {
+        "qdrantApi": {
+          "id": "ZYv8vdr6tkTS4jYz",
+          "name": "QdrantApi account 3"
+        }
+      },
+      "continueOnFail": true,
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "method": "PUT",
+        "url": "https://1537c683-48da-4631-ab76-ad698b6b9881.us-east-1-0.aws.cloud.qdrant.io:6333/collections/BabysWorld_Catalogo/index",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "qdrantApi",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ { field_name: 'sku', field_schema: 'keyword' } }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        9184,
+        912
+      ],
+      "id": "0e82a79d-0aaa-42b6-961b-18c5dfda38a1",
+      "name": "Qdrant_Ensure_Index_Sku",
+      "credentials": {
+        "qdrantApi": {
+          "id": "ZYv8vdr6tkTS4jYz",
+          "name": "QdrantApi account 3"
+        }
+      },
+      "continueOnFail": true,
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "method": "PUT",
+        "url": "https://1537c683-48da-4631-ab76-ad698b6b9881.us-east-1-0.aws.cloud.qdrant.io:6333/collections/BabysWorld_Catalogo/points",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "qdrantApi",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ {\n  points: [\n    {\n      id: $('Build_Deterministic_Id').item.json.qdrant_point_id,\n      vector: $('Build_Deterministic_Id').item.json.vector,\n      payload: $('Build_Deterministic_Id').item.json.payload\n    }\n  ]\n} }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        9440,
+        1040
+      ],
+      "id": "2082d9f7-8096-46f1-ab66-46c42c62a1ff",
+      "name": "Qdrant_Upsert_Point_Retry",
+      "credentials": {
+        "qdrantApi": {
+          "id": "ZYv8vdr6tkTS4jYz",
+          "name": "QdrantApi account 3"
+        }
+      }
+    }
+  ],
+  "connections": {
+    "When Executed by Another Workflow": {
+      "main": [
+        [
+          {
+            "node": "Build_Deterministic_Id",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Build_Deterministic_Id": {
+      "main": [
+        [
+          {
+            "node": "Qdrant_Upsert_Point",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Qdrant_Upsert_Point": {
+      "main": [
+        [],
+        [
+          {
+            "node": "Check_Collection_Missing",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Check_Collection_Missing": {
+      "main": [
+        [
+          {
+            "node": "If_Collection_Missing",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "If_Collection_Missing": {
+      "main": [
+        [
+          {
+            "node": "Qdrant_Get_Prod_Vector_Config",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Fail_With_Original_Error",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Qdrant_Get_Prod_Vector_Config": {
+      "main": [
+        [
+          {
+            "node": "Qdrant_Ensure_Test_Collection",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Qdrant_Ensure_Test_Collection": {
+      "main": [
+        [
+          {
+            "node": "Qdrant_Ensure_Index_Product_Id",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Qdrant_Ensure_Index_Product_Id": {
+      "main": [
+        [
+          {
+            "node": "Qdrant_Ensure_Index_Variant_Id",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Qdrant_Ensure_Index_Variant_Id": {
+      "main": [
+        [
+          {
+            "node": "Qdrant_Ensure_Index_Product_Type",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Qdrant_Ensure_Index_Product_Type": {
+      "main": [
+        [
+          {
+            "node": "Qdrant_Ensure_Index_Title",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Qdrant_Ensure_Index_Title": {
+      "main": [
+        [
+          {
+            "node": "Qdrant_Ensure_Index_Descripcion",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Qdrant_Ensure_Index_Descripcion": {
+      "main": [
+        [
+          {
+            "node": "Qdrant_Ensure_Index_Collections",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Qdrant_Ensure_Index_Collections": {
+      "main": [
+        [
+          {
+            "node": "Qdrant_Ensure_Index_Metadata_Categoria",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Qdrant_Ensure_Index_Metadata_Categoria": {
+      "main": [
+        [
+          {
+            "node": "Qdrant_Ensure_Index_Metadata_Titulo",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Qdrant_Ensure_Index_Metadata_Titulo": {
+      "main": [
+        [
+          {
+            "node": "Qdrant_Ensure_Index_Metadata_Descripcion",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Qdrant_Ensure_Index_Metadata_Descripcion": {
+      "main": [
+        [
+          {
+            "node": "Qdrant_Ensure_Index_Sku",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Qdrant_Ensure_Index_Sku": {
+      "main": [
+        [
+          {
+            "node": "Qdrant_Upsert_Point_Retry",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "nodeGroups": [],
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate",
+    "availableInMCP": false,
+    "timeSavedMode": "fixed",
+    "errorWorkflow": "GZN4CJ6QgYxm77J7",
+    "callerPolicy": "workflowsFromSameOwner"
+  },
+  "staticData": null,
+  "pinData": {},
+  "meta": null,
+  "tags": [
+    {
+      "id": "2nDb4zfpAXOj9Pvx",
+      "name": "env:prod",
+      "createdAt": "2026-02-25T21:45:46.330Z",
+      "updatedAt": "2026-02-25T21:45:46.330Z"
+    }
+  ],
+  "shared": [
+    {
+      "role": "workflow:owner",
+      "workflowId": "a0b4Tr1zYv68C1Cf",
+      "projectId": "8h8pwWGcWlnGEym3",
+      "createdAt": "2026-10-08T22:46:11.300Z",
+      "updatedAt": "2026-10-08T22:46:11.300Z"
+    }
+  ],
+  "activeVersion": {
+    "versionId": "09d2c441-bd0c-4bbf-9a52-3b087b87a59f",
+    "workflowId": "a0b4Tr1zYv68C1Cf",
+    "nodes": [
+      {
+        "parameters": {
+          "content": "## Subflow: Upsert Qdrant Point\n\nReemplaza el patron actual de 'Flujo Catalogo En Qdrant' (Check if Point Exists -> Point Exists? -> Delete Point -> HTTP Request insert, con un UUID aleatorio nuevo cada vez) por un id deterministico (UUIDv5). Con id determinista, un solo PUT hace upsert: si el punto ya existe, Qdrant lo reemplaza; si no existe, lo crea. Ya no hace falta buscar y borrar antes.\n\nUsa la misma coleccion y credencial Qdrant que ya usa el proyecto (BabysWorld_Catalogo / QdrantApi account 3).\n\nNOTA (actualizado 2026-08-13): se guardan TODAS las variantes, tengan o no SKU asignado en Shopify.\n\nNOTA (cambio de diseno, 2026-08-13, mismo dia): el id determinista ya NO se calcula a partir del SKU en ningun caso — se calcula SIEMPRE a partir de `variant-${variant_id}` (el variant_id de Shopify, asignado una sola vez por variante y estable de por vida). Antes se usaba el SKU cuando existia y variant_id solo como fallback; eso hacia que el id cambiara el dia que a una variante sin SKU se le agregaba uno, dejando un punto viejo huerfano y duplicado en Qdrant. El SKU se sigue guardando como dato dentro del payload, pero ya no participa del calculo del id.\n\nNOTA: 'Subflow: Delete Qdrant Point' NO usa este id deterministico — el webhook real products/delete de Shopify no trae variantes, asi que el borrado se hace por FILTRO de product_id en vez de por id exacto. El payload de cada punto (abajo) debe seguir incluyendo product_id para que ese filtro funcione.\n\nInput: sku (string, puede venir vacio/null), payload (objeto: titulo/precio/inventario/categoria/product_id/variant_id/urls de imagen), vector (number[], ya generado por 'Subflow: Generate OpenAI Embedding').\nOutput: sku, payload, vector, qdrant_point_id + respuesta cruda de Qdrant.\n\nNOTA (fix, 2026-09-03, ejecucion 99346): antes, si la coleccion \"Baby'sWorld_Catalogo_Test\" no existia (por ejemplo, justo despues de un reset con 'Setup: Wipe Qdrant Test Collection', o en un ambiente nuevo que arranca con Qdrant vacio), el upsert fallaba con 404 y el evento de Shopify se perdia -- el pipeline dependia de que alguien hubiera corrido antes, a mano, 'Setup: Create Qdrant Payload Indexes'. Eso esta mal: el proceso de escucha de eventos de Shopify no deberia depender de un paso manual previo. Fix: si 'Qdrant_Upsert_Point' falla porque la coleccion no existe, el subflujo la autoprovisiona en el momento (copiando la config de vectores de la coleccion real 'BabysWorld_Catalogo' y recreando los indices de payload, igual que hace 'Setup: Create Qdrant Payload Indexes') y reintenta el mismo upsert una vez. Cualquier otro tipo de error (no relacionado con que falte la coleccion) sigue fallando la ejecucion normalmente, igual que antes.\n\nNOTA (fix, 2026-09-08, ejecuciones 106953/106962/106982): se detecto que un 'Setup: Wipe Qdrant Test Collection' seguido de un evento real de Shopify recreaba la coleccion + los 6 indices originales via self-heal, pero SIN los 3 indices anidados del dual-write (metadata.categoria/metadata.titulo/metadata.descripcion, ver 'Setup: Create Qdrant Metadata Indexes (Dual-Write)') -- dejando la busqueda de 'Catalogo Qdrant (DEV)' rota silenciosamente hasta que alguien corriera ese setup a mano de nuevo. Fix: se agregaron los 3 'Qdrant_Ensure_Index_Metadata_*' a esta misma cadena de self-heal, despues de 'Qdrant_Ensure_Index_Collections' y antes del reintento -- ahora un wipe + auto-provisioning deja la coleccion con los 9 indices completos (6 del esquema plano + 3 del espejo dual-write), sin depender de que nadie corra el setup de indices de metadata a mano.\n\nNOTA (2026-09-29): se agrego Qdrant_Ensure_Index_Sku (field_schema keyword, para filtro exacto por SKU) a la cadena de auto-reparacion, despues de los 3 indices metadata.*. Sin esto, un wipe de la coleccion dejaba la busqueda por SKU con 'Index required'.",
+          "height": 620,
+          "width": 440,
+          "color": 5
+        },
+        "type": "n8n-nodes-base.stickyNote",
+        "typeVersion": 1,
+        "position": [
+          5056,
+          160
+        ],
+        "id": "e16147d6-fbd1-49ca-8a2c-d4f87d35e4e6",
+        "name": "Sticky_2d2e9c45"
+      },
+      {
+        "parameters": {
+          "workflowInputs": {
+            "values": [
+              {
+                "name": "sku"
+              },
+              {
+                "name": "payload",
+                "type": "object"
+              },
+              {
+                "name": "vector",
+                "type": "array"
+              }
+            ]
+          }
+        },
+        "type": "n8n-nodes-base.executeWorkflowTrigger",
+        "typeVersion": 1.1,
+        "position": [
+          5104,
+          1104
+        ],
+        "id": "50737c67-6746-4782-b3e7-660008040bad",
+        "name": "When Executed by Another Workflow"
+      },
+      {
+        "parameters": {
+          "jsCode": "const crypto = require('crypto');\n\nfunction uuidv5(name, namespaceHex) {\n  const namespaceBytes = Buffer.from(namespaceHex.replace(/-/g, ''), 'hex');\n  const nameBytes = Buffer.from(name, 'utf8');\n  const hash = crypto.createHash('sha1').update(Buffer.concat([namespaceBytes, nameBytes])).digest();\n  const bytes = Buffer.from(hash.subarray(0, 16));\n  bytes[6] = (bytes[6] & 0x0f) | 0x50; // version 5\n  bytes[8] = (bytes[8] & 0x3f) | 0x80; // variant RFC4122\n  const hex = bytes.toString('hex');\n  return `${hex.substring(0,8)}-${hex.substring(8,12)}-${hex.substring(12,16)}-${hex.substring(16,20)}-${hex.substring(20)}`;\n}\n\n// Namespace fijo y arbitrario, propio de Baby's World, para no chocar con otros usos de UUIDv5.\nconst NAMESPACE = '2b3c1a10-babe-5c00-8f00-babysworldns0';\n// crypto.createHash necesita un namespace valido en hex de 16 bytes; se deriva uno estable a partir del texto anterior.\nconst NAMESPACE_HEX = crypto.createHash('md5').update(NAMESPACE).digest('hex');\n\nconst input = $input.first().json ?? {};\nconst variantId = input.payload?.variant_id ?? null;\n\n// Cambio de diseno (2026-08-13): el id deterministico SIEMPRE se calcula a partir de\n// variant_id, nunca del SKU. variant_id lo asigna Shopify una sola vez por variante y\n// no cambia en toda su vida, aunque despues le agreguen o editen el SKU -- asi el id de\n// Qdrant queda estable desde el primer evento. Si se usara el SKU cuando existe y\n// variant_id solo como fallback, el id cambiaria el dia que a una variante sin SKU se le\n// agrega uno, dejando un punto viejo huerfano y duplicado en Qdrant (el flujo de upsert\n// no sabe que antes esa variante vivia en otro id). El SKU se sigue guardando como dato\n// dentro del payload, pero ya no participa del calculo del id.\nconst key = (variantId !== null && variantId !== undefined && String(variantId).trim() !== '') ? `variant-${variantId}` : '';\n\nif (!key) {\n  return [{ json: { ...input, qdrant_point_id: null, id_error: 'missing_variant_id' } }];\n}\n\nconst qdrantPointId = uuidv5(`babysworld-product-${key}`, NAMESPACE_HEX);\n\nreturn [{ json: { ...input, qdrant_point_id: qdrantPointId } }];\n"
+        },
+        "type": "n8n-nodes-base.code",
+        "typeVersion": 2,
+        "position": [
+          5360,
+          1104
+        ],
+        "id": "4c6e27a6-de97-46f6-b467-36b5ad20caec",
+        "name": "Build_Deterministic_Id"
+      },
+      {
+        "parameters": {
+          "method": "PUT",
+          "url": "https://1537c683-48da-4631-ab76-ad698b6b9881.us-east-1-0.aws.cloud.qdrant.io:6333/collections/BabysWorld_Catalogo/points",
+          "authentication": "predefinedCredentialType",
+          "nodeCredentialType": "qdrantApi",
+          "sendBody": true,
+          "specifyBody": "json",
+          "jsonBody": "={{ {\n  points: [\n    {\n      id: $json.qdrant_point_id,\n      vector: $json.vector,\n      payload: $json.payload\n    }\n  ]\n} }}",
+          "options": {}
+        },
+        "type": "n8n-nodes-base.httpRequest",
+        "typeVersion": 4.2,
+        "position": [
+          5616,
+          1104
+        ],
+        "id": "fd9968d8-16af-46b1-b059-59e3746ffbc4",
+        "name": "Qdrant_Upsert_Point",
+        "credentials": {
+          "qdrantApi": {
+            "id": "ZYv8vdr6tkTS4jYz",
+            "name": "QdrantApi account 3"
+          }
+        },
+        "continueOnFail": true,
+        "onError": "continueErrorOutput"
+      },
+      {
+        "parameters": {
+          "jsCode": "// Rama de error de 'Qdrant_Upsert_Point'. El shape exacto del item de error puede\n// variar segun la version de n8n, asi que se revisa el JSON completo como texto en\n// vez de asumir una key especifica.\nconst err = $input.first().json;\nconst text = JSON.stringify(err ?? {}).toLowerCase();\nconst missing = text.includes(\"doesn't exist\") || text.includes('does not exist');\n\nreturn [{ json: { collection_missing: missing, error_raw: err } }];"
+        },
+        "type": "n8n-nodes-base.code",
+        "typeVersion": 2,
+        "position": [
+          5856,
+          1136
+        ],
+        "id": "2102eb63-3b65-4090-bd4f-4a2842d5b065",
+        "name": "Check_Collection_Missing"
+      },
+      {
+        "parameters": {
+          "conditions": {
+            "options": {
+              "caseSensitive": true,
+              "leftValue": "",
+              "typeValidation": "strict",
+              "version": 3
+            },
+            "conditions": [
+              {
+                "id": "f1a2b3c4-2222-4333-9444-555566667010",
+                "leftValue": "={{ $json.collection_missing }}",
+                "rightValue": "",
+                "operator": {
+                  "type": "boolean",
+                  "operation": "true",
+                  "singleValue": true
+                }
+              }
+            ],
+            "combinator": "and"
+          },
+          "options": {}
+        },
+        "type": "n8n-nodes-base.if",
+        "typeVersion": 2.3,
+        "position": [
+          6112,
+          1136
+        ],
+        "id": "cb41ee83-ac17-436f-87a1-6ea4dec15cd5",
+        "name": "If_Collection_Missing"
+      },
+      {
+        "parameters": {
+          "jsCode": "// La coleccion SI existe -- el error de 'Qdrant_Upsert_Point' es otra cosa (credenciales,\n// payload invalido, etc.). No se autoprovisiona nada: se relanza el error original tal\n// cual, para que la ejecucion quede en estado de error como antes de este fix.\nconst err = $json.error_raw;\nthrow new Error(typeof err === 'string' ? err : JSON.stringify(err));"
+        },
+        "type": "n8n-nodes-base.code",
+        "typeVersion": 2,
+        "position": [
+          6368,
+          1232
+        ],
+        "id": "7036b0ad-6b5f-4e4b-8e30-28a1681e9b9b",
+        "name": "Fail_With_Original_Error"
+      },
+      {
+        "parameters": {
+          "url": "https://1537c683-48da-4631-ab76-ad698b6b9881.us-east-1-0.aws.cloud.qdrant.io:6333/collections/BabysWorld_Catalogo",
+          "authentication": "predefinedCredentialType",
+          "nodeCredentialType": "qdrantApi",
+          "options": {}
+        },
+        "type": "n8n-nodes-base.httpRequest",
+        "typeVersion": 4.2,
+        "position": [
+          6368,
+          1040
+        ],
+        "id": "7509de78-9f9b-4723-b7bb-df4dee06272a",
+        "name": "Qdrant_Get_Prod_Vector_Config",
+        "credentials": {
+          "qdrantApi": {
+            "id": "ZYv8vdr6tkTS4jYz",
+            "name": "QdrantApi account 3"
+          }
+        }
+      },
+      {
+        "parameters": {
+          "method": "PUT",
+          "url": "https://1537c683-48da-4631-ab76-ad698b6b9881.us-east-1-0.aws.cloud.qdrant.io:6333/collections/BabysWorld_Catalogo",
+          "authentication": "predefinedCredentialType",
+          "nodeCredentialType": "qdrantApi",
+          "sendBody": true,
+          "specifyBody": "json",
+          "jsonBody": "={{ { vectors: $json.result.config.params.vectors } }}",
+          "options": {}
+        },
+        "type": "n8n-nodes-base.httpRequest",
+        "typeVersion": 4.2,
+        "position": [
+          6624,
+          1040
+        ],
+        "id": "749e4569-4077-406e-ba75-73376257bada",
+        "name": "Qdrant_Ensure_Test_Collection",
+        "credentials": {
+          "qdrantApi": {
+            "id": "ZYv8vdr6tkTS4jYz",
+            "name": "QdrantApi account 3"
+          }
+        },
+        "continueOnFail": true,
+        "onError": "continueRegularOutput"
+      },
+      {
+        "parameters": {
+          "method": "PUT",
+          "url": "https://1537c683-48da-4631-ab76-ad698b6b9881.us-east-1-0.aws.cloud.qdrant.io:6333/collections/BabysWorld_Catalogo/index",
+          "authentication": "predefinedCredentialType",
+          "nodeCredentialType": "qdrantApi",
+          "sendBody": true,
+          "specifyBody": "json",
+          "jsonBody": "={{ { field_name: 'product_id', field_schema: 'integer' } }}",
+          "options": {}
+        },
+        "type": "n8n-nodes-base.httpRequest",
+        "typeVersion": 4.2,
+        "position": [
+          6880,
+          912
+        ],
+        "id": "8c3984b3-cd98-485a-be7c-2e877ee97211",
+        "name": "Qdrant_Ensure_Index_Product_Id",
+        "credentials": {
+          "qdrantApi": {
+            "id": "ZYv8vdr6tkTS4jYz",
+            "name": "QdrantApi account 3"
+          }
+        },
+        "continueOnFail": true,
+        "onError": "continueRegularOutput"
+      },
+      {
+        "parameters": {
+          "method": "PUT",
+          "url": "https://1537c683-48da-4631-ab76-ad698b6b9881.us-east-1-0.aws.cloud.qdrant.io:6333/collections/BabysWorld_Catalogo/index",
+          "authentication": "predefinedCredentialType",
+          "nodeCredentialType": "qdrantApi",
+          "sendBody": true,
+          "specifyBody": "json",
+          "jsonBody": "={{ { field_name: 'variant_id', field_schema: 'integer' } }}",
+          "options": {}
+        },
+        "type": "n8n-nodes-base.httpRequest",
+        "typeVersion": 4.2,
+        "position": [
+          7136,
+          912
+        ],
+        "id": "f765ef0c-19cd-4919-9fce-c6055e1951f0",
+        "name": "Qdrant_Ensure_Index_Variant_Id",
+        "credentials": {
+          "qdrantApi": {
+            "id": "ZYv8vdr6tkTS4jYz",
+            "name": "QdrantApi account 3"
+          }
+        },
+        "continueOnFail": true,
+        "onError": "continueRegularOutput"
+      },
+      {
+        "parameters": {
+          "method": "PUT",
+          "url": "https://1537c683-48da-4631-ab76-ad698b6b9881.us-east-1-0.aws.cloud.qdrant.io:6333/collections/BabysWorld_Catalogo/index",
+          "authentication": "predefinedCredentialType",
+          "nodeCredentialType": "qdrantApi",
+          "sendBody": true,
+          "specifyBody": "json",
+          "jsonBody": "={{ { field_name: 'product_type', field_schema: 'text' } }}",
+          "options": {}
+        },
+        "type": "n8n-nodes-base.httpRequest",
+        "typeVersion": 4.2,
+        "position": [
+          7392,
+          912
+        ],
+        "id": "fceda810-b623-4172-9f4b-6d3f03a25e2e",
+        "name": "Qdrant_Ensure_Index_Product_Type",
+        "credentials": {
+          "qdrantApi": {
+            "id": "ZYv8vdr6tkTS4jYz",
+            "name": "QdrantApi account 3"
+          }
+        },
+        "continueOnFail": true,
+        "onError": "continueRegularOutput"
+      },
+      {
+        "parameters": {
+          "method": "PUT",
+          "url": "https://1537c683-48da-4631-ab76-ad698b6b9881.us-east-1-0.aws.cloud.qdrant.io:6333/collections/BabysWorld_Catalogo/index",
+          "authentication": "predefinedCredentialType",
+          "nodeCredentialType": "qdrantApi",
+          "sendBody": true,
+          "specifyBody": "json",
+          "jsonBody": "={{ { field_name: 'title', field_schema: 'text' } }}",
+          "options": {}
+        },
+        "type": "n8n-nodes-base.httpRequest",
+        "typeVersion": 4.2,
+        "position": [
+          7648,
+          912
+        ],
+        "id": "be3ec00a-a663-4e11-845d-e17cbaffd23b",
+        "name": "Qdrant_Ensure_Index_Title",
+        "credentials": {
+          "qdrantApi": {
+            "id": "ZYv8vdr6tkTS4jYz",
+            "name": "QdrantApi account 3"
+          }
+        },
+        "continueOnFail": true,
+        "onError": "continueRegularOutput"
+      },
+      {
+        "parameters": {
+          "method": "PUT",
+          "url": "https://1537c683-48da-4631-ab76-ad698b6b9881.us-east-1-0.aws.cloud.qdrant.io:6333/collections/BabysWorld_Catalogo/index",
+          "authentication": "predefinedCredentialType",
+          "nodeCredentialType": "qdrantApi",
+          "sendBody": true,
+          "specifyBody": "json",
+          "jsonBody": "={{ { field_name: 'descripcion', field_schema: 'text' } }}",
+          "options": {}
+        },
+        "type": "n8n-nodes-base.httpRequest",
+        "typeVersion": 4.2,
+        "position": [
+          7904,
+          912
+        ],
+        "id": "e3b47c7e-6c01-4ccf-8ead-8540d2c90392",
+        "name": "Qdrant_Ensure_Index_Descripcion",
+        "credentials": {
+          "qdrantApi": {
+            "id": "ZYv8vdr6tkTS4jYz",
+            "name": "QdrantApi account 3"
+          }
+        },
+        "continueOnFail": true,
+        "onError": "continueRegularOutput"
+      },
+      {
+        "parameters": {
+          "method": "PUT",
+          "url": "https://1537c683-48da-4631-ab76-ad698b6b9881.us-east-1-0.aws.cloud.qdrant.io:6333/collections/BabysWorld_Catalogo/index",
+          "authentication": "predefinedCredentialType",
+          "nodeCredentialType": "qdrantApi",
+          "sendBody": true,
+          "specifyBody": "json",
+          "jsonBody": "={{ { field_name: 'collections', field_schema: 'text' } }}",
+          "options": {}
+        },
+        "type": "n8n-nodes-base.httpRequest",
+        "typeVersion": 4.2,
+        "position": [
+          8160,
+          912
+        ],
+        "id": "fcfe38ac-b3d2-485c-a2ab-76d24055e359",
+        "name": "Qdrant_Ensure_Index_Collections",
+        "credentials": {
+          "qdrantApi": {
+            "id": "ZYv8vdr6tkTS4jYz",
+            "name": "QdrantApi account 3"
+          }
+        },
+        "continueOnFail": true,
+        "onError": "continueRegularOutput"
+      },
+      {
+        "parameters": {
+          "method": "PUT",
+          "url": "https://1537c683-48da-4631-ab76-ad698b6b9881.us-east-1-0.aws.cloud.qdrant.io:6333/collections/BabysWorld_Catalogo/index",
+          "authentication": "predefinedCredentialType",
+          "nodeCredentialType": "qdrantApi",
+          "sendBody": true,
+          "specifyBody": "json",
+          "jsonBody": "={{ { field_name: 'metadata.categoria', field_schema: 'text' } }}",
+          "options": {}
+        },
+        "type": "n8n-nodes-base.httpRequest",
+        "typeVersion": 4.2,
+        "position": [
+          8416,
+          912
+        ],
+        "id": "042c6de3-f6d8-481a-8c96-a782a0e7a8bd",
+        "name": "Qdrant_Ensure_Index_Metadata_Categoria",
+        "credentials": {
+          "qdrantApi": {
+            "id": "ZYv8vdr6tkTS4jYz",
+            "name": "QdrantApi account 3"
+          }
+        },
+        "continueOnFail": true,
+        "onError": "continueRegularOutput"
+      },
+      {
+        "parameters": {
+          "method": "PUT",
+          "url": "https://1537c683-48da-4631-ab76-ad698b6b9881.us-east-1-0.aws.cloud.qdrant.io:6333/collections/BabysWorld_Catalogo/index",
+          "authentication": "predefinedCredentialType",
+          "nodeCredentialType": "qdrantApi",
+          "sendBody": true,
+          "specifyBody": "json",
+          "jsonBody": "={{ { field_name: 'metadata.titulo', field_schema: 'text' } }}",
+          "options": {}
+        },
+        "type": "n8n-nodes-base.httpRequest",
+        "typeVersion": 4.2,
+        "position": [
+          8672,
+          912
+        ],
+        "id": "6e181743-5b3e-4a2d-8fe9-0f12f2264c50",
+        "name": "Qdrant_Ensure_Index_Metadata_Titulo",
+        "credentials": {
+          "qdrantApi": {
+            "id": "ZYv8vdr6tkTS4jYz",
+            "name": "QdrantApi account 3"
+          }
+        },
+        "continueOnFail": true,
+        "onError": "continueRegularOutput"
+      },
+      {
+        "parameters": {
+          "method": "PUT",
+          "url": "https://1537c683-48da-4631-ab76-ad698b6b9881.us-east-1-0.aws.cloud.qdrant.io:6333/collections/BabysWorld_Catalogo/index",
+          "authentication": "predefinedCredentialType",
+          "nodeCredentialType": "qdrantApi",
+          "sendBody": true,
+          "specifyBody": "json",
+          "jsonBody": "={{ { field_name: 'metadata.descripcion', field_schema: 'text' } }}",
+          "options": {}
+        },
+        "type": "n8n-nodes-base.httpRequest",
+        "typeVersion": 4.2,
+        "position": [
+          8928,
+          912
+        ],
+        "id": "8adca76a-e578-4fe9-8d1d-51f92f179d49",
+        "name": "Qdrant_Ensure_Index_Metadata_Descripcion",
+        "credentials": {
+          "qdrantApi": {
+            "id": "ZYv8vdr6tkTS4jYz",
+            "name": "QdrantApi account 3"
+          }
+        },
+        "continueOnFail": true,
+        "onError": "continueRegularOutput"
+      },
+      {
+        "parameters": {
+          "method": "PUT",
+          "url": "https://1537c683-48da-4631-ab76-ad698b6b9881.us-east-1-0.aws.cloud.qdrant.io:6333/collections/BabysWorld_Catalogo/index",
+          "authentication": "predefinedCredentialType",
+          "nodeCredentialType": "qdrantApi",
+          "sendBody": true,
+          "specifyBody": "json",
+          "jsonBody": "={{ { field_name: 'sku', field_schema: 'keyword' } }}",
+          "options": {}
+        },
+        "type": "n8n-nodes-base.httpRequest",
+        "typeVersion": 4.2,
+        "position": [
+          9184,
+          912
+        ],
+        "id": "0e82a79d-0aaa-42b6-961b-18c5dfda38a1",
+        "name": "Qdrant_Ensure_Index_Sku",
+        "credentials": {
+          "qdrantApi": {
+            "id": "ZYv8vdr6tkTS4jYz",
+            "name": "QdrantApi account 3"
+          }
+        },
+        "continueOnFail": true,
+        "onError": "continueRegularOutput"
+      },
+      {
+        "parameters": {
+          "method": "PUT",
+          "url": "https://1537c683-48da-4631-ab76-ad698b6b9881.us-east-1-0.aws.cloud.qdrant.io:6333/collections/BabysWorld_Catalogo/points",
+          "authentication": "predefinedCredentialType",
+          "nodeCredentialType": "qdrantApi",
+          "sendBody": true,
+          "specifyBody": "json",
+          "jsonBody": "={{ {\n  points: [\n    {\n      id: $('Build_Deterministic_Id').item.json.qdrant_point_id,\n      vector: $('Build_Deterministic_Id').item.json.vector,\n      payload: $('Build_Deterministic_Id').item.json.payload\n    }\n  ]\n} }}",
+          "options": {}
+        },
+        "type": "n8n-nodes-base.httpRequest",
+        "typeVersion": 4.2,
+        "position": [
+          9440,
+          1040
+        ],
+        "id": "2082d9f7-8096-46f1-ab66-46c42c62a1ff",
+        "name": "Qdrant_Upsert_Point_Retry",
+        "credentials": {
+          "qdrantApi": {
+            "id": "ZYv8vdr6tkTS4jYz",
+            "name": "QdrantApi account 3"
+          }
+        }
+      }
+    ],
+    "connections": {
+      "When Executed by Another Workflow": {
+        "main": [
+          [
+            {
+              "node": "Build_Deterministic_Id",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Build_Deterministic_Id": {
+        "main": [
+          [
+            {
+              "node": "Qdrant_Upsert_Point",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Qdrant_Upsert_Point": {
+        "main": [
+          [],
+          [
+            {
+              "node": "Check_Collection_Missing",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Check_Collection_Missing": {
+        "main": [
+          [
+            {
+              "node": "If_Collection_Missing",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "If_Collection_Missing": {
+        "main": [
+          [
+            {
+              "node": "Qdrant_Get_Prod_Vector_Config",
+              "type": "main",
+              "index": 0
+            }
+          ],
+          [
+            {
+              "node": "Fail_With_Original_Error",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Qdrant_Get_Prod_Vector_Config": {
+        "main": [
+          [
+            {
+              "node": "Qdrant_Ensure_Test_Collection",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Qdrant_Ensure_Test_Collection": {
+        "main": [
+          [
+            {
+              "node": "Qdrant_Ensure_Index_Product_Id",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Qdrant_Ensure_Index_Product_Id": {
+        "main": [
+          [
+            {
+              "node": "Qdrant_Ensure_Index_Variant_Id",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Qdrant_Ensure_Index_Variant_Id": {
+        "main": [
+          [
+            {
+              "node": "Qdrant_Ensure_Index_Product_Type",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Qdrant_Ensure_Index_Product_Type": {
+        "main": [
+          [
+            {
+              "node": "Qdrant_Ensure_Index_Title",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Qdrant_Ensure_Index_Title": {
+        "main": [
+          [
+            {
+              "node": "Qdrant_Ensure_Index_Descripcion",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Qdrant_Ensure_Index_Descripcion": {
+        "main": [
+          [
+            {
+              "node": "Qdrant_Ensure_Index_Collections",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Qdrant_Ensure_Index_Collections": {
+        "main": [
+          [
+            {
+              "node": "Qdrant_Ensure_Index_Metadata_Categoria",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Qdrant_Ensure_Index_Metadata_Categoria": {
+        "main": [
+          [
+            {
+              "node": "Qdrant_Ensure_Index_Metadata_Titulo",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Qdrant_Ensure_Index_Metadata_Titulo": {
+        "main": [
+          [
+            {
+              "node": "Qdrant_Ensure_Index_Metadata_Descripcion",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Qdrant_Ensure_Index_Metadata_Descripcion": {
+        "main": [
+          [
+            {
+              "node": "Qdrant_Ensure_Index_Sku",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Qdrant_Ensure_Index_Sku": {
+        "main": [
+          [
+            {
+              "node": "Qdrant_Upsert_Point_Retry",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      }
+    },
+    "nodeGroups": [],
+    "authors": "Michelo Vaca Cardozo",
+    "name": "Version 09d2c441",
+    "description": "",
+    "autosaved": true,
+    "createdAt": "2026-10-08T23:08:41.130Z",
+    "updatedAt": "2026-10-09T00:07:18.000Z"
+  }
+}
