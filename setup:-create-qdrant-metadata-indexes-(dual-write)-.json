@@ -1,0 +1,173 @@
+{
+  "id": "raNKeNYjqW7ntXQR",
+  "name": "Setup: Create Qdrant Metadata Indexes (Dual-Write)",
+  "active": false,
+  "activeVersionId": null,
+  "createdAt": "2026-08-13T22:04:15.408Z",
+  "updatedAt": "2026-09-08T13:04:52.585Z",
+  "isArchived": false,
+  "versionId": "b2f83b7f-a0a5-4613-8d9d-07239d59dcd6",
+  "triggerCount": 0,
+  "nodes": [
+    {
+      "parameters": {
+        "content": "## Setup: Create Qdrant Metadata Indexes (Dual-Write)\n\nWorkflow de una sola ejecucion manual, no un listener (sin webhook, sin activar).\n\nMotivo: 2026-09-07, se agrego un espejo del esquema viejo (pageContent + metadata.{sku,titulo,categoria,precio,stock,descripcion,Color}) DENTRO del payload plano que escribe Product_Management -> Subflow: Upsert Qdrant Point (ver seccion 21 del plan). El objetivo es que 'Catalogo Qdrant (DEV)' funcione SIN modificarlo mientras se termina de probar el resto del pipeline -- pero su codigo actual filtra por las rutas anidadas 'metadata.categoria', 'metadata.titulo' y 'metadata.descripcion', y Qdrant Cloud exige un indice explicito sobre cualquier campo de payload usado en un filtro (el mismo error 'Index required' ya visto en las secciones 10/11/13/16, pero esta vez sobre las rutas anidadas, que son indices DISTINTOS de los ya creados para los campos planos 'product_type'/'title'/'descripcion').\n\nEjecutar UNA vez desde el boton 'Test workflow'/'Execute workflow' en n8n, contra la coleccion de pruebas Baby'sWorld_Catalogo_Test. El indice queda permanentemente en la coleccion, no hace falta repetirlo ni dejarlo activo. Crear un indice que ya existe es una operacion segura en Qdrant (no falla ni duplica), asi que se puede volver a correr sin riesgo.",
+        "height": 420,
+        "width": 620,
+        "color": 4
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        3280,
+        592
+      ],
+      "id": "3314b8d6-b9c2-4ca6-a05a-178267e7d93a",
+      "name": "Sticky_Note"
+    },
+    {
+      "parameters": {},
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [
+        3280,
+        1072
+      ],
+      "id": "f7138e2e-54ed-4cb2-a547-dfb7b7226b50",
+      "name": "Manual_Trigger"
+    },
+    {
+      "parameters": {
+        "method": "PUT",
+        "url": "https://1537c683-48da-4631-ab76-ad698b6b9881.us-east-1-0.aws.cloud.qdrant.io:6333/collections/Baby'sWorld_Catalogo_Test/index",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "qdrantApi",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"field_name\": \"metadata.categoria\",\n  \"field_schema\": \"text\"\n}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        3568,
+        1072
+      ],
+      "id": "21dc94db-9b1b-437a-9c98-f087364bb336",
+      "name": "Qdrant_Create_Index_Metadata_Categoria",
+      "credentials": {
+        "qdrantApi": {
+          "id": "ZYv8vdr6tkTS4jYz",
+          "name": "QdrantApi account 3"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "method": "PUT",
+        "url": "https://1537c683-48da-4631-ab76-ad698b6b9881.us-east-1-0.aws.cloud.qdrant.io:6333/collections/Baby'sWorld_Catalogo_Test/index",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "qdrantApi",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"field_name\": \"metadata.titulo\",\n  \"field_schema\": \"text\"\n}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        3840,
+        1072
+      ],
+      "id": "d9a01ad2-c8b8-45b5-9b3f-8e9b6a8368d0",
+      "name": "Qdrant_Create_Index_Metadata_Titulo",
+      "credentials": {
+        "qdrantApi": {
+          "id": "ZYv8vdr6tkTS4jYz",
+          "name": "QdrantApi account 3"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "method": "PUT",
+        "url": "https://1537c683-48da-4631-ab76-ad698b6b9881.us-east-1-0.aws.cloud.qdrant.io:6333/collections/Baby'sWorld_Catalogo_Test/index",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "qdrantApi",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"field_name\": \"metadata.descripcion\",\n  \"field_schema\": \"text\"\n}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        4128,
+        1072
+      ],
+      "id": "e2433523-39db-47fc-9f18-ac612ca7692a",
+      "name": "Qdrant_Create_Index_Metadata_Descripcion",
+      "credentials": {
+        "qdrantApi": {
+          "id": "ZYv8vdr6tkTS4jYz",
+          "name": "QdrantApi account 3"
+        }
+      }
+    }
+  ],
+  "connections": {
+    "Manual_Trigger": {
+      "main": [
+        [
+          {
+            "node": "Qdrant_Create_Index_Metadata_Categoria",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Qdrant_Create_Index_Metadata_Categoria": {
+      "main": [
+        [
+          {
+            "node": "Qdrant_Create_Index_Metadata_Titulo",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Qdrant_Create_Index_Metadata_Titulo": {
+      "main": [
+        [
+          {
+            "node": "Qdrant_Create_Index_Metadata_Descripcion",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "nodeGroups": [],
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate",
+    "availableInMCP": false
+  },
+  "staticData": null,
+  "pinData": {},
+  "meta": null,
+  "tags": [],
+  "shared": [
+    {
+      "role": "workflow:owner",
+      "workflowId": "raNKeNYjqW7ntXQR",
+      "projectId": "8h8pwWGcWlnGEym3",
+      "createdAt": "2026-08-13T22:04:15.410Z",
+      "updatedAt": "2026-08-13T22:04:15.410Z"
+    }
+  ],
+  "activeVersion": null
+}
