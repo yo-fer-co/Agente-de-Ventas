@@ -1,0 +1,179 @@
+{
+  "id": "OYFFtGZJFhyESGWQ",
+  "name": "Subflow: Resolve Shopify Product Image (PROD)",
+  "active": true,
+  "activeVersionId": "e28c167f-3dcb-490a-be62-2dbce80f64f9",
+  "createdAt": "2026-10-08T23:17:12.246Z",
+  "updatedAt": "2026-10-09T00:06:17.370Z",
+  "isArchived": false,
+  "versionId": "e28c167f-3dcb-490a-be62-2dbce80f64f9",
+  "triggerCount": 0,
+  "nodes": [
+    {
+      "parameters": {
+        "content": "## Subflow: Resolve Shopify Product Image\n\nImplementa la logica descrita en la seccion 2.3 de la validacion: usa la imagen propia de la variante (variant.image_id) si existe; si no, usa la imagen featured/principal del producto.\n\nEs la misma distincion que hoy hace el Agente Asesor contra Drive (imagen principal vs. imagen por SKU) — este subflujo la centraliza para reusarla tanto desde Product_Management como, en la Fase 3 del plan, desde el Agente Asesor.\n\nInput: product (objeto completo del payload del webhook de Shopify, con images/variants/variant_ids/image_id).\nOutput: { main_image_url, variant_images: { variant_id: url } }.",
+        "height": 280,
+        "width": 400,
+        "color": 5
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        0,
+        0
+      ],
+      "id": "9e90bd2d-a01b-4159-a460-c8f471975d88",
+      "name": "Sticky_dc3ac4a5"
+    },
+    {
+      "parameters": {
+        "workflowInputs": {
+          "values": [
+            {
+              "name": "product",
+              "type": "object"
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.executeWorkflowTrigger",
+      "typeVersion": 1.1,
+      "position": [
+        432,
+        112
+      ],
+      "id": "32d6f5ee-4335-41e3-a1af-c5375f008e91",
+      "name": "When Executed by Another Workflow"
+    },
+    {
+      "parameters": {
+        "jsCode": "const input = $input.first().json ?? {};\nconst product = input.product ?? {};\n\nconst images = Array.isArray(product.images) ? product.images : [];\nconst variants = Array.isArray(product.variants) ? product.variants : [];\n\nfunction imageUrlById(imageId) {\n  if (!imageId) return null;\n  const found = images.find((img) => img.id === imageId);\n  return found ? found.src : null;\n}\n\nconst featured =\n  (product.image && product.image.src) ? product.image.src :\n  (images[0] ? images[0].src : null);\n\nconst variantImages = {};\nfor (const variant of variants) {\n  const byId = imageUrlById(variant.image_id);\n  variantImages[variant.id] = byId || featured || null;\n}\n\nreturn [{\n  json: {\n    main_image_url: featured,\n    variant_images: variantImages\n  }\n}];\n"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        688,
+        112
+      ],
+      "id": "11aa2a6d-3599-459f-a196-1a589105f860",
+      "name": "Resolve_Image"
+    }
+  ],
+  "connections": {
+    "When Executed by Another Workflow": {
+      "main": [
+        [
+          {
+            "node": "Resolve_Image",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "nodeGroups": [],
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate",
+    "availableInMCP": false,
+    "timeSavedMode": "fixed",
+    "errorWorkflow": "GZN4CJ6QgYxm77J7",
+    "callerPolicy": "workflowsFromSameOwner"
+  },
+  "staticData": null,
+  "pinData": {},
+  "meta": null,
+  "tags": [
+    {
+      "id": "2nDb4zfpAXOj9Pvx",
+      "name": "env:prod",
+      "createdAt": "2026-02-25T21:45:46.330Z",
+      "updatedAt": "2026-02-25T21:45:46.330Z"
+    }
+  ],
+  "shared": [
+    {
+      "role": "workflow:owner",
+      "workflowId": "OYFFtGZJFhyESGWQ",
+      "projectId": "8h8pwWGcWlnGEym3",
+      "createdAt": "2026-10-08T23:17:12.248Z",
+      "updatedAt": "2026-10-08T23:17:12.248Z"
+    }
+  ],
+  "activeVersion": {
+    "versionId": "e28c167f-3dcb-490a-be62-2dbce80f64f9",
+    "workflowId": "OYFFtGZJFhyESGWQ",
+    "nodes": [
+      {
+        "parameters": {
+          "content": "## Subflow: Resolve Shopify Product Image\n\nImplementa la logica descrita en la seccion 2.3 de la validacion: usa la imagen propia de la variante (variant.image_id) si existe; si no, usa la imagen featured/principal del producto.\n\nEs la misma distincion que hoy hace el Agente Asesor contra Drive (imagen principal vs. imagen por SKU) — este subflujo la centraliza para reusarla tanto desde Product_Management como, en la Fase 3 del plan, desde el Agente Asesor.\n\nInput: product (objeto completo del payload del webhook de Shopify, con images/variants/variant_ids/image_id).\nOutput: { main_image_url, variant_images: { variant_id: url } }.",
+          "height": 280,
+          "width": 400,
+          "color": 5
+        },
+        "type": "n8n-nodes-base.stickyNote",
+        "typeVersion": 1,
+        "position": [
+          0,
+          0
+        ],
+        "id": "9e90bd2d-a01b-4159-a460-c8f471975d88",
+        "name": "Sticky_dc3ac4a5"
+      },
+      {
+        "parameters": {
+          "workflowInputs": {
+            "values": [
+              {
+                "name": "product",
+                "type": "object"
+              }
+            ]
+          }
+        },
+        "type": "n8n-nodes-base.executeWorkflowTrigger",
+        "typeVersion": 1.1,
+        "position": [
+          432,
+          112
+        ],
+        "id": "32d6f5ee-4335-41e3-a1af-c5375f008e91",
+        "name": "When Executed by Another Workflow"
+      },
+      {
+        "parameters": {
+          "jsCode": "const input = $input.first().json ?? {};\nconst product = input.product ?? {};\n\nconst images = Array.isArray(product.images) ? product.images : [];\nconst variants = Array.isArray(product.variants) ? product.variants : [];\n\nfunction imageUrlById(imageId) {\n  if (!imageId) return null;\n  const found = images.find((img) => img.id === imageId);\n  return found ? found.src : null;\n}\n\nconst featured =\n  (product.image && product.image.src) ? product.image.src :\n  (images[0] ? images[0].src : null);\n\nconst variantImages = {};\nfor (const variant of variants) {\n  const byId = imageUrlById(variant.image_id);\n  variantImages[variant.id] = byId || featured || null;\n}\n\nreturn [{\n  json: {\n    main_image_url: featured,\n    variant_images: variantImages\n  }\n}];\n"
+        },
+        "type": "n8n-nodes-base.code",
+        "typeVersion": 2,
+        "position": [
+          688,
+          112
+        ],
+        "id": "11aa2a6d-3599-459f-a196-1a589105f860",
+        "name": "Resolve_Image"
+      }
+    ],
+    "connections": {
+      "When Executed by Another Workflow": {
+        "main": [
+          [
+            {
+              "node": "Resolve_Image",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      }
+    },
+    "nodeGroups": [],
+    "authors": "Michelo Vaca Cardozo",
+    "name": "Version e28c167f",
+    "description": "",
+    "autosaved": false,
+    "createdAt": "2026-10-08T23:17:12.250Z",
+    "updatedAt": "2026-10-09T00:07:48.000Z"
+  }
+}
