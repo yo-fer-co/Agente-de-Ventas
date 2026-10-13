@@ -1,0 +1,146 @@
+{
+  "id": "WiKEpPOq9FXnxNZb",
+  "name": "My workflow 24",
+  "active": false,
+  "activeVersionId": null,
+  "createdAt": "2026-09-29T16:29:33.560Z",
+  "updatedAt": "2026-10-05T17:28:03.369Z",
+  "isArchived": false,
+  "versionId": "16f8a0b0-3748-40ec-83a3-cfa8a91065c3",
+  "triggerCount": 0,
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {}
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.4,
+      "position": [
+        0,
+        0
+      ],
+      "id": "6d0fd890-3cb4-458b-be58-38615817544b",
+      "name": "Schedule Trigger"
+    },
+    {
+      "parameters": {
+        "documentId": {
+          "__rl": true,
+          "value": "1eIuCuXBabv37uxi5y--QEuUtxxRS0bclqadmBHBXsls",
+          "mode": "list",
+          "cachedResultName": "Cola_Publicaciones_Instagram",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1eIuCuXBabv37uxi5y--QEuUtxxRS0bclqadmBHBXsls/edit?usp=drivesdk"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "gid=0",
+          "mode": "list",
+          "cachedResultName": "Hoja 1",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1eIuCuXBabv37uxi5y--QEuUtxxRS0bclqadmBHBXsls/edit#gid=0"
+        },
+        "filtersUI": {
+          "values": [
+            {
+              "lookupColumn": "Estado",
+              "lookupValue": "aprobado"
+            }
+          ]
+        },
+        "options": {
+          "returnFirstMatch": true
+        }
+      },
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [
+        224,
+        0
+      ],
+      "id": "f59a6260-697b-4bcb-81a8-69c57c41338a",
+      "name": "Get row(s) in sheet",
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "WFnLF38LKngtpQ0D",
+          "name": "Google Sheets account 2"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://hook.us2.make.com/b8paypbfflnky0ssaycbhae5nfoybtlo",
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "text",
+              "value": "={{ $json.Copy_IA }}"
+            },
+            {
+              "name": "image_url",
+              "value": "={{ $json.Foto_URL }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.5,
+      "position": [
+        480,
+        0
+      ],
+      "id": "f248438f-e5dc-4840-8c74-1e1eda535e17",
+      "name": "HTTP Request"
+    }
+  ],
+  "connections": {
+    "Schedule Trigger": {
+      "main": [
+        [
+          {
+            "node": "Get row(s) in sheet",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get row(s) in sheet": {
+      "main": [
+        [
+          {
+            "node": "HTTP Request",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "nodeGroups": [],
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate"
+  },
+  "staticData": null,
+  "pinData": {},
+  "meta": {
+    "templateCredsSetupCompleted": true
+  },
+  "tags": [],
+  "shared": [
+    {
+      "role": "workflow:owner",
+      "workflowId": "WiKEpPOq9FXnxNZb",
+      "projectId": "tRHCC8ts4mkRGXGn",
+      "createdAt": "2026-09-29T16:29:33.562Z",
+      "updatedAt": "2026-09-29T16:29:33.562Z"
+    }
+  ],
+  "activeVersion": null
+}
