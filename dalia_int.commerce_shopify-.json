@@ -1,0 +1,2131 @@
+{
+  "id": "Xntzjsc7RKx7p04N",
+  "name": "DALIA_INT.commerce_shopify",
+  "active": true,
+  "activeVersionId": "a0f3fb1c-5fa4-4023-ba5a-88535b00b67f",
+  "createdAt": "2026-10-03T04:07:21.494Z",
+  "updatedAt": "2026-10-03T16:46:53.245Z",
+  "isArchived": false,
+  "versionId": "a0f3fb1c-5fa4-4023-ba5a-88535b00b67f",
+  "triggerCount": 1,
+  "nodes": [
+    {
+      "id": "93622f51-db70-4e85-a3de-35595cb18d84",
+      "name": "Solicitud del puerto",
+      "type": "n8n-nodes-base.executeWorkflowTrigger",
+      "typeVersion": 1.2,
+      "position": [
+        0,
+        560
+      ],
+      "parameters": {
+        "inputSource": "passthrough"
+      }
+    },
+    {
+      "id": "df32365d-ada8-4403-b4f9-c860b95f1e85",
+      "name": "Construir consulta GraphQL",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        224,
+        560
+      ],
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "jsCode": "// Construye la solicitud GraphQL (Admin API) para los puertos catalog, inventory y order_registry\nconst r = $json;\nconst s = r.settings || {};\nconst inp = r.input || {};\nconst fail = (status, code, message) => ({ json: { skip: true, status, error: { code, message } } });\nif (!s.shop_domain || !s.api_version) return fail('PERMANENT_ERROR', 'VALIDATION', 'faltan settings.shop_domain o settings.api_version');\nconst IMG = 'media(first: 10) { nodes { ... on MediaImage { image { url altText } } } }';\nconst VAR = 'id sku title price compareAtPrice availableForSale inventoryQuantity selectedOptions { name value } media(first: 1) { nodes { ... on MediaImage { image { url altText } } } }';\nconst PROD = 'id title handle description productType vendor tags status onlineStoreUrl updatedAt ' + IMG + ' variants(first: 100) { nodes { ' + VAR + ' } }';\nconst INV = 'id sku availableForSale inventoryQuantity inventoryItem { id inventoryLevels(first: 20) { nodes { location { id name } quantities(names: [\"available\"]) { name quantity } } } }';\nconst ORD = 'id name displayFinancialStatus displayFulfillmentStatus cancelledAt createdAt tags totalPriceSet { shopMoney { amount currencyCode } }';\nconst tag = (n) => 'dalia-' + String(n).replace(/[^A-Za-z0-9_-]/g, '');\nlet query, variables = {};\nconst key = r.port + '.' + r.operation;\nswitch (key) {\n  case 'catalog.search_products':\n  case 'catalog.list_products_page': {\n    let q = inp.query || '';\n    if (key === 'catalog.list_products_page' && inp.updated_since) q = (q ? q + ' AND ' : '') + \"updated_at:>'\" + inp.updated_since + \"'\";\n    query = 'query($n: Int!, $q: String, $after: String) { products(first: $n, query: $q, after: $after) { nodes { ' + PROD + ' } pageInfo { hasNextPage endCursor } } }';\n    variables = { n: Math.min(inp.limit || 10, 50), q: q || null, after: inp.cursor || null };\n    break;\n  }\n  case 'catalog.get_product':\n    query = 'query($id: ID!) { product(id: $id) { ' + PROD + ' } }';\n    variables = { id: inp.product_ref };\n    break;\n  case 'catalog.get_variants':\n    query = 'query($ids: [ID!]!) { nodes(ids: $ids) { ... on ProductVariant { ' + VAR + ' product { id title } } } }';\n    variables = { ids: inp.variant_refs || [] };\n    break;\n  case 'inventory.check_availability':\n    query = 'query($ids: [ID!]!) { nodes(ids: $ids) { ... on ProductVariant { ' + INV + ' } } }';\n    variables = { ids: inp.variant_refs || [] };\n    break;\n  case 'inventory.reserve':\n  case 'inventory.release':\n    return fail('NOT_SUPPORTED', 'NOT_SUPPORTED_BY_PROVIDER', 'Shopify no ofrece reservas de inventario por API en este adaptador; M5 aplica la configuración de su capacidad');\n  case 'order_registry.get_order':\n    if (inp.external_order_ref) { query = 'query($id: ID!) { order(id: $id) { ' + ORD + ' } }'; variables = { id: inp.external_order_ref }; }\n    else { query = 'query($q: String!) { orders(first: 1, query: $q) { nodes { ' + ORD + ' } } }'; variables = { q: 'tag:' + tag(inp.order_number) }; }\n    break;\n  case 'order_registry.create_order':\n    // Paso 1 (idempotencia): buscar si el pedido ya existe por su etiqueta dalia-<order_number>\n    if (!inp.order_number || !Array.isArray(inp.lines) || inp.lines.length === 0) return fail('PERMANENT_ERROR', 'VALIDATION', 'create_order requiere order_number y lines');\n    query = 'query($q: String!) { orders(first: 1, query: $q) { nodes { ' + ORD + ' } } }';\n    variables = { q: 'tag:' + tag(inp.order_number) };\n    break;\n  case 'order_registry.cancel_order':\n    query = 'mutation($id: ID!, $reason: OrderCancelReason!, $note: String) { orderCancel(orderId: $id, reason: $reason, restock: true, notifyCustomer: false, staffNote: $note) { job { id done } orderCancelUserErrors { field message code } } }';\n    variables = { id: inp.external_order_ref, reason: inp.reason_code || 'CUSTOMER', note: inp.reason ? String(inp.reason).slice(0, 250) : null };\n    break;\n  case 'order_registry.mark_paid':\n    query = 'mutation($id: ID!) { orderMarkAsPaid(input: { id: $id }) { order { id displayFinancialStatus } userErrors { field message } } }';\n    variables = { id: inp.external_order_ref };\n    break;\n  default:\n    return fail('NOT_SUPPORTED', 'OPERATION_NOT_SUPPORTED', key);\n}\nconst url = 'https://' + s.shop_domain + '/admin/api/' + s.api_version + '/graphql.json';\nreturn { json: { skip: false, key, url, payload: { query, variables }, timeout_ms: s.timeout_ms || 10000 } };"
+      }
+    },
+    {
+      "id": "b2ff5092-b91b-4440-b93e-994c1f4219e3",
+      "name": "Solicitud ejecutable",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        448,
+        560
+      ],
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose"
+          },
+          "conditions": [
+            {
+              "leftValue": "={{ $json.skip === false }}",
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        }
+      }
+    },
+    {
+      "id": "dd9280da-5cda-4fe6-8d44-d1f1c72f5ff8",
+      "name": "Autenticacion por token",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        672,
+        464
+      ],
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose"
+          },
+          "conditions": [
+            {
+              "leftValue": "={{ $(\"Solicitud del puerto\").item.json.settings.auth_mode === \"client_credentials\" }}",
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        }
+      }
+    },
+    {
+      "id": "ff0f832c-9208-45a7-b4d3-678271306fd4",
+      "name": "Leer token vigente",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.7,
+      "position": [
+        896,
+        384
+      ],
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "select dalia.int_token_get($1) as tok;",
+        "options": {
+          "queryReplacement": "={{ [ $(\"Solicitud del puerto\").item.json.settings.token_name ?? \"shopify\" ] }}"
+        }
+      },
+      "credentials": {
+        "postgres": {
+          "id": "HfCgVAjUygK1vrkU",
+          "name": "DALIA dev Supabase"
+        }
+      }
+    },
+    {
+      "id": "2a5c3d21-60e9-443c-81a2-d2f86710f06c",
+      "name": "Token vigente",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        1120,
+        384
+      ],
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose"
+          },
+          "conditions": [
+            {
+              "leftValue": "={{ $json.tok.valid === true }}",
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        }
+      }
+    },
+    {
+      "id": "af2b6c6d-3ac1-4214-b25a-23d456996630",
+      "name": "Consultar Shopify (token)",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.5,
+      "position": [
+        2016,
+        272
+      ],
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $(\"Construir consulta GraphQL\").item.json.url }}",
+        "authentication": "none",
+        "sendHeaders": true,
+        "specifyHeaders": "keypair",
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "X-Shopify-Access-Token",
+              "value": "={{ $json.tok.token }}"
+            }
+          ]
+        },
+        "sendBody": true,
+        "contentType": "json",
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify($(\"Construir consulta GraphQL\").item.json.payload) }}",
+        "options": {
+          "timeout": "={{ $(\"Construir consulta GraphQL\").item.json.timeout_ms }}",
+          "response": {
+            "response": {
+              "fullResponse": true,
+              "neverError": true,
+              "responseFormat": "json"
+            }
+          }
+        }
+      },
+      "onError": "continueErrorOutput"
+    },
+    {
+      "id": "9448e1e8-246e-4e41-9a69-5a66987eb686",
+      "name": "Solicitar token a Shopify",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.5,
+      "position": [
+        1344,
+        480
+      ],
+      "parameters": {
+        "method": "POST",
+        "url": "=https://{{ $(\"Solicitud del puerto\").item.json.settings.shop_domain }}/admin/oauth/access_token",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpCustomAuth",
+        "sendBody": true,
+        "contentType": "json",
+        "specifyBody": "json",
+        "jsonBody": "{}",
+        "options": {
+          "timeout": 10000,
+          "response": {
+            "response": {
+              "fullResponse": true,
+              "neverError": true,
+              "responseFormat": "json"
+            }
+          }
+        }
+      },
+      "onError": "continueErrorOutput",
+      "disabled": false,
+      "credentials": {
+        "httpCustomAuth": {
+          "id": "HpOxqTaPitHMzKT1",
+          "name": "DALIA Shopify App"
+        }
+      }
+    },
+    {
+      "id": "f50db154-5bad-4eb7-bc8b-696947ac074d",
+      "name": "Token obtenido",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        1568,
+        384
+      ],
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose"
+          },
+          "conditions": [
+            {
+              "leftValue": "={{ $json.statusCode === 200 && !!$json.body && !!$json.body.access_token }}",
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        }
+      }
+    },
+    {
+      "id": "43a79923-170d-4ddc-a763-ff6efe6eb594",
+      "name": "Guardar token",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.7,
+      "position": [
+        1792,
+        336
+      ],
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "select dalia.int_token_put($1, $2, $3::int) as tok;",
+        "options": {
+          "queryReplacement": "={{ [ $(\"Solicitud del puerto\").item.json.settings.token_name ?? \"shopify\", $json.body.access_token, $json.body.expires_in ?? null ] }}"
+        }
+      },
+      "credentials": {
+        "postgres": {
+          "id": "HfCgVAjUygK1vrkU",
+          "name": "DALIA dev Supabase"
+        }
+      }
+    },
+    {
+      "id": "df71c212-f1f6-46f4-9470-2588908208c3",
+      "name": "Fallo al obtener token",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1792,
+        560
+      ],
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "jsCode": "// No se obtuvo token de acceso (client credentials). Nada se envió a Shopify: nunca es UNKNOWN.\nconst res = $json || {};\nconst code = res.statusCode;\nconst auth = code === 400 || code === 401 || code === 403;\nconst msg = res.body?.error_description || res.body?.errors || res.error?.message || res.error || ('HTTP ' + code);\nreturn { json: { status: auth ? 'PERMANENT_ERROR' : 'RETRYABLE_ERROR', data: null, error: { code: auth ? 'AUTH_ERROR' : 'TOKEN_UNAVAILABLE', message: 'no se obtuvo token de Shopify: ' + String(typeof msg === 'object' ? JSON.stringify(msg) : msg).slice(0, 300), http_status: code ?? null } } };"
+      }
+    },
+    {
+      "id": "a2dfe260-196e-4cc3-bab1-ba57bb8f22ae",
+      "name": "Consultar Shopify",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.5,
+      "position": [
+        2016,
+        720
+      ],
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $json.url }}",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendBody": true,
+        "contentType": "json",
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify($json.payload) }}",
+        "options": {
+          "timeout": "={{ $json.timeout_ms }}",
+          "response": {
+            "response": {
+              "fullResponse": true,
+              "neverError": true,
+              "responseFormat": "json"
+            }
+          }
+        }
+      },
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "TE2Qbzwp3t6FJ764",
+          "name": "DALIA Shopify"
+        }
+      },
+      "onError": "continueErrorOutput"
+    },
+    {
+      "id": "e794fead-7d43-4d5d-8183-b33728006bc6",
+      "name": "Solicitud no ejecutable",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        672,
+        656
+      ],
+      "parameters": {
+        "mode": "manual",
+        "includeOtherFields": false,
+        "assignments": {
+          "assignments": [
+            {
+              "id": "n1",
+              "name": "status",
+              "value": "={{ $json.status }}",
+              "type": "string"
+            },
+            {
+              "id": "n2",
+              "name": "error",
+              "value": "={{ $json.error }}",
+              "type": "object"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "2a05346d-90b0-4f0e-b5cc-30413fdc935c",
+      "name": "Normalizar respuesta",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        2240,
+        192
+      ],
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "jsCode": "// Normaliza la respuesta de Shopify al contrato de cada puerto.\n// Se usa tanto para la primera llamada como para la de creación de pedido.\nconst req = $('Solicitud del puerto').item.json;\nconst s = req.settings || {};\nconst res = $json;\nconst code = res.statusCode;\nconst body = res.body || {};\nconst key = req.port + '.' + req.operation;\nconst sensitive = req.sensitive === true;\nconst creating = req.operation === 'create_order' && String($prevNode.name).startsWith('Crear pedido en Shopify');\nconst errs = Array.isArray(body.errors) ? body.errors : (body.errors ? [{ message: typeof body.errors === 'string' ? body.errors : JSON.stringify(body.errors) }] : []);\nif (code === 429 || code >= 500 || errs.some(e => e.extensions?.code === 'THROTTLED')) {\n  return { json: { status: (sensitive && creating) || (sensitive && req.operation !== 'create_order') ? 'UNKNOWN' : 'RETRYABLE_ERROR', data: null, error: { code: code >= 500 ? 'HTTP_' + code : 'THROTTLED', message: JSON.stringify(errs).slice(0, 500), http_status: code } } };\n}\nif (code === 401 || code === 403) {\n  return { json: { status: 'PERMANENT_ERROR', data: null, error: { code: 'AUTH_ERROR', message: 'Shopify rechazó la credencial (revise la app, sus permisos o ejecute dalia.int_token_invalidate)', http_status: code } } };\n}\nif (code < 200 || code >= 300 || errs.length) {\n  return { json: { status: 'PERMANENT_ERROR', data: null, error: { code: code >= 300 ? 'HTTP_' + code : 'GRAPHQL_ERROR', message: JSON.stringify(errs.length ? errs : body).slice(0, 500), http_status: code } } };\n}\nconst d = body.data || {};\nconst cur = s.currency || null;\nconst img = (m) => ((m && m.nodes) || []).filter(n => n && n.image).map(n => ({ url: n.image.url, alt: n.image.altText || null }));\nconst variant = (v) => ({ variant_ref: v.id, sku: v.sku || null, title: v.title, price: v.price !== undefined ? Number(v.price) : null, compare_at_price: v.compareAtPrice ? Number(v.compareAtPrice) : null, currency: cur, available: v.availableForSale === true, available_qty: v.inventoryQuantity ?? null, options: Object.fromEntries((v.selectedOptions || []).map(o => [o.name, o.value])), images: img(v.media), product_ref: v.product?.id || null });\nconst product = (p) => ({ product_ref: p.id, title: p.title, handle: p.handle, description: p.description, product_type: p.productType || null, vendor: p.vendor || null, tags: p.tags || [], status: p.status, url: p.onlineStoreUrl || null, images: img(p.media), variants: ((p.variants && p.variants.nodes) || []).map(variant), updated_at: p.updatedAt });\nconst order = (o) => o ? ({ external_order_ref: o.id, external_order_name: o.name, financial_status: o.displayFinancialStatus, fulfillment_status: o.displayFulfillmentStatus, cancelled: !!o.cancelledAt, cancelled_at: o.cancelledAt, created_at: o.createdAt, total: o.totalPriceSet ? Number(o.totalPriceSet.shopMoney.amount) : null, currency: o.totalPriceSet?.shopMoney?.currencyCode || null }) : null;\nconst ok = (data) => ({ json: { status: 'OK', data, error: null } });\nswitch (key) {\n  case 'catalog.search_products':\n  case 'catalog.list_products_page':\n    return ok({ products: (d.products?.nodes || []).map(product), next_cursor: d.products?.pageInfo?.hasNextPage ? d.products.pageInfo.endCursor : null });\n  case 'catalog.get_product':\n    return d.product ? ok({ product: product(d.product) }) : { json: { status: 'NOT_FOUND', data: null, error: { code: 'PRODUCT_NOT_FOUND', message: req.input?.product_ref } } };\n  case 'catalog.get_variants':\n    return ok({ variants: (d.nodes || []).filter(Boolean).map(variant) });\n  case 'inventory.check_availability':\n    return ok({ items: (d.nodes || []).filter(Boolean).map(v => {\n      const locs = (v.inventoryItem?.inventoryLevels?.nodes || []).map(l => ({ location_ref: l.location?.id, name: l.location?.name, available: (l.quantities || []).find(q => q.name === 'available')?.quantity ?? null }));\n      const byLoc = s.location_id ? locs.filter(l => l.location_ref === s.location_id) : locs;\n      const qty = byLoc.length ? byLoc.reduce((a, l) => a + (l.available || 0), 0) : (v.inventoryQuantity ?? null);\n      return { variant_ref: v.id, sku: v.sku || null, available_for_sale: v.availableForSale === true, available_qty: qty, locations: locs };\n    }) });\n  case 'order_registry.get_order': {\n    const o = d.order || (d.orders?.nodes || [])[0];\n    return o ? ok(order(o)) : { json: { status: 'NOT_FOUND', data: null, error: { code: 'ORDER_NOT_FOUND', message: 'no existe en Shopify' } } };\n  }\n  case 'order_registry.create_order': {\n    if (!creating) {\n      const found = (d.orders?.nodes || [])[0];\n      return { json: { status: 'OK', data: found ? Object.assign(order(found), { created: false }) : null, error: null, _needs_create: !found } };\n    }\n    const r = d.orderCreate || {};\n    if ((r.userErrors || []).length) return { json: { status: 'PERMANENT_ERROR', data: null, error: { code: 'USER_ERRORS', message: JSON.stringify(r.userErrors).slice(0, 500) } } };\n    return ok({ external_order_ref: r.order.id, external_order_name: r.order.name, created: true });\n  }\n  case 'order_registry.cancel_order': {\n    const r = d.orderCancel || {};\n    if ((r.orderCancelUserErrors || []).length) return { json: { status: 'PERMANENT_ERROR', data: null, error: { code: r.orderCancelUserErrors[0].code || 'USER_ERRORS', message: JSON.stringify(r.orderCancelUserErrors).slice(0, 500) } } };\n    return ok({ cancel_requested: true, job_ref: r.job?.id || null, job_done: r.job?.done ?? null });\n  }\n  case 'order_registry.mark_paid': {\n    const r = d.orderMarkAsPaid || {};\n    if ((r.userErrors || []).length) return { json: { status: 'PERMANENT_ERROR', data: null, error: { code: 'USER_ERRORS', message: JSON.stringify(r.userErrors).slice(0, 500) } } };\n    return ok({ external_order_ref: r.order.id, financial_status: r.order.displayFinancialStatus });\n  }\n}\nreturn { json: { status: 'NOT_SUPPORTED', data: null, error: { code: 'OPERATION_NOT_SUPPORTED', message: key } } };"
+      }
+    },
+    {
+      "id": "30be1052-9047-4bcb-9115-f89df8ef6265",
+      "name": "Falta crear pedido",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        2464,
+        192
+      ],
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose"
+          },
+          "conditions": [
+            {
+              "leftValue": "={{ $json._needs_create === true }}",
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        }
+      }
+    },
+    {
+      "id": "326673d6-5a16-405f-8653-374dfcadb069",
+      "name": "Construir creacion de pedido",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        2688,
+        96
+      ],
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "jsCode": "// Paso 2 de create_order: construir orderCreate si el pedido no existe todavía\nconst req = $('Solicitud del puerto').item.json;\nconst s = req.settings || {};\nconst inp = req.input || {};\nconst currency = inp.currency || s.currency;\nconst tag = 'dalia-' + String(inp.order_number).replace(/[^A-Za-z0-9_-]/g, '');\nconst order = {\n  currency,\n  lineItems: inp.lines.map(l => ({ variantId: l.variant_ref, quantity: l.qty, priceSet: { shopMoney: { amount: String(l.unit_price), currencyCode: currency } } })),\n  tags: ['dalia', tag],\n  note: inp.notes || null,\n  customAttributes: [{ key: 'dalia_order_number', value: String(inp.order_number) }],\n  financialStatus: 'PENDING'\n};\nif (inp.customer?.email) order.email = inp.customer.email;\nif (inp.customer?.phone) order.phone = inp.customer.phone;\nif (inp.shipping_address) {\n  const a = inp.shipping_address;\n  order.shippingAddress = { firstName: a.first_name, lastName: a.last_name || '-', address1: a.address1, address2: a.address2 || null, city: a.city, provinceCode: a.province_code || null, countryCode: a.country_code, zip: a.zip || null, phone: a.phone || inp.customer?.phone || null };\n}\nconst query = 'mutation($order: OrderCreateOrderInput!, $options: OrderCreateOptionsInput) { orderCreate(order: $order, options: $options) { order { id name } userErrors { field message } } }';\nconst variables = { order, options: { sendReceipt: false, sendFulfillmentReceipt: false, inventoryBehaviour: s.order_inventory_behaviour || 'DECREMENT_OBEYING_POLICY' } };\nconst url = 'https://' + s.shop_domain + '/admin/api/' + s.api_version + '/graphql.json';\n// Token (solo auth_mode = client_credentials): el recién obtenido o el vigente en caché\nlet token = null;\nif (s.auth_mode === 'client_credentials') {\n  try { token = $('Guardar token').item.json.tok.token; } catch (e) { token = null; }\n  if (!token) { try { token = $('Leer token vigente').item.json.tok.token; } catch (e) { token = null; } }\n}\nreturn { json: { auth_mode: s.auth_mode || 'static_token', token, url, payload: { query, variables }, timeout_ms: s.timeout_ms || 10000 } };"
+      }
+    },
+    {
+      "id": "21f91c2d-6b77-4bdd-8c92-28dbac2bdf42",
+      "name": "Crear con token",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        2912,
+        96
+      ],
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose"
+          },
+          "conditions": [
+            {
+              "leftValue": "={{ $json.auth_mode === \"client_credentials\" }}",
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        }
+      }
+    },
+    {
+      "id": "0070df9b-2bb9-4b04-86ba-8dc79f049df7",
+      "name": "Crear pedido en Shopify (token)",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.5,
+      "position": [
+        3136,
+        0
+      ],
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $(\"Construir creacion de pedido\").item.json.url }}",
+        "authentication": "none",
+        "sendHeaders": true,
+        "specifyHeaders": "keypair",
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "X-Shopify-Access-Token",
+              "value": "={{ $json.token }}"
+            }
+          ]
+        },
+        "sendBody": true,
+        "contentType": "json",
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify($(\"Construir creacion de pedido\").item.json.payload) }}",
+        "options": {
+          "timeout": "={{ $(\"Construir creacion de pedido\").item.json.timeout_ms }}",
+          "response": {
+            "response": {
+              "fullResponse": true,
+              "neverError": true,
+              "responseFormat": "json"
+            }
+          }
+        }
+      },
+      "onError": "continueErrorOutput"
+    },
+    {
+      "id": "61790ee2-c787-4a46-a2b0-7375cc374f0b",
+      "name": "Normalizar creacion",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        3360,
+        48
+      ],
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "jsCode": "// Normaliza la respuesta de Shopify al contrato de cada puerto.\n// Se usa tanto para la primera llamada como para la de creación de pedido.\nconst req = $('Solicitud del puerto').item.json;\nconst s = req.settings || {};\nconst res = $json;\nconst code = res.statusCode;\nconst body = res.body || {};\nconst key = req.port + '.' + req.operation;\nconst sensitive = req.sensitive === true;\nconst creating = req.operation === 'create_order' && String($prevNode.name).startsWith('Crear pedido en Shopify');\nconst errs = Array.isArray(body.errors) ? body.errors : (body.errors ? [{ message: typeof body.errors === 'string' ? body.errors : JSON.stringify(body.errors) }] : []);\nif (code === 429 || code >= 500 || errs.some(e => e.extensions?.code === 'THROTTLED')) {\n  return { json: { status: (sensitive && creating) || (sensitive && req.operation !== 'create_order') ? 'UNKNOWN' : 'RETRYABLE_ERROR', data: null, error: { code: code >= 500 ? 'HTTP_' + code : 'THROTTLED', message: JSON.stringify(errs).slice(0, 500), http_status: code } } };\n}\nif (code === 401 || code === 403) {\n  return { json: { status: 'PERMANENT_ERROR', data: null, error: { code: 'AUTH_ERROR', message: 'Shopify rechazó la credencial (revise la app, sus permisos o ejecute dalia.int_token_invalidate)', http_status: code } } };\n}\nif (code < 200 || code >= 300 || errs.length) {\n  return { json: { status: 'PERMANENT_ERROR', data: null, error: { code: code >= 300 ? 'HTTP_' + code : 'GRAPHQL_ERROR', message: JSON.stringify(errs.length ? errs : body).slice(0, 500), http_status: code } } };\n}\nconst d = body.data || {};\nconst cur = s.currency || null;\nconst img = (m) => ((m && m.nodes) || []).filter(n => n && n.image).map(n => ({ url: n.image.url, alt: n.image.altText || null }));\nconst variant = (v) => ({ variant_ref: v.id, sku: v.sku || null, title: v.title, price: v.price !== undefined ? Number(v.price) : null, compare_at_price: v.compareAtPrice ? Number(v.compareAtPrice) : null, currency: cur, available: v.availableForSale === true, available_qty: v.inventoryQuantity ?? null, options: Object.fromEntries((v.selectedOptions || []).map(o => [o.name, o.value])), images: img(v.media), product_ref: v.product?.id || null });\nconst product = (p) => ({ product_ref: p.id, title: p.title, handle: p.handle, description: p.description, product_type: p.productType || null, vendor: p.vendor || null, tags: p.tags || [], status: p.status, url: p.onlineStoreUrl || null, images: img(p.media), variants: ((p.variants && p.variants.nodes) || []).map(variant), updated_at: p.updatedAt });\nconst order = (o) => o ? ({ external_order_ref: o.id, external_order_name: o.name, financial_status: o.displayFinancialStatus, fulfillment_status: o.displayFulfillmentStatus, cancelled: !!o.cancelledAt, cancelled_at: o.cancelledAt, created_at: o.createdAt, total: o.totalPriceSet ? Number(o.totalPriceSet.shopMoney.amount) : null, currency: o.totalPriceSet?.shopMoney?.currencyCode || null }) : null;\nconst ok = (data) => ({ json: { status: 'OK', data, error: null } });\nswitch (key) {\n  case 'catalog.search_products':\n  case 'catalog.list_products_page':\n    return ok({ products: (d.products?.nodes || []).map(product), next_cursor: d.products?.pageInfo?.hasNextPage ? d.products.pageInfo.endCursor : null });\n  case 'catalog.get_product':\n    return d.product ? ok({ product: product(d.product) }) : { json: { status: 'NOT_FOUND', data: null, error: { code: 'PRODUCT_NOT_FOUND', message: req.input?.product_ref } } };\n  case 'catalog.get_variants':\n    return ok({ variants: (d.nodes || []).filter(Boolean).map(variant) });\n  case 'inventory.check_availability':\n    return ok({ items: (d.nodes || []).filter(Boolean).map(v => {\n      const locs = (v.inventoryItem?.inventoryLevels?.nodes || []).map(l => ({ location_ref: l.location?.id, name: l.location?.name, available: (l.quantities || []).find(q => q.name === 'available')?.quantity ?? null }));\n      const byLoc = s.location_id ? locs.filter(l => l.location_ref === s.location_id) : locs;\n      const qty = byLoc.length ? byLoc.reduce((a, l) => a + (l.available || 0), 0) : (v.inventoryQuantity ?? null);\n      return { variant_ref: v.id, sku: v.sku || null, available_for_sale: v.availableForSale === true, available_qty: qty, locations: locs };\n    }) });\n  case 'order_registry.get_order': {\n    const o = d.order || (d.orders?.nodes || [])[0];\n    return o ? ok(order(o)) : { json: { status: 'NOT_FOUND', data: null, error: { code: 'ORDER_NOT_FOUND', message: 'no existe en Shopify' } } };\n  }\n  case 'order_registry.create_order': {\n    if (!creating) {\n      const found = (d.orders?.nodes || [])[0];\n      return { json: { status: 'OK', data: found ? Object.assign(order(found), { created: false }) : null, error: null, _needs_create: !found } };\n    }\n    const r = d.orderCreate || {};\n    if ((r.userErrors || []).length) return { json: { status: 'PERMANENT_ERROR', data: null, error: { code: 'USER_ERRORS', message: JSON.stringify(r.userErrors).slice(0, 500) } } };\n    return ok({ external_order_ref: r.order.id, external_order_name: r.order.name, created: true });\n  }\n  case 'order_registry.cancel_order': {\n    const r = d.orderCancel || {};\n    if ((r.orderCancelUserErrors || []).length) return { json: { status: 'PERMANENT_ERROR', data: null, error: { code: r.orderCancelUserErrors[0].code || 'USER_ERRORS', message: JSON.stringify(r.orderCancelUserErrors).slice(0, 500) } } };\n    return ok({ cancel_requested: true, job_ref: r.job?.id || null, job_done: r.job?.done ?? null });\n  }\n  case 'order_registry.mark_paid': {\n    const r = d.orderMarkAsPaid || {};\n    if ((r.userErrors || []).length) return { json: { status: 'PERMANENT_ERROR', data: null, error: { code: 'USER_ERRORS', message: JSON.stringify(r.userErrors).slice(0, 500) } } };\n    return ok({ external_order_ref: r.order.id, financial_status: r.order.displayFinancialStatus });\n  }\n}\nreturn { json: { status: 'NOT_SUPPORTED', data: null, error: { code: 'OPERATION_NOT_SUPPORTED', message: key } } };"
+      }
+    },
+    {
+      "id": "ff4e5e15-8a9e-4ee7-b880-5128ba93ac1d",
+      "name": "Crear pedido en Shopify",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.5,
+      "position": [
+        3136,
+        224
+      ],
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $json.url }}",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendBody": true,
+        "contentType": "json",
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify($json.payload) }}",
+        "options": {
+          "timeout": "={{ $json.timeout_ms }}",
+          "response": {
+            "response": {
+              "fullResponse": true,
+              "neverError": true,
+              "responseFormat": "json"
+            }
+          }
+        }
+      },
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "TE2Qbzwp3t6FJ764",
+          "name": "DALIA Shopify"
+        }
+      },
+      "onError": "continueErrorOutput"
+    },
+    {
+      "id": "02f24ee7-aaf6-4a13-aa1a-8a402441b10b",
+      "name": "Resultado",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        2688,
+        336
+      ],
+      "parameters": {
+        "mode": "manual",
+        "includeOtherFields": false,
+        "assignments": {
+          "assignments": [
+            {
+              "id": "r1",
+              "name": "status",
+              "value": "={{ $json.status }}",
+              "type": "string"
+            },
+            {
+              "id": "r2",
+              "name": "data",
+              "value": "={{ $json.data }}",
+              "type": "object"
+            },
+            {
+              "id": "r3",
+              "name": "error",
+              "value": "={{ $json.error }}",
+              "type": "object"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "af03abe7-9a1e-4c4e-b5d1-aef4159312c6",
+      "name": "Clasificar fallo",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        3360,
+        512
+      ],
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "jsCode": "// Timeout o error de red: si la operación es sensible el resultado es INCIERTO (ASR-02)\nconst req = $('Solicitud del puerto').item.json;\nconst msg = $json.error?.message ?? String($json.error ?? 'error de red');\nconst status = req.sensitive === true ? 'UNKNOWN' : 'RETRYABLE_ERROR';\nreturn { json: { status, data: null, error: { code: /timeout/i.test(msg) ? 'TIMEOUT' : 'NETWORK_ERROR', message: msg } } };"
+      }
+    },
+    {
+      "id": "49f7dd2e-1871-488d-bb98-24bed74cf0c1",
+      "name": "Webhook Shopify",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2.1,
+      "position": [
+        0,
+        1040
+      ],
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "dalia/shopify",
+        "responseMode": "responseNode",
+        "options": {
+          "rawBody": true
+        }
+      },
+      "webhookId": "81cc7955-5198-4f6b-ac09-53f623916e34"
+    },
+    {
+      "id": "75e08d50-be9e-4d66-a15b-7b496db669b4",
+      "name": "Leer cuerpo crudo",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        224,
+        1040
+      ],
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "jsCode": "// Lee el cuerpo crudo y las cabeceras del webhook de Shopify (la firma se verifica en la base)\nconst item = $input.first();\nlet buf;\ntry { buf = await this.helpers.getBinaryDataBuffer(0, 'data'); } catch (e) { buf = Buffer.from(JSON.stringify(item.json.body || {}), 'utf8'); }\nconst h = item.json.headers || {};\nreturn [{ json: {\n  raw: buf.toString('utf8'),\n  signature: h['x-shopify-hmac-sha256'] || null,\n  topic: h['x-shopify-topic'] || null,\n  webhook_id: h['x-shopify-webhook-id'] || null,\n  shop: h['x-shopify-shop-domain'] || null,\n  body: item.json.body || {}\n} }];"
+      }
+    },
+    {
+      "id": "eeda324b-7e77-4aee-b86f-cf597efb1e79",
+      "name": "Verificar firma",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.7,
+      "position": [
+        448,
+        1040
+      ],
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "select dalia.int_inbound_check('commerce.shopify', $1, $2) as chk;",
+        "options": {
+          "queryReplacement": "={{ [ $json.raw, $json.signature ?? \"\" ] }}"
+        }
+      },
+      "credentials": {
+        "postgres": {
+          "id": "HfCgVAjUygK1vrkU",
+          "name": "DALIA dev Supabase"
+        }
+      },
+      "onError": "continueErrorOutput"
+    },
+    {
+      "id": "391aeea0-3699-4270-a062-545974059d0e",
+      "name": "Normalizar evento",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        672,
+        944
+      ],
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "jsCode": "// Normaliza el evento de Shopify al contrato sys.callback.v1 para SYS.03\nconst w = $('Leer cuerpo crudo').first().json;\nconst chk = $json.chk || {};\nconst topics = chk.settings?.topics || {};\nconst b = w.body || {};\nconst eventType = topics[w.topic] || ('unmapped.' + (w.topic || 'unknown'));\nlet payload;\nif (eventType.startsWith('order.')) {\n  const attr = (b.note_attributes || []).find(a => a.name === 'dalia_order_number');\n  const tagNum = String(b.tags || '').split(',').map(t => t.trim()).find(t => t.startsWith('dalia-'));\n  payload = { external_order_ref: b.admin_graphql_api_id || null, external_order_name: b.name || null, order_number: attr ? attr.value : (tagNum ? tagNum.slice(6) : null), financial_status: b.financial_status || null, fulfillment_status: b.fulfillment_status || null, cancelled_at: b.cancelled_at || null, updated_at: b.updated_at || null };\n} else if (eventType.startsWith('inventory.')) {\n  payload = { inventory_item_ref: b.inventory_item_id ? 'gid://shopify/InventoryItem/' + b.inventory_item_id : null, location_ref: b.location_id ? 'gid://shopify/Location/' + b.location_id : null, available: b.available ?? null, updated_at: b.updated_at || null };\n} else if (eventType.startsWith('product.')) {\n  payload = { product_ref: b.admin_graphql_api_id || (b.id ? 'gid://shopify/Product/' + b.id : null), updated_at: b.updated_at || null };\n} else {\n  payload = { topic: w.topic };\n}\nreturn [{ json: { source: 'commerce.shopify', external_event_id: w.webhook_id || ('sin-id-' + Date.now()), event_type: eventType, signature_valid: chk.signature_valid === true, payload, envelope: {} } }];"
+      }
+    },
+    {
+      "id": "408fe3a0-51f3-4da3-81eb-47e0c3264ffb",
+      "name": "Entregar a SYS.03",
+      "type": "n8n-nodes-base.executeWorkflow",
+      "typeVersion": 1.3,
+      "position": [
+        896,
+        944
+      ],
+      "parameters": {
+        "mode": "each",
+        "source": "database",
+        "workflowId": {
+          "__rl": true,
+          "mode": "id",
+          "value": "utnQfoflAlLrlVVx"
+        },
+        "options": {
+          "waitForSubWorkflow": true
+        }
+      },
+      "onError": "continueRegularOutput"
+    },
+    {
+      "id": "7b2fd3ec-36fd-41f7-a098-2c6853828fe5",
+      "name": "Responder",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.5,
+      "position": [
+        1120,
+        944
+      ],
+      "parameters": {
+        "respondWith": "text",
+        "responseBody": "ok",
+        "options": {
+          "responseCode": "={{ $input.all().some(i => i.json.error != null && i.json.status === undefined && i.json.r === undefined && i.json.inbox_id === undefined) ? 500 : 200 }}"
+        }
+      },
+      "executeOnce": true
+    },
+    {
+      "id": "15ac3e9f-f7c5-4323-83a6-3c437b4be91b",
+      "name": "Responder error",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.5,
+      "position": [
+        672,
+        1136
+      ],
+      "parameters": {
+        "respondWith": "text",
+        "responseBody": "retry",
+        "options": {
+          "responseCode": 500
+        }
+      },
+      "executeOnce": true
+    }
+  ],
+  "connections": {
+    "Solicitud del puerto": {
+      "main": [
+        [
+          {
+            "node": "Construir consulta GraphQL",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Construir consulta GraphQL": {
+      "main": [
+        [
+          {
+            "node": "Solicitud ejecutable",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Solicitud ejecutable": {
+      "main": [
+        [
+          {
+            "node": "Autenticacion por token",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Solicitud no ejecutable",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Autenticacion por token": {
+      "main": [
+        [
+          {
+            "node": "Leer token vigente",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Consultar Shopify",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Leer token vigente": {
+      "main": [
+        [
+          {
+            "node": "Token vigente",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Token vigente": {
+      "main": [
+        [
+          {
+            "node": "Consultar Shopify (token)",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Solicitar token a Shopify",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Consultar Shopify (token)": {
+      "main": [
+        [
+          {
+            "node": "Normalizar respuesta",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Clasificar fallo",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Solicitar token a Shopify": {
+      "main": [
+        [
+          {
+            "node": "Token obtenido",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Fallo al obtener token",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Token obtenido": {
+      "main": [
+        [
+          {
+            "node": "Guardar token",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Fallo al obtener token",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Guardar token": {
+      "main": [
+        [
+          {
+            "node": "Consultar Shopify (token)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Consultar Shopify": {
+      "main": [
+        [
+          {
+            "node": "Normalizar respuesta",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Clasificar fallo",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Normalizar respuesta": {
+      "main": [
+        [
+          {
+            "node": "Falta crear pedido",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Falta crear pedido": {
+      "main": [
+        [
+          {
+            "node": "Construir creacion de pedido",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Resultado",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Construir creacion de pedido": {
+      "main": [
+        [
+          {
+            "node": "Crear con token",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Crear con token": {
+      "main": [
+        [
+          {
+            "node": "Crear pedido en Shopify (token)",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Crear pedido en Shopify",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Crear pedido en Shopify (token)": {
+      "main": [
+        [
+          {
+            "node": "Normalizar creacion",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Clasificar fallo",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Crear pedido en Shopify": {
+      "main": [
+        [
+          {
+            "node": "Normalizar creacion",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Clasificar fallo",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Webhook Shopify": {
+      "main": [
+        [
+          {
+            "node": "Leer cuerpo crudo",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Leer cuerpo crudo": {
+      "main": [
+        [
+          {
+            "node": "Verificar firma",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Verificar firma": {
+      "main": [
+        [
+          {
+            "node": "Normalizar evento",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Responder error",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Normalizar evento": {
+      "main": [
+        [
+          {
+            "node": "Entregar a SYS.03",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Entregar a SYS.03": {
+      "main": [
+        [
+          {
+            "node": "Responder",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "nodeGroups": [],
+  "settings": {
+    "executionOrder": "v1",
+    "availableInMCP": true,
+    "errorWorkflow": "cjjQno2MxMTT3Icc",
+    "timezone": "America/Bogota",
+    "saveManualExecutions": true,
+    "saveDataErrorExecution": "all",
+    "saveDataSuccessExecution": "none",
+    "callerPolicy": "workflowsFromSameOwner"
+  },
+  "staticData": null,
+  "pinData": null,
+  "meta": {
+    "aiBuilderAssisted": true,
+    "builderVariant": "mcp"
+  },
+  "tags": [],
+  "shared": [
+    {
+      "role": "workflow:owner",
+      "workflowId": "Xntzjsc7RKx7p04N",
+      "projectId": "tRHCC8ts4mkRGXGn",
+      "createdAt": "2026-10-09T21:09:17.775Z",
+      "updatedAt": "2026-10-09T21:09:17.775Z"
+    }
+  ],
+  "activeVersion": {
+    "versionId": "a0f3fb1c-5fa4-4023-ba5a-88535b00b67f",
+    "workflowId": "Xntzjsc7RKx7p04N",
+    "nodes": [
+      {
+        "id": "93622f51-db70-4e85-a3de-35595cb18d84",
+        "name": "Solicitud del puerto",
+        "type": "n8n-nodes-base.executeWorkflowTrigger",
+        "typeVersion": 1.2,
+        "position": [
+          0,
+          560
+        ],
+        "parameters": {
+          "inputSource": "passthrough"
+        }
+      },
+      {
+        "id": "df32365d-ada8-4403-b4f9-c860b95f1e85",
+        "name": "Construir consulta GraphQL",
+        "type": "n8n-nodes-base.code",
+        "typeVersion": 2,
+        "position": [
+          224,
+          560
+        ],
+        "parameters": {
+          "mode": "runOnceForEachItem",
+          "jsCode": "// Construye la solicitud GraphQL (Admin API) para los puertos catalog, inventory y order_registry\nconst r = $json;\nconst s = r.settings || {};\nconst inp = r.input || {};\nconst fail = (status, code, message) => ({ json: { skip: true, status, error: { code, message } } });\nif (!s.shop_domain || !s.api_version) return fail('PERMANENT_ERROR', 'VALIDATION', 'faltan settings.shop_domain o settings.api_version');\nconst IMG = 'media(first: 10) { nodes { ... on MediaImage { image { url altText } } } }';\nconst VAR = 'id sku title price compareAtPrice availableForSale inventoryQuantity selectedOptions { name value } media(first: 1) { nodes { ... on MediaImage { image { url altText } } } }';\nconst PROD = 'id title handle description productType vendor tags status onlineStoreUrl updatedAt ' + IMG + ' variants(first: 100) { nodes { ' + VAR + ' } }';\nconst INV = 'id sku availableForSale inventoryQuantity inventoryItem { id inventoryLevels(first: 20) { nodes { location { id name } quantities(names: [\"available\"]) { name quantity } } } }';\nconst ORD = 'id name displayFinancialStatus displayFulfillmentStatus cancelledAt createdAt tags totalPriceSet { shopMoney { amount currencyCode } }';\nconst tag = (n) => 'dalia-' + String(n).replace(/[^A-Za-z0-9_-]/g, '');\nlet query, variables = {};\nconst key = r.port + '.' + r.operation;\nswitch (key) {\n  case 'catalog.search_products':\n  case 'catalog.list_products_page': {\n    let q = inp.query || '';\n    if (key === 'catalog.list_products_page' && inp.updated_since) q = (q ? q + ' AND ' : '') + \"updated_at:>'\" + inp.updated_since + \"'\";\n    query = 'query($n: Int!, $q: String, $after: String) { products(first: $n, query: $q, after: $after) { nodes { ' + PROD + ' } pageInfo { hasNextPage endCursor } } }';\n    variables = { n: Math.min(inp.limit || 10, 50), q: q || null, after: inp.cursor || null };\n    break;\n  }\n  case 'catalog.get_product':\n    query = 'query($id: ID!) { product(id: $id) { ' + PROD + ' } }';\n    variables = { id: inp.product_ref };\n    break;\n  case 'catalog.get_variants':\n    query = 'query($ids: [ID!]!) { nodes(ids: $ids) { ... on ProductVariant { ' + VAR + ' product { id title } } } }';\n    variables = { ids: inp.variant_refs || [] };\n    break;\n  case 'inventory.check_availability':\n    query = 'query($ids: [ID!]!) { nodes(ids: $ids) { ... on ProductVariant { ' + INV + ' } } }';\n    variables = { ids: inp.variant_refs || [] };\n    break;\n  case 'inventory.reserve':\n  case 'inventory.release':\n    return fail('NOT_SUPPORTED', 'NOT_SUPPORTED_BY_PROVIDER', 'Shopify no ofrece reservas de inventario por API en este adaptador; M5 aplica la configuración de su capacidad');\n  case 'order_registry.get_order':\n    if (inp.external_order_ref) { query = 'query($id: ID!) { order(id: $id) { ' + ORD + ' } }'; variables = { id: inp.external_order_ref }; }\n    else { query = 'query($q: String!) { orders(first: 1, query: $q) { nodes { ' + ORD + ' } } }'; variables = { q: 'tag:' + tag(inp.order_number) }; }\n    break;\n  case 'order_registry.create_order':\n    // Paso 1 (idempotencia): buscar si el pedido ya existe por su etiqueta dalia-<order_number>\n    if (!inp.order_number || !Array.isArray(inp.lines) || inp.lines.length === 0) return fail('PERMANENT_ERROR', 'VALIDATION', 'create_order requiere order_number y lines');\n    query = 'query($q: String!) { orders(first: 1, query: $q) { nodes { ' + ORD + ' } } }';\n    variables = { q: 'tag:' + tag(inp.order_number) };\n    break;\n  case 'order_registry.cancel_order':\n    query = 'mutation($id: ID!, $reason: OrderCancelReason!, $note: String) { orderCancel(orderId: $id, reason: $reason, restock: true, notifyCustomer: false, staffNote: $note) { job { id done } orderCancelUserErrors { field message code } } }';\n    variables = { id: inp.external_order_ref, reason: inp.reason_code || 'CUSTOMER', note: inp.reason ? String(inp.reason).slice(0, 250) : null };\n    break;\n  case 'order_registry.mark_paid':\n    query = 'mutation($id: ID!) { orderMarkAsPaid(input: { id: $id }) { order { id displayFinancialStatus } userErrors { field message } } }';\n    variables = { id: inp.external_order_ref };\n    break;\n  default:\n    return fail('NOT_SUPPORTED', 'OPERATION_NOT_SUPPORTED', key);\n}\nconst url = 'https://' + s.shop_domain + '/admin/api/' + s.api_version + '/graphql.json';\nreturn { json: { skip: false, key, url, payload: { query, variables }, timeout_ms: s.timeout_ms || 10000 } };"
+        }
+      },
+      {
+        "id": "b2ff5092-b91b-4440-b93e-994c1f4219e3",
+        "name": "Solicitud ejecutable",
+        "type": "n8n-nodes-base.if",
+        "typeVersion": 2.2,
+        "position": [
+          448,
+          560
+        ],
+        "parameters": {
+          "conditions": {
+            "options": {
+              "caseSensitive": true,
+              "leftValue": "",
+              "typeValidation": "loose"
+            },
+            "conditions": [
+              {
+                "leftValue": "={{ $json.skip === false }}",
+                "operator": {
+                  "type": "boolean",
+                  "operation": "true",
+                  "singleValue": true
+                }
+              }
+            ],
+            "combinator": "and"
+          }
+        }
+      },
+      {
+        "id": "dd9280da-5cda-4fe6-8d44-d1f1c72f5ff8",
+        "name": "Autenticacion por token",
+        "type": "n8n-nodes-base.if",
+        "typeVersion": 2.2,
+        "position": [
+          672,
+          464
+        ],
+        "parameters": {
+          "conditions": {
+            "options": {
+              "caseSensitive": true,
+              "leftValue": "",
+              "typeValidation": "loose"
+            },
+            "conditions": [
+              {
+                "leftValue": "={{ $(\"Solicitud del puerto\").item.json.settings.auth_mode === \"client_credentials\" }}",
+                "operator": {
+                  "type": "boolean",
+                  "operation": "true",
+                  "singleValue": true
+                }
+              }
+            ],
+            "combinator": "and"
+          }
+        }
+      },
+      {
+        "id": "ff0f832c-9208-45a7-b4d3-678271306fd4",
+        "name": "Leer token vigente",
+        "type": "n8n-nodes-base.postgres",
+        "typeVersion": 2.7,
+        "position": [
+          896,
+          384
+        ],
+        "parameters": {
+          "operation": "executeQuery",
+          "query": "select dalia.int_token_get($1) as tok;",
+          "options": {
+            "queryReplacement": "={{ [ $(\"Solicitud del puerto\").item.json.settings.token_name ?? \"shopify\" ] }}"
+          }
+        },
+        "credentials": {
+          "postgres": {
+            "id": "HfCgVAjUygK1vrkU",
+            "name": "DALIA dev Supabase"
+          }
+        }
+      },
+      {
+        "id": "2a5c3d21-60e9-443c-81a2-d2f86710f06c",
+        "name": "Token vigente",
+        "type": "n8n-nodes-base.if",
+        "typeVersion": 2.2,
+        "position": [
+          1120,
+          384
+        ],
+        "parameters": {
+          "conditions": {
+            "options": {
+              "caseSensitive": true,
+              "leftValue": "",
+              "typeValidation": "loose"
+            },
+            "conditions": [
+              {
+                "leftValue": "={{ $json.tok.valid === true }}",
+                "operator": {
+                  "type": "boolean",
+                  "operation": "true",
+                  "singleValue": true
+                }
+              }
+            ],
+            "combinator": "and"
+          }
+        }
+      },
+      {
+        "id": "af2b6c6d-3ac1-4214-b25a-23d456996630",
+        "name": "Consultar Shopify (token)",
+        "type": "n8n-nodes-base.httpRequest",
+        "typeVersion": 4.5,
+        "position": [
+          2016,
+          272
+        ],
+        "parameters": {
+          "method": "POST",
+          "url": "={{ $(\"Construir consulta GraphQL\").item.json.url }}",
+          "authentication": "none",
+          "sendHeaders": true,
+          "specifyHeaders": "keypair",
+          "headerParameters": {
+            "parameters": [
+              {
+                "name": "X-Shopify-Access-Token",
+                "value": "={{ $json.tok.token }}"
+              }
+            ]
+          },
+          "sendBody": true,
+          "contentType": "json",
+          "specifyBody": "json",
+          "jsonBody": "={{ JSON.stringify($(\"Construir consulta GraphQL\").item.json.payload) }}",
+          "options": {
+            "timeout": "={{ $(\"Construir consulta GraphQL\").item.json.timeout_ms }}",
+            "response": {
+              "response": {
+                "fullResponse": true,
+                "neverError": true,
+                "responseFormat": "json"
+              }
+            }
+          }
+        },
+        "onError": "continueErrorOutput"
+      },
+      {
+        "id": "9448e1e8-246e-4e41-9a69-5a66987eb686",
+        "name": "Solicitar token a Shopify",
+        "type": "n8n-nodes-base.httpRequest",
+        "typeVersion": 4.5,
+        "position": [
+          1344,
+          480
+        ],
+        "parameters": {
+          "method": "POST",
+          "url": "=https://{{ $(\"Solicitud del puerto\").item.json.settings.shop_domain }}/admin/oauth/access_token",
+          "authentication": "genericCredentialType",
+          "genericAuthType": "httpCustomAuth",
+          "sendBody": true,
+          "contentType": "json",
+          "specifyBody": "json",
+          "jsonBody": "{}",
+          "options": {
+            "timeout": 10000,
+            "response": {
+              "response": {
+                "fullResponse": true,
+                "neverError": true,
+                "responseFormat": "json"
+              }
+            }
+          }
+        },
+        "onError": "continueErrorOutput",
+        "disabled": false,
+        "credentials": {
+          "httpCustomAuth": {
+            "id": "HpOxqTaPitHMzKT1",
+            "name": "DALIA Shopify App"
+          }
+        }
+      },
+      {
+        "id": "f50db154-5bad-4eb7-bc8b-696947ac074d",
+        "name": "Token obtenido",
+        "type": "n8n-nodes-base.if",
+        "typeVersion": 2.2,
+        "position": [
+          1568,
+          384
+        ],
+        "parameters": {
+          "conditions": {
+            "options": {
+              "caseSensitive": true,
+              "leftValue": "",
+              "typeValidation": "loose"
+            },
+            "conditions": [
+              {
+                "leftValue": "={{ $json.statusCode === 200 && !!$json.body && !!$json.body.access_token }}",
+                "operator": {
+                  "type": "boolean",
+                  "operation": "true",
+                  "singleValue": true
+                }
+              }
+            ],
+            "combinator": "and"
+          }
+        }
+      },
+      {
+        "id": "43a79923-170d-4ddc-a763-ff6efe6eb594",
+        "name": "Guardar token",
+        "type": "n8n-nodes-base.postgres",
+        "typeVersion": 2.7,
+        "position": [
+          1792,
+          336
+        ],
+        "parameters": {
+          "operation": "executeQuery",
+          "query": "select dalia.int_token_put($1, $2, $3::int) as tok;",
+          "options": {
+            "queryReplacement": "={{ [ $(\"Solicitud del puerto\").item.json.settings.token_name ?? \"shopify\", $json.body.access_token, $json.body.expires_in ?? null ] }}"
+          }
+        },
+        "credentials": {
+          "postgres": {
+            "id": "HfCgVAjUygK1vrkU",
+            "name": "DALIA dev Supabase"
+          }
+        }
+      },
+      {
+        "id": "df71c212-f1f6-46f4-9470-2588908208c3",
+        "name": "Fallo al obtener token",
+        "type": "n8n-nodes-base.code",
+        "typeVersion": 2,
+        "position": [
+          1792,
+          560
+        ],
+        "parameters": {
+          "mode": "runOnceForEachItem",
+          "jsCode": "// No se obtuvo token de acceso (client credentials). Nada se envió a Shopify: nunca es UNKNOWN.\nconst res = $json || {};\nconst code = res.statusCode;\nconst auth = code === 400 || code === 401 || code === 403;\nconst msg = res.body?.error_description || res.body?.errors || res.error?.message || res.error || ('HTTP ' + code);\nreturn { json: { status: auth ? 'PERMANENT_ERROR' : 'RETRYABLE_ERROR', data: null, error: { code: auth ? 'AUTH_ERROR' : 'TOKEN_UNAVAILABLE', message: 'no se obtuvo token de Shopify: ' + String(typeof msg === 'object' ? JSON.stringify(msg) : msg).slice(0, 300), http_status: code ?? null } } };"
+        }
+      },
+      {
+        "id": "a2dfe260-196e-4cc3-bab1-ba57bb8f22ae",
+        "name": "Consultar Shopify",
+        "type": "n8n-nodes-base.httpRequest",
+        "typeVersion": 4.5,
+        "position": [
+          2016,
+          720
+        ],
+        "parameters": {
+          "method": "POST",
+          "url": "={{ $json.url }}",
+          "authentication": "genericCredentialType",
+          "genericAuthType": "httpHeaderAuth",
+          "sendBody": true,
+          "contentType": "json",
+          "specifyBody": "json",
+          "jsonBody": "={{ JSON.stringify($json.payload) }}",
+          "options": {
+            "timeout": "={{ $json.timeout_ms }}",
+            "response": {
+              "response": {
+                "fullResponse": true,
+                "neverError": true,
+                "responseFormat": "json"
+              }
+            }
+          }
+        },
+        "credentials": {
+          "httpHeaderAuth": {
+            "id": "TE2Qbzwp3t6FJ764",
+            "name": "DALIA Shopify"
+          }
+        },
+        "onError": "continueErrorOutput"
+      },
+      {
+        "id": "e794fead-7d43-4d5d-8183-b33728006bc6",
+        "name": "Solicitud no ejecutable",
+        "type": "n8n-nodes-base.set",
+        "typeVersion": 3.4,
+        "position": [
+          672,
+          656
+        ],
+        "parameters": {
+          "mode": "manual",
+          "includeOtherFields": false,
+          "assignments": {
+            "assignments": [
+              {
+                "id": "n1",
+                "name": "status",
+                "value": "={{ $json.status }}",
+                "type": "string"
+              },
+              {
+                "id": "n2",
+                "name": "error",
+                "value": "={{ $json.error }}",
+                "type": "object"
+              }
+            ]
+          }
+        }
+      },
+      {
+        "id": "2a05346d-90b0-4f0e-b5cc-30413fdc935c",
+        "name": "Normalizar respuesta",
+        "type": "n8n-nodes-base.code",
+        "typeVersion": 2,
+        "position": [
+          2240,
+          192
+        ],
+        "parameters": {
+          "mode": "runOnceForEachItem",
+          "jsCode": "// Normaliza la respuesta de Shopify al contrato de cada puerto.\n// Se usa tanto para la primera llamada como para la de creación de pedido.\nconst req = $('Solicitud del puerto').item.json;\nconst s = req.settings || {};\nconst res = $json;\nconst code = res.statusCode;\nconst body = res.body || {};\nconst key = req.port + '.' + req.operation;\nconst sensitive = req.sensitive === true;\nconst creating = req.operation === 'create_order' && String($prevNode.name).startsWith('Crear pedido en Shopify');\nconst errs = Array.isArray(body.errors) ? body.errors : (body.errors ? [{ message: typeof body.errors === 'string' ? body.errors : JSON.stringify(body.errors) }] : []);\nif (code === 429 || code >= 500 || errs.some(e => e.extensions?.code === 'THROTTLED')) {\n  return { json: { status: (sensitive && creating) || (sensitive && req.operation !== 'create_order') ? 'UNKNOWN' : 'RETRYABLE_ERROR', data: null, error: { code: code >= 500 ? 'HTTP_' + code : 'THROTTLED', message: JSON.stringify(errs).slice(0, 500), http_status: code } } };\n}\nif (code === 401 || code === 403) {\n  return { json: { status: 'PERMANENT_ERROR', data: null, error: { code: 'AUTH_ERROR', message: 'Shopify rechazó la credencial (revise la app, sus permisos o ejecute dalia.int_token_invalidate)', http_status: code } } };\n}\nif (code < 200 || code >= 300 || errs.length) {\n  return { json: { status: 'PERMANENT_ERROR', data: null, error: { code: code >= 300 ? 'HTTP_' + code : 'GRAPHQL_ERROR', message: JSON.stringify(errs.length ? errs : body).slice(0, 500), http_status: code } } };\n}\nconst d = body.data || {};\nconst cur = s.currency || null;\nconst img = (m) => ((m && m.nodes) || []).filter(n => n && n.image).map(n => ({ url: n.image.url, alt: n.image.altText || null }));\nconst variant = (v) => ({ variant_ref: v.id, sku: v.sku || null, title: v.title, price: v.price !== undefined ? Number(v.price) : null, compare_at_price: v.compareAtPrice ? Number(v.compareAtPrice) : null, currency: cur, available: v.availableForSale === true, available_qty: v.inventoryQuantity ?? null, options: Object.fromEntries((v.selectedOptions || []).map(o => [o.name, o.value])), images: img(v.media), product_ref: v.product?.id || null });\nconst product = (p) => ({ product_ref: p.id, title: p.title, handle: p.handle, description: p.description, product_type: p.productType || null, vendor: p.vendor || null, tags: p.tags || [], status: p.status, url: p.onlineStoreUrl || null, images: img(p.media), variants: ((p.variants && p.variants.nodes) || []).map(variant), updated_at: p.updatedAt });\nconst order = (o) => o ? ({ external_order_ref: o.id, external_order_name: o.name, financial_status: o.displayFinancialStatus, fulfillment_status: o.displayFulfillmentStatus, cancelled: !!o.cancelledAt, cancelled_at: o.cancelledAt, created_at: o.createdAt, total: o.totalPriceSet ? Number(o.totalPriceSet.shopMoney.amount) : null, currency: o.totalPriceSet?.shopMoney?.currencyCode || null }) : null;\nconst ok = (data) => ({ json: { status: 'OK', data, error: null } });\nswitch (key) {\n  case 'catalog.search_products':\n  case 'catalog.list_products_page':\n    return ok({ products: (d.products?.nodes || []).map(product), next_cursor: d.products?.pageInfo?.hasNextPage ? d.products.pageInfo.endCursor : null });\n  case 'catalog.get_product':\n    return d.product ? ok({ product: product(d.product) }) : { json: { status: 'NOT_FOUND', data: null, error: { code: 'PRODUCT_NOT_FOUND', message: req.input?.product_ref } } };\n  case 'catalog.get_variants':\n    return ok({ variants: (d.nodes || []).filter(Boolean).map(variant) });\n  case 'inventory.check_availability':\n    return ok({ items: (d.nodes || []).filter(Boolean).map(v => {\n      const locs = (v.inventoryItem?.inventoryLevels?.nodes || []).map(l => ({ location_ref: l.location?.id, name: l.location?.name, available: (l.quantities || []).find(q => q.name === 'available')?.quantity ?? null }));\n      const byLoc = s.location_id ? locs.filter(l => l.location_ref === s.location_id) : locs;\n      const qty = byLoc.length ? byLoc.reduce((a, l) => a + (l.available || 0), 0) : (v.inventoryQuantity ?? null);\n      return { variant_ref: v.id, sku: v.sku || null, available_for_sale: v.availableForSale === true, available_qty: qty, locations: locs };\n    }) });\n  case 'order_registry.get_order': {\n    const o = d.order || (d.orders?.nodes || [])[0];\n    return o ? ok(order(o)) : { json: { status: 'NOT_FOUND', data: null, error: { code: 'ORDER_NOT_FOUND', message: 'no existe en Shopify' } } };\n  }\n  case 'order_registry.create_order': {\n    if (!creating) {\n      const found = (d.orders?.nodes || [])[0];\n      return { json: { status: 'OK', data: found ? Object.assign(order(found), { created: false }) : null, error: null, _needs_create: !found } };\n    }\n    const r = d.orderCreate || {};\n    if ((r.userErrors || []).length) return { json: { status: 'PERMANENT_ERROR', data: null, error: { code: 'USER_ERRORS', message: JSON.stringify(r.userErrors).slice(0, 500) } } };\n    return ok({ external_order_ref: r.order.id, external_order_name: r.order.name, created: true });\n  }\n  case 'order_registry.cancel_order': {\n    const r = d.orderCancel || {};\n    if ((r.orderCancelUserErrors || []).length) return { json: { status: 'PERMANENT_ERROR', data: null, error: { code: r.orderCancelUserErrors[0].code || 'USER_ERRORS', message: JSON.stringify(r.orderCancelUserErrors).slice(0, 500) } } };\n    return ok({ cancel_requested: true, job_ref: r.job?.id || null, job_done: r.job?.done ?? null });\n  }\n  case 'order_registry.mark_paid': {\n    const r = d.orderMarkAsPaid || {};\n    if ((r.userErrors || []).length) return { json: { status: 'PERMANENT_ERROR', data: null, error: { code: 'USER_ERRORS', message: JSON.stringify(r.userErrors).slice(0, 500) } } };\n    return ok({ external_order_ref: r.order.id, financial_status: r.order.displayFinancialStatus });\n  }\n}\nreturn { json: { status: 'NOT_SUPPORTED', data: null, error: { code: 'OPERATION_NOT_SUPPORTED', message: key } } };"
+        }
+      },
+      {
+        "id": "30be1052-9047-4bcb-9115-f89df8ef6265",
+        "name": "Falta crear pedido",
+        "type": "n8n-nodes-base.if",
+        "typeVersion": 2.2,
+        "position": [
+          2464,
+          192
+        ],
+        "parameters": {
+          "conditions": {
+            "options": {
+              "caseSensitive": true,
+              "leftValue": "",
+              "typeValidation": "loose"
+            },
+            "conditions": [
+              {
+                "leftValue": "={{ $json._needs_create === true }}",
+                "operator": {
+                  "type": "boolean",
+                  "operation": "true",
+                  "singleValue": true
+                }
+              }
+            ],
+            "combinator": "and"
+          }
+        }
+      },
+      {
+        "id": "326673d6-5a16-405f-8653-374dfcadb069",
+        "name": "Construir creacion de pedido",
+        "type": "n8n-nodes-base.code",
+        "typeVersion": 2,
+        "position": [
+          2688,
+          96
+        ],
+        "parameters": {
+          "mode": "runOnceForEachItem",
+          "jsCode": "// Paso 2 de create_order: construir orderCreate si el pedido no existe todavía\nconst req = $('Solicitud del puerto').item.json;\nconst s = req.settings || {};\nconst inp = req.input || {};\nconst currency = inp.currency || s.currency;\nconst tag = 'dalia-' + String(inp.order_number).replace(/[^A-Za-z0-9_-]/g, '');\nconst order = {\n  currency,\n  lineItems: inp.lines.map(l => ({ variantId: l.variant_ref, quantity: l.qty, priceSet: { shopMoney: { amount: String(l.unit_price), currencyCode: currency } } })),\n  tags: ['dalia', tag],\n  note: inp.notes || null,\n  customAttributes: [{ key: 'dalia_order_number', value: String(inp.order_number) }],\n  financialStatus: 'PENDING'\n};\nif (inp.customer?.email) order.email = inp.customer.email;\nif (inp.customer?.phone) order.phone = inp.customer.phone;\nif (inp.shipping_address) {\n  const a = inp.shipping_address;\n  order.shippingAddress = { firstName: a.first_name, lastName: a.last_name || '-', address1: a.address1, address2: a.address2 || null, city: a.city, provinceCode: a.province_code || null, countryCode: a.country_code, zip: a.zip || null, phone: a.phone || inp.customer?.phone || null };\n}\nconst query = 'mutation($order: OrderCreateOrderInput!, $options: OrderCreateOptionsInput) { orderCreate(order: $order, options: $options) { order { id name } userErrors { field message } } }';\nconst variables = { order, options: { sendReceipt: false, sendFulfillmentReceipt: false, inventoryBehaviour: s.order_inventory_behaviour || 'DECREMENT_OBEYING_POLICY' } };\nconst url = 'https://' + s.shop_domain + '/admin/api/' + s.api_version + '/graphql.json';\n// Token (solo auth_mode = client_credentials): el recién obtenido o el vigente en caché\nlet token = null;\nif (s.auth_mode === 'client_credentials') {\n  try { token = $('Guardar token').item.json.tok.token; } catch (e) { token = null; }\n  if (!token) { try { token = $('Leer token vigente').item.json.tok.token; } catch (e) { token = null; } }\n}\nreturn { json: { auth_mode: s.auth_mode || 'static_token', token, url, payload: { query, variables }, timeout_ms: s.timeout_ms || 10000 } };"
+        }
+      },
+      {
+        "id": "21f91c2d-6b77-4bdd-8c92-28dbac2bdf42",
+        "name": "Crear con token",
+        "type": "n8n-nodes-base.if",
+        "typeVersion": 2.2,
+        "position": [
+          2912,
+          96
+        ],
+        "parameters": {
+          "conditions": {
+            "options": {
+              "caseSensitive": true,
+              "leftValue": "",
+              "typeValidation": "loose"
+            },
+            "conditions": [
+              {
+                "leftValue": "={{ $json.auth_mode === \"client_credentials\" }}",
+                "operator": {
+                  "type": "boolean",
+                  "operation": "true",
+                  "singleValue": true
+                }
+              }
+            ],
+            "combinator": "and"
+          }
+        }
+      },
+      {
+        "id": "0070df9b-2bb9-4b04-86ba-8dc79f049df7",
+        "name": "Crear pedido en Shopify (token)",
+        "type": "n8n-nodes-base.httpRequest",
+        "typeVersion": 4.5,
+        "position": [
+          3136,
+          0
+        ],
+        "parameters": {
+          "method": "POST",
+          "url": "={{ $(\"Construir creacion de pedido\").item.json.url }}",
+          "authentication": "none",
+          "sendHeaders": true,
+          "specifyHeaders": "keypair",
+          "headerParameters": {
+            "parameters": [
+              {
+                "name": "X-Shopify-Access-Token",
+                "value": "={{ $json.token }}"
+              }
+            ]
+          },
+          "sendBody": true,
+          "contentType": "json",
+          "specifyBody": "json",
+          "jsonBody": "={{ JSON.stringify($(\"Construir creacion de pedido\").item.json.payload) }}",
+          "options": {
+            "timeout": "={{ $(\"Construir creacion de pedido\").item.json.timeout_ms }}",
+            "response": {
+              "response": {
+                "fullResponse": true,
+                "neverError": true,
+                "responseFormat": "json"
+              }
+            }
+          }
+        },
+        "onError": "continueErrorOutput"
+      },
+      {
+        "id": "61790ee2-c787-4a46-a2b0-7375cc374f0b",
+        "name": "Normalizar creacion",
+        "type": "n8n-nodes-base.code",
+        "typeVersion": 2,
+        "position": [
+          3360,
+          48
+        ],
+        "parameters": {
+          "mode": "runOnceForEachItem",
+          "jsCode": "// Normaliza la respuesta de Shopify al contrato de cada puerto.\n// Se usa tanto para la primera llamada como para la de creación de pedido.\nconst req = $('Solicitud del puerto').item.json;\nconst s = req.settings || {};\nconst res = $json;\nconst code = res.statusCode;\nconst body = res.body || {};\nconst key = req.port + '.' + req.operation;\nconst sensitive = req.sensitive === true;\nconst creating = req.operation === 'create_order' && String($prevNode.name).startsWith('Crear pedido en Shopify');\nconst errs = Array.isArray(body.errors) ? body.errors : (body.errors ? [{ message: typeof body.errors === 'string' ? body.errors : JSON.stringify(body.errors) }] : []);\nif (code === 429 || code >= 500 || errs.some(e => e.extensions?.code === 'THROTTLED')) {\n  return { json: { status: (sensitive && creating) || (sensitive && req.operation !== 'create_order') ? 'UNKNOWN' : 'RETRYABLE_ERROR', data: null, error: { code: code >= 500 ? 'HTTP_' + code : 'THROTTLED', message: JSON.stringify(errs).slice(0, 500), http_status: code } } };\n}\nif (code === 401 || code === 403) {\n  return { json: { status: 'PERMANENT_ERROR', data: null, error: { code: 'AUTH_ERROR', message: 'Shopify rechazó la credencial (revise la app, sus permisos o ejecute dalia.int_token_invalidate)', http_status: code } } };\n}\nif (code < 200 || code >= 300 || errs.length) {\n  return { json: { status: 'PERMANENT_ERROR', data: null, error: { code: code >= 300 ? 'HTTP_' + code : 'GRAPHQL_ERROR', message: JSON.stringify(errs.length ? errs : body).slice(0, 500), http_status: code } } };\n}\nconst d = body.data || {};\nconst cur = s.currency || null;\nconst img = (m) => ((m && m.nodes) || []).filter(n => n && n.image).map(n => ({ url: n.image.url, alt: n.image.altText || null }));\nconst variant = (v) => ({ variant_ref: v.id, sku: v.sku || null, title: v.title, price: v.price !== undefined ? Number(v.price) : null, compare_at_price: v.compareAtPrice ? Number(v.compareAtPrice) : null, currency: cur, available: v.availableForSale === true, available_qty: v.inventoryQuantity ?? null, options: Object.fromEntries((v.selectedOptions || []).map(o => [o.name, o.value])), images: img(v.media), product_ref: v.product?.id || null });\nconst product = (p) => ({ product_ref: p.id, title: p.title, handle: p.handle, description: p.description, product_type: p.productType || null, vendor: p.vendor || null, tags: p.tags || [], status: p.status, url: p.onlineStoreUrl || null, images: img(p.media), variants: ((p.variants && p.variants.nodes) || []).map(variant), updated_at: p.updatedAt });\nconst order = (o) => o ? ({ external_order_ref: o.id, external_order_name: o.name, financial_status: o.displayFinancialStatus, fulfillment_status: o.displayFulfillmentStatus, cancelled: !!o.cancelledAt, cancelled_at: o.cancelledAt, created_at: o.createdAt, total: o.totalPriceSet ? Number(o.totalPriceSet.shopMoney.amount) : null, currency: o.totalPriceSet?.shopMoney?.currencyCode || null }) : null;\nconst ok = (data) => ({ json: { status: 'OK', data, error: null } });\nswitch (key) {\n  case 'catalog.search_products':\n  case 'catalog.list_products_page':\n    return ok({ products: (d.products?.nodes || []).map(product), next_cursor: d.products?.pageInfo?.hasNextPage ? d.products.pageInfo.endCursor : null });\n  case 'catalog.get_product':\n    return d.product ? ok({ product: product(d.product) }) : { json: { status: 'NOT_FOUND', data: null, error: { code: 'PRODUCT_NOT_FOUND', message: req.input?.product_ref } } };\n  case 'catalog.get_variants':\n    return ok({ variants: (d.nodes || []).filter(Boolean).map(variant) });\n  case 'inventory.check_availability':\n    return ok({ items: (d.nodes || []).filter(Boolean).map(v => {\n      const locs = (v.inventoryItem?.inventoryLevels?.nodes || []).map(l => ({ location_ref: l.location?.id, name: l.location?.name, available: (l.quantities || []).find(q => q.name === 'available')?.quantity ?? null }));\n      const byLoc = s.location_id ? locs.filter(l => l.location_ref === s.location_id) : locs;\n      const qty = byLoc.length ? byLoc.reduce((a, l) => a + (l.available || 0), 0) : (v.inventoryQuantity ?? null);\n      return { variant_ref: v.id, sku: v.sku || null, available_for_sale: v.availableForSale === true, available_qty: qty, locations: locs };\n    }) });\n  case 'order_registry.get_order': {\n    const o = d.order || (d.orders?.nodes || [])[0];\n    return o ? ok(order(o)) : { json: { status: 'NOT_FOUND', data: null, error: { code: 'ORDER_NOT_FOUND', message: 'no existe en Shopify' } } };\n  }\n  case 'order_registry.create_order': {\n    if (!creating) {\n      const found = (d.orders?.nodes || [])[0];\n      return { json: { status: 'OK', data: found ? Object.assign(order(found), { created: false }) : null, error: null, _needs_create: !found } };\n    }\n    const r = d.orderCreate || {};\n    if ((r.userErrors || []).length) return { json: { status: 'PERMANENT_ERROR', data: null, error: { code: 'USER_ERRORS', message: JSON.stringify(r.userErrors).slice(0, 500) } } };\n    return ok({ external_order_ref: r.order.id, external_order_name: r.order.name, created: true });\n  }\n  case 'order_registry.cancel_order': {\n    const r = d.orderCancel || {};\n    if ((r.orderCancelUserErrors || []).length) return { json: { status: 'PERMANENT_ERROR', data: null, error: { code: r.orderCancelUserErrors[0].code || 'USER_ERRORS', message: JSON.stringify(r.orderCancelUserErrors).slice(0, 500) } } };\n    return ok({ cancel_requested: true, job_ref: r.job?.id || null, job_done: r.job?.done ?? null });\n  }\n  case 'order_registry.mark_paid': {\n    const r = d.orderMarkAsPaid || {};\n    if ((r.userErrors || []).length) return { json: { status: 'PERMANENT_ERROR', data: null, error: { code: 'USER_ERRORS', message: JSON.stringify(r.userErrors).slice(0, 500) } } };\n    return ok({ external_order_ref: r.order.id, financial_status: r.order.displayFinancialStatus });\n  }\n}\nreturn { json: { status: 'NOT_SUPPORTED', data: null, error: { code: 'OPERATION_NOT_SUPPORTED', message: key } } };"
+        }
+      },
+      {
+        "id": "ff4e5e15-8a9e-4ee7-b880-5128ba93ac1d",
+        "name": "Crear pedido en Shopify",
+        "type": "n8n-nodes-base.httpRequest",
+        "typeVersion": 4.5,
+        "position": [
+          3136,
+          224
+        ],
+        "parameters": {
+          "method": "POST",
+          "url": "={{ $json.url }}",
+          "authentication": "genericCredentialType",
+          "genericAuthType": "httpHeaderAuth",
+          "sendBody": true,
+          "contentType": "json",
+          "specifyBody": "json",
+          "jsonBody": "={{ JSON.stringify($json.payload) }}",
+          "options": {
+            "timeout": "={{ $json.timeout_ms }}",
+            "response": {
+              "response": {
+                "fullResponse": true,
+                "neverError": true,
+                "responseFormat": "json"
+              }
+            }
+          }
+        },
+        "credentials": {
+          "httpHeaderAuth": {
+            "id": "TE2Qbzwp3t6FJ764",
+            "name": "DALIA Shopify"
+          }
+        },
+        "onError": "continueErrorOutput"
+      },
+      {
+        "id": "02f24ee7-aaf6-4a13-aa1a-8a402441b10b",
+        "name": "Resultado",
+        "type": "n8n-nodes-base.set",
+        "typeVersion": 3.4,
+        "position": [
+          2688,
+          336
+        ],
+        "parameters": {
+          "mode": "manual",
+          "includeOtherFields": false,
+          "assignments": {
+            "assignments": [
+              {
+                "id": "r1",
+                "name": "status",
+                "value": "={{ $json.status }}",
+                "type": "string"
+              },
+              {
+                "id": "r2",
+                "name": "data",
+                "value": "={{ $json.data }}",
+                "type": "object"
+              },
+              {
+                "id": "r3",
+                "name": "error",
+                "value": "={{ $json.error }}",
+                "type": "object"
+              }
+            ]
+          }
+        }
+      },
+      {
+        "id": "af03abe7-9a1e-4c4e-b5d1-aef4159312c6",
+        "name": "Clasificar fallo",
+        "type": "n8n-nodes-base.code",
+        "typeVersion": 2,
+        "position": [
+          3360,
+          512
+        ],
+        "parameters": {
+          "mode": "runOnceForEachItem",
+          "jsCode": "// Timeout o error de red: si la operación es sensible el resultado es INCIERTO (ASR-02)\nconst req = $('Solicitud del puerto').item.json;\nconst msg = $json.error?.message ?? String($json.error ?? 'error de red');\nconst status = req.sensitive === true ? 'UNKNOWN' : 'RETRYABLE_ERROR';\nreturn { json: { status, data: null, error: { code: /timeout/i.test(msg) ? 'TIMEOUT' : 'NETWORK_ERROR', message: msg } } };"
+        }
+      },
+      {
+        "id": "49f7dd2e-1871-488d-bb98-24bed74cf0c1",
+        "name": "Webhook Shopify",
+        "type": "n8n-nodes-base.webhook",
+        "typeVersion": 2.1,
+        "position": [
+          0,
+          1040
+        ],
+        "parameters": {
+          "httpMethod": "POST",
+          "path": "dalia/shopify",
+          "responseMode": "responseNode",
+          "options": {
+            "rawBody": true
+          }
+        },
+        "webhookId": "81cc7955-5198-4f6b-ac09-53f623916e34"
+      },
+      {
+        "id": "75e08d50-be9e-4d66-a15b-7b496db669b4",
+        "name": "Leer cuerpo crudo",
+        "type": "n8n-nodes-base.code",
+        "typeVersion": 2,
+        "position": [
+          224,
+          1040
+        ],
+        "parameters": {
+          "mode": "runOnceForAllItems",
+          "jsCode": "// Lee el cuerpo crudo y las cabeceras del webhook de Shopify (la firma se verifica en la base)\nconst item = $input.first();\nlet buf;\ntry { buf = await this.helpers.getBinaryDataBuffer(0, 'data'); } catch (e) { buf = Buffer.from(JSON.stringify(item.json.body || {}), 'utf8'); }\nconst h = item.json.headers || {};\nreturn [{ json: {\n  raw: buf.toString('utf8'),\n  signature: h['x-shopify-hmac-sha256'] || null,\n  topic: h['x-shopify-topic'] || null,\n  webhook_id: h['x-shopify-webhook-id'] || null,\n  shop: h['x-shopify-shop-domain'] || null,\n  body: item.json.body || {}\n} }];"
+        }
+      },
+      {
+        "id": "eeda324b-7e77-4aee-b86f-cf597efb1e79",
+        "name": "Verificar firma",
+        "type": "n8n-nodes-base.postgres",
+        "typeVersion": 2.7,
+        "position": [
+          448,
+          1040
+        ],
+        "parameters": {
+          "operation": "executeQuery",
+          "query": "select dalia.int_inbound_check('commerce.shopify', $1, $2) as chk;",
+          "options": {
+            "queryReplacement": "={{ [ $json.raw, $json.signature ?? \"\" ] }}"
+          }
+        },
+        "credentials": {
+          "postgres": {
+            "id": "HfCgVAjUygK1vrkU",
+            "name": "DALIA dev Supabase"
+          }
+        },
+        "onError": "continueErrorOutput"
+      },
+      {
+        "id": "391aeea0-3699-4270-a062-545974059d0e",
+        "name": "Normalizar evento",
+        "type": "n8n-nodes-base.code",
+        "typeVersion": 2,
+        "position": [
+          672,
+          944
+        ],
+        "parameters": {
+          "mode": "runOnceForAllItems",
+          "jsCode": "// Normaliza el evento de Shopify al contrato sys.callback.v1 para SYS.03\nconst w = $('Leer cuerpo crudo').first().json;\nconst chk = $json.chk || {};\nconst topics = chk.settings?.topics || {};\nconst b = w.body || {};\nconst eventType = topics[w.topic] || ('unmapped.' + (w.topic || 'unknown'));\nlet payload;\nif (eventType.startsWith('order.')) {\n  const attr = (b.note_attributes || []).find(a => a.name === 'dalia_order_number');\n  const tagNum = String(b.tags || '').split(',').map(t => t.trim()).find(t => t.startsWith('dalia-'));\n  payload = { external_order_ref: b.admin_graphql_api_id || null, external_order_name: b.name || null, order_number: attr ? attr.value : (tagNum ? tagNum.slice(6) : null), financial_status: b.financial_status || null, fulfillment_status: b.fulfillment_status || null, cancelled_at: b.cancelled_at || null, updated_at: b.updated_at || null };\n} else if (eventType.startsWith('inventory.')) {\n  payload = { inventory_item_ref: b.inventory_item_id ? 'gid://shopify/InventoryItem/' + b.inventory_item_id : null, location_ref: b.location_id ? 'gid://shopify/Location/' + b.location_id : null, available: b.available ?? null, updated_at: b.updated_at || null };\n} else if (eventType.startsWith('product.')) {\n  payload = { product_ref: b.admin_graphql_api_id || (b.id ? 'gid://shopify/Product/' + b.id : null), updated_at: b.updated_at || null };\n} else {\n  payload = { topic: w.topic };\n}\nreturn [{ json: { source: 'commerce.shopify', external_event_id: w.webhook_id || ('sin-id-' + Date.now()), event_type: eventType, signature_valid: chk.signature_valid === true, payload, envelope: {} } }];"
+        }
+      },
+      {
+        "id": "408fe3a0-51f3-4da3-81eb-47e0c3264ffb",
+        "name": "Entregar a SYS.03",
+        "type": "n8n-nodes-base.executeWorkflow",
+        "typeVersion": 1.3,
+        "position": [
+          896,
+          944
+        ],
+        "parameters": {
+          "mode": "each",
+          "source": "database",
+          "workflowId": {
+            "__rl": true,
+            "mode": "id",
+            "value": "utnQfoflAlLrlVVx"
+          },
+          "options": {
+            "waitForSubWorkflow": true
+          }
+        },
+        "onError": "continueRegularOutput"
+      },
+      {
+        "id": "7b2fd3ec-36fd-41f7-a098-2c6853828fe5",
+        "name": "Responder",
+        "type": "n8n-nodes-base.respondToWebhook",
+        "typeVersion": 1.5,
+        "position": [
+          1120,
+          944
+        ],
+        "parameters": {
+          "respondWith": "text",
+          "responseBody": "ok",
+          "options": {
+            "responseCode": "={{ $input.all().some(i => i.json.error != null && i.json.status === undefined && i.json.r === undefined && i.json.inbox_id === undefined) ? 500 : 200 }}"
+          }
+        },
+        "executeOnce": true
+      },
+      {
+        "id": "15ac3e9f-f7c5-4323-83a6-3c437b4be91b",
+        "name": "Responder error",
+        "type": "n8n-nodes-base.respondToWebhook",
+        "typeVersion": 1.5,
+        "position": [
+          672,
+          1136
+        ],
+        "parameters": {
+          "respondWith": "text",
+          "responseBody": "retry",
+          "options": {
+            "responseCode": 500
+          }
+        },
+        "executeOnce": true
+      }
+    ],
+    "connections": {
+      "Solicitud del puerto": {
+        "main": [
+          [
+            {
+              "node": "Construir consulta GraphQL",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Construir consulta GraphQL": {
+        "main": [
+          [
+            {
+              "node": "Solicitud ejecutable",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Solicitud ejecutable": {
+        "main": [
+          [
+            {
+              "node": "Autenticacion por token",
+              "type": "main",
+              "index": 0
+            }
+          ],
+          [
+            {
+              "node": "Solicitud no ejecutable",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Autenticacion por token": {
+        "main": [
+          [
+            {
+              "node": "Leer token vigente",
+              "type": "main",
+              "index": 0
+            }
+          ],
+          [
+            {
+              "node": "Consultar Shopify",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Leer token vigente": {
+        "main": [
+          [
+            {
+              "node": "Token vigente",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Token vigente": {
+        "main": [
+          [
+            {
+              "node": "Consultar Shopify (token)",
+              "type": "main",
+              "index": 0
+            }
+          ],
+          [
+            {
+              "node": "Solicitar token a Shopify",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Consultar Shopify (token)": {
+        "main": [
+          [
+            {
+              "node": "Normalizar respuesta",
+              "type": "main",
+              "index": 0
+            }
+          ],
+          [
+            {
+              "node": "Clasificar fallo",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Solicitar token a Shopify": {
+        "main": [
+          [
+            {
+              "node": "Token obtenido",
+              "type": "main",
+              "index": 0
+            }
+          ],
+          [
+            {
+              "node": "Fallo al obtener token",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Token obtenido": {
+        "main": [
+          [
+            {
+              "node": "Guardar token",
+              "type": "main",
+              "index": 0
+            }
+          ],
+          [
+            {
+              "node": "Fallo al obtener token",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Guardar token": {
+        "main": [
+          [
+            {
+              "node": "Consultar Shopify (token)",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Consultar Shopify": {
+        "main": [
+          [
+            {
+              "node": "Normalizar respuesta",
+              "type": "main",
+              "index": 0
+            }
+          ],
+          [
+            {
+              "node": "Clasificar fallo",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Normalizar respuesta": {
+        "main": [
+          [
+            {
+              "node": "Falta crear pedido",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Falta crear pedido": {
+        "main": [
+          [
+            {
+              "node": "Construir creacion de pedido",
+              "type": "main",
+              "index": 0
+            }
+          ],
+          [
+            {
+              "node": "Resultado",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Construir creacion de pedido": {
+        "main": [
+          [
+            {
+              "node": "Crear con token",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Crear con token": {
+        "main": [
+          [
+            {
+              "node": "Crear pedido en Shopify (token)",
+              "type": "main",
+              "index": 0
+            }
+          ],
+          [
+            {
+              "node": "Crear pedido en Shopify",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Crear pedido en Shopify (token)": {
+        "main": [
+          [
+            {
+              "node": "Normalizar creacion",
+              "type": "main",
+              "index": 0
+            }
+          ],
+          [
+            {
+              "node": "Clasificar fallo",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Crear pedido en Shopify": {
+        "main": [
+          [
+            {
+              "node": "Normalizar creacion",
+              "type": "main",
+              "index": 0
+            }
+          ],
+          [
+            {
+              "node": "Clasificar fallo",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Webhook Shopify": {
+        "main": [
+          [
+            {
+              "node": "Leer cuerpo crudo",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Leer cuerpo crudo": {
+        "main": [
+          [
+            {
+              "node": "Verificar firma",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Verificar firma": {
+        "main": [
+          [
+            {
+              "node": "Normalizar evento",
+              "type": "main",
+              "index": 0
+            }
+          ],
+          [
+            {
+              "node": "Responder error",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Normalizar evento": {
+        "main": [
+          [
+            {
+              "node": "Entregar a SYS.03",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Entregar a SYS.03": {
+        "main": [
+          [
+            {
+              "node": "Responder",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      }
+    },
+    "nodeGroups": [],
+    "authors": "Fabian Bocanegra (via MCP)",
+    "name": "Robustez: lectura del cuerpo sin binario",
+    "description": "Updated nodes: Leer cuerpo crudo",
+    "autosaved": false,
+    "createdAt": "2026-10-03T16:40:55.237Z",
+    "updatedAt": "2026-10-03T16:40:55.237Z"
+  }
+}
