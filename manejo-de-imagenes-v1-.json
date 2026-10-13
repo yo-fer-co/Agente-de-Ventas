@@ -1,0 +1,402 @@
+{
+  "id": "0FGqla8kAcpgzFjE",
+  "name": "Manejo de imagenes v1",
+  "active": false,
+  "activeVersionId": null,
+  "createdAt": "2025-12-12T03:14:15.595Z",
+  "updatedAt": "2026-10-07T23:35:21.000Z",
+  "isArchived": true,
+  "versionId": "46020093-534a-44c8-9cf0-b612c17abd7e",
+  "triggerCount": 0,
+  "nodes": [
+    {
+      "parameters": {
+        "updates": [
+          "messages"
+        ],
+        "options": {}
+      },
+      "type": "n8n-nodes-base.whatsAppTrigger",
+      "typeVersion": 1,
+      "position": [
+        -480,
+        -96
+      ],
+      "id": "c4e3baf6-4c3a-4fe2-a7ba-ccb13bbbecdc",
+      "name": "WhatsApp Trigger",
+      "webhookId": "7e8db217-e4e6-45bc-be89-44db0b8a6637",
+      "credentials": {
+        "whatsAppTriggerApi": {
+          "id": "99h3wr5LmsCIJEyB",
+          "name": "WhatsApp OAuth BW"
+        }
+      },
+      "disabled": true
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "={{ $json.chatInput }}",
+        "options": {
+          "systemMessage": "Eres un asistente muy útil. Tu misión es ayudar al usuario a encontrar la información adecuada sobre Baby's world, así como la información del catálogo, para esto último por favor basarte en la herramienta \"catálogo\". Y la información de la empresa la encontraras en la herramienta \"negocio\""
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 2.2,
+      "position": [
+        -96,
+        -96
+      ],
+      "id": "41cc1056-3ebf-4bac-93cc-d50bfceff340",
+      "name": "AI Agent"
+    },
+    {
+      "parameters": {
+        "model": {
+          "__rl": true,
+          "mode": "list",
+          "value": "gpt-4.1-mini"
+        },
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatOpenAi",
+      "typeVersion": 1.2,
+      "position": [
+        -256,
+        128
+      ],
+      "id": "14f4791d-91ff-4719-8e18-bbcf765c2fb7",
+      "name": "OpenAI Chat Model",
+      "credentials": {
+        "openAiApi": {
+          "id": "zACGOxtwAjrFvDag",
+          "name": "OpenAi_YoEco_DEV"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "sessionIdType": "customKey",
+        "sessionKey": "={{ $json.sessionId }}"
+      },
+      "type": "@n8n/n8n-nodes-langchain.memoryBufferWindow",
+      "typeVersion": 1.3,
+      "position": [
+        -128,
+        128
+      ],
+      "id": "c67ab7f5-4c9e-4035-b20b-4d9764bbad8d",
+      "name": "Simple Memory"
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.embeddingsOpenAi",
+      "typeVersion": 1.2,
+      "position": [
+        80,
+        336
+      ],
+      "id": "e9097d27-5078-469c-8ea7-294d51167e1b",
+      "name": "Embeddings OpenAI",
+      "credentials": {
+        "openAiApi": {
+          "id": "zACGOxtwAjrFvDag",
+          "name": "OpenAi_YoEco_DEV"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "send",
+        "phoneNumberId": "816698168200279",
+        "recipientPhoneNumber": "={{ $('WhatsApp Trigger').item.json.contacts[0].wa_id }}",
+        "textBody": "={{ $json.output }}",
+        "additionalFields": {}
+      },
+      "type": "n8n-nodes-base.whatsApp",
+      "typeVersion": 1,
+      "position": [
+        656,
+        -96
+      ],
+      "id": "8670e237-866f-41e4-916d-74f181b5c91e",
+      "name": "Send message",
+      "webhookId": "3a7c1c3c-7286-49ef-9d4c-c2eed82cf399",
+      "credentials": {
+        "whatsAppApi": {
+          "id": "iHkr3pR5oLrSBpeh",
+          "name": "WhatsApp BW AccessToken"
+        }
+      },
+      "disabled": true
+    },
+    {
+      "parameters": {
+        "mode": "retrieve-as-tool",
+        "toolDescription": "Buscar todo lo relacionado con el catálogo de Babys world. Esto quiere decir que todas las preguntas de catálogo, productos, categorías y las relacionadas a esto deben ser consultadas en esta herramienta. \nLa respuesta debe contener todo el payload y la metadata de los puntos de qdrant que devuelva la consulta.",
+        "qdrantCollection": {
+          "__rl": true,
+          "value": "BabysWorld_Catalogo_TEST",
+          "mode": "list",
+          "cachedResultName": "BabysWorld_Catalogo_TEST"
+        },
+        "topK": 10,
+        "options": {
+          "searchFilterJson": "{\n  \"should\": [\n    {\n      \"key\": \"metadata.titulo\",\n      \"match\": {\n        \"text_any\": \"SILLA\"\n      }\n    }\n  ]\n}"
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.vectorStoreQdrant",
+      "typeVersion": 1.3,
+      "position": [
+        0,
+        128
+      ],
+      "id": "f09582aa-76aa-462b-95bc-39639f136c8a",
+      "name": "Catálogo",
+      "credentials": {
+        "qdrantApi": {
+          "id": "ZYv8vdr6tkTS4jYz",
+          "name": "QdrantApi account 3"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "mode": "retrieve-as-tool",
+        "toolDescription": "Esta herramienta tiene la finalidad de ayudar a encontrar toda la información relacionada con Baby's world a nivel de negocio, a que se dedica, que clase de productos vende, cual es la misión y visión, entre otras preguntas relacionadas. ",
+        "qdrantCollection": {
+          "__rl": true,
+          "value": "BabysWorld_Business_TEST",
+          "mode": "list",
+          "cachedResultName": "BabysWorld_Business_TEST"
+        },
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.vectorStoreQdrant",
+      "typeVersion": 1.3,
+      "position": [
+        288,
+        128
+      ],
+      "id": "ede258f0-0f4c-49f8-925b-4e8066a5ccef",
+      "name": "Negocio",
+      "credentials": {
+        "qdrantApi": {
+          "id": "ZYv8vdr6tkTS4jYz",
+          "name": "QdrantApi account 3"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.embeddingsOpenAi",
+      "typeVersion": 1.2,
+      "position": [
+        368,
+        336
+      ],
+      "id": "4f43170e-994e-42f2-95a1-80e46887fb8e",
+      "name": "Embeddings OpenAI1",
+      "credentials": {
+        "openAiApi": {
+          "id": "zACGOxtwAjrFvDag",
+          "name": "OpenAi_YoEco_DEV"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.chatTrigger",
+      "typeVersion": 1.3,
+      "position": [
+        -496,
+        128
+      ],
+      "id": "d06e164b-da67-49e5-b032-6a6ca36174fe",
+      "name": "When chat message received",
+      "webhookId": "c5d2df37-8428-41a6-b3d3-8f7a422dd0ae"
+    },
+    {
+      "parameters": {
+        "resource": "fileFolder",
+        "queryString": "Coches",
+        "filter": {
+          "folderId": {
+            "__rl": true,
+            "value": "1hiDjeYmj7r9zZRl59Z9NiWWfT7bm3v6h",
+            "mode": "list",
+            "cachedResultName": "02_Fotografia_Productos",
+            "cachedResultUrl": "https://drive.google.com/drive/folders/1hiDjeYmj7r9zZRl59Z9NiWWfT7bm3v6h"
+          }
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleDrive",
+      "typeVersion": 3,
+      "position": [
+        256,
+        -352
+      ],
+      "id": "1ecba180-cc0a-4d18-a6c8-cfdd21872671",
+      "name": "Search files and folders",
+      "credentials": {
+        "googleDriveOAuth2Api": {
+          "id": "55RafwUzcXl8phIg",
+          "name": "Google Drive account 3"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "content": "## Drive \n**Search folder** Hacer un nodo search en drive para categoría, producto y sku.",
+        "height": 272,
+        "width": 352
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [
+        192,
+        -464
+      ],
+      "typeVersion": 1,
+      "id": "19531d25-ffbb-413a-805c-7a6ae288cfa2",
+      "name": "Sticky Note"
+    },
+    {
+      "parameters": {
+        "resource": "fileFolder",
+        "searchMethod": "query",
+        "filter": {},
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleDrive",
+      "typeVersion": 3,
+      "position": [
+        624,
+        -336
+      ],
+      "id": "827ba023-893a-445b-b7cc-5abd1ff47527",
+      "name": "Search files and folders1",
+      "credentials": {
+        "googleDriveOAuth2Api": {
+          "id": "55RafwUzcXl8phIg",
+          "name": "Google Drive account 3"
+        }
+      }
+    }
+  ],
+  "connections": {
+    "WhatsApp Trigger": {
+      "main": [
+        []
+      ]
+    },
+    "OpenAI Chat Model": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Simple Memory": {
+      "ai_memory": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_memory",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Embeddings OpenAI": {
+      "ai_embedding": [
+        [
+          {
+            "node": "Catálogo",
+            "type": "ai_embedding",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "AI Agent": {
+      "main": [
+        []
+      ]
+    },
+    "Catálogo": {
+      "ai_tool": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Negocio": {
+      "ai_tool": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Embeddings OpenAI1": {
+      "ai_embedding": [
+        [
+          {
+            "node": "Negocio",
+            "type": "ai_embedding",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "When chat message received": {
+      "main": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "nodeGroups": [],
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "staticData": null,
+  "pinData": {},
+  "meta": {
+    "templateCredsSetupCompleted": true
+  },
+  "tags": [],
+  "shared": [
+    {
+      "role": "workflow:owner",
+      "workflowId": "0FGqla8kAcpgzFjE",
+      "projectId": "8h8pwWGcWlnGEym3",
+      "createdAt": "2025-12-12T03:14:15.598Z",
+      "updatedAt": "2025-12-12T03:14:15.598Z"
+    }
+  ],
+  "activeVersion": null
+}
