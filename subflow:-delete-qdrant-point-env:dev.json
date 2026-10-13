@@ -1,0 +1,254 @@
+{
+  "id": "Sg69yopELkp32ln3",
+  "name": "Subflow: Delete Qdrant Point",
+  "active": true,
+  "activeVersionId": "d247c60c-fd67-45cb-b869-5ab64b4a3fbb",
+  "createdAt": "2026-08-11T21:42:17.712Z",
+  "updatedAt": "2026-09-03T22:15:07.982Z",
+  "isArchived": false,
+  "versionId": "d247c60c-fd67-45cb-b869-5ab64b4a3fbb",
+  "triggerCount": 0,
+  "nodes": [
+    {
+      "parameters": {
+        "content": "## Subflow: Delete Qdrant Point\n\nManeja el topic products/delete. El webhook real de Shopify para este topic NO trae variants/sku (solo trae el id del producto) — por eso el borrado ya no se hace por id deterministico a partir del SKU, sino por FILTRO de product_id contra Qdrant: borra de una vez todos los puntos (todas las variantes) de ese producto.\n\nInput: product_id (string exacto, sin perdida de precision — ver 01_Extract_Raw_Webhook en EVT_Shopify_Product_Events).\nOutput: respuesta cruda de Qdrant.\n\nNOTA (fix, 2026-09-03, ejecucion 99346): si la coleccion \"Baby'sWorld_Catalogo_Test\" no existe (por ejemplo justo despues de un reset con 'Setup: Wipe Qdrant Test Collection'), ya NO se falla el evento products/delete -- se trata como un no-op exitoso ('nada que borrar', que es literalmente cierto: si la coleccion no existe, el producto tampoco esta ahi). Cualquier otro tipo de error (credenciales, filtro invalido, etc.) sigue fallando la ejecucion normalmente.",
+        "height": 380,
+        "width": 400,
+        "color": 5
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        1120,
+        -160
+      ],
+      "id": "d2fd37e4-74ba-40d8-9e9e-58203683015e",
+      "name": "Sticky_67c66c0b"
+    },
+    {
+      "parameters": {
+        "workflowInputs": {
+          "values": [
+            {
+              "name": "product_id"
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.executeWorkflowTrigger",
+      "typeVersion": 1.1,
+      "position": [
+        1760,
+        -48
+      ],
+      "id": "2a6c02ef-be03-40a4-905f-ffb906618a59",
+      "name": "When Executed by Another Workflow"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://1537c683-48da-4631-ab76-ad698b6b9881.us-east-1-0.aws.cloud.qdrant.io:6333/collections/Baby'sWorld_Catalogo_Test/points/delete",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "qdrantApi",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ { filter: { must: [ { key: 'product_id', match: { value: $json.product_id } } ] } } }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        2064,
+        -48
+      ],
+      "id": "99f33db9-216e-4fa9-8e8d-d9c976da602d",
+      "name": "Qdrant_Delete_Point",
+      "credentials": {
+        "qdrantApi": {
+          "id": "ZYv8vdr6tkTS4jYz",
+          "name": "QdrantApi account 3"
+        }
+      },
+      "continueOnFail": true,
+      "onError": "continueErrorOutput"
+    },
+    {
+      "parameters": {
+        "jsCode": "const err = $input.first().json;\nconst text = JSON.stringify(err ?? {}).toLowerCase();\nconst missing = text.includes(\"doesn't exist\") || text.includes('does not exist');\n\nif (missing) {\n  // La coleccion de pruebas no existe -- no hay nada que borrar. Se devuelve un\n  // resultado exitoso sintetico en vez de fallar el evento products/delete.\n  return [{\n    json: {\n      result: { status: 'no_op_collection_missing' },\n      status: 'ok',\n      note: \"La coleccion Baby'sWorld_Catalogo_Test no existia -- nada que borrar.\"\n    }\n  }];\n}\n\n// Cualquier otro error: se relanza tal cual, la ejecucion debe quedar en estado de error.\nthrow new Error(typeof err === 'string' ? err : JSON.stringify(err));"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        2416,
+        0
+      ],
+      "id": "4792d3f3-60dd-4fd1-a0ec-7278fdacf53e",
+      "name": "Handle_Delete_Error"
+    }
+  ],
+  "connections": {
+    "When Executed by Another Workflow": {
+      "main": [
+        [
+          {
+            "node": "Qdrant_Delete_Point",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Qdrant_Delete_Point": {
+      "main": [
+        [],
+        [
+          {
+            "node": "Handle_Delete_Error",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "nodeGroups": [],
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate",
+    "availableInMCP": false
+  },
+  "staticData": null,
+  "pinData": {},
+  "meta": null,
+  "tags": [
+    {
+      "id": "6e1haF3pXukz6KVf",
+      "name": "env:dev",
+      "createdAt": "2025-05-27T01:29:25.680Z",
+      "updatedAt": "2026-02-11T00:17:23.837Z"
+    }
+  ],
+  "shared": [
+    {
+      "role": "workflow:owner",
+      "workflowId": "Sg69yopELkp32ln3",
+      "projectId": "8h8pwWGcWlnGEym3",
+      "createdAt": "2026-08-11T21:42:17.713Z",
+      "updatedAt": "2026-08-11T21:42:17.713Z"
+    }
+  ],
+  "activeVersion": {
+    "versionId": "d247c60c-fd67-45cb-b869-5ab64b4a3fbb",
+    "workflowId": "Sg69yopELkp32ln3",
+    "nodes": [
+      {
+        "parameters": {
+          "content": "## Subflow: Delete Qdrant Point\n\nManeja el topic products/delete. El webhook real de Shopify para este topic NO trae variants/sku (solo trae el id del producto) — por eso el borrado ya no se hace por id deterministico a partir del SKU, sino por FILTRO de product_id contra Qdrant: borra de una vez todos los puntos (todas las variantes) de ese producto.\n\nInput: product_id (string exacto, sin perdida de precision — ver 01_Extract_Raw_Webhook en EVT_Shopify_Product_Events).\nOutput: respuesta cruda de Qdrant.\n\nNOTA (fix, 2026-09-03, ejecucion 99346): si la coleccion \"Baby'sWorld_Catalogo_Test\" no existe (por ejemplo justo despues de un reset con 'Setup: Wipe Qdrant Test Collection'), ya NO se falla el evento products/delete -- se trata como un no-op exitoso ('nada que borrar', que es literalmente cierto: si la coleccion no existe, el producto tampoco esta ahi). Cualquier otro tipo de error (credenciales, filtro invalido, etc.) sigue fallando la ejecucion normalmente.",
+          "height": 380,
+          "width": 400,
+          "color": 5
+        },
+        "type": "n8n-nodes-base.stickyNote",
+        "typeVersion": 1,
+        "position": [
+          1120,
+          -160
+        ],
+        "id": "d2fd37e4-74ba-40d8-9e9e-58203683015e",
+        "name": "Sticky_67c66c0b"
+      },
+      {
+        "parameters": {
+          "workflowInputs": {
+            "values": [
+              {
+                "name": "product_id"
+              }
+            ]
+          }
+        },
+        "type": "n8n-nodes-base.executeWorkflowTrigger",
+        "typeVersion": 1.1,
+        "position": [
+          1760,
+          -48
+        ],
+        "id": "2a6c02ef-be03-40a4-905f-ffb906618a59",
+        "name": "When Executed by Another Workflow"
+      },
+      {
+        "parameters": {
+          "method": "POST",
+          "url": "https://1537c683-48da-4631-ab76-ad698b6b9881.us-east-1-0.aws.cloud.qdrant.io:6333/collections/Baby'sWorld_Catalogo_Test/points/delete",
+          "authentication": "predefinedCredentialType",
+          "nodeCredentialType": "qdrantApi",
+          "sendBody": true,
+          "specifyBody": "json",
+          "jsonBody": "={{ { filter: { must: [ { key: 'product_id', match: { value: $json.product_id } } ] } } }}",
+          "options": {}
+        },
+        "type": "n8n-nodes-base.httpRequest",
+        "typeVersion": 4.2,
+        "position": [
+          2064,
+          -48
+        ],
+        "id": "99f33db9-216e-4fa9-8e8d-d9c976da602d",
+        "name": "Qdrant_Delete_Point",
+        "credentials": {
+          "qdrantApi": {
+            "id": "ZYv8vdr6tkTS4jYz",
+            "name": "QdrantApi account 3"
+          }
+        },
+        "continueOnFail": true,
+        "onError": "continueErrorOutput"
+      },
+      {
+        "parameters": {
+          "jsCode": "const err = $input.first().json;\nconst text = JSON.stringify(err ?? {}).toLowerCase();\nconst missing = text.includes(\"doesn't exist\") || text.includes('does not exist');\n\nif (missing) {\n  // La coleccion de pruebas no existe -- no hay nada que borrar. Se devuelve un\n  // resultado exitoso sintetico en vez de fallar el evento products/delete.\n  return [{\n    json: {\n      result: { status: 'no_op_collection_missing' },\n      status: 'ok',\n      note: \"La coleccion Baby'sWorld_Catalogo_Test no existia -- nada que borrar.\"\n    }\n  }];\n}\n\n// Cualquier otro error: se relanza tal cual, la ejecucion debe quedar en estado de error.\nthrow new Error(typeof err === 'string' ? err : JSON.stringify(err));"
+        },
+        "type": "n8n-nodes-base.code",
+        "typeVersion": 2,
+        "position": [
+          2416,
+          0
+        ],
+        "id": "4792d3f3-60dd-4fd1-a0ec-7278fdacf53e",
+        "name": "Handle_Delete_Error"
+      }
+    ],
+    "connections": {
+      "When Executed by Another Workflow": {
+        "main": [
+          [
+            {
+              "node": "Qdrant_Delete_Point",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Qdrant_Delete_Point": {
+        "main": [
+          [],
+          [
+            {
+              "node": "Handle_Delete_Error",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      }
+    },
+    "nodeGroups": [],
+    "authors": "Michelo Vaca Cardozo",
+    "name": "Version d247c60c",
+    "description": "",
+    "autosaved": true,
+    "createdAt": "2026-09-03T22:14:56.801Z",
+    "updatedAt": "2026-09-03T22:14:58.000Z"
+  }
+}
