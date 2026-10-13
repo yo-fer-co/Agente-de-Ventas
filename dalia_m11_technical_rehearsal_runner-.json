@@ -1,0 +1,1331 @@
+{
+  "id": "HfZUDo1DQQZ72ApD",
+  "name": "DALIA_M11_Technical_Rehearsal_Runner",
+  "active": false,
+  "activeVersionId": null,
+  "createdAt": "2026-05-28T19:43:28.600Z",
+  "updatedAt": "2026-06-09T16:22:50.000Z",
+  "isArchived": true,
+  "versionId": "3bacde14-329b-4fda-bae0-5b75081824d8",
+  "triggerCount": 0,
+  "nodes": [
+    {
+      "parameters": {
+        "inputSource": "passthrough"
+      },
+      "type": "n8n-nodes-base.executeWorkflowTrigger",
+      "typeVersion": 1.1,
+      "position": [
+        0,
+        0
+      ],
+      "id": "1ce2f9e1-448e-48d9-8213-bdec4ecc7d3e",
+      "name": "When Executed by Another Workflow"
+    },
+    {
+      "parameters": {
+        "jsCode": "const input = items[0]?.json || {};\n\nreturn [\n {\n   json: {\n     ...input,\n     technical_config: {\n       service_name: 'DALIA_M11_Technical_Rehearsal_Runner',\n       service_version: 'v1',\n       environment: 'demo',\n\n       storage: {\n         validation_runs_table: 'dalia_demo_validation_runs',\n         technical_checks_table: 'dalia_demo_technical_rehearsal_checks',\n         observability_events_table: 'dalia_observability_events_lite'\n       },\n\n       test_context: {\n         business_id: 'business_demo',\n         channel: 'whatsapp',\n         user_id: '573108058407',\n         display_name: 'Tester Técnico'\n       },\n\n       qdrant: {\n         enabled: true,\n         base_url: 'https://1537c683-48da-4631-ab76-ad698b6b9881.us-east-1-0.aws.cloud.qdrant.io:6333',\n         api_key: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJhY2Nlc3MiOiJtIn0.JAQWQxC9pi-OqDGt1gflxPim1XwBWw6Iq7Nq8Xdan3s',\n         collections: {\n           business_knowledge: 'YoEco_Business_DEMO',\n           catalog: 'YoEco_Catalogo_DEMO'\n         }\n       },\n\n       catalog_source: {\n         enabled: true,\n         provider: 'google_sheets',\n         spreadsheet_id: '15CwuYUqC-CgmTa4b04VOE7bLS1EnOqSxXUWVEsiMEiM',\n         sheet_name: 'Hoja 1'\n       },\n\n       google_drive: {\n         enabled: true,\n         sample_image_file_id: '1u4DNWYoThZ0CnHJu_bMudF72-mCLqVUX'\n       },\n\n       whatsapp: {\n         enabled: true,\n         test_to: '573108058407'\n       },\n\n       telegram: {\n         enabled: true,\n         test_chat_id: 'REEMPLAZAR_CHAT_ID_TELEGRAM_PRUEBA'\n       },\n\n       checks_policy: {\n         fail_if_critical_check_fails: true,\n         allow_warning_for_empty_catalog: false,\n         allow_warning_for_drive_missing_image: false\n       }\n     }\n   }\n }\n];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        208,
+        0
+      ],
+      "id": "cc63168a-8db4-4175-8a3f-de873013b12f",
+      "name": "Load Technical Rehearsal Config"
+    },
+    {
+      "parameters": {
+        "jsCode": "function makeId(prefix) {\n const ts = Date.now();\n const rand = Math.random().toString(36).slice(2, 8).toUpperCase();\n return `${prefix}_${ts}_${rand}`;\n}\n\nconst input = items[0]?.json || {};\nconst config = input.technical_config || {};\n\nconst now = new Date().toISOString();\n\nconst validationRun = {\n validation_run_id: makeId('techrun_demo'),\n environment: config.environment || 'demo',\n execution_mode: 'technical_rehearsal',\n status: 'running',\n\n started_at: now,\n finished_at: null,\n\n total_cases: 8,\n passed_cases: 0,\n warning_cases: 0,\n failed_cases: 0,\n\n go_no_go: '',\n summary: '',\n\n metadata: {\n   service_name: config.service_name,\n   service_version: config.service_version,\n   test_context: config.test_context,\n   rehearsal_type: 'technical',\n   created_at: now\n }\n};\n\nreturn [\n {\n   json: {\n     ...input,\n     validation_run: validationRun\n   }\n }\n];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        416,
+        0
+      ],
+      "id": "1db3ca2e-0002-4f5c-9707-c659cd106e06",
+      "name": "Build Technical Rehearsal Run Draft"
+    },
+    {
+      "parameters": {
+        "tableId": "dalia_demo_validation_runs",
+        "fieldsUi": {
+          "fieldValues": [
+            {
+              "fieldId": "validation_run_id",
+              "fieldValue": "={{ $json.validation_run.validation_run_id }}"
+            },
+            {
+              "fieldId": "environment",
+              "fieldValue": "={{ $json.validation_run.environment }}"
+            },
+            {
+              "fieldId": "execution_mode",
+              "fieldValue": "={{ $json.validation_run.execution_mode }}"
+            },
+            {
+              "fieldId": "status",
+              "fieldValue": "={{ $json.validation_run.status }}"
+            },
+            {
+              "fieldId": "started_at",
+              "fieldValue": "={{ $json.validation_run.started_at }}"
+            },
+            {
+              "fieldId": "finished_at",
+              "fieldValue": "={{ $json.validation_run.finished_at }}"
+            },
+            {
+              "fieldId": "total_cases",
+              "fieldValue": "={{ $json.validation_run.total_cases }}"
+            },
+            {
+              "fieldId": "passed_cases",
+              "fieldValue": "={{ $json.validation_run.passed_cases }}"
+            },
+            {
+              "fieldId": "warning_cases",
+              "fieldValue": "={{ $json.validation_run.warning_cases }}"
+            },
+            {
+              "fieldId": "failed_cases",
+              "fieldValue": "={{ $json.validation_run.failed_cases }}"
+            },
+            {
+              "fieldId": "go_no_go",
+              "fieldValue": "={{ $json.validation_run.go_no_go }}"
+            },
+            {
+              "fieldId": "summary",
+              "fieldValue": "={{ $json.validation_run.summary }}"
+            },
+            {
+              "fieldId": "metadata",
+              "fieldValue": "={{ $json.validation_run.metadata }}"
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.supabase",
+      "typeVersion": 1,
+      "position": [
+        624,
+        0
+      ],
+      "id": "f2e012b2-5614-46cd-9c2c-382211556aae",
+      "name": "Create Technical Validation Run",
+      "credentials": {
+        "supabaseApi": {
+          "id": "npkHU7XcpupfQTID",
+          "name": "Supabase account 2"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const base = $('Build Technical Rehearsal Run Draft').first().json || {};\nconst config = base.technical_config || {};\nconst run = base.validation_run || {};\n\nconst checks = [\n {\n   check_id: 'TECH01',\n   check_name: 'Supabase readiness',\n   component: 'Supabase',\n   check_type: 'supabase_readiness',\n   critical: true,\n   expected_result: {\n     connection_ok: true,\n     required_tables_available: true\n   }\n },\n {\n   check_id: 'TECH02',\n   check_name: 'M8 logging readiness',\n   component: 'M8 Observability',\n   check_type: 'm8_logging_readiness',\n   critical: true,\n   expected_result: {\n     event_logged: true\n   }\n },\n {\n   check_id: 'TECH03',\n   check_name: 'Catalog source readiness',\n   component: 'Catalog / Google Sheets',\n   check_type: 'catalog_source_readiness',\n   critical: true,\n   expected_result: {\n     catalog_rows_found: true\n   }\n },\n {\n   check_id: 'TECH04',\n   check_name: 'Qdrant readiness',\n   component: 'Qdrant',\n   check_type: 'qdrant_readiness',\n   critical: true,\n   expected_result: {\n     business_collection_available: true,\n     catalog_collection_available: true\n   }\n },\n {\n   check_id: 'TECH05',\n   check_name: 'Google Drive image readiness',\n   component: 'Google Drive',\n   check_type: 'google_drive_image_readiness',\n   critical: true,\n   expected_result: {\n     sample_image_accessible: true\n   }\n },\n {\n   check_id: 'TECH06',\n   check_name: 'WhatsApp send readiness',\n   component: 'WhatsApp',\n   check_type: 'whatsapp_send_readiness',\n   critical: true,\n   expected_result: {\n     message_sent: true\n   }\n },\n {\n   check_id: 'TECH07',\n   check_name: 'Telegram send readiness',\n   component: 'Telegram',\n   check_type: 'telegram_send_readiness',\n   critical: false,\n   expected_result: {\n     message_sent: true\n   }\n },\n {\n   check_id: 'TECH08',\n   check_name: 'Error logging readiness',\n   component: 'M8 Error Logging',\n   check_type: 'error_logging_readiness',\n   critical: true,\n   expected_result: {\n     error_event_logged: true\n   }\n }\n];\n\nreturn checks.map(check => ({\n json: {\n   validation_run: run,\n   technical_config: config,\n   technical_check: check\n }\n}));"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        832,
+        0
+      ],
+      "id": "45c5e8a9-4ebb-49f6-b527-db704c26306f",
+      "name": "Build Technical Check List"
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "type": "n8n-nodes-base.splitInBatches",
+      "typeVersion": 3,
+      "position": [
+        1040,
+        0
+      ],
+      "id": "6828717c-cdca-4e90-8298-f8a2d9a1f6bc",
+      "name": "Loop Over Technical Checks"
+    },
+    {
+      "parameters": {
+        "jsCode": "function makeId(prefix) {\n const ts = Date.now();\n const rand = Math.random().toString(36).slice(2, 8).toUpperCase();\n return `${prefix}_${ts}_${rand}`;\n}\n\nconst input = items[0]?.json || {};\nconst check = input.technical_check || {};\n\nreturn [\n {\n   json: {\n     ...input,\n     technical_check_execution: {\n       technical_check_id: makeId('techcheck'),\n       check_id: check.check_id,\n       check_name: check.check_name,\n       component: check.component,\n       check_type: check.check_type,\n       critical: Boolean(check.critical),\n       started_at: new Date().toISOString()\n     }\n   }\n }\n];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1520,
+        16
+      ],
+      "id": "40d6a724-01f1-44b8-a7b4-510066923279",
+      "name": "Prepare Technical Check"
+    },
+    {
+      "parameters": {
+        "rules": {
+          "values": [
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 3
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $json.technical_check.check_type }}",
+                    "rightValue": "supabase_readiness",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    },
+                    "id": "af7b9047-b60b-46ef-9ac8-a321a39be6d4"
+                  }
+                ],
+                "combinator": "and"
+              }
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 3
+                },
+                "conditions": [
+                  {
+                    "id": "ba25e7ba-e79d-4309-9290-f3bd8344bd8e",
+                    "leftValue": "={{ $json.technical_check.check_type }}",
+                    "rightValue": "m8_logging_readiness",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals",
+                      "name": "filter.operator.equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              }
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 3
+                },
+                "conditions": [
+                  {
+                    "id": "5e7ec84f-4d40-4fb3-a24a-dd50a6450b50",
+                    "leftValue": "={{ $json.technical_check.check_type }}",
+                    "rightValue": "catalog_source_readiness",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals",
+                      "name": "filter.operator.equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              }
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 3
+                },
+                "conditions": [
+                  {
+                    "id": "d66c54d2-f0c9-49e0-9224-2b2e9e45d7f3",
+                    "leftValue": "={{ $json.technical_check.check_type }}",
+                    "rightValue": "qdrant_readiness",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals",
+                      "name": "filter.operator.equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              }
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 3
+                },
+                "conditions": [
+                  {
+                    "id": "3d3a6b18-588f-4e2c-85e1-688b3f3d07e2",
+                    "leftValue": "={{ $json.technical_check.check_type }}",
+                    "rightValue": "google_drive_image_readiness",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals",
+                      "name": "filter.operator.equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              }
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 3
+                },
+                "conditions": [
+                  {
+                    "id": "3506503c-c732-4d8d-896d-dcacd326daf0",
+                    "leftValue": "={{ $json.technical_check.check_type }}",
+                    "rightValue": "whatsapp_send_readiness",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals",
+                      "name": "filter.operator.equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              }
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 3
+                },
+                "conditions": [
+                  {
+                    "id": "3ab98275-112a-42a7-a118-c70ec5faaecb",
+                    "leftValue": "",
+                    "rightValue": "telegram_send_readiness",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals",
+                      "name": "filter.operator.equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              }
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 3
+                },
+                "conditions": [
+                  {
+                    "id": "71b4132c-eab1-4543-953c-1227f3be97e5",
+                    "leftValue": "={{ $json.technical_check.check_type }}",
+                    "rightValue": "error_logging_readiness",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals",
+                      "name": "filter.operator.equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              }
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 3.4,
+      "position": [
+        1856,
+        -80
+      ],
+      "id": "b873cc20-eaf7-46a1-a5b1-da072b2da593",
+      "name": "Switch Technical Check Type"
+    },
+    {
+      "parameters": {
+        "operation": "getAll",
+        "tableId": "dalia_observability_events_lite",
+        "limit": 1
+      },
+      "type": "n8n-nodes-base.supabase",
+      "typeVersion": 1,
+      "position": [
+        2128,
+        -640
+      ],
+      "id": "dfb0cb91-ee04-437f-911b-c743be3d5423",
+      "name": "Check Supabase Readiness",
+      "alwaysOutputData": true,
+      "credentials": {
+        "supabaseApi": {
+          "id": "npkHU7XcpupfQTID",
+          "name": "Supabase account 2"
+        }
+      },
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "jsCode": "const context = $('Prepare Technical Check').first().json || {};\nconst rows = items.map(item => item.json || {});\n\nconst hasError = rows.some(row =>\n row.error ||\n row.errorMessage ||\n row.errorDescription\n);\n\nconst errors = [];\nconst warnings = [];\n\nif (hasError) {\n errors.push({\n   code: 'supabase_query_failed',\n   detail: rows\n });\n}\n\nconst status = errors.length > 0 ? 'failed' : 'passed';\n\nreturn [\n {\n   json: {\n     ...context,\n     technical_check_result: {\n       status,\n       actual_result: {\n         connection_ok: !hasError,\n         rows_returned: rows.length\n       },\n       evidence: {\n         sample_rows_available: rows.length > 0,\n         raw_sample: rows.slice(0, 1)\n       },\n       errors,\n       warnings\n     }\n   }\n }\n];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        2336,
+        -640
+      ],
+      "id": "b7827cfc-1aad-4dcd-8e80-daad5f00dc99",
+      "name": "Evaluate Supabase Readiness"
+    },
+    {
+      "parameters": {
+        "jsCode": "function makeId(prefix) {\n return `${prefix}_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;\n}\n\nconst input = items[0]?.json || {};\nconst config = input.technical_config || {};\nconst ctx = config.test_context || {};\n\nconst eventId = makeId('evt_m8_health');\n\nconst event = {\n schema_version: 'dalia.m8.event_request.v1',\n event: {\n   event_id: eventId,\n   event_name: 'technical_health_check',\n   event_type: 'system',\n   module: 'M11',\n   status: 'success',\n   level: 'INFO',\n   timestamp: new Date().toISOString(),\n\n   trace: {\n     conversation_id: `conv_${ctx.channel}_${ctx.user_id}`,\n     session_id: `session_${ctx.channel}_${ctx.user_id}`\n   },\n\n   context: {\n     business_id: ctx.business_id || 'business_demo',\n     environment: config.environment || 'demo',\n     channel: ctx.channel || 'whatsapp',\n     user_id: ctx.user_id || '',\n     display_name: ctx.display_name || 'Tester Técnico'\n   },\n\n   correlation: {\n     correlation_id: eventId,\n     trace_id: eventId\n   },\n\n   payload: {\n     check_type: 'm8_logging_readiness',\n     source: 'M11 technical rehearsal'\n   }\n }\n};\n\nreturn [\n {\n   json: {\n     ...input,\n     m8_health_event_id: eventId,\n     m8_event_request: event\n   }\n }\n];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        2128,
+        -464
+      ],
+      "id": "21a0bc91-adfb-437c-be7d-22bf450f5019",
+      "name": "Build M8 Health Event"
+    },
+    {
+      "parameters": {
+        "workflowId": {
+          "__rl": true,
+          "value": "sGL1OJ3lklD6wBu0",
+          "mode": "list",
+          "cachedResultUrl": "/workflow/sGL1OJ3lklD6wBu0",
+          "cachedResultName": "Agente de Ventas - TEST — M8: Observability"
+        },
+        "workflowInputs": {
+          "mappingMode": "defineBelow",
+          "value": {},
+          "matchingColumns": [],
+          "schema": [],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": true
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.executeWorkflow",
+      "typeVersion": 1.3,
+      "position": [
+        2336,
+        -464
+      ],
+      "id": "cb884b13-7521-48b8-8919-02049428653a",
+      "name": "Execute M8 Observability Service - Health",
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "jsCode": "const context = $('Build M8 Health Event').first().json || {};\nconst m8Result = items[0]?.json || {};\n\nconst success = Boolean(m8Result.success);\n\nconst errors = [];\nconst warnings = [];\n\nif (!success) {\n errors.push({\n   code: 'm8_event_not_logged',\n   detail: m8Result\n });\n}\n\nreturn [\n {\n   json: {\n     ...context,\n     technical_check_result: {\n       status: success ? 'passed' : 'failed',\n       actual_result: {\n         event_logged: success,\n         event_id: context.m8_health_event_id || ''\n       },\n       evidence: {\n         m8_result: m8Result\n       },\n       errors,\n       warnings\n     }\n   }\n }\n];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        2544,
+        -464
+      ],
+      "id": "45f5e3ff-9e50-4e84-9fcd-30e112636a9f",
+      "name": "Evaluate M8 Logging Readiness"
+    },
+    {
+      "parameters": {
+        "documentId": {
+          "__rl": true,
+          "value": "={{ $json.technical_config.catalog_source.spreadsheet_id }}",
+          "mode": "id"
+        },
+        "sheetName": {
+          "__rl": true,
+          "mode": "name",
+          "value": "={{ $json.technical_config.catalog_source.sheet_name }}"
+        },
+        "filtersUI": {
+          "values": []
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [
+        2128,
+        -288
+      ],
+      "id": "a59c79cc-c9e7-4ed7-a0cf-895d44d2c0a4",
+      "name": "Check Catalog Source",
+      "alwaysOutputData": true,
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "WFnLF38LKngtpQ0D",
+          "name": "Google Sheets account 2"
+        }
+      },
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "jsCode": "const context = $('Prepare Technical Check').first().json || {};\nconst rows = items.map(item => item.json || {});\n\nconst errors = [];\nconst warnings = [];\n\nconst hasError = rows.some(row =>\n row.error ||\n row.errorMessage ||\n row.errorDescription\n);\n\nif (hasError) {\n errors.push({\n   code: 'catalog_source_query_failed',\n   detail: rows\n });\n}\n\nif (!hasError && rows.length === 0) {\n errors.push({\n   code: 'catalog_source_empty',\n   detail: 'No se encontraron filas en el catálogo.'\n });\n}\n\nconst validLikeCatalog = rows.some(row =>\n row.sku ||\n row.SKU ||\n row.product_id ||\n row.titulo ||\n row.título ||\n row.display_name ||\n row.nombre ||\n row.producto\n);\n\nif (!hasError && rows.length > 0 && !validLikeCatalog) {\n warnings.push({\n   code: 'catalog_rows_without_expected_fields',\n   detail: 'Hay filas, pero no se detectaron campos típicos de catálogo.'\n });\n}\n\nconst status =\n errors.length > 0\n   ? 'failed'\n   : warnings.length > 0\n     ? 'warning'\n     : 'passed';\n\nreturn [\n {\n   json: {\n     ...context,\n     technical_check_result: {\n       status,\n       actual_result: {\n         catalog_rows_found: rows.length > 0,\n         rows_count: rows.length,\n         valid_like_catalog: validLikeCatalog\n       },\n       evidence: {\n         sample_rows: rows.slice(0, 3)\n       },\n       errors,\n       warnings\n     }\n   }\n }\n];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        2336,
+        -288
+      ],
+      "id": "a7b301c5-72a3-41dc-a2ce-10ff9cdc73c9",
+      "name": "Evaluate Catalog Source Readiness"
+    },
+    {
+      "parameters": {
+        "url": "={{ $json.technical_config.qdrant.base_url }}/collections/{{ $json.technical_config.qdrant.collections.business_knowledge }}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "api-key",
+              "value": "={{ $json.technical_config.qdrant.api_key }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [
+        2080,
+        -144
+      ],
+      "id": "5a044f12-adc9-4d93-9eda-fa8ba132aec4",
+      "name": "Check Qdrant Business Collection",
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "url": "={{ $('Prepare Technical Check').first().json.technical_config.qdrant.base_url }}/collections/{{ $('Prepare Technical Check').first().json.technical_config.qdrant.collections.catalog }}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "api-key",
+              "value": "={{ $('Prepare Technical Check').first().json.technical_config.qdrant.api_key }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [
+        2304,
+        -144
+      ],
+      "id": "82c225c1-d8f4-44c0-96cf-d46e1188352c",
+      "name": "Check Qdrant Catalog Collection",
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "jsCode": "const context = $('Prepare Technical Check').first().json || {};\n\nconst businessResult = $('Check Qdrant Business Collection').first().json || {};\nconst catalogResult = items[0]?.json || {};\n\nfunction hasError(result) {\n return Boolean(\n   result.error ||\n   result.errorMessage ||\n   result.errorDescription ||\n   result.status === 'error'\n );\n}\n\nfunction pointsCount(result) {\n return Number(\n   result.result?.points_count ??\n   result.points_count ??\n   result.result?.vectors_count ??\n   0\n );\n}\n\nconst businessError = hasError(businessResult);\nconst catalogError = hasError(catalogResult);\n\nconst errors = [];\nconst warnings = [];\n\nif (businessError) {\n errors.push({\n   code: 'qdrant_business_collection_unavailable',\n   detail: businessResult\n });\n}\n\nif (catalogError) {\n errors.push({\n   code: 'qdrant_catalog_collection_unavailable',\n   detail: catalogResult\n });\n}\n\nconst businessPoints = pointsCount(businessResult);\nconst catalogPoints = pointsCount(catalogResult);\n\nif (!businessError && businessPoints === 0) {\n warnings.push({\n   code: 'qdrant_business_collection_empty',\n   detail: 'La colección de negocio existe pero no reporta puntos.'\n });\n}\n\nif (!catalogError && catalogPoints === 0) {\n warnings.push({\n   code: 'qdrant_catalog_collection_empty',\n   detail: 'La colección de catálogo existe pero no reporta puntos.'\n });\n}\n\nconst status =\n errors.length > 0\n   ? 'failed'\n   : warnings.length > 0\n     ? 'warning'\n     : 'passed';\n\nreturn [\n {\n   json: {\n     ...context,\n     technical_check_result: {\n       status,\n       actual_result: {\n         business_collection_available: !businessError,\n         catalog_collection_available: !catalogError,\n         business_points_count: businessPoints,\n         catalog_points_count: catalogPoints\n       },\n       evidence: {\n         business_result: businessResult,\n         catalog_result: catalogResult\n       },\n       errors,\n       warnings\n     }\n   }\n }\n];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        2512,
+        -144
+      ],
+      "id": "51e8df7a-cb6c-4c5b-9824-f65855cd8c41",
+      "name": "Evaluate Qdrant Readiness"
+    },
+    {
+      "parameters": {
+        "resource": "fileFolder",
+        "queryString": "={{ $json.technical_config.google_drive.sample_image_file_id }}",
+        "filter": {},
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleDrive",
+      "typeVersion": 3,
+      "position": [
+        2096,
+        48
+      ],
+      "id": "e4ef2f9e-14b7-4427-aa53-3e21dd35e6cf",
+      "name": "Check Google Drive Sample Image",
+      "alwaysOutputData": true,
+      "credentials": {
+        "googleDriveOAuth2Api": {
+          "id": "lgNrEQGQeSWc6bsi",
+          "name": "Google Drive OAuth2 API"
+        }
+      },
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "jsCode": "const context = $('Prepare Technical Check').first().json || {};\nconst result = items[0]?.json || {};\n\nconst errors = [];\nconst warnings = [];\n\nconst hasError =\n Boolean(result.error) ||\n Boolean(result.errorMessage) ||\n Boolean(result.errorDescription);\n\nif (hasError) {\n errors.push({\n   code: 'google_drive_sample_image_unavailable',\n   detail: result\n });\n}\n\nconst fileName = result.name || result.fileName || '';\nconst mimeType = result.mimeType || result.mime_type || '';\n\nif (!hasError && mimeType && !String(mimeType).startsWith('image/')) {\n warnings.push({\n   code: 'google_drive_sample_file_not_image',\n   detail: {\n     fileName,\n     mimeType\n   }\n });\n}\n\nconst status =\n errors.length > 0\n   ? 'failed'\n   : warnings.length > 0\n     ? 'warning'\n     : 'passed';\n\nreturn [\n {\n   json: {\n     ...context,\n     technical_check_result: {\n       status,\n       actual_result: {\n         sample_image_accessible: !hasError,\n         file_name: fileName,\n         mime_type: mimeType\n       },\n       evidence: {\n         drive_result: result\n       },\n       errors,\n       warnings\n     }\n   }\n }\n];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        2304,
+        48
+      ],
+      "id": "ea4a3066-84ae-47c6-8b86-8fd426e6a725",
+      "name": "Evaluate Google Drive Image Readiness"
+    },
+    {
+      "parameters": {
+        "operation": "send",
+        "phoneNumberId": "1104496126080610",
+        "recipientPhoneNumber": "={{ $json.technical_config.whatsapp.test_to }}",
+        "textBody": "Prueba técnica DALIA Demo. Validación de canal WhatsApp.",
+        "additionalFields": {}
+      },
+      "type": "n8n-nodes-base.whatsApp",
+      "typeVersion": 1.1,
+      "position": [
+        2096,
+        224
+      ],
+      "id": "c4218b22-a9f2-4928-9f55-cd6d091f2258",
+      "name": "Send WhatsApp Technical Test",
+      "webhookId": "a3f0cb90-3134-4b0c-ade5-4520c1fec93a",
+      "credentials": {
+        "whatsAppApi": {
+          "id": "3lZ90gsbMgk8fR6e",
+          "name": "WhatsApp account 4"
+        }
+      },
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "jsCode": "const context = $('Prepare Technical Check').first().json || {};\nconst result = items[0]?.json || {};\n\nconst messageId =\n result.messages?.[0]?.id ||\n result.message_id ||\n result.id ||\n result.data?.messages?.[0]?.id ||\n '';\n\nconst hasError =\n Boolean(result.error) ||\n Boolean(result.errorMessage) ||\n Boolean(result.errorDescription);\n\nconst sent = Boolean(messageId) || (Object.keys(result).length > 0 && !hasError);\n\nconst errors = [];\n\nif (!sent) {\n errors.push({\n   code: 'whatsapp_test_message_failed',\n   detail: result\n });\n}\n\nreturn [\n {\n   json: {\n     ...context,\n     technical_check_result: {\n       status: sent ? 'passed' : 'failed',\n       actual_result: {\n         message_sent: sent,\n         message_id: messageId\n       },\n       evidence: {\n         whatsapp_result: result\n       },\n       errors,\n       warnings: []\n     }\n   }\n }\n];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        2304,
+        224
+      ],
+      "id": "e70634e8-cb67-4f53-ad79-d5bb2a797ac4",
+      "name": "Evaluate WhatsApp Send Readiness"
+    },
+    {
+      "parameters": {
+        "chatId": "={{ $json.technical_config.telegram.test_chat_id }}",
+        "text": "Prueba técnica DALIA Demo. Validación de canal Telegram.",
+        "additionalFields": {}
+      },
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        2080,
+        400
+      ],
+      "id": "798e3f5c-8f96-4cf5-8576-683eee25419a",
+      "name": "Send Telegram Technical Test",
+      "webhookId": "f2344d7d-28e7-4154-8386-49343673d054",
+      "credentials": {
+        "telegramApi": {
+          "id": "0qtSZ4kDAV2d17lz",
+          "name": "Telegram account 3"
+        }
+      },
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "jsCode": "const context = $('Prepare Technical Check').first().json || {};\nconst result = items[0]?.json || {};\n\nconst resultObject =\n result.result ||\n result.message ||\n result.data ||\n result;\n\nconst messageId =\n resultObject.message_id ||\n result.message_id ||\n result.id ||\n '';\n\nconst hasError =\n Boolean(result.error) ||\n Boolean(result.errorMessage) ||\n Boolean(result.errorDescription) ||\n result.ok === false;\n\nconst sent = Boolean(messageId) || (Object.keys(result).length > 0 && !hasError);\n\nconst errors = [];\nconst warnings = [];\n\nif (!sent) {\n if (context.technical_check?.critical) {\n   errors.push({\n     code: 'telegram_test_message_failed',\n     detail: result\n   });\n } else {\n   warnings.push({\n     code: 'telegram_test_message_failed_non_critical',\n     detail: result\n   });\n }\n}\n\nconst status =\n errors.length > 0\n   ? 'failed'\n   : warnings.length > 0\n     ? 'warning'\n     : 'passed';\n\nreturn [\n {\n   json: {\n     ...context,\n     technical_check_result: {\n       status,\n       actual_result: {\n         message_sent: sent,\n         message_id: String(messageId || '')\n       },\n       evidence: {\n         telegram_result: result\n       },\n       errors,\n       warnings\n     }\n   }\n }\n];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        2288,
+        400
+      ],
+      "id": "70ccb6a2-60f8-4f74-95af-433b92a0d528",
+      "name": "Evaluate Telegram Send Readiness"
+    },
+    {
+      "parameters": {
+        "jsCode": "function makeId(prefix) {\n return `${prefix}_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;\n}\n\nconst input = items[0]?.json || {};\nconst config = input.technical_config || {};\nconst ctx = config.test_context || {};\n\nconst eventId = makeId('evt_error_probe');\n\nconst event = {\n schema_version: 'dalia.m8.event_request.v1',\n event: {\n   event_id: eventId,\n   event_name: 'error',\n   event_type: 'error',\n   module: 'M11',\n   status: 'error',\n   level: 'ERROR',\n   timestamp: new Date().toISOString(),\n\n   trace: {\n     conversation_id: `conv_${ctx.channel}_${ctx.user_id}`,\n     session_id: `session_${ctx.channel}_${ctx.user_id}`\n   },\n\n   context: {\n     business_id: ctx.business_id || 'business_demo',\n     environment: config.environment || 'demo',\n     channel: ctx.channel || 'whatsapp',\n     user_id: ctx.user_id || '',\n     display_name: ctx.display_name || 'Tester Técnico'\n   },\n\n   correlation: {\n     correlation_id: eventId,\n     trace_id: eventId\n   },\n\n   payload: {\n     check_type: 'error_logging_readiness',\n     source: 'M11 technical rehearsal',\n     recoverable: true\n   },\n\n   error: {\n     error_code: 'm11_error_probe',\n     error_message: 'Evento de prueba para validar logging de errores.',\n     error_node: 'Build M8 Error Probe Event',\n     error_workflow: 'DALIA_M11_Technical_Rehearsal_Runner'\n   }\n }\n};\n\nreturn [\n {\n   json: {\n     ...input,\n     m8_error_probe_event_id: eventId,\n     m8_event_request: event\n   }\n }\n];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        2064,
+        656
+      ],
+      "id": "ae54eea3-aa8d-4342-9cff-ddde5a994abe",
+      "name": "Build M8 Error Probe Event"
+    },
+    {
+      "parameters": {
+        "workflowId": {
+          "__rl": true,
+          "value": "sGL1OJ3lklD6wBu0",
+          "mode": "list",
+          "cachedResultUrl": "/workflow/sGL1OJ3lklD6wBu0",
+          "cachedResultName": "Agente de Ventas - TEST — M8: Observability"
+        },
+        "workflowInputs": {
+          "mappingMode": "defineBelow",
+          "value": {},
+          "matchingColumns": [],
+          "schema": [],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": true
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.executeWorkflow",
+      "typeVersion": 1.3,
+      "position": [
+        2272,
+        656
+      ],
+      "id": "9347b349-6d71-4a2a-9cb6-33aa23cffd9f",
+      "name": "Execute M8 Observability Service - Error Probe",
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "tableId": "dalia_demo_technical_rehearsal_checks",
+        "fieldsUi": {
+          "fieldValues": [
+            {
+              "fieldId": "technical_check_id",
+              "fieldValue": "={{ $json.technical_check_execution.technical_check_id }}"
+            },
+            {
+              "fieldId": "validation_run_id",
+              "fieldValue": "={{ $json.validation_run.validation_run_id }}"
+            },
+            {
+              "fieldId": "check_id",
+              "fieldValue": "={{ $json.technical_check.check_id }}"
+            },
+            {
+              "fieldId": "check_name",
+              "fieldValue": "={{ $json.technical_check.check_name }}"
+            },
+            {
+              "fieldId": "component",
+              "fieldValue": "={{ $json.technical_check.component }}"
+            },
+            {
+              "fieldId": "check_type",
+              "fieldValue": "={{ $json.technical_check.check_type }}"
+            },
+            {
+              "fieldId": "critical",
+              "fieldValue": "={{ $json.technical_check.critical }}"
+            },
+            {
+              "fieldId": "status",
+              "fieldValue": "={{ $json.technical_check_result.status }}"
+            },
+            {
+              "fieldId": "expected_result",
+              "fieldValue": "={{ $json.technical_check.expected_result }}"
+            },
+            {
+              "fieldId": "actual_result",
+              "fieldValue": "={{ $json.technical_check_result.actual_result }}"
+            },
+            {
+              "fieldId": "evidence",
+              "fieldValue": "={{ $json.technical_check_result.evidence }}"
+            },
+            {
+              "fieldId": "errors",
+              "fieldValue": "={{ $json.technical_check_result.errors }}"
+            },
+            {
+              "fieldId": "warnings",
+              "fieldValue": "={{ $json.technical_check_result.warnings }}"
+            },
+            {
+              "fieldId": "executed_at",
+              "fieldValue": "={{ new Date().toISOString() }}"
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.supabase",
+      "typeVersion": 1,
+      "position": [
+        3168,
+        112
+      ],
+      "id": "9a2bf6b4-97df-4bbd-8edd-f23f02611b64",
+      "name": "Store Technical Check Result",
+      "credentials": {
+        "supabaseApi": {
+          "id": "npkHU7XcpupfQTID",
+          "name": "Supabase account 2"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "getAll",
+        "tableId": "dalia_demo_technical_rehearsal_checks",
+        "returnAll": true,
+        "filters": {
+          "conditions": [
+            {
+              "keyName": "validation_run_id",
+              "condition": "eq",
+              "keyValue": "={{ $('Build Technical Rehearsal Run Draft').first().json.validation_run.validation_run_id }}"
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.supabase",
+      "typeVersion": 1,
+      "position": [
+        1200,
+        -352
+      ],
+      "id": "c2983c2b-61cc-41b5-85eb-f56701ed50f8",
+      "name": "Fetch Technical Check Results",
+      "credentials": {
+        "supabaseApi": {
+          "id": "npkHU7XcpupfQTID",
+          "name": "Supabase account 2"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const base = $('Build Technical Rehearsal Run Draft').first().json || {};\nconst run = base.validation_run || {};\n\nconst results = items\n .map(item => item.json || {})\n .filter(row => row.check_id);\n\nconst passed = results.filter(r => r.status === 'passed').length;\nconst warning = results.filter(r => r.status === 'warning').length;\nconst failed = results.filter(r => r.status === 'failed').length;\nconst skipped = results.filter(r => r.status === 'skipped').length;\n\nconst criticalFailures = results.filter(r =>\n r.critical === true &&\n r.status === 'failed'\n);\n\nconst goNoGo = criticalFailures.length === 0\n ? 'GO_TECHNICAL'\n : 'NO_GO_TECHNICAL';\n\nconst summary =\n goNoGo === 'GO_TECHNICAL'\n   ? `Ensayo técnico aprobado. ${passed} checks passed, ${warning} warnings, ${failed} failed.`\n   : `Ensayo técnico NO aprobado. Fallaron ${criticalFailures.length} checks críticos.`;\n\nreturn [\n {\n   json: {\n     validation_run_update: {\n       validation_run_id: run.validation_run_id,\n       status: 'completed',\n       finished_at: new Date().toISOString(),\n       total_cases: results.length,\n       passed_cases: passed,\n       warning_cases: warning + skipped,\n       failed_cases: failed,\n       go_no_go: goNoGo,\n       summary,\n       metadata: {\n         ...(run.metadata || {}),\n         technical_rehearsal: {\n           go_no_go: goNoGo,\n           passed,\n           warning,\n           failed,\n           skipped,\n           critical_failures: criticalFailures.map(r => ({\n             check_id: r.check_id,\n             check_name: r.check_name,\n             component: r.component\n           })),\n           evaluated_at: new Date().toISOString()\n         }\n       }\n     },\n     technical_rehearsal_summary: {\n       go_no_go: goNoGo,\n       passed,\n       warning,\n       failed,\n       skipped,\n       critical_failures: criticalFailures,\n       results\n     }\n   }\n }\n];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1408,
+        -352
+      ],
+      "id": "0d78b620-29ce-4dc5-939d-635aa86a4196",
+      "name": "Aggregate Technical Rehearsal Result"
+    },
+    {
+      "parameters": {
+        "operation": "update",
+        "tableId": "dalia_demo_validation_runs",
+        "filters": {
+          "conditions": [
+            {
+              "keyName": "validation_run_id",
+              "condition": "eq",
+              "keyValue": "={{ $json.validation_run_update.validation_run_id }}"
+            }
+          ]
+        },
+        "fieldsUi": {
+          "fieldValues": [
+            {
+              "fieldId": "status",
+              "fieldValue": "={{ $json.validation_run_update.status }}"
+            },
+            {
+              "fieldId": "finished_at",
+              "fieldValue": "={{ $json.validation_run_update.finished_at }}"
+            },
+            {
+              "fieldId": "total_cases",
+              "fieldValue": "={{ $json.validation_run_update.total_cases }}"
+            },
+            {
+              "fieldId": "passed_cases",
+              "fieldValue": "={{ $json.validation_run_update.passed_cases }}"
+            },
+            {
+              "fieldId": "warning_cases",
+              "fieldValue": "={{ $json.validation_run_update.warning_cases }}"
+            },
+            {
+              "fieldId": "failed_cases",
+              "fieldValue": "={{ $json.validation_run_update.failed_cases }}"
+            },
+            {
+              "fieldId": "go_no_go",
+              "fieldValue": "={{ $json.validation_run_update.go_no_go }}"
+            },
+            {
+              "fieldId": "summary",
+              "fieldValue": "={{ $json.validation_run_update.summary }}"
+            },
+            {
+              "fieldId": "metadata",
+              "fieldValue": "={{ $json.validation_run_update.metadata }}"
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.supabase",
+      "typeVersion": 1,
+      "position": [
+        1616,
+        -352
+      ],
+      "id": "3469c91b-d1e1-4ac9-9fbc-c77e7cb833ef",
+      "name": "Update Technical Validation Run",
+      "credentials": {
+        "supabaseApi": {
+          "id": "npkHU7XcpupfQTID",
+          "name": "Supabase account 2"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const input = $('Aggregate Technical Rehearsal Result').first().json || {};\n\nreturn [\n {\n   json: {\n     schema_version: 'dalia.m11.technical_rehearsal_result.v1',\n     success: input.technical_rehearsal_summary?.go_no_go === 'GO_TECHNICAL',\n     result_type: 'technical_rehearsal_completed',\n     summary: input.technical_rehearsal_summary,\n     completed_at: new Date().toISOString()\n   }\n }\n];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1808,
+        -352
+      ],
+      "id": "84f94547-2cab-4d6b-a5af-676bce467e2b",
+      "name": "Return Technical Rehearsal Summary"
+    }
+  ],
+  "connections": {
+    "When Executed by Another Workflow": {
+      "main": [
+        [
+          {
+            "node": "Load Technical Rehearsal Config",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Load Technical Rehearsal Config": {
+      "main": [
+        [
+          {
+            "node": "Build Technical Rehearsal Run Draft",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Build Technical Rehearsal Run Draft": {
+      "main": [
+        [
+          {
+            "node": "Create Technical Validation Run",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Create Technical Validation Run": {
+      "main": [
+        [
+          {
+            "node": "Build Technical Check List",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Build Technical Check List": {
+      "main": [
+        [
+          {
+            "node": "Loop Over Technical Checks",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Loop Over Technical Checks": {
+      "main": [
+        [
+          {
+            "node": "Fetch Technical Check Results",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Prepare Technical Check",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Prepare Technical Check": {
+      "main": [
+        [
+          {
+            "node": "Switch Technical Check Type",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Switch Technical Check Type": {
+      "main": [
+        [
+          {
+            "node": "Check Supabase Readiness",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Build M8 Health Event",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Check Catalog Source",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Check Qdrant Business Collection",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Check Google Drive Sample Image",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Send WhatsApp Technical Test",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Send Telegram Technical Test",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Build M8 Error Probe Event",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Check Supabase Readiness": {
+      "main": [
+        [
+          {
+            "node": "Evaluate Supabase Readiness",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Build M8 Health Event": {
+      "main": [
+        [
+          {
+            "node": "Execute M8 Observability Service - Health",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Execute M8 Observability Service - Health": {
+      "main": [
+        [
+          {
+            "node": "Evaluate M8 Logging Readiness",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Check Catalog Source": {
+      "main": [
+        [
+          {
+            "node": "Evaluate Catalog Source Readiness",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Check Qdrant Business Collection": {
+      "main": [
+        [
+          {
+            "node": "Check Qdrant Catalog Collection",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Check Qdrant Catalog Collection": {
+      "main": [
+        [
+          {
+            "node": "Evaluate Qdrant Readiness",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Check Google Drive Sample Image": {
+      "main": [
+        [
+          {
+            "node": "Evaluate Google Drive Image Readiness",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Send WhatsApp Technical Test": {
+      "main": [
+        [
+          {
+            "node": "Evaluate WhatsApp Send Readiness",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Send Telegram Technical Test": {
+      "main": [
+        [
+          {
+            "node": "Evaluate Telegram Send Readiness",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Build M8 Error Probe Event": {
+      "main": [
+        [
+          {
+            "node": "Execute M8 Observability Service - Error Probe",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Evaluate Supabase Readiness": {
+      "main": [
+        [
+          {
+            "node": "Store Technical Check Result",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Evaluate M8 Logging Readiness": {
+      "main": [
+        [
+          {
+            "node": "Store Technical Check Result",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Evaluate Catalog Source Readiness": {
+      "main": [
+        [
+          {
+            "node": "Store Technical Check Result",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Evaluate Qdrant Readiness": {
+      "main": [
+        [
+          {
+            "node": "Store Technical Check Result",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Evaluate Google Drive Image Readiness": {
+      "main": [
+        [
+          {
+            "node": "Store Technical Check Result",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Evaluate WhatsApp Send Readiness": {
+      "main": [
+        [
+          {
+            "node": "Store Technical Check Result",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Evaluate Telegram Send Readiness": {
+      "main": [
+        [
+          {
+            "node": "Store Technical Check Result",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Execute M8 Observability Service - Error Probe": {
+      "main": [
+        [
+          {
+            "node": "Store Technical Check Result",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Store Technical Check Result": {
+      "main": [
+        [
+          {
+            "node": "Loop Over Technical Checks",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Fetch Technical Check Results": {
+      "main": [
+        [
+          {
+            "node": "Aggregate Technical Rehearsal Result",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Aggregate Technical Rehearsal Result": {
+      "main": [
+        [
+          {
+            "node": "Update Technical Validation Run",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Update Technical Validation Run": {
+      "main": [
+        [
+          {
+            "node": "Return Technical Rehearsal Summary",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "nodeGroups": [],
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate"
+  },
+  "staticData": null,
+  "pinData": {},
+  "meta": {
+    "templateCredsSetupCompleted": true
+  },
+  "tags": [],
+  "shared": [
+    {
+      "role": "workflow:owner",
+      "workflowId": "HfZUDo1DQQZ72ApD",
+      "projectId": "tRHCC8ts4mkRGXGn",
+      "createdAt": "2026-05-28T19:43:28.604Z",
+      "updatedAt": "2026-05-28T19:43:28.604Z"
+    }
+  ],
+  "activeVersion": null
+}
