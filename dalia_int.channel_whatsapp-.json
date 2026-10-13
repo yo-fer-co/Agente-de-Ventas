@@ -1,0 +1,1941 @@
+{
+  "id": "1cpwPUDrx03yPATI",
+  "name": "DALIA_INT.channel_whatsapp",
+  "active": true,
+  "activeVersionId": "4d06a9cd-3f71-4b8b-9aaf-edda52928e84",
+  "createdAt": "2026-10-03T03:28:03.290Z",
+  "updatedAt": "2026-10-03T16:46:53.149Z",
+  "isArchived": false,
+  "versionId": "4d06a9cd-3f71-4b8b-9aaf-edda52928e84",
+  "triggerCount": 2,
+  "nodes": [
+    {
+      "id": "03609b71-d727-4425-805b-5f30d69659b1",
+      "name": "Solicitud del puerto",
+      "type": "n8n-nodes-base.executeWorkflowTrigger",
+      "typeVersion": 1.2,
+      "position": [
+        0,
+        560
+      ],
+      "parameters": {
+        "inputSource": "passthrough"
+      }
+    },
+    {
+      "id": "31592869-db10-4711-9e19-23f59c22fbd4",
+      "name": "Operacion",
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 3.2,
+      "position": [
+        224,
+        544
+      ],
+      "parameters": {
+        "rules": {
+          "values": [
+            {
+              "outputKey": "send",
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict"
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $json.operation }}",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    },
+                    "rightValue": "send"
+                  }
+                ],
+                "combinator": "and"
+              }
+            },
+            {
+              "outputKey": "get_media",
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict"
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $json.operation }}",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    },
+                    "rightValue": "get_media"
+                  }
+                ],
+                "combinator": "and"
+              }
+            }
+          ]
+        },
+        "options": {
+          "fallbackOutput": "extra",
+          "renameFallbackOutput": "No soportada"
+        }
+      }
+    },
+    {
+      "id": "0fb5a945-5101-4de1-baba-325a1b84fc8c",
+      "name": "Construir envio",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        448,
+        192
+      ],
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "jsCode": "// Construye la solicitud de envío a WhatsApp Cloud API (operación channel.send)\nconst r = $json;\nconst s = r.settings || {};\nconst inp = r.input || {};\nconst m = inp.message || {};\nconst fail = (code, message) => ({ json: { skip: true, status: 'PERMANENT_ERROR', error: { code, message } } });\nif (!s.graph_api_version || !s.phone_number_id) return fail('VALIDATION', 'faltan settings.graph_api_version o settings.phone_number_id');\nif (!inp.to) return fail('VALIDATION', 'falta input.to');\nconst body = { messaging_product: 'whatsapp', recipient_type: 'individual', to: String(inp.to) };\nconst t = m.type;\nif (t === 'text') { body.type = 'text'; body.text = { body: m.text, preview_url: m.preview_url === true }; }\nelse if (['image', 'video', 'audio', 'document', 'sticker'].includes(t)) {\n  if (!m.media_url) return fail('VALIDATION', 'mensaje ' + t + ' sin media_url');\n  body.type = t; body[t] = { link: m.media_url };\n  if (m.caption && ['image', 'video', 'document'].includes(t)) body[t].caption = m.caption;\n  if (m.filename && t === 'document') body[t].filename = m.filename;\n} else if (t === 'template') {\n  if (!m.template?.name || !m.template?.language) return fail('VALIDATION', 'plantilla sin name o language');\n  body.type = 'template'; body.template = { name: m.template.name, language: { code: m.template.language }, components: m.template.components || [] };\n} else if (t === 'interactive') {\n  if (!m.interactive) return fail('VALIDATION', 'mensaje interactive sin objeto interactive');\n  body.type = 'interactive'; body.interactive = m.interactive;\n} else if (t === 'reaction') {\n  body.type = 'reaction'; body.reaction = { message_id: m.reply_to_message_id, emoji: m.emoji };\n} else return fail('VALIDATION', 'tipo de mensaje no soportado: ' + t);\nif (inp.reply_to_message_id && t !== 'reaction') body.context = { message_id: inp.reply_to_message_id };\nreturn { json: { skip: false, url: 'https://graph.facebook.com/' + s.graph_api_version + '/' + s.phone_number_id + '/messages', body, timeout_ms: s.timeout_ms || 10000 } };"
+      }
+    },
+    {
+      "id": "5fd418cc-56e7-4ecf-aad2-363cfe8877cd",
+      "name": "Envio ejecutable",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        672,
+        192
+      ],
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose"
+          },
+          "conditions": [
+            {
+              "leftValue": "={{ $json.skip === false }}",
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        }
+      }
+    },
+    {
+      "id": "9b745484-08d9-45f7-a36f-fb8db045e510",
+      "name": "Enviar a WhatsApp",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.5,
+      "position": [
+        896,
+        96
+      ],
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $json.url }}",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendBody": true,
+        "contentType": "json",
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify($json.body) }}",
+        "options": {
+          "timeout": "={{ $json.timeout_ms }}",
+          "response": {
+            "response": {
+              "fullResponse": true,
+              "neverError": true,
+              "responseFormat": "json"
+            }
+          }
+        }
+      },
+      "onError": "continueErrorOutput",
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "Ava0CKg0tdWtb6DX",
+          "name": "DALIA WhatsApp"
+        }
+      }
+    },
+    {
+      "id": "b583963a-a4cb-412b-b72a-352f6330a10e",
+      "name": "Normalizar envio",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1120,
+        0
+      ],
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "jsCode": "// Normaliza la respuesta de envío de WhatsApp al contrato channel.send\nconst res = $json;\nconst code = res.statusCode;\nconst body = res.body || {};\nif (code >= 200 && code < 300 && body.messages && body.messages[0]) {\n  return { json: { status: 'OK', data: { provider_message_id: body.messages[0].id, recipient: body.contacts?.[0]?.wa_id || null, accepted_at: new Date().toISOString(), message_status: body.messages[0].message_status || 'accepted' }, error: null } };\n}\nconst e = body.error || {};\nconst c = Number(e.code);\nlet status = 'PERMANENT_ERROR', err = 'HTTP_' + code;\nif (c === 131047) err = 'WINDOW_CLOSED';\nelse if (c === 131026) err = 'UNDELIVERABLE';\nelse if (c >= 132000 && c < 133000) err = 'TEMPLATE_ERROR';\nelse if ([190, 10, 200].includes(c)) err = 'AUTH_ERROR';\nelse if ([4, 80007, 130429, 131048, 131056].includes(c)) { status = 'RETRYABLE_ERROR'; err = 'RATE_LIMIT'; }\nelse if (code === 408 || code === 429 || code >= 500) { status = 'RETRYABLE_ERROR'; }\nreturn { json: { status, data: null, error: { code: err, provider_code: e.code ?? null, message: e.message || e.error_data?.details || ('HTTP ' + code), http_status: code } } };"
+      }
+    },
+    {
+      "id": "0b83a22f-56ce-43f9-abb6-4058ed49be6e",
+      "name": "Envio no ejecutable",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        896,
+        288
+      ],
+      "parameters": {
+        "mode": "manual",
+        "includeOtherFields": false,
+        "assignments": {
+          "assignments": [
+            {
+              "id": "e1",
+              "name": "status",
+              "value": "={{ $json.status }}",
+              "type": "string"
+            },
+            {
+              "id": "e2",
+              "name": "error",
+              "value": "={{ $json.error }}",
+              "type": "object"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "15368b26-d010-4dc5-948b-e83755b4eaf1",
+      "name": "Consultar archivo",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.5,
+      "position": [
+        448,
+        560
+      ],
+      "parameters": {
+        "method": "GET",
+        "url": "=https://graph.facebook.com/{{ $json.settings.graph_api_version }}/{{ $json.input.media_id }}",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "options": {
+          "timeout": "={{ $json.settings.timeout_ms ?? 10000 }}",
+          "response": {
+            "response": {
+              "fullResponse": true,
+              "neverError": true,
+              "responseFormat": "json"
+            }
+          }
+        }
+      },
+      "onError": "continueErrorOutput",
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "Ava0CKg0tdWtb6DX",
+          "name": "DALIA WhatsApp"
+        }
+      }
+    },
+    {
+      "id": "2b0faf53-a647-4910-a42d-c278e6b7579b",
+      "name": "Interpretar metadatos del archivo",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        672,
+        480
+      ],
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "jsCode": "// Interpreta la respuesta de GET /{media_id} (URL temporal de descarga)\nconst res = $json;\nconst b = res.body || {};\nif (res.statusCode >= 200 && res.statusCode < 300 && b.url) {\n  return { json: { ok: true, url: b.url, mime_type: b.mime_type || null, sha256: b.sha256 || null, file_size: b.file_size || null, media_id: b.id || null } };\n}\nconst retry = res.statusCode === 429 || res.statusCode >= 500;\nreturn { json: { ok: false, status: res.statusCode === 404 ? 'NOT_FOUND' : (retry ? 'RETRYABLE_ERROR' : 'PERMANENT_ERROR'), data: null, error: { code: 'HTTP_' + res.statusCode, message: b.error?.message || 'no se obtuvo la URL del archivo', http_status: res.statusCode } } };"
+      }
+    },
+    {
+      "id": "175f8fca-dc65-4339-ac28-8ef2b08d24fb",
+      "name": "URL obtenida",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        896,
+        480
+      ],
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose"
+          },
+          "conditions": [
+            {
+              "leftValue": "={{ $json.ok === true }}",
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        }
+      }
+    },
+    {
+      "id": "7d0bf03e-a871-4abd-ae95-8cd4145cb07b",
+      "name": "Descargar archivo",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.5,
+      "position": [
+        1120,
+        384
+      ],
+      "parameters": {
+        "method": "GET",
+        "url": "={{ $json.url }}",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "options": {
+          "timeout": 30000,
+          "response": {
+            "response": {
+              "responseFormat": "file",
+              "outputPropertyName": "data"
+            }
+          }
+        }
+      },
+      "onError": "continueErrorOutput",
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "Ava0CKg0tdWtb6DX",
+          "name": "DALIA WhatsApp"
+        }
+      }
+    },
+    {
+      "id": "dc7ebdee-7906-44be-a2b5-1de209e87bd2",
+      "name": "Normalizar archivo",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1344,
+        336
+      ],
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "jsCode": "// Entrega el archivo descargado como binario 'data' y sus metadatos\nconst meta = $('Interpretar metadatos del archivo').item.json;\nreturn { json: { status: 'OK', data: { media_id: meta.media_id, mime_type: meta.mime_type, sha256: meta.sha256, file_size: meta.file_size }, error: null }, binary: $input.item.binary };"
+      }
+    },
+    {
+      "id": "aceb105b-caf2-4f59-8bf8-3a9eb2458b06",
+      "name": "Archivo no disponible",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        1120,
+        576
+      ],
+      "parameters": {
+        "mode": "manual",
+        "includeOtherFields": false,
+        "assignments": {
+          "assignments": [
+            {
+              "id": "m1",
+              "name": "status",
+              "value": "={{ $json.status }}",
+              "type": "string"
+            },
+            {
+              "id": "m2",
+              "name": "error",
+              "value": "={{ $json.error }}",
+              "type": "object"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "0aaae274-e879-48a2-bd81-64a038a0930d",
+      "name": "Operacion no soportada",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        448,
+        752
+      ],
+      "parameters": {
+        "mode": "manual",
+        "includeOtherFields": false,
+        "assignments": {
+          "assignments": [
+            {
+              "id": "x1",
+              "name": "status",
+              "value": "NOT_SUPPORTED",
+              "type": "string"
+            },
+            {
+              "id": "x2",
+              "name": "error",
+              "value": "={{ { code: \"OPERATION_NOT_SUPPORTED\", message: \"channel.\" + $json.operation } }}",
+              "type": "object"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "ad2d128b-de50-4a6c-a16e-1fa2d7ff3c01",
+      "name": "Clasificar fallo de envio",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1120,
+        192
+      ],
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "jsCode": "// Timeout o error de red después de enviar: no se sabe si el proveedor ejecutó la acción (UNKNOWN)\nconst msg = $json.error?.message ?? String($json.error ?? 'error de red');\nreturn { json: { status: 'UNKNOWN', data: null, error: { code: /timeout/i.test(msg) ? 'TIMEOUT' : 'NETWORK_ERROR', message: msg } } };"
+      }
+    },
+    {
+      "id": "fd5e712a-c8b6-4808-8e80-72c90f9c02fd",
+      "name": "Clasificar fallo de archivo",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1344,
+        672
+      ],
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "jsCode": "// Timeout o error de red en una operación NO sensible: reintentable\nconst msg = $json.error?.message ?? String($json.error ?? 'error de red');\nreturn { json: { status: 'RETRYABLE_ERROR', data: null, error: { code: /timeout/i.test(msg) ? 'TIMEOUT' : 'NETWORK_ERROR', message: msg } } };"
+      }
+    },
+    {
+      "id": "7514f5d6-702a-4287-afd8-78a4a38f5524",
+      "name": "Verificacion Meta",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2.1,
+      "position": [
+        0,
+        1072
+      ],
+      "parameters": {
+        "httpMethod": "GET",
+        "path": "dalia/whatsapp",
+        "responseMode": "responseNode"
+      },
+      "webhookId": "4ae8e8f0-7a3e-4289-aa7c-ef47f2d8e84d"
+    },
+    {
+      "id": "fa7ed6b4-58cb-4982-bfe0-d758758e1b22",
+      "name": "Comprobar token",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.7,
+      "position": [
+        224,
+        1072
+      ],
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "select dalia.int_check_token(coalesce(dalia.m10_get_config('integrations') -> 'inbound' -> 'channel.whatsapp' ->> 'verify_token_name', 'whatsapp_verify_token'), $1) as token_ok;",
+        "options": {
+          "queryReplacement": "={{ [ $json.query[\"hub.verify_token\"] ?? \"\" ] }}"
+        }
+      },
+      "credentials": {
+        "postgres": {
+          "id": "HfCgVAjUygK1vrkU",
+          "name": "DALIA dev Supabase"
+        }
+      }
+    },
+    {
+      "id": "9738b850-a40e-4168-8566-7229fb58a52d",
+      "name": "Token valido",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        448,
+        1072
+      ],
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose"
+          },
+          "conditions": [
+            {
+              "leftValue": "={{ $json.token_ok === true && $(\"Verificacion Meta\").item.json.query[\"hub.mode\"] === \"subscribe\" }}",
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        }
+      }
+    },
+    {
+      "id": "377d64c5-f59a-4e1c-a8a2-80ae96b25e75",
+      "name": "Responder reto",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.5,
+      "position": [
+        672,
+        976
+      ],
+      "parameters": {
+        "respondWith": "text",
+        "responseBody": "={{ $(\"Verificacion Meta\").item.json.query[\"hub.challenge\"] }}",
+        "options": {
+          "responseCode": 200
+        }
+      }
+    },
+    {
+      "id": "c13b40f4-18ef-4c7e-98c2-c214c2b47fdd",
+      "name": "Rechazar verificacion",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.5,
+      "position": [
+        672,
+        1168
+      ],
+      "parameters": {
+        "respondWith": "text",
+        "responseBody": "forbidden",
+        "options": {
+          "responseCode": 403
+        }
+      }
+    },
+    {
+      "id": "4cad3d9b-ef99-4702-8dfa-d3fe83992e8b",
+      "name": "Eventos WhatsApp",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2.1,
+      "position": [
+        0,
+        1552
+      ],
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "dalia/whatsapp",
+        "responseMode": "responseNode",
+        "options": {
+          "rawBody": true
+        }
+      },
+      "webhookId": "a920d6af-d3ad-415b-bd30-512b3d328fae"
+    },
+    {
+      "id": "be2a1fb9-02f3-4e31-a001-b51757cf4338",
+      "name": "Leer cuerpo crudo",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        224,
+        1552
+      ],
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "jsCode": "// Lee el cuerpo crudo y la firma del webhook de WhatsApp Cloud API (la firma se verifica en la base)\nconst item = $input.first();\nlet buf;\ntry { buf = await this.helpers.getBinaryDataBuffer(0, 'data'); } catch (e) { buf = Buffer.from(JSON.stringify(item.json.body || {}), 'utf8'); }\nconst h = item.json.headers || {};\nreturn [{ json: {\n  raw: buf.toString('utf8'),\n  signature: h['x-hub-signature-256'] || null,\n  body: item.json.body || {}\n} }];"
+      }
+    },
+    {
+      "id": "645db9b0-b911-44d9-ae30-9caeab720d49",
+      "name": "Verificar firma",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.7,
+      "position": [
+        448,
+        1552
+      ],
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "select dalia.int_inbound_check('channel.whatsapp', $1, $2) as chk;",
+        "options": {
+          "queryReplacement": "={{ [ $json.raw, $json.signature ?? \"\" ] }}"
+        }
+      },
+      "credentials": {
+        "postgres": {
+          "id": "HfCgVAjUygK1vrkU",
+          "name": "DALIA dev Supabase"
+        }
+      },
+      "onError": "continueErrorOutput"
+    },
+    {
+      "id": "95833892-16b6-4793-8382-c83db89d7bdf",
+      "name": "Normalizar eventos",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        672,
+        1456
+      ],
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "jsCode": "// Normaliza el webhook de WhatsApp Cloud API.\n// Mensajes → contrato dalia.channel.inbound_message/1.0 hacia el destino configurado (M1.01).\n// Estados de entrega, mensajes con firma inválida o sin destino → SYS.03 (inbox).\n// Sin mensajes ni estados → un ítem route = 'none' (solo se responde 200).\nconst chk = $json.chk || {};\nconst w = $('Leer cuerpo crudo').first().json;\nconst b = w.body || {};\nconst iso = (ts) => ts ? new Date(Number(ts) * 1000).toISOString() : null;\nconst out = [];\nconst valid = chk.signature_valid === true;\nconst target = chk.target_workflow_id || null;\nfor (const entry of (b.entry || [])) {\n  for (const change of (entry.changes || [])) {\n    const v = change.value || {};\n    const account = v.metadata?.phone_number_id || null;\n    const names = {};\n    for (const c of (v.contacts || [])) names[c.wa_id] = c.profile?.name || null;\n    for (const m of (v.messages || [])) {\n      const t = m.type;\n      let family = 'content', text = null, media = null, interaction = null, location = null, extra = null;\n      if (t === 'text') text = m.text?.body ?? null;\n      else if (['image', 'audio', 'video', 'document', 'sticker'].includes(t)) {\n        const x = m[t] || {};\n        media = { media_id: x.id, mime_type: x.mime_type || null, sha256: x.sha256 || null, caption: x.caption || null, filename: x.filename || null, voice: x.voice === true };\n        text = x.caption || null;\n      } else if (t === 'location') {\n        location = { latitude: m.location?.latitude, longitude: m.location?.longitude, name: m.location?.name || null, address: m.location?.address || null };\n      } else if (t === 'contacts') { extra = { contacts: m.contacts || [] }; }\n      else if (t === 'order') { extra = { order: m.order || null }; }\n      else if (t === 'interactive') {\n        family = 'interaction';\n        const r = m.interactive?.button_reply || m.interactive?.list_reply || m.interactive?.nfm_reply || {};\n        interaction = { kind: m.interactive?.type || 'interactive', id: r.id || null, title: r.title || null, description: r.description || null, response_json: r.response_json || null };\n      } else if (t === 'button') {\n        family = 'interaction';\n        interaction = { kind: 'quick_reply', id: m.button?.payload || null, title: m.button?.text || null };\n      } else if (t === 'reaction') {\n        family = 'interaction';\n        interaction = { kind: 'reaction', reply_to_message_id: m.reaction?.message_id || null, emoji: m.reaction?.emoji || null };\n      } else if (t === 'system') { family = 'system'; extra = { system: m.system || null }; }\n      else { family = 'unsupported'; }\n      const msg = {\n        contract: 'dalia.channel.inbound_message/1.0',\n        channel: 'whatsapp',\n        channel_account_ref: account,\n        channel_message_id: m.id,\n        channel_thread_id: m.from,\n        from: { channel_user_id: m.from, display_name: names[m.from] || null },\n        sent_at: iso(m.timestamp),\n        received_at: new Date().toISOString(),\n        family,\n        content_type: t || 'unknown',\n        text, media, interaction, location, extra,\n        context: m.context ? { reply_to_message_id: m.context.id || null, forwarded: m.context.forwarded === true } : null,\n        provider_errors: m.errors || null,\n        raw: m\n      };\n      if (valid && target) out.push({ json: Object.assign({ route: 'inbound', target_workflow_id: target }, msg) });\n      else out.push({ json: { route: 'callback', source: 'channel.whatsapp', external_event_id: m.id, event_type: 'message.received', signature_valid: valid, payload: msg, envelope: {} } });\n    }\n    for (const s of (v.statuses || [])) {\n      out.push({ json: { route: 'callback', source: 'channel.whatsapp', external_event_id: s.id + ':' + s.status, event_type: 'delivery.status', signature_valid: valid, payload: { provider_message_id: s.id, status: s.status, occurred_at: iso(s.timestamp), recipient: s.recipient_id || null, conversation: s.conversation || null, pricing: s.pricing || null, errors: s.errors || null }, envelope: {} } });\n    }\n  }\n}\nif (out.length === 0) out.push({ json: { route: 'none' } });\nreturn out;"
+      }
+    },
+    {
+      "id": "b2e729a8-edc7-47bb-8ce9-1467d3d5263d",
+      "name": "Hay entregas",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        896,
+        1456
+      ],
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose"
+          },
+          "conditions": [
+            {
+              "leftValue": "={{ $json.route !== \"none\" }}",
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        }
+      }
+    },
+    {
+      "id": "af4aa4f5-8066-4372-869e-8b3a698fc237",
+      "name": "Entregar y guardar",
+      "type": "n8n-nodes-base.executeWorkflow",
+      "typeVersion": 1.3,
+      "position": [
+        1120,
+        1392
+      ],
+      "parameters": {
+        "mode": "each",
+        "source": "database",
+        "workflowId": {
+          "__rl": true,
+          "mode": "id",
+          "value": "={{ $json.route === \"inbound\" ? $json.target_workflow_id : \"utnQfoflAlLrlVVx\" }}"
+        },
+        "options": {
+          "waitForSubWorkflow": true
+        }
+      },
+      "onError": "continueRegularOutput"
+    },
+    {
+      "id": "6fd22a29-2c74-42b5-bb28-66e366142258",
+      "name": "Responder a Meta",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.5,
+      "position": [
+        1344,
+        1456
+      ],
+      "parameters": {
+        "respondWith": "text",
+        "responseBody": "ok",
+        "options": {
+          "responseCode": "={{ $input.all().some(i => i.json.error != null && i.json.status === undefined && i.json.r === undefined && i.json.inbox_id === undefined) ? 500 : 200 }}"
+        }
+      },
+      "executeOnce": true
+    },
+    {
+      "id": "520328a2-e55a-4422-9b96-4dbc656ba71e",
+      "name": "Responder error",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.5,
+      "position": [
+        672,
+        1648
+      ],
+      "parameters": {
+        "respondWith": "text",
+        "responseBody": "retry",
+        "options": {
+          "responseCode": 500
+        }
+      },
+      "executeOnce": true
+    }
+  ],
+  "connections": {
+    "Solicitud del puerto": {
+      "main": [
+        [
+          {
+            "node": "Operacion",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Operacion": {
+      "main": [
+        [
+          {
+            "node": "Construir envio",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Consultar archivo",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Operacion no soportada",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Construir envio": {
+      "main": [
+        [
+          {
+            "node": "Envio ejecutable",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Envio ejecutable": {
+      "main": [
+        [
+          {
+            "node": "Enviar a WhatsApp",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Envio no ejecutable",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Enviar a WhatsApp": {
+      "main": [
+        [
+          {
+            "node": "Normalizar envio",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Clasificar fallo de envio",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Consultar archivo": {
+      "main": [
+        [
+          {
+            "node": "Interpretar metadatos del archivo",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Clasificar fallo de archivo",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Interpretar metadatos del archivo": {
+      "main": [
+        [
+          {
+            "node": "URL obtenida",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "URL obtenida": {
+      "main": [
+        [
+          {
+            "node": "Descargar archivo",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Archivo no disponible",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Descargar archivo": {
+      "main": [
+        [
+          {
+            "node": "Normalizar archivo",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Clasificar fallo de archivo",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Verificacion Meta": {
+      "main": [
+        [
+          {
+            "node": "Comprobar token",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Comprobar token": {
+      "main": [
+        [
+          {
+            "node": "Token valido",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Token valido": {
+      "main": [
+        [
+          {
+            "node": "Responder reto",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Rechazar verificacion",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Eventos WhatsApp": {
+      "main": [
+        [
+          {
+            "node": "Leer cuerpo crudo",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Leer cuerpo crudo": {
+      "main": [
+        [
+          {
+            "node": "Verificar firma",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Verificar firma": {
+      "main": [
+        [
+          {
+            "node": "Normalizar eventos",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Responder error",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Normalizar eventos": {
+      "main": [
+        [
+          {
+            "node": "Hay entregas",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Hay entregas": {
+      "main": [
+        [
+          {
+            "node": "Entregar y guardar",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Responder a Meta",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Entregar y guardar": {
+      "main": [
+        [
+          {
+            "node": "Responder a Meta",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "nodeGroups": [],
+  "settings": {
+    "executionOrder": "v1",
+    "availableInMCP": true,
+    "errorWorkflow": "cjjQno2MxMTT3Icc",
+    "timezone": "America/Bogota",
+    "saveManualExecutions": true,
+    "saveDataErrorExecution": "all",
+    "saveDataSuccessExecution": "all",
+    "callerPolicy": "workflowsFromSameOwner"
+  },
+  "staticData": null,
+  "pinData": null,
+  "meta": {
+    "aiBuilderAssisted": true,
+    "builderVariant": "mcp"
+  },
+  "tags": [],
+  "shared": [
+    {
+      "role": "workflow:owner",
+      "workflowId": "1cpwPUDrx03yPATI",
+      "projectId": "tRHCC8ts4mkRGXGn",
+      "createdAt": "2026-10-09T21:09:17.771Z",
+      "updatedAt": "2026-10-09T21:09:17.771Z"
+    }
+  ],
+  "activeVersion": {
+    "versionId": "4d06a9cd-3f71-4b8b-9aaf-edda52928e84",
+    "workflowId": "1cpwPUDrx03yPATI",
+    "nodes": [
+      {
+        "id": "03609b71-d727-4425-805b-5f30d69659b1",
+        "name": "Solicitud del puerto",
+        "type": "n8n-nodes-base.executeWorkflowTrigger",
+        "typeVersion": 1.2,
+        "position": [
+          0,
+          560
+        ],
+        "parameters": {
+          "inputSource": "passthrough"
+        }
+      },
+      {
+        "id": "31592869-db10-4711-9e19-23f59c22fbd4",
+        "name": "Operacion",
+        "type": "n8n-nodes-base.switch",
+        "typeVersion": 3.2,
+        "position": [
+          224,
+          544
+        ],
+        "parameters": {
+          "rules": {
+            "values": [
+              {
+                "outputKey": "send",
+                "conditions": {
+                  "options": {
+                    "caseSensitive": true,
+                    "leftValue": "",
+                    "typeValidation": "strict"
+                  },
+                  "conditions": [
+                    {
+                      "leftValue": "={{ $json.operation }}",
+                      "operator": {
+                        "type": "string",
+                        "operation": "equals"
+                      },
+                      "rightValue": "send"
+                    }
+                  ],
+                  "combinator": "and"
+                }
+              },
+              {
+                "outputKey": "get_media",
+                "conditions": {
+                  "options": {
+                    "caseSensitive": true,
+                    "leftValue": "",
+                    "typeValidation": "strict"
+                  },
+                  "conditions": [
+                    {
+                      "leftValue": "={{ $json.operation }}",
+                      "operator": {
+                        "type": "string",
+                        "operation": "equals"
+                      },
+                      "rightValue": "get_media"
+                    }
+                  ],
+                  "combinator": "and"
+                }
+              }
+            ]
+          },
+          "options": {
+            "fallbackOutput": "extra",
+            "renameFallbackOutput": "No soportada"
+          }
+        }
+      },
+      {
+        "id": "0fb5a945-5101-4de1-baba-325a1b84fc8c",
+        "name": "Construir envio",
+        "type": "n8n-nodes-base.code",
+        "typeVersion": 2,
+        "position": [
+          448,
+          192
+        ],
+        "parameters": {
+          "mode": "runOnceForEachItem",
+          "jsCode": "// Construye la solicitud de envío a WhatsApp Cloud API (operación channel.send)\nconst r = $json;\nconst s = r.settings || {};\nconst inp = r.input || {};\nconst m = inp.message || {};\nconst fail = (code, message) => ({ json: { skip: true, status: 'PERMANENT_ERROR', error: { code, message } } });\nif (!s.graph_api_version || !s.phone_number_id) return fail('VALIDATION', 'faltan settings.graph_api_version o settings.phone_number_id');\nif (!inp.to) return fail('VALIDATION', 'falta input.to');\nconst body = { messaging_product: 'whatsapp', recipient_type: 'individual', to: String(inp.to) };\nconst t = m.type;\nif (t === 'text') { body.type = 'text'; body.text = { body: m.text, preview_url: m.preview_url === true }; }\nelse if (['image', 'video', 'audio', 'document', 'sticker'].includes(t)) {\n  if (!m.media_url) return fail('VALIDATION', 'mensaje ' + t + ' sin media_url');\n  body.type = t; body[t] = { link: m.media_url };\n  if (m.caption && ['image', 'video', 'document'].includes(t)) body[t].caption = m.caption;\n  if (m.filename && t === 'document') body[t].filename = m.filename;\n} else if (t === 'template') {\n  if (!m.template?.name || !m.template?.language) return fail('VALIDATION', 'plantilla sin name o language');\n  body.type = 'template'; body.template = { name: m.template.name, language: { code: m.template.language }, components: m.template.components || [] };\n} else if (t === 'interactive') {\n  if (!m.interactive) return fail('VALIDATION', 'mensaje interactive sin objeto interactive');\n  body.type = 'interactive'; body.interactive = m.interactive;\n} else if (t === 'reaction') {\n  body.type = 'reaction'; body.reaction = { message_id: m.reply_to_message_id, emoji: m.emoji };\n} else return fail('VALIDATION', 'tipo de mensaje no soportado: ' + t);\nif (inp.reply_to_message_id && t !== 'reaction') body.context = { message_id: inp.reply_to_message_id };\nreturn { json: { skip: false, url: 'https://graph.facebook.com/' + s.graph_api_version + '/' + s.phone_number_id + '/messages', body, timeout_ms: s.timeout_ms || 10000 } };"
+        }
+      },
+      {
+        "id": "5fd418cc-56e7-4ecf-aad2-363cfe8877cd",
+        "name": "Envio ejecutable",
+        "type": "n8n-nodes-base.if",
+        "typeVersion": 2.2,
+        "position": [
+          672,
+          192
+        ],
+        "parameters": {
+          "conditions": {
+            "options": {
+              "caseSensitive": true,
+              "leftValue": "",
+              "typeValidation": "loose"
+            },
+            "conditions": [
+              {
+                "leftValue": "={{ $json.skip === false }}",
+                "operator": {
+                  "type": "boolean",
+                  "operation": "true",
+                  "singleValue": true
+                }
+              }
+            ],
+            "combinator": "and"
+          }
+        }
+      },
+      {
+        "id": "9b745484-08d9-45f7-a36f-fb8db045e510",
+        "name": "Enviar a WhatsApp",
+        "type": "n8n-nodes-base.httpRequest",
+        "typeVersion": 4.5,
+        "position": [
+          896,
+          96
+        ],
+        "parameters": {
+          "method": "POST",
+          "url": "={{ $json.url }}",
+          "authentication": "genericCredentialType",
+          "genericAuthType": "httpHeaderAuth",
+          "sendBody": true,
+          "contentType": "json",
+          "specifyBody": "json",
+          "jsonBody": "={{ JSON.stringify($json.body) }}",
+          "options": {
+            "timeout": "={{ $json.timeout_ms }}",
+            "response": {
+              "response": {
+                "fullResponse": true,
+                "neverError": true,
+                "responseFormat": "json"
+              }
+            }
+          }
+        },
+        "onError": "continueErrorOutput",
+        "credentials": {
+          "httpHeaderAuth": {
+            "id": "Ava0CKg0tdWtb6DX",
+            "name": "DALIA WhatsApp"
+          }
+        }
+      },
+      {
+        "id": "b583963a-a4cb-412b-b72a-352f6330a10e",
+        "name": "Normalizar envio",
+        "type": "n8n-nodes-base.code",
+        "typeVersion": 2,
+        "position": [
+          1120,
+          0
+        ],
+        "parameters": {
+          "mode": "runOnceForEachItem",
+          "jsCode": "// Normaliza la respuesta de envío de WhatsApp al contrato channel.send\nconst res = $json;\nconst code = res.statusCode;\nconst body = res.body || {};\nif (code >= 200 && code < 300 && body.messages && body.messages[0]) {\n  return { json: { status: 'OK', data: { provider_message_id: body.messages[0].id, recipient: body.contacts?.[0]?.wa_id || null, accepted_at: new Date().toISOString(), message_status: body.messages[0].message_status || 'accepted' }, error: null } };\n}\nconst e = body.error || {};\nconst c = Number(e.code);\nlet status = 'PERMANENT_ERROR', err = 'HTTP_' + code;\nif (c === 131047) err = 'WINDOW_CLOSED';\nelse if (c === 131026) err = 'UNDELIVERABLE';\nelse if (c >= 132000 && c < 133000) err = 'TEMPLATE_ERROR';\nelse if ([190, 10, 200].includes(c)) err = 'AUTH_ERROR';\nelse if ([4, 80007, 130429, 131048, 131056].includes(c)) { status = 'RETRYABLE_ERROR'; err = 'RATE_LIMIT'; }\nelse if (code === 408 || code === 429 || code >= 500) { status = 'RETRYABLE_ERROR'; }\nreturn { json: { status, data: null, error: { code: err, provider_code: e.code ?? null, message: e.message || e.error_data?.details || ('HTTP ' + code), http_status: code } } };"
+        }
+      },
+      {
+        "id": "0b83a22f-56ce-43f9-abb6-4058ed49be6e",
+        "name": "Envio no ejecutable",
+        "type": "n8n-nodes-base.set",
+        "typeVersion": 3.4,
+        "position": [
+          896,
+          288
+        ],
+        "parameters": {
+          "mode": "manual",
+          "includeOtherFields": false,
+          "assignments": {
+            "assignments": [
+              {
+                "id": "e1",
+                "name": "status",
+                "value": "={{ $json.status }}",
+                "type": "string"
+              },
+              {
+                "id": "e2",
+                "name": "error",
+                "value": "={{ $json.error }}",
+                "type": "object"
+              }
+            ]
+          }
+        }
+      },
+      {
+        "id": "15368b26-d010-4dc5-948b-e83755b4eaf1",
+        "name": "Consultar archivo",
+        "type": "n8n-nodes-base.httpRequest",
+        "typeVersion": 4.5,
+        "position": [
+          448,
+          560
+        ],
+        "parameters": {
+          "method": "GET",
+          "url": "=https://graph.facebook.com/{{ $json.settings.graph_api_version }}/{{ $json.input.media_id }}",
+          "authentication": "genericCredentialType",
+          "genericAuthType": "httpHeaderAuth",
+          "options": {
+            "timeout": "={{ $json.settings.timeout_ms ?? 10000 }}",
+            "response": {
+              "response": {
+                "fullResponse": true,
+                "neverError": true,
+                "responseFormat": "json"
+              }
+            }
+          }
+        },
+        "onError": "continueErrorOutput",
+        "credentials": {
+          "httpHeaderAuth": {
+            "id": "Ava0CKg0tdWtb6DX",
+            "name": "DALIA WhatsApp"
+          }
+        }
+      },
+      {
+        "id": "2b0faf53-a647-4910-a42d-c278e6b7579b",
+        "name": "Interpretar metadatos del archivo",
+        "type": "n8n-nodes-base.code",
+        "typeVersion": 2,
+        "position": [
+          672,
+          480
+        ],
+        "parameters": {
+          "mode": "runOnceForEachItem",
+          "jsCode": "// Interpreta la respuesta de GET /{media_id} (URL temporal de descarga)\nconst res = $json;\nconst b = res.body || {};\nif (res.statusCode >= 200 && res.statusCode < 300 && b.url) {\n  return { json: { ok: true, url: b.url, mime_type: b.mime_type || null, sha256: b.sha256 || null, file_size: b.file_size || null, media_id: b.id || null } };\n}\nconst retry = res.statusCode === 429 || res.statusCode >= 500;\nreturn { json: { ok: false, status: res.statusCode === 404 ? 'NOT_FOUND' : (retry ? 'RETRYABLE_ERROR' : 'PERMANENT_ERROR'), data: null, error: { code: 'HTTP_' + res.statusCode, message: b.error?.message || 'no se obtuvo la URL del archivo', http_status: res.statusCode } } };"
+        }
+      },
+      {
+        "id": "175f8fca-dc65-4339-ac28-8ef2b08d24fb",
+        "name": "URL obtenida",
+        "type": "n8n-nodes-base.if",
+        "typeVersion": 2.2,
+        "position": [
+          896,
+          480
+        ],
+        "parameters": {
+          "conditions": {
+            "options": {
+              "caseSensitive": true,
+              "leftValue": "",
+              "typeValidation": "loose"
+            },
+            "conditions": [
+              {
+                "leftValue": "={{ $json.ok === true }}",
+                "operator": {
+                  "type": "boolean",
+                  "operation": "true",
+                  "singleValue": true
+                }
+              }
+            ],
+            "combinator": "and"
+          }
+        }
+      },
+      {
+        "id": "7d0bf03e-a871-4abd-ae95-8cd4145cb07b",
+        "name": "Descargar archivo",
+        "type": "n8n-nodes-base.httpRequest",
+        "typeVersion": 4.5,
+        "position": [
+          1120,
+          384
+        ],
+        "parameters": {
+          "method": "GET",
+          "url": "={{ $json.url }}",
+          "authentication": "genericCredentialType",
+          "genericAuthType": "httpHeaderAuth",
+          "options": {
+            "timeout": 30000,
+            "response": {
+              "response": {
+                "responseFormat": "file",
+                "outputPropertyName": "data"
+              }
+            }
+          }
+        },
+        "onError": "continueErrorOutput",
+        "credentials": {
+          "httpHeaderAuth": {
+            "id": "Ava0CKg0tdWtb6DX",
+            "name": "DALIA WhatsApp"
+          }
+        }
+      },
+      {
+        "id": "dc7ebdee-7906-44be-a2b5-1de209e87bd2",
+        "name": "Normalizar archivo",
+        "type": "n8n-nodes-base.code",
+        "typeVersion": 2,
+        "position": [
+          1344,
+          336
+        ],
+        "parameters": {
+          "mode": "runOnceForEachItem",
+          "jsCode": "// Entrega el archivo descargado como binario 'data' y sus metadatos\nconst meta = $('Interpretar metadatos del archivo').item.json;\nreturn { json: { status: 'OK', data: { media_id: meta.media_id, mime_type: meta.mime_type, sha256: meta.sha256, file_size: meta.file_size }, error: null }, binary: $input.item.binary };"
+        }
+      },
+      {
+        "id": "aceb105b-caf2-4f59-8bf8-3a9eb2458b06",
+        "name": "Archivo no disponible",
+        "type": "n8n-nodes-base.set",
+        "typeVersion": 3.4,
+        "position": [
+          1120,
+          576
+        ],
+        "parameters": {
+          "mode": "manual",
+          "includeOtherFields": false,
+          "assignments": {
+            "assignments": [
+              {
+                "id": "m1",
+                "name": "status",
+                "value": "={{ $json.status }}",
+                "type": "string"
+              },
+              {
+                "id": "m2",
+                "name": "error",
+                "value": "={{ $json.error }}",
+                "type": "object"
+              }
+            ]
+          }
+        }
+      },
+      {
+        "id": "0aaae274-e879-48a2-bd81-64a038a0930d",
+        "name": "Operacion no soportada",
+        "type": "n8n-nodes-base.set",
+        "typeVersion": 3.4,
+        "position": [
+          448,
+          752
+        ],
+        "parameters": {
+          "mode": "manual",
+          "includeOtherFields": false,
+          "assignments": {
+            "assignments": [
+              {
+                "id": "x1",
+                "name": "status",
+                "value": "NOT_SUPPORTED",
+                "type": "string"
+              },
+              {
+                "id": "x2",
+                "name": "error",
+                "value": "={{ { code: \"OPERATION_NOT_SUPPORTED\", message: \"channel.\" + $json.operation } }}",
+                "type": "object"
+              }
+            ]
+          }
+        }
+      },
+      {
+        "id": "ad2d128b-de50-4a6c-a16e-1fa2d7ff3c01",
+        "name": "Clasificar fallo de envio",
+        "type": "n8n-nodes-base.code",
+        "typeVersion": 2,
+        "position": [
+          1120,
+          192
+        ],
+        "parameters": {
+          "mode": "runOnceForEachItem",
+          "jsCode": "// Timeout o error de red después de enviar: no se sabe si el proveedor ejecutó la acción (UNKNOWN)\nconst msg = $json.error?.message ?? String($json.error ?? 'error de red');\nreturn { json: { status: 'UNKNOWN', data: null, error: { code: /timeout/i.test(msg) ? 'TIMEOUT' : 'NETWORK_ERROR', message: msg } } };"
+        }
+      },
+      {
+        "id": "fd5e712a-c8b6-4808-8e80-72c90f9c02fd",
+        "name": "Clasificar fallo de archivo",
+        "type": "n8n-nodes-base.code",
+        "typeVersion": 2,
+        "position": [
+          1344,
+          672
+        ],
+        "parameters": {
+          "mode": "runOnceForEachItem",
+          "jsCode": "// Timeout o error de red en una operación NO sensible: reintentable\nconst msg = $json.error?.message ?? String($json.error ?? 'error de red');\nreturn { json: { status: 'RETRYABLE_ERROR', data: null, error: { code: /timeout/i.test(msg) ? 'TIMEOUT' : 'NETWORK_ERROR', message: msg } } };"
+        }
+      },
+      {
+        "id": "7514f5d6-702a-4287-afd8-78a4a38f5524",
+        "name": "Verificacion Meta",
+        "type": "n8n-nodes-base.webhook",
+        "typeVersion": 2.1,
+        "position": [
+          0,
+          1072
+        ],
+        "parameters": {
+          "httpMethod": "GET",
+          "path": "dalia/whatsapp",
+          "responseMode": "responseNode"
+        },
+        "webhookId": "4ae8e8f0-7a3e-4289-aa7c-ef47f2d8e84d"
+      },
+      {
+        "id": "fa7ed6b4-58cb-4982-bfe0-d758758e1b22",
+        "name": "Comprobar token",
+        "type": "n8n-nodes-base.postgres",
+        "typeVersion": 2.7,
+        "position": [
+          224,
+          1072
+        ],
+        "parameters": {
+          "operation": "executeQuery",
+          "query": "select dalia.int_check_token(coalesce(dalia.m10_get_config('integrations') -> 'inbound' -> 'channel.whatsapp' ->> 'verify_token_name', 'whatsapp_verify_token'), $1) as token_ok;",
+          "options": {
+            "queryReplacement": "={{ [ $json.query[\"hub.verify_token\"] ?? \"\" ] }}"
+          }
+        },
+        "credentials": {
+          "postgres": {
+            "id": "HfCgVAjUygK1vrkU",
+            "name": "DALIA dev Supabase"
+          }
+        }
+      },
+      {
+        "id": "9738b850-a40e-4168-8566-7229fb58a52d",
+        "name": "Token valido",
+        "type": "n8n-nodes-base.if",
+        "typeVersion": 2.2,
+        "position": [
+          448,
+          1072
+        ],
+        "parameters": {
+          "conditions": {
+            "options": {
+              "caseSensitive": true,
+              "leftValue": "",
+              "typeValidation": "loose"
+            },
+            "conditions": [
+              {
+                "leftValue": "={{ $json.token_ok === true && $(\"Verificacion Meta\").item.json.query[\"hub.mode\"] === \"subscribe\" }}",
+                "operator": {
+                  "type": "boolean",
+                  "operation": "true",
+                  "singleValue": true
+                }
+              }
+            ],
+            "combinator": "and"
+          }
+        }
+      },
+      {
+        "id": "377d64c5-f59a-4e1c-a8a2-80ae96b25e75",
+        "name": "Responder reto",
+        "type": "n8n-nodes-base.respondToWebhook",
+        "typeVersion": 1.5,
+        "position": [
+          672,
+          976
+        ],
+        "parameters": {
+          "respondWith": "text",
+          "responseBody": "={{ $(\"Verificacion Meta\").item.json.query[\"hub.challenge\"] }}",
+          "options": {
+            "responseCode": 200
+          }
+        }
+      },
+      {
+        "id": "c13b40f4-18ef-4c7e-98c2-c214c2b47fdd",
+        "name": "Rechazar verificacion",
+        "type": "n8n-nodes-base.respondToWebhook",
+        "typeVersion": 1.5,
+        "position": [
+          672,
+          1168
+        ],
+        "parameters": {
+          "respondWith": "text",
+          "responseBody": "forbidden",
+          "options": {
+            "responseCode": 403
+          }
+        }
+      },
+      {
+        "id": "4cad3d9b-ef99-4702-8dfa-d3fe83992e8b",
+        "name": "Eventos WhatsApp",
+        "type": "n8n-nodes-base.webhook",
+        "typeVersion": 2.1,
+        "position": [
+          0,
+          1552
+        ],
+        "parameters": {
+          "httpMethod": "POST",
+          "path": "dalia/whatsapp",
+          "responseMode": "responseNode",
+          "options": {
+            "rawBody": true
+          }
+        },
+        "webhookId": "a920d6af-d3ad-415b-bd30-512b3d328fae"
+      },
+      {
+        "id": "be2a1fb9-02f3-4e31-a001-b51757cf4338",
+        "name": "Leer cuerpo crudo",
+        "type": "n8n-nodes-base.code",
+        "typeVersion": 2,
+        "position": [
+          224,
+          1552
+        ],
+        "parameters": {
+          "mode": "runOnceForAllItems",
+          "jsCode": "// Lee el cuerpo crudo y la firma del webhook de WhatsApp Cloud API (la firma se verifica en la base)\nconst item = $input.first();\nlet buf;\ntry { buf = await this.helpers.getBinaryDataBuffer(0, 'data'); } catch (e) { buf = Buffer.from(JSON.stringify(item.json.body || {}), 'utf8'); }\nconst h = item.json.headers || {};\nreturn [{ json: {\n  raw: buf.toString('utf8'),\n  signature: h['x-hub-signature-256'] || null,\n  body: item.json.body || {}\n} }];"
+        }
+      },
+      {
+        "id": "645db9b0-b911-44d9-ae30-9caeab720d49",
+        "name": "Verificar firma",
+        "type": "n8n-nodes-base.postgres",
+        "typeVersion": 2.7,
+        "position": [
+          448,
+          1552
+        ],
+        "parameters": {
+          "operation": "executeQuery",
+          "query": "select dalia.int_inbound_check('channel.whatsapp', $1, $2) as chk;",
+          "options": {
+            "queryReplacement": "={{ [ $json.raw, $json.signature ?? \"\" ] }}"
+          }
+        },
+        "credentials": {
+          "postgres": {
+            "id": "HfCgVAjUygK1vrkU",
+            "name": "DALIA dev Supabase"
+          }
+        },
+        "onError": "continueErrorOutput"
+      },
+      {
+        "id": "95833892-16b6-4793-8382-c83db89d7bdf",
+        "name": "Normalizar eventos",
+        "type": "n8n-nodes-base.code",
+        "typeVersion": 2,
+        "position": [
+          672,
+          1456
+        ],
+        "parameters": {
+          "mode": "runOnceForAllItems",
+          "jsCode": "// Normaliza el webhook de WhatsApp Cloud API.\n// Mensajes → contrato dalia.channel.inbound_message/1.0 hacia el destino configurado (M1.01).\n// Estados de entrega, mensajes con firma inválida o sin destino → SYS.03 (inbox).\n// Sin mensajes ni estados → un ítem route = 'none' (solo se responde 200).\nconst chk = $json.chk || {};\nconst w = $('Leer cuerpo crudo').first().json;\nconst b = w.body || {};\nconst iso = (ts) => ts ? new Date(Number(ts) * 1000).toISOString() : null;\nconst out = [];\nconst valid = chk.signature_valid === true;\nconst target = chk.target_workflow_id || null;\nfor (const entry of (b.entry || [])) {\n  for (const change of (entry.changes || [])) {\n    const v = change.value || {};\n    const account = v.metadata?.phone_number_id || null;\n    const names = {};\n    for (const c of (v.contacts || [])) names[c.wa_id] = c.profile?.name || null;\n    for (const m of (v.messages || [])) {\n      const t = m.type;\n      let family = 'content', text = null, media = null, interaction = null, location = null, extra = null;\n      if (t === 'text') text = m.text?.body ?? null;\n      else if (['image', 'audio', 'video', 'document', 'sticker'].includes(t)) {\n        const x = m[t] || {};\n        media = { media_id: x.id, mime_type: x.mime_type || null, sha256: x.sha256 || null, caption: x.caption || null, filename: x.filename || null, voice: x.voice === true };\n        text = x.caption || null;\n      } else if (t === 'location') {\n        location = { latitude: m.location?.latitude, longitude: m.location?.longitude, name: m.location?.name || null, address: m.location?.address || null };\n      } else if (t === 'contacts') { extra = { contacts: m.contacts || [] }; }\n      else if (t === 'order') { extra = { order: m.order || null }; }\n      else if (t === 'interactive') {\n        family = 'interaction';\n        const r = m.interactive?.button_reply || m.interactive?.list_reply || m.interactive?.nfm_reply || {};\n        interaction = { kind: m.interactive?.type || 'interactive', id: r.id || null, title: r.title || null, description: r.description || null, response_json: r.response_json || null };\n      } else if (t === 'button') {\n        family = 'interaction';\n        interaction = { kind: 'quick_reply', id: m.button?.payload || null, title: m.button?.text || null };\n      } else if (t === 'reaction') {\n        family = 'interaction';\n        interaction = { kind: 'reaction', reply_to_message_id: m.reaction?.message_id || null, emoji: m.reaction?.emoji || null };\n      } else if (t === 'system') { family = 'system'; extra = { system: m.system || null }; }\n      else { family = 'unsupported'; }\n      const msg = {\n        contract: 'dalia.channel.inbound_message/1.0',\n        channel: 'whatsapp',\n        channel_account_ref: account,\n        channel_message_id: m.id,\n        channel_thread_id: m.from,\n        from: { channel_user_id: m.from, display_name: names[m.from] || null },\n        sent_at: iso(m.timestamp),\n        received_at: new Date().toISOString(),\n        family,\n        content_type: t || 'unknown',\n        text, media, interaction, location, extra,\n        context: m.context ? { reply_to_message_id: m.context.id || null, forwarded: m.context.forwarded === true } : null,\n        provider_errors: m.errors || null,\n        raw: m\n      };\n      if (valid && target) out.push({ json: Object.assign({ route: 'inbound', target_workflow_id: target }, msg) });\n      else out.push({ json: { route: 'callback', source: 'channel.whatsapp', external_event_id: m.id, event_type: 'message.received', signature_valid: valid, payload: msg, envelope: {} } });\n    }\n    for (const s of (v.statuses || [])) {\n      out.push({ json: { route: 'callback', source: 'channel.whatsapp', external_event_id: s.id + ':' + s.status, event_type: 'delivery.status', signature_valid: valid, payload: { provider_message_id: s.id, status: s.status, occurred_at: iso(s.timestamp), recipient: s.recipient_id || null, conversation: s.conversation || null, pricing: s.pricing || null, errors: s.errors || null }, envelope: {} } });\n    }\n  }\n}\nif (out.length === 0) out.push({ json: { route: 'none' } });\nreturn out;"
+        }
+      },
+      {
+        "id": "b2e729a8-edc7-47bb-8ce9-1467d3d5263d",
+        "name": "Hay entregas",
+        "type": "n8n-nodes-base.if",
+        "typeVersion": 2.2,
+        "position": [
+          896,
+          1456
+        ],
+        "parameters": {
+          "conditions": {
+            "options": {
+              "caseSensitive": true,
+              "leftValue": "",
+              "typeValidation": "loose"
+            },
+            "conditions": [
+              {
+                "leftValue": "={{ $json.route !== \"none\" }}",
+                "operator": {
+                  "type": "boolean",
+                  "operation": "true",
+                  "singleValue": true
+                }
+              }
+            ],
+            "combinator": "and"
+          }
+        }
+      },
+      {
+        "id": "af4aa4f5-8066-4372-869e-8b3a698fc237",
+        "name": "Entregar y guardar",
+        "type": "n8n-nodes-base.executeWorkflow",
+        "typeVersion": 1.3,
+        "position": [
+          1120,
+          1392
+        ],
+        "parameters": {
+          "mode": "each",
+          "source": "database",
+          "workflowId": {
+            "__rl": true,
+            "mode": "id",
+            "value": "={{ $json.route === \"inbound\" ? $json.target_workflow_id : \"utnQfoflAlLrlVVx\" }}"
+          },
+          "options": {
+            "waitForSubWorkflow": true
+          }
+        },
+        "onError": "continueRegularOutput"
+      },
+      {
+        "id": "6fd22a29-2c74-42b5-bb28-66e366142258",
+        "name": "Responder a Meta",
+        "type": "n8n-nodes-base.respondToWebhook",
+        "typeVersion": 1.5,
+        "position": [
+          1344,
+          1456
+        ],
+        "parameters": {
+          "respondWith": "text",
+          "responseBody": "ok",
+          "options": {
+            "responseCode": "={{ $input.all().some(i => i.json.error != null && i.json.status === undefined && i.json.r === undefined && i.json.inbox_id === undefined) ? 500 : 200 }}"
+          }
+        },
+        "executeOnce": true
+      },
+      {
+        "id": "520328a2-e55a-4422-9b96-4dbc656ba71e",
+        "name": "Responder error",
+        "type": "n8n-nodes-base.respondToWebhook",
+        "typeVersion": 1.5,
+        "position": [
+          672,
+          1648
+        ],
+        "parameters": {
+          "respondWith": "text",
+          "responseBody": "retry",
+          "options": {
+            "responseCode": 500
+          }
+        },
+        "executeOnce": true
+      }
+    ],
+    "connections": {
+      "Solicitud del puerto": {
+        "main": [
+          [
+            {
+              "node": "Operacion",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Operacion": {
+        "main": [
+          [
+            {
+              "node": "Construir envio",
+              "type": "main",
+              "index": 0
+            }
+          ],
+          [
+            {
+              "node": "Consultar archivo",
+              "type": "main",
+              "index": 0
+            }
+          ],
+          [
+            {
+              "node": "Operacion no soportada",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Construir envio": {
+        "main": [
+          [
+            {
+              "node": "Envio ejecutable",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Envio ejecutable": {
+        "main": [
+          [
+            {
+              "node": "Enviar a WhatsApp",
+              "type": "main",
+              "index": 0
+            }
+          ],
+          [
+            {
+              "node": "Envio no ejecutable",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Enviar a WhatsApp": {
+        "main": [
+          [
+            {
+              "node": "Normalizar envio",
+              "type": "main",
+              "index": 0
+            }
+          ],
+          [
+            {
+              "node": "Clasificar fallo de envio",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Consultar archivo": {
+        "main": [
+          [
+            {
+              "node": "Interpretar metadatos del archivo",
+              "type": "main",
+              "index": 0
+            }
+          ],
+          [
+            {
+              "node": "Clasificar fallo de archivo",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Interpretar metadatos del archivo": {
+        "main": [
+          [
+            {
+              "node": "URL obtenida",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "URL obtenida": {
+        "main": [
+          [
+            {
+              "node": "Descargar archivo",
+              "type": "main",
+              "index": 0
+            }
+          ],
+          [
+            {
+              "node": "Archivo no disponible",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Descargar archivo": {
+        "main": [
+          [
+            {
+              "node": "Normalizar archivo",
+              "type": "main",
+              "index": 0
+            }
+          ],
+          [
+            {
+              "node": "Clasificar fallo de archivo",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Verificacion Meta": {
+        "main": [
+          [
+            {
+              "node": "Comprobar token",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Comprobar token": {
+        "main": [
+          [
+            {
+              "node": "Token valido",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Token valido": {
+        "main": [
+          [
+            {
+              "node": "Responder reto",
+              "type": "main",
+              "index": 0
+            }
+          ],
+          [
+            {
+              "node": "Rechazar verificacion",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Eventos WhatsApp": {
+        "main": [
+          [
+            {
+              "node": "Leer cuerpo crudo",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Leer cuerpo crudo": {
+        "main": [
+          [
+            {
+              "node": "Verificar firma",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Verificar firma": {
+        "main": [
+          [
+            {
+              "node": "Normalizar eventos",
+              "type": "main",
+              "index": 0
+            }
+          ],
+          [
+            {
+              "node": "Responder error",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Normalizar eventos": {
+        "main": [
+          [
+            {
+              "node": "Hay entregas",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Hay entregas": {
+        "main": [
+          [
+            {
+              "node": "Entregar y guardar",
+              "type": "main",
+              "index": 0
+            }
+          ],
+          [
+            {
+              "node": "Responder a Meta",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Entregar y guardar": {
+        "main": [
+          [
+            {
+              "node": "Responder a Meta",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      }
+    },
+    "nodeGroups": [],
+    "authors": "Fabian Bocanegra (via MCP)",
+    "name": "Robustez: lectura del cuerpo sin binario",
+    "description": "Updated nodes: Leer cuerpo crudo",
+    "autosaved": false,
+    "createdAt": "2026-10-03T16:40:52.462Z",
+    "updatedAt": "2026-10-03T16:40:52.462Z"
+  }
+}
