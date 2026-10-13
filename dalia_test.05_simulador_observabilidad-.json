@@ -1,0 +1,142 @@
+{
+  "id": "A0REcuW7FnqRbhLx",
+  "name": "DALIA_TEST.05_Simulador_observabilidad",
+  "active": true,
+  "activeVersionId": "4b7b56da-81ec-4271-a0c1-9a6268988858",
+  "createdAt": "2026-10-04T02:50:28.138Z",
+  "updatedAt": "2026-10-04T02:50:41.690Z",
+  "isArchived": false,
+  "versionId": "4b7b56da-81ec-4271-a0c1-9a6268988858",
+  "triggerCount": 1,
+  "nodes": [
+    {
+      "id": "c6fb6b2c-cc11-443a-8b2a-161a35d5ddb4",
+      "name": "Recibir lote simulado",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2.1,
+      "position": [
+        0,
+        0
+      ],
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "dalia/sim/telemetry/batches",
+        "responseMode": "responseNode"
+      },
+      "webhookId": "9c8bcdd3-3f8a-4762-989d-ac004a31446f"
+    },
+    {
+      "id": "5628faae-1b18-4d98-b648-320c175ea50f",
+      "name": "Responder lote aceptado",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.5,
+      "position": [
+        224,
+        0
+      ],
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ JSON.stringify({ data: { accepted: ($json.body?.events ?? []).length, batch_ref: \"SIMTEL-\" + ($json.body?.batch_id ?? \"sin-id\") } }) }}",
+        "options": {
+          "responseCode": 202
+        }
+      }
+    }
+  ],
+  "connections": {
+    "Recibir lote simulado": {
+      "main": [
+        [
+          {
+            "node": "Responder lote aceptado",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "nodeGroups": [],
+  "settings": {
+    "executionOrder": "v1",
+    "availableInMCP": true,
+    "errorWorkflow": "cjjQno2MxMTT3Icc",
+    "timezone": "America/Bogota",
+    "callerPolicy": "workflowsFromSameOwner"
+  },
+  "staticData": null,
+  "pinData": null,
+  "meta": {
+    "aiBuilderAssisted": true,
+    "builderVariant": "mcp"
+  },
+  "tags": [],
+  "shared": [
+    {
+      "role": "workflow:owner",
+      "workflowId": "A0REcuW7FnqRbhLx",
+      "projectId": "tRHCC8ts4mkRGXGn",
+      "createdAt": "2026-10-09T21:09:17.789Z",
+      "updatedAt": "2026-10-09T21:09:17.789Z"
+    }
+  ],
+  "activeVersion": {
+    "versionId": "4b7b56da-81ec-4271-a0c1-9a6268988858",
+    "workflowId": "A0REcuW7FnqRbhLx",
+    "nodes": [
+      {
+        "id": "c6fb6b2c-cc11-443a-8b2a-161a35d5ddb4",
+        "name": "Recibir lote simulado",
+        "type": "n8n-nodes-base.webhook",
+        "typeVersion": 2.1,
+        "position": [
+          0,
+          0
+        ],
+        "parameters": {
+          "httpMethod": "POST",
+          "path": "dalia/sim/telemetry/batches",
+          "responseMode": "responseNode"
+        },
+        "webhookId": "9c8bcdd3-3f8a-4762-989d-ac004a31446f"
+      },
+      {
+        "id": "5628faae-1b18-4d98-b648-320c175ea50f",
+        "name": "Responder lote aceptado",
+        "type": "n8n-nodes-base.respondToWebhook",
+        "typeVersion": 1.5,
+        "position": [
+          224,
+          0
+        ],
+        "parameters": {
+          "respondWith": "json",
+          "responseBody": "={{ JSON.stringify({ data: { accepted: ($json.body?.events ?? []).length, batch_ref: \"SIMTEL-\" + ($json.body?.batch_id ?? \"sin-id\") } }) }}",
+          "options": {
+            "responseCode": 202
+          }
+        }
+      }
+    ],
+    "connections": {
+      "Recibir lote simulado": {
+        "main": [
+          [
+            {
+              "node": "Responder lote aceptado",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      }
+    },
+    "nodeGroups": [],
+    "authors": "Fabian Bocanegra (via MCP)",
+    "name": "DALIA v1.0 lote 4 · TEST.05",
+    "description": "Created with 2 nodes: Recibir lote simulado, Responder lote aceptado",
+    "autosaved": false,
+    "createdAt": "2026-10-04T02:50:28.140Z",
+    "updatedAt": "2026-10-04T02:50:28.140Z"
+  }
+}
