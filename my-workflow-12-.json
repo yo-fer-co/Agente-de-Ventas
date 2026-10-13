@@ -1,0 +1,146 @@
+{
+  "id": "ONct6ocdIzjYv0KngoTS9",
+  "name": "My workflow 12",
+  "active": false,
+  "activeVersionId": null,
+  "createdAt": "2026-01-20T15:03:44.765Z",
+  "updatedAt": "2026-01-20T16:58:35.291Z",
+  "isArchived": false,
+  "versionId": "10a0fb67-32ab-48c4-ac1d-b1a10747af0d",
+  "triggerCount": 0,
+  "nodes": [
+    {
+      "parameters": {
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.chatTrigger",
+      "typeVersion": 1.4,
+      "position": [
+        0,
+        0
+      ],
+      "id": "fd68599b-a461-4e13-8eed-8bf534192fd9",
+      "name": "When chat message received",
+      "webhookId": "8e5e3654-bb8c-4c0e-ab52-24c50677f6f1"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "750b2fbc-9055-409a-9414-20ba0e2631b8",
+              "name": "message",
+              "value": "={{ $json.chatInput }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        208,
+        0
+      ],
+      "id": "ff4bafe8-437c-4690-a4ba-1ce73a34fdfe",
+      "name": "Edit Fields"
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "=### ROL\nEres un experto en Expresiones Regulares (Regex) y un asistente de validación de datos. Tu objetivo es recibir un patrón Regex y explicarle al usuario, en lenguaje sencillo y humano, exactamente qué tipo de información debe ingresar para que sea válida.\n\n### TAREAS\n1. **Analizar el Regex:** {{ $json.message }} Desglosa el patrón recibido para entender sus restricciones (longitud, caracteres especiales, mayúsculas, etc.).\n2. **Explicación Natural:** Describe las reglas de forma amigable (ej. \"Debe empezar con una letra mayúscula\", \"No debe contener espacios\").\n3. **Proporcionar Ejemplos:** Genera una lista de 3 ejemplos válidos y, opcionalmente, 1 ejemplo inválido explicando por qué falló.\n\n### FORMATO DE RESPUESTA\nUtiliza el siguiente esquema para tus respuestas:\n\n---\n**🔍 Análisis del Patrón:** [Breve descripción de lo que hace el regex]\n\n**✅ Reglas que debes seguir:**\n* [Regla 1]\n* [Regla 2]\n\n**💡 Ejemplos de lo que puedes escribir:**\n1. `ejemplo_1`\n2. `ejemplo_2`\n3. `ejemplo_3`\n\n**❌ Lo que NO debes escribir:**\n* `ejemplo_incorrecto` (Razón: falta X característica)\n---\n\n### TONO\nAyudante, técnico pero accesible, y extremadamente preciso. Si el Regex es muy complejo, prioriza la claridad sobre el tecnicismo.",
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 3.1,
+      "position": [
+        416,
+        0
+      ],
+      "id": "ab83ef05-26fd-45d5-a243-371e65a7360f",
+      "name": "AI Agent"
+    },
+    {
+      "parameters": {
+        "model": {
+          "__rl": true,
+          "mode": "list",
+          "value": "gpt-4.1-mini"
+        },
+        "builtInTools": {},
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatOpenAi",
+      "typeVersion": 1.3,
+      "position": [
+        320,
+        192
+      ],
+      "id": "5a4e3f78-12cd-47c7-9d5c-e823d0189b5f",
+      "name": "OpenAI Chat Model",
+      "credentials": {
+        "openAiApi": {
+          "id": "CxN1M3GiHPXWR4gx",
+          "name": "OpenAi TEST"
+        }
+      }
+    }
+  ],
+  "connections": {
+    "When chat message received": {
+      "main": [
+        [
+          {
+            "node": "Edit Fields",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Edit Fields": {
+      "main": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "OpenAI Chat Model": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "nodeGroups": [],
+  "settings": {
+    "executionOrder": "v1",
+    "availableInMCP": false
+  },
+  "staticData": null,
+  "pinData": {},
+  "meta": {
+    "templateCredsSetupCompleted": true
+  },
+  "tags": [],
+  "shared": [
+    {
+      "role": "workflow:owner",
+      "workflowId": "ONct6ocdIzjYv0KngoTS9",
+      "projectId": "tRHCC8ts4mkRGXGn",
+      "createdAt": "2026-01-20T15:03:44.768Z",
+      "updatedAt": "2026-01-20T15:03:44.768Z"
+    }
+  ],
+  "activeVersion": null
+}
