@@ -1,0 +1,2982 @@
+{
+  "id": "kegjv1z28dztmtJz9OEYp",
+  "name": "Agente Asesor (DEV)(pruebas)",
+  "active": false,
+  "activeVersionId": null,
+  "createdAt": "2026-02-12T00:16:13.491Z",
+  "updatedAt": "2026-02-27T21:37:14.114Z",
+  "isArchived": false,
+  "versionId": "d1139489-fbc0-460d-a3d1-eb9173ca5f97",
+  "triggerCount": 0,
+  "nodes": [
+    {
+      "parameters": {
+        "sessionIdType": "customKey",
+        "sessionKey": "={{ $('Convertir mensaje').item.json.id_usuario }}",
+        "contextWindowLength": 1
+      },
+      "type": "@n8n/n8n-nodes-langchain.memoryBufferWindow",
+      "typeVersion": 1.3,
+      "position": [
+        -3664,
+        1200
+      ],
+      "id": "5c6670e2-fac4-418a-9fd8-a33da8c98196",
+      "name": "Simple Memory"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Loop over input items and add a new field called 'myNewField' to the JSON \nreturn [{\n  json: {\n    \n    user_id: $('Convertir mensaje').first().json.id_usuario,\n    message: $('Convertir Entrada').first().json.mensaje_usuario,\n    respuesta: $('Agente Principal').first().json.output\n  }\n}];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -960,
+        960
+      ],
+      "id": "f303eff4-29ca-4a31-b819-238006c44418",
+      "name": "Preparar para memoria"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Loop over input items and add a new field called 'myNewField' to the JSON of each one\nconst inputData = $input.first().json;\n\nconst historialPrevio = inputData.historial_sesion || [];\nconst nuevoMensaje = `Usuario: ${inputData.message}\\nAgente: ${inputData.respuesta}`;\nhistorialPrevio.push(nuevoMensaje);\n\nreturn [{\n  json: {\n    user_id: inputData.user_id,\n    historial_sesion: historialPrevio,\n    ultima_respuesta: inputData.respuesta\n  }\n}];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -720,
+        960
+      ],
+      "id": "342e66b0-2ea3-4b07-ac4b-596dc32ce8fd",
+      "name": "Code"
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.embeddingsOpenAi",
+      "typeVersion": 1.2,
+      "position": [
+        -3040,
+        1424
+      ],
+      "id": "6b5b068f-8bc1-4e75-8d9b-19aa16e07173",
+      "name": "Embeddings OpenAI",
+      "credentials": {
+        "openAiApi": {
+          "id": "zACGOxtwAjrFvDag",
+          "name": "OpenAi_YoEco_DEV"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "={{ $json.mensaje_usuario }}",
+        "hasOutputParser": true,
+        "options": {
+          "systemMessage": "=Eres el asistente virtual de \"Baby's World\", una tienda especializada en productos para bebés.\n\nDALIA es una Conciencia Ligera de Atención Inteligente.\nNo vende. Acompaña.\nNo empuja. Sintoniza.\nDALIA entiende al cliente como un ser humano, no como un ticket. Cada conversación es una oportunidad para conectar, comprender y servir desde la empatía.\n\nTu rol es ser DALIA en acción: acompañar con inteligencia y calidez a los clientes que se comunican por chat, guiándolos de forma clara, amigable y personalizada, usando memoria, historial o variables contextuales disponibles.\n\nSiempre usa tu herramienta Think antes de realizar consultas o devolver un mensaje al usuario\n\n---\n\n## 0) REGLA CRÍTICA GLOBAL (NO INVENTAR)\n\nTu conocimiento NO está memorizado.\nNO asumas productos, categorías, precios, stock ni políticas.\nTodo debe salir de tus herramientas.\n\nPROHIBIDO decir o insinuar “fallas del sistema”, “no devuelve”, “no está vinculado”, “no lo encuentro”, “no tengo acceso”, etc.\nSi falta información, pregunta para acotar o muestra opciones válidas sin mencionar problemas internos.\n\nPROHIBIDO mostrar códigos internos (SKU) al cliente en el texto.\nEl SKU solo se usa para el JSON de salida.\n\n---\n\n## 3) MODO SALUDO / CORTESÍA (REGLA DURA – PRIORIDAD ABSOLUTA)\nSi el mensaje del usuario es solo un saludo o cortesía sin intención de compra ni pregunta (ej.: “hola”, “buenas”, “buenas noches”, “cómo estás”, “gracias”, “ok”, “perfecto”), entonces:\n\nNO uses herramientas (ni Tienda/Negocio ni Catalogo).\n\nResponde con un saludo cordial, amigable y breve y reciba al cliente de buena manera, sin mencionar nada del historial a exepcion de su nombre.\n\nPROHIBIDO:\n\nmencionar el perfil, historial, que “compartió” información, que “ya lo tienes registrado” o cualquier referencia a datos internos.\n\nmencionar productos, categorías, SKUs, precios, stock, envíos, Bogotá/ciudad, recomendaciones o sugerencias.\n\nHaz una sola pregunta corta para entender la intención y modificala para que sea mas calida y recibidora(solo 1). Ejemplos:\n\n“¿En qué te puedo ayudar hoy?”\n\n“¿Qué estás buscando para tu bebé?”\n\n“¿Buscas un producto en particular o información de la tienda?”\n\nSalida obligatoria en MODO SALUDO:\n\nsendImage = false\n\ncatalog = null\n\n\n---\n\n## 4) HERRAMIENTAS (FUENTES DE VERDAD)\n\nHay dos herramientas basadas en Qdrant (bases vectoriales):\n\n### 4.1 Tienda/Negocio\n\nFuente de verdad para: quiénes somos, políticas, envíos, garantías, pagos, horarios, información corporativa y conocimiento del negocio.\nNO es fuente para SKUs ni para llenar `catalog`.\n\n### 4.2 Catalogo\n\nÚnica fuente válida para: productos del catálogo, títulos, categorías, SKUs, precios, estado/stock (si aplica).\nSolo si “Catalogo” lo devuelve, puedes llenar el campo de salida `catalog` y activar envío de imágenes.\n\nNota:\n\n* Catalogo = herramienta\n* catalog = campo de salida en el JSON\n\n---\n\n## 5) INICIO Y CONTEXTO DE CONVERSACIÓN (PRIMER MENSAJE)\n\nIdentifica el tipo de conversación según el valor de:\n{{ $('Convertir mensaje').item.json.tipo_mensaje }}\n\nSi el valor es \"Primer mensaje\":\n\n### 5.1) Contexto: Cliente Registrado ({{ $json.historial_disponible }} = true)\n\n**Objetivo:** Dar una bienvenida cálida y reconocer al cliente sutilmente sin ser invasivo.\n\n**Datos del cliente:**\n {{ $json.prompt }}\n\n**Instrucciones de Personalización:**\n1.  **Saludo:** ES OBLIGATORIO incluir el nombre del cliente de forma natural (ej: \"Hola Ana, ¿cómo estás?\").\n    * *Nota:* Usar el nombre NO viola la regla de privacidad.\n2.  **Tono:** Adopta el estilo indicado en el perfil, pero mantén la conversación en el presente.\n\n**Restricciones de Privacidad (IMPORTANTE):**\n* Aunque conoces su historial, actúa como si fuera una conversación nueva con alguien conocido.\n* NO menciones productos comprados anteriormente ni leas su historial en voz alta (\"Veo que compraste X\").\n* Espera a que el usuario mencione un tema antes de profundizar.\n\n**Manejo de Saludos Cortos:**\nSi el usuario solo dice \"Hola\", responde con el saludo personalizado (Nombre + Tono) y una apertura abierta y breve (ej: \"¿En qué te puedo ayudar hoy?\"o similares ), sin soltar parrafadas.\n\n### 5.2) Si {{ $json.historial_disponible }} es false o null\n\nCliente nuevo:\n\n* Preséntate como DALIA con tono cordial y empático.\n* Haz preguntas suaves para conocer su nombre y poder registrarlo.\n* La ciudad solo se pregunta cuando sea necesaria (especialmente para dar precios).\n* No vuelvas a preguntar la ciudad si ya la conoces.\n\n---\n\n## 6) USO DE HERRAMIENTAS (REGLAS OPERATIVAS)\n\nSi el usuario solo saluda/agradece → MODO SALUDO (sin herramientas).\n\nSi el usuario pide información:\n\n* Preguntas sobre empresa/políticas (envíos, garantías, pagos, horarios, ubicación, etc.)\n  → usa Tienda/Negocio.\n\n* Preguntas sobre productos/catálogo (qué tienes, opciones, características, disponibilidad, precios, etc.) o descripcion de una imagen\n  → usa Catalogo.\n\n---\n\n## 7) CÓMO LLAMAR A “Catalogo” (FORMATO OBLIGATORIO)\n\n7.1. Analiza la intención del usuario para determinar si busca:\n\n* todos los PRODUCTOS,\n* una CATEGORÍA general,\n* o un PRODUCTO específico.\n\n7.2. Siempre ejecuta la herramienta Catalogo con este formato:\n\nFORMATO (SIEMPRE JSON):\n{\n\"tipo\": \"string\",\n\"valor\": \"string\"\n}\n\nReglas para construirlo:\n*\nSi recibes una descripción visual o análisis de imagen:\nInterpreta los elementos clave (objeto, color, material, función).\ntipo = \"producto\"\nvalor = \"<nombre detallado del producto identificado en la imagen>\"\n\nEjemplo: Si la descripción es \"Imagen de un coche color azul marino con 4 ruedas grandes\", el valor será \"coche azul marino\".\n\n* Si el usuario quiere “qué productos manejas / qué tipo de productos tienes”:\n\n  * tipo = \"productos\"\n  * valor = \"todos\"\n\n* Si el usuario menciona términos generales como \"coches\", \"corrales\", \"bañeras\", \"sillas\", \"triciclos\", etc.:\n\n  * tipo = \"categoria\"\n  * valor = \"<categoria buscada>\"\n\n* Si el usuario describe un producto específico (ej. \"corral de lona gris\", \"coche reversible\"):\n\n  * tipo = \"producto\"\n  * valor = \"<producto buscado>\"\n\nEjemplos:\n{ \"tipo\": \"categoria\", \"valor\": \"coches\" }\n{ \"tipo\": \"productos\", \"valor\": \"todos\" }\n{ \"tipo\": \"producto\", \"valor\": \"corral de lona gris\" }\n\n## 8) REGLAS DE BÚSQUEDA EN “Catalogo”\n\n* Si busca categoría: filtra por metadata.categoria.\n* Si busca producto específico: usa búsqueda semántica y prioriza coincidencias claras.\n* Extrae para el JSON: categoria, producto (nombre base), sku y color (si aplica).\n\n---\n\n## 9) INTENCIONES AMPLIAS (CATEGORÍAS)\n\nSi la pregunta es amplia tipo: “¿qué productos tienes?”, “¿qué vendes?” o equivalente:\n\n* Llama a Catalogo sin filtro (limit=40, include metadata).\n* Lista 6–10 categorías únicas reales (de metadata.categoria).\n* Luego pregunta: “¿Con cuál te ayudo? 😊”\n\nFormato categorías:\n\n* Viñetas “• ” o guiones “- ”.\n* No agregues texto extra después del nombre (emoji opcional).\n* No inventes categorías.\n\n---\n\n## 10) OPCIONES EN UNA CATEGORÍA (LISTADO DE PRODUCTOS)\n\nEjemplos: “¿Qué coches tienes?”, “Opciones de triciclos”, “Muéstrame andaderas”, “Qué productos hay en <categoría>”.\n\nREGLA DURA: máximo 5 opciones de productos en cualquier caso (con o sin imágenes).\n\n### 10.1) LISTADO SIN PRECIO (por defecto)\n\nSi el usuario NO pidió precio:\n\n* Muestra máximo 5 productos.\n* Una línea por producto.\n* Formato:\n  “• {{título}}”\n* Al final, 1 pregunta corta para acotar:\n  “¿Cuál te interesa más?” / “¿Buscas alguna característica en especial?”\n\n### 10.2) LISTADO CON PRECIO (solo si lo piden + ciudad)\n\nREGLA DE CIUDAD (ESTRICTA Y OBLIGATORIA PARA ENVIAR PRECIOS):\nSolo puedes enviar precios cuando ambas se cumplen:\n\n10.2.1. El usuario pide precio explícitamente (“precio”, “cuánto vale”, “cuánto cuesta”, “valor”, “$”, etc.)\n10.2.2. La ciudad del cliente es Bogotá (Bogotá o Bogota)\n\nSi el usuario pide precios pero:\n\n* No conoces la ciudad → pregunta:\n  “Para poder darte el precio correcto, ¿en qué ciudad te encuentras?”\n* Ciudad distinta a Bogotá → NO envíes precios. Responde suave:\n  “Por ahora solo puedo compartir precios para clientes en Bogotá. Igual puedo ayudarte con características y a elegir 🙂”\n\nSi sí aplica (pidió precio + ciudad Bogotá):\n\n* Máximo 5 productos.\n* Formato:\n  “• {{título}} — {{precio_formateado}}”\n* Precio 0/null → “Precio no disponible”.\n* Dinero: $380.000\n\n---\n\n## 11) MICRO-FRASES HUMANAS (máximo 1 por respuesta)\n\nUsa máximo 1 frase breve (no repetir dos veces seguidas):\n\n* “Genial, vamos paso a paso.”\n* “Perfecto, te ayudo con eso.”\n* “Si quieres, lo filtramos por presupuesto.”\n* “Dime con cuál categoría seguimos y te muestro opciones.”\n\n---\n\n## 12) IMÁGENES: REGLAS PARA sendImage y catalog (CONSISTENCIA TOTAL)\n\n### 12.1) REGLA CRÍTICA\n\nSolo puedes enviar imágenes cuando Catalogo devolvió productos con SKU válido.\nSi catalog es null → sendImage debe ser false.\n\n### 12.2) CRITERIO PARA sendImage (REGLA DURA)\n\nA) Producto único (1 SKU identificado)\nsendImage = true SIEMPRE que:\n\n* El usuario pide info o muestra interés por un producto específico.\n* Catalogo devuelve un único producto con sku válido.\n* En la sesión no se ha enviado ya la imagen de ese mismo SKU.\n\nB) Lista corta (2 a 5 opciones)\nSi el usuario pide opciones por categoría/tipo:\n\n* Usa Catalogo.\n* Selecciona máximo 5 opciones.\n* catalog debe ser un arreglo de 2 a 5 objetos con categoria/producto/sku reales (+ color si aplica).\n* sendImage = true.\n* Cierra con una pregunta para decidir (“¿Cuál te interesa más?”).\n\nC) Ambigüedad o sin poder delimitar con confianza a máximo 5\nsendImage = false SIEMPRE que:\n\n* No hay SKUs claros, o\n* No puedes delimitar a máximo 5 opciones con confianza.\n  En ese caso:\n* No listes productos.\n* Pregunta 1–2 cosas para acotar.\n* catalog = null y sendImage = false.\n\n### 12,3) CRITERIOS PARA imagenproducto\na) imagenproducto es true unicamnete cunado el clinete pregunta por un tipo de producto en especifico, ejemplo:(caminadoras, comedores,sillas,coches etc)\n\nb)si el clinete pregunta por un producto en especifico imagenproducto es false\n\nc) en cualquier otro escenario imagenproducto es false\n\n### 12.4) REGLA DE NO REPETICIÓN\n\nNo enviar la imagen del mismo SKU dos veces en la misma conversación.\n\n---\n\n## 13) CONSISTENCIA ENTRE TEXTO Y JSON (REGLA DURA)\n\n* Si replyText menciona productos específicos (1–5), catalog NO puede ser null y debe reflejarlos exactamente (objeto o arreglo).\n* Si catalog es null, replyText NO puede mencionar productos por nombre (solo preguntar para acotar).\n* Prohibido incluir más de 5 productos en replyText o en catalog.\n* Prohibido mostrar SKUs al cliente en replyText.\n\n---\n\n## 14) NORMALIZACIÓN DE VARIANTES (COLOR) — REGLA DURA\n\nCuando Catalogo devuelva un producto cuyo título incluya color/variante (ej: “COCHE MALETA JUMPY KHAKI” o “Triciclo … (Color Rosado)”), NO incluyas el color dentro de catalog.producto.\n\nDebes separar así:\n\n* catalog.producto: nombre base del producto (sin color)\n* catalog.color: el color/variante (string o null)\n\nPrioridad para obtener el color:\n\n1. Usar metadata.color / metadata.variante / metadata.atributos.color (si existe).\n2. Si no existe, inferir solo si es claro:\n\n   * patrón “(Color X)” o “Color: X”\n   * o último token coincide con un color conocido (KHAKI, GRIS, AZUL, ROSADO, NEGRO, VERDE, MORADO, CAFÉ, BEIGE, BLANCO, ROJO, etc.)\n3. Si no puedes inferir con confianza: color = null (no inventar).\n\nEn replyText puedes mostrar Producto (Color X) para ayudar, pero el JSON debe mantener producto sin color.\n\n---\n\n## 15) FORMATO DE SALIDA (SIEMPRE JSON VÁLIDO)\n\nDevuelve SIEMPRE un JSON válido con esta estructura exacta.\n\nEl campo catalog puede ser:\n\n* null\n* un objeto (producto único)\n* un arreglo (2 a 5 objetos)\n* no modifiques los nombres de los productos ni categorias que te retorna el catalogo, siempre utiliza la información que te retorna el catálogo\n\nEstructura:\n{\n\"replyText\": \"string\",\n\"sendImage\": boolean,\n\"imagenproducto\": booleam,\n\"categoria\": \"string\",\n\"catalog\": null | {\n\"categoria\": \"string\",\n\"producto\": \"string\",\n\"sku\": \"string\",\n\"color\": \"string|null\"\n} | [\n{\n\"categoria\": \"string\",\n\"producto\": \"string\",\n\"sku\": \"string\",\n\"color\": \"string|null\"\n\"completion_tokens\": 123, //tokens de salida usados\n\"prompt_tokens\": 456, //tokens de entrada usados\n\"total_tokens\": 579 //suma de los tokens usados\n\"model_name\": \"model name\"\n\"ai_response\": \"ai response\" //la respuesta del modelo\n}\n]\n}\n\n---\n\n## 16) CHECK FINAL OBLIGATORIO ANTES DE RESPONDER\n\n* Si replyText menciona productos específicos (1–5) → catalog NO puede ser null.\n* Si catalog es null → sendImage = false.\n* Si catalog es objeto con sku válido → sendImage = true (si no se repite SKU).\n* Si catalog es arreglo (2 a 5) con sku válidos → sendImage = true (si no se repiten SKUs).\n* Prohibido más de 5 productos.\n\nCHECK FINAL – SALUDO:\nSi el input es saludo/cortesía sin intención explícita:\n\n* replyText NO puede contener: nombres de productos, categorías, ciudad/Bogotá, precio, perfil/historial.\n* Debe ser: saludo + 1 pregunta corta.\n* sendImage=false, catalog=null.\n\nTEN EN CUENTA QUE LA FECHA DE HOY ES:{{ $now }}"
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 1.9,
+      "position": [
+        -3392,
+        848
+      ],
+      "id": "9eeeeb52-7905-4a97-a753-7e106ce3b8a7",
+      "name": "Agente Principal"
+    },
+    {
+      "parameters": {
+        "model": {
+          "__rl": true,
+          "value": "gpt-5.1",
+          "mode": "list",
+          "cachedResultName": "gpt-5.1"
+        },
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatOpenAi",
+      "typeVersion": 1.2,
+      "position": [
+        -3824,
+        1200
+      ],
+      "id": "5d30eb23-fcd8-4112-882f-4c6e05d35de8",
+      "name": "Modelo De Chat2",
+      "credentials": {
+        "openAiApi": {
+          "id": "zACGOxtwAjrFvDag",
+          "name": "OpenAi_YoEco_DEV"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "workflowId": {
+          "__rl": true,
+          "value": "PZCGrW2eV77RCIeS",
+          "mode": "list",
+          "cachedResultUrl": "/workflow/PZCGrW2eV77RCIeS",
+          "cachedResultName": "Babys World — Historial De Clientes (DEV)"
+        },
+        "workflowInputs": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "user_id": "={{ $('Convertir mensaje').item.json.id_usuario }}",
+            "message": "={{ $('Convertir mensaje').item.json.message }}"
+          },
+          "matchingColumns": [],
+          "schema": [
+            {
+              "id": "user_id",
+              "displayName": "user_id",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string"
+            },
+            {
+              "id": "message",
+              "displayName": "message",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string"
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": true
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.executeWorkflow",
+      "typeVersion": 1.2,
+      "position": [
+        -3920,
+        672
+      ],
+      "id": "34fcd104-a164-49ef-8281-f65cb492d3f3",
+      "name": "Llamada a historial de clientes"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "2bf9fff9-8f90-4db5-92ba-ff177e7b2230",
+              "name": "mensaje_usuario",
+              "value": "={{ $('Convertir mensaje').item.json.message }}\n",
+              "type": "string"
+            },
+            {
+              "id": "9eb0a8e5-ac38-4dc3-a27c-42e2ac5338b9",
+              "name": "prompt",
+              "value": "={{ $json.prompt }}",
+              "type": "string"
+            },
+            {
+              "id": "a5a6189b-08ff-4f75-a4b6-c13939f250a8",
+              "name": "historial_disponible",
+              "value": "={{ $json.historial_disponible }}",
+              "type": "boolean"
+            },
+            {
+              "id": "413e7478-9d46-4954-89f7-33589aec809d",
+              "name": "",
+              "value": "",
+              "type": "string"
+            },
+            {
+              "id": "095e268c-b537-46be-99ef-6e4df09184e0",
+              "name": "",
+              "value": "",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        -3776,
+        944
+      ],
+      "id": "8ce3da5a-43d8-4ce0-a5fb-1a1f81908773",
+      "name": "Convertir Entrada"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "13ee2b30-1377-415c-9927-dccb0f78b231",
+              "name": "message",
+              "value": "={{ $json.message }}",
+              "type": "string"
+            },
+            {
+              "id": "5927e26f-ee6f-449a-aeae-a83a0123973d",
+              "name": "id_usuario",
+              "value": "={{$json.session_id }}",
+              "type": "string"
+            },
+            {
+              "id": "befe4d09-ddb6-4acd-9b1c-3cf5d77026d9",
+              "name": "tipo_mensaje",
+              "value": "={{ $json.tipo_mensaje }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        -4288,
+        800
+      ],
+      "id": "67547aee-4416-4eb4-9d15-4c312251bbc2",
+      "name": "Convertir mensaje"
+    },
+    {
+      "parameters": {
+        "workflowInputs": {
+          "values": [
+            {
+              "name": "session_id"
+            },
+            {
+              "name": "message"
+            },
+            {
+              "name": "tipo_mensaje"
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.executeWorkflowTrigger",
+      "typeVersion": 1.1,
+      "position": [
+        -4544,
+        800
+      ],
+      "id": "cc59e925-ce6b-4cfb-954d-ba4df7ee1f89",
+      "name": "When Executed by Another Workflow"
+    },
+    {
+      "parameters": {
+        "operation": "append",
+        "documentId": {
+          "__rl": true,
+          "value": "1BBigXd9cM014ZVimnIvaXCcIVYuoHFDSq2ndYbWqAk8",
+          "mode": "list",
+          "cachedResultName": "Historial Baby's World",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1BBigXd9cM014ZVimnIvaXCcIVYuoHFDSq2ndYbWqAk8/edit?usp=drivesdk"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "gid=0",
+          "mode": "list",
+          "cachedResultName": "Hoja 1",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1JKyl2AqZNcteKR7NE3WU9t8U7NFaGQ857wNlcjz3r-8/edit#gid=0"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "id": "={{ $json.contacts[0].wa_id }}",
+            "rol": "asesor",
+            "timestamp": "={{$now.format('dd/MM/yyyy hh:mm:ss')}}",
+            "mensaje": "={{ $('Code').item.json.ultima_respuesta.replyText }}",
+            "fecha": "={{ $now.format(\"dd/MM/yyyy\") }}",
+            "context_id_whatsapp": "={{ $json.messages[0].id }}"
+          },
+          "matchingColumns": [
+            "id"
+          ],
+          "schema": [
+            {
+              "id": "id",
+              "displayName": "id",
+              "required": false,
+              "defaultMatch": true,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "timestamp",
+              "displayName": "timestamp",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "rol",
+              "displayName": "rol",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "mensaje",
+              "displayName": "mensaje",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "fecha",
+              "displayName": "fecha",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "context_id_whatsapp",
+              "displayName": "context_id_whatsapp",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [
+        -336,
+        960
+      ],
+      "id": "21dcc86f-dc61-4bb0-b2d8-fcc33b9ce268",
+      "name": "Guarda Historial",
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "Pf0TYy2joLTmqt2C",
+          "name": "Google Sheets account 3"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "text": "={{ $('Code').item.json.ultima_respuesta.replyText }}",
+        "attributes": {
+          "attributes": [
+            {
+              "name": "nombre",
+              "description": "El nombre completo de la persona en el mensaje, si está presente. Si no se menciona ningún nombre, devuelve una cadena vacía (o déjalo nulo). Nunca pongas aquí el nombre de un producto, marca, empresa o tienda. Si el mensaje solo habla de productos, deja este campo vacío / nulo."
+            },
+            {
+              "name": "interes_asesor",
+              "description": "Devuelve exactamente \"si\" si la persona expresa claramente que quiere hablar con un asesor / humano (ej. “sí, pásame con un asesor”, “quiero hablar con alguien”, “llámame”, etc.).|En cualquier otro caso (solo pregunta, duda, dice que no quiere, cambia de tema, etc.) devuelve \"no\".No uses otros valores.'"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.informationExtractor",
+      "typeVersion": 1.2,
+      "position": [
+        -128,
+        960
+      ],
+      "id": "be6e3966-87c2-4fae-9eed-04b39a74dce9",
+      "name": "Information Extractor"
+    },
+    {
+      "parameters": {
+        "model": {
+          "__rl": true,
+          "mode": "list",
+          "value": "gpt-4.1-mini"
+        },
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatOpenAi",
+      "typeVersion": 1.2,
+      "position": [
+        -144,
+        1136
+      ],
+      "id": "473842e0-48bf-4366-b41d-d1d0bc9b7750",
+      "name": "OpenAI Chat Model1",
+      "credentials": {
+        "openAiApi": {
+          "id": "zACGOxtwAjrFvDag",
+          "name": "OpenAi_YoEco_DEV"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "appendOrUpdate",
+        "documentId": {
+          "__rl": true,
+          "value": "12q0bQoQoJxYTuqCc9YcNxBXMV7Kt8a9spNW1XXjp3vc",
+          "mode": "list",
+          "cachedResultName": "Lead",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/12q0bQoQoJxYTuqCc9YcNxBXMV7Kt8a9spNW1XXjp3vc/edit?usp=drivesdk"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "gid=0",
+          "mode": "list",
+          "cachedResultName": "Hoja 1",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/12q0bQoQoJxYTuqCc9YcNxBXMV7Kt8a9spNW1XXjp3vc/edit#gid=0"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "Fecha": "={{ $('Guarda Historial').item.json.timestamp }}",
+            "Nombre": "={{ $json.output.nombre || undefined }}",
+            "Telefono": "={{ $('When Executed by Another Workflow').item.json.session_id }}",
+            "interes_asesor": "={{ $json.output.interes_asesor }}"
+          },
+          "matchingColumns": [
+            "Telefono"
+          ],
+          "schema": [
+            {
+              "id": "Nombre",
+              "displayName": "Nombre",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "Telefono",
+              "displayName": "Telefono",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "Fecha",
+              "displayName": "Fecha",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "interes_asesor",
+              "displayName": "interes_asesor",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [
+        576,
+        896
+      ],
+      "id": "fccf533e-4692-4e0f-a624-10644d760689",
+      "name": "Append or update row in sheet",
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "Pf0TYy2joLTmqt2C",
+          "name": "Google Sheets account 3"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "ea635212-a687-40fe-8da6-7f52b2083793",
+              "leftValue": "={{ $json.output.nombre }}",
+              "rightValue": "",
+              "operator": {
+                "type": "string",
+                "operation": "notEmpty",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        224,
+        960
+      ],
+      "id": "71102d08-2b42-4b2f-ba51-79e647951045",
+      "name": "If1"
+    },
+    {
+      "parameters": {
+        "operation": "appendOrUpdate",
+        "documentId": {
+          "__rl": true,
+          "value": "12q0bQoQoJxYTuqCc9YcNxBXMV7Kt8a9spNW1XXjp3vc",
+          "mode": "list",
+          "cachedResultName": "Lead",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/12q0bQoQoJxYTuqCc9YcNxBXMV7Kt8a9spNW1XXjp3vc/edit?usp=drivesdk"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "gid=0",
+          "mode": "list",
+          "cachedResultName": "Hoja 1",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/12q0bQoQoJxYTuqCc9YcNxBXMV7Kt8a9spNW1XXjp3vc/edit#gid=0"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "Fecha": "={{ $('Guarda Historial').item.json.timestamp }}",
+            "Telefono": "={{ $('Enviar Mensaje').item.json.contacts[0].wa_id }}",
+            "interes_asesor": "={{ $('If1').item.json.output.interes_asesor }}"
+          },
+          "matchingColumns": [
+            "Telefono"
+          ],
+          "schema": [
+            {
+              "id": "Nombre",
+              "displayName": "Nombre",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": true
+            },
+            {
+              "id": "Telefono",
+              "displayName": "Telefono",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "Fecha",
+              "displayName": "Fecha",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "interes_asesor",
+              "displayName": "interes_asesor",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [
+        576,
+        1088
+      ],
+      "id": "6af47042-6a71-4dea-808f-270fa9d82ab9",
+      "name": "Append or update row in sheet1",
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "Pf0TYy2joLTmqt2C",
+          "name": "Google Sheets account 3"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "mode": "retrieve-as-tool",
+        "toolName": "YoEco",
+        "toolDescription": "Eres un asistente que nos apoya en la generación de información relacionada con la empresa BabysWorld. Tu enfoque debe ser ayudarnos a responder preguntas sobre la operación y forma de trabajo de la empresa BabysWorld, así como ayudar a resolver las dudas sobre a que se dedica la empresa, que vende, cual es su público objetivo, cual es su misión y visión, y en general orientar y asesorar a clientes existentes o nuevos en el ciclo de ventas para que estos decidan comprar a la tienda Baby´s world. ",
+        "qdrantCollection": {
+          "__rl": true,
+          "value": "BabysWorld_Business_TEST",
+          "mode": "list",
+          "cachedResultName": "BabysWorld_Business_TEST"
+        },
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.vectorStoreQdrant",
+      "typeVersion": 1.1,
+      "position": [
+        -3168,
+        1232
+      ],
+      "id": "3560b055-2d38-479f-8419-a4e7e0ffc4c5",
+      "name": "Tienda/Negocio",
+      "credentials": {
+        "qdrantApi": {
+          "id": "ZYv8vdr6tkTS4jYz",
+          "name": "QdrantApi account 3"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "schemaType": "manual",
+        "inputSchema": "{\n  \"type\": \"object\",\n  \"additionalProperties\": false,\n  \"properties\": {\n    \"replyText\": {\n      \"type\": \"string\"\n    },\n    \"sendImage\": {\n      \"type\": \"boolean\"\n    },\n    \"imagenproducto\": {\n      \"type\": \"boolean\"\n    },\n    \"categoria\": {\n      \"type\": \"string\"\n    },\n    \"catalog\": {\n      \"type\": \"array\",\n      \"items\": {\n        \"type\": \"object\",\n        \"additionalProperties\": false,\n        \"properties\": {\n          \"categoria\": {\n            \"type\": \"string\"\n          },\n          \"productos\": {\n            \"type\": \"array\",\n            \"items\": {\n              \"type\": \"object\",\n              \"additionalProperties\": false,\n              \"properties\": {\n                \"titulo\": {\n                  \"type\": \"string\"\n                }\n              },\n              \"required\": [\n                \"titulo\"\n              ]\n            }\n          }\n        },\n        \"required\": [\n          \"categoria\",\n          \"productos\"\n        ]\n      }\n    }\n  },\n  \"required\": [\n    \"replyText\",\n    \"sendImage\",\n    \"imagenproducto\",\n    \"categoria\",\n    \"catalog\"\n  ]\n}"
+      },
+      "type": "@n8n/n8n-nodes-langchain.outputParserStructured",
+      "typeVersion": 1.3,
+      "position": [
+        -2784,
+        1232
+      ],
+      "id": "7ebb9af9-a040-4b99-8a9f-aabb2309b2e9",
+      "name": "Structured Output Parser"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "93a1a728-f40e-4e4c-9674-ff0a1d47cbea",
+              "name": "rootFolderId",
+              "value": "1hiDjeYmj7r9zZRl59Z9NiWWfT7bm3v6h",
+              "type": "string"
+            },
+            {
+              "id": "70175394-c090-4398-b584-b4297f922616",
+              "name": "categoria",
+              "value": "={{ $json.categoria }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        -1216,
+        1504
+      ],
+      "id": "6b92fc20-9224-4780-ab60-488a441e6bb7",
+      "name": "Set Root Folder"
+    },
+    {
+      "parameters": {
+        "resource": "fileFolder",
+        "searchMethod": "query",
+        "queryString": "=trashed = false and mimeType = 'application/vnd.google-apps.folder' and name = '{{ $('Recorre categorias').item.json.categoria }}' and '{{ $(\"Set Root Folder\").item.json.rootFolderId }}' in parents",
+        "filter": {},
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleDrive",
+      "typeVersion": 3,
+      "position": [
+        -992,
+        1504
+      ],
+      "id": "9fa646d7-107c-4008-a436-23c6c809a356",
+      "name": "Drive_Find_Category_Folder",
+      "alwaysOutputData": true,
+      "credentials": {
+        "googleDriveOAuth2Api": {
+          "id": "55RafwUzcXl8phIg",
+          "name": "Google Drive account 3"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "resource": "fileFolder",
+        "searchMethod": "query",
+        "queryString": "=trashed = false and mimeType = 'application/vnd.google-apps.folder' and name = '{{ $json.titulo }}' and '{{ $(\"Drive_Find_Category_Folder\").item.json.id }}' in parents",
+        "filter": {},
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleDrive",
+      "typeVersion": 3,
+      "position": [
+        16,
+        1552
+      ],
+      "id": "6675814d-ab47-4885-b3d5-0c81bad3afc9",
+      "name": "Drive_Find_Product_Folder",
+      "alwaysOutputData": true,
+      "credentials": {
+        "googleDriveOAuth2Api": {
+          "id": "55RafwUzcXl8phIg",
+          "name": "Google Drive account 3"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "resource": "fileFolder",
+        "searchMethod": "query",
+        "queryString": "=trashed = false and mimeType = 'application/vnd.google-apps.folder' and name = '{{ $('Recorre productos').item.json.skus[0].titulo }}' and '{{ $('Drive_Find_Product_Folder').item.json.id }}' in parents",
+        "filter": {},
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleDrive",
+      "typeVersion": 3,
+      "position": [
+        704,
+        1536
+      ],
+      "id": "31342c36-f1d9-4c16-9282-5b587c461880",
+      "name": "Drive_Find_SKU_Folder",
+      "alwaysOutputData": true,
+      "credentials": {
+        "googleDriveOAuth2Api": {
+          "id": "55RafwUzcXl8phIg",
+          "name": "Google Drive account 3"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "download",
+        "fileId": {
+          "__rl": true,
+          "value": "={{ $json.id }}",
+          "mode": "id"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleDrive",
+      "typeVersion": 3,
+      "position": [
+        1616,
+        1392
+      ],
+      "id": "13c7fbad-8368-4910-b8a7-01b3c7fb6446",
+      "name": "Download file",
+      "alwaysOutputData": true,
+      "credentials": {
+        "googleDriveOAuth2Api": {
+          "id": "55RafwUzcXl8phIg",
+          "name": "Google Drive account 3"
+        }
+      }
+    },
+    {
+      "parameters": {},
+      "type": "@n8n/n8n-nodes-langchain.toolThink",
+      "typeVersion": 1.1,
+      "position": [
+        -3504,
+        1200
+      ],
+      "id": "f0c7a7c8-5147-4d38-81e3-497e2b7bc7cb",
+      "name": "Think"
+    },
+    {
+      "parameters": {},
+      "type": "n8n-nodes-base.noOp",
+      "typeVersion": 1,
+      "position": [
+        784,
+        896
+      ],
+      "id": "e5f1d156-64e7-400d-a80e-fc00d000ebf0",
+      "name": "No Operation, do nothing"
+    },
+    {
+      "parameters": {},
+      "type": "n8n-nodes-base.noOp",
+      "typeVersion": 1,
+      "position": [
+        784,
+        1088
+      ],
+      "id": "31b76d4c-b2d4-401a-a8e1-297f9c449e3a",
+      "name": "No Operation, do nothing1"
+    },
+    {
+      "parameters": {
+        "jsCode": "const catalog = $input.first().json.catalog;\nconst groupedItems = catalog.reduce((acc, item) => {\n  const title = item.producto;\n  const category = item.categoria;\n  const sku = item.sku;\n  const color = item.color;\n  if (!acc[category]){\n    acc[category] = { categoria: category, productos: []}\n  }\n  let product = acc[category].productos.find((prod) => prod.titulo === title);\n\n  if (!product) {\n    product = { titulo: title, skus: [] };\n    acc[category].productos.push(product);\n  }\n\n   product.skus.push({ titulo:sku, color: color });\n  return acc;\n}, {});\n\nconst result = Object.values(groupedItems);\nreturn result.map((item) => ({ json: item }));\n"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -1680,
+        1488
+      ],
+      "id": "c3b2b3cf-5116-4dd2-9ec2-a25fcf9fd821",
+      "name": "Normalize_Catalog_List"
+    },
+    {
+      "parameters": {
+        "fieldToSplitOut": "catalogList",
+        "include": "allOtherFields",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.splitOut",
+      "typeVersion": 1,
+      "position": [
+        -720,
+        1264
+      ],
+      "id": "bb458f31-0190-4a92-9cfd-c85c2b663d43",
+      "name": "Split Out"
+    },
+    {
+      "parameters": {
+        "description": "Llama a esta herramienta siempre que el mensaje este consultando explicita o implicitamente por productos, categorias o en general información sobre catalogo de productos de Baby´s world. Suministra la información previamente interpretada de \"tipo\": \"string\" y \"valor\": \"string\". ",
+        "workflowId": {
+          "__rl": true,
+          "value": "aRJCOVZWZxrRZu3p",
+          "mode": "list",
+          "cachedResultUrl": "/workflow/aRJCOVZWZxrRZu3p",
+          "cachedResultName": "Babys World — Catalogo Qdrant"
+        },
+        "workflowInputs": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "tipo": "={{ $fromAI('tipo', ``, 'string') }}",
+            "valor": "={{ $fromAI('valor', ``, 'string') }}"
+          },
+          "matchingColumns": [],
+          "schema": [
+            {
+              "id": "tipo",
+              "displayName": "tipo",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string",
+              "removed": false
+            },
+            {
+              "id": "valor",
+              "displayName": "valor",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string",
+              "removed": false
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.toolWorkflow",
+      "typeVersion": 2.2,
+      "position": [
+        -3344,
+        1200
+      ],
+      "id": "5d0803da-edf6-437d-ab1d-e371d57821d9",
+      "name": "Catalogo"
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "type": "n8n-nodes-base.splitInBatches",
+      "typeVersion": 3,
+      "position": [
+        -1232,
+        192
+      ],
+      "id": "32873685-1ba9-440e-86a4-6de89114d6d0",
+      "name": "Loop Over Items1"
+    },
+    {
+      "parameters": {
+        "resource": "fileFolder",
+        "searchMethod": "query",
+        "queryString": "=name = '{{ $json.output.categoria }}' and mimeType = 'application/vnd.google-apps.folder' and trashed = false",
+        "filter": {
+          "folderId": {
+            "__rl": true,
+            "value": "1hiDjeYmj7r9zZRl59Z9NiWWfT7bm3v6h",
+            "mode": "list",
+            "cachedResultName": "02_Fotografia_Productos",
+            "cachedResultUrl": "https://drive.google.com/drive/folders/1hiDjeYmj7r9zZRl59Z9NiWWfT7bm3v6h"
+          }
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleDrive",
+      "typeVersion": 3,
+      "position": [
+        -2384,
+        448
+      ],
+      "id": "7fee991e-dc86-4ad5-9b86-80694d9c985f",
+      "name": "categorias",
+      "alwaysOutputData": true,
+      "credentials": {
+        "googleDriveOAuth2Api": {
+          "id": "55RafwUzcXl8phIg",
+          "name": "Google Drive account 3"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "resource": "fileFolder",
+        "searchMethod": "query",
+        "queryString": "='{{ $json.idFolder }}' in parents and name contains '1.jpeg' and mimeType contains 'image' and trashed = false",
+        "limit": 1,
+        "filter": {},
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleDrive",
+      "typeVersion": 3,
+      "position": [
+        -816,
+        80
+      ],
+      "id": "895c9f17-8a86-4b44-9ecf-0e900c2397ac",
+      "name": "obtener imagenes",
+      "alwaysOutputData": true,
+      "credentials": {
+        "googleDriveOAuth2Api": {
+          "id": "55RafwUzcXl8phIg",
+          "name": "Google Drive account 3"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "download",
+        "fileId": {
+          "__rl": true,
+          "value": "={{ $json.id }}",
+          "mode": "id"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleDrive",
+      "typeVersion": 3,
+      "position": [
+        -384,
+        16
+      ],
+      "id": "68dab9f6-5ec7-4cdd-9391-510c23a1b332",
+      "name": "descargar imagenes",
+      "alwaysOutputData": true,
+      "credentials": {
+        "googleDriveOAuth2Api": {
+          "id": "55RafwUzcXl8phIg",
+          "name": "Google Drive account 3"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "append",
+        "documentId": {
+          "__rl": true,
+          "value": "1BBigXd9cM014ZVimnIvaXCcIVYuoHFDSq2ndYbWqAk8",
+          "mode": "list",
+          "cachedResultName": "Historial Baby's World",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1BBigXd9cM014ZVimnIvaXCcIVYuoHFDSq2ndYbWqAk8/edit?usp=drivesdk"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "gid=0",
+          "mode": "list",
+          "cachedResultName": "Hoja 1",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1JKyl2AqZNcteKR7NE3WU9t8U7NFaGQ857wNlcjz3r-8/edit#gid=0"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "id": "={{ $json.contacts[0].wa_id }}",
+            "rol": "asesor",
+            "timestamp": "={{$now.format('dd/MM/yyyy hh:mm:ss')}}",
+            "mensaje": "={{ $('Loop Over Items1').item.json.titulo }}",
+            "fecha": "={{ $now.format(\"dd/MM/yyyy\") }}",
+            "context_id_whatsapp": "={{ $json.messages[0].id }}"
+          },
+          "matchingColumns": [
+            "id"
+          ],
+          "schema": [
+            {
+              "id": "id",
+              "displayName": "id",
+              "required": false,
+              "defaultMatch": true,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "timestamp",
+              "displayName": "timestamp",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "rol",
+              "displayName": "rol",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "mensaje",
+              "displayName": "mensaje",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "fecha",
+              "displayName": "fecha",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "context_id_whatsapp",
+              "displayName": "context_id_whatsapp",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [
+        416,
+        384
+      ],
+      "id": "77b25b6b-5ee3-4e7d-b8ea-8306ff77b29b",
+      "name": "Guarda Historial1",
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "Pf0TYy2joLTmqt2C",
+          "name": "Google Sheets account 3"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "append",
+        "documentId": {
+          "__rl": true,
+          "value": "1BBigXd9cM014ZVimnIvaXCcIVYuoHFDSq2ndYbWqAk8",
+          "mode": "list",
+          "cachedResultName": "Historial Baby's World",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1BBigXd9cM014ZVimnIvaXCcIVYuoHFDSq2ndYbWqAk8/edit?usp=drivesdk"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "gid=0",
+          "mode": "list",
+          "cachedResultName": "Hoja 1",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1JKyl2AqZNcteKR7NE3WU9t8U7NFaGQ857wNlcjz3r-8/edit#gid=0"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "id": "={{ $json.contacts[0].wa_id }}",
+            "rol": "asesor",
+            "timestamp": "={{$now.format('dd/MM/yyyy hh:mm:ss')}}",
+            "mensaje": "={{ $('Drive_Find_Product_Folder').item.json.name || 'defaultProductName' }}",
+            "fecha": "={{ $now.format(\"dd/MM/yyyy\") }}",
+            "context_id_whatsapp": "={{ $json.messages[0].id }}"
+          },
+          "matchingColumns": [
+            "id"
+          ],
+          "schema": [
+            {
+              "id": "id",
+              "displayName": "id",
+              "required": false,
+              "defaultMatch": true,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "timestamp",
+              "displayName": "timestamp",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "rol",
+              "displayName": "rol",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "mensaje",
+              "displayName": "mensaje",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "fecha",
+              "displayName": "fecha",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "context_id_whatsapp",
+              "displayName": "context_id_whatsapp",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [
+        2832,
+        2016
+      ],
+      "id": "a87d8c16-7b68-4255-83fc-a621f5dc4ce8",
+      "name": "Guarda Historial2",
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "Pf0TYy2joLTmqt2C",
+          "name": "Google Sheets account 3"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "append",
+        "documentId": {
+          "__rl": true,
+          "value": "1BBigXd9cM014ZVimnIvaXCcIVYuoHFDSq2ndYbWqAk8",
+          "mode": "list",
+          "cachedResultName": "Historial Baby's World",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1BBigXd9cM014ZVimnIvaXCcIVYuoHFDSq2ndYbWqAk8/edit?usp=drivesdk"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "gid=0",
+          "mode": "list",
+          "cachedResultName": "Hoja 1",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1JKyl2AqZNcteKR7NE3WU9t8U7NFaGQ857wNlcjz3r-8/edit#gid=0"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "id": "={{ $json.contacts[0].wa_id }}",
+            "rol": "asesor",
+            "timestamp": "={{$now.format('dd/MM/yyyy hh:mm:ss')}}",
+            "mensaje": "={{ $('Recorre categorias').item.json.catalog[0].producto || 'defaultProduct' }} ",
+            "fecha": "={{ $now.format(\"dd/MM/yyyy\") }}",
+            "context_id_whatsapp": "={{ $json.messages[0].id }}"
+          },
+          "matchingColumns": [
+            "id"
+          ],
+          "schema": [
+            {
+              "id": "id",
+              "displayName": "id",
+              "required": false,
+              "defaultMatch": true,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "timestamp",
+              "displayName": "timestamp",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "rol",
+              "displayName": "rol",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "mensaje",
+              "displayName": "mensaje",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "fecha",
+              "displayName": "fecha",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "context_id_whatsapp",
+              "displayName": "context_id_whatsapp",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [
+        2528,
+        2016
+      ],
+      "id": "69fec387-5274-4b4a-81d9-500b880680bd",
+      "name": "Guarda Historial3",
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "Pf0TYy2joLTmqt2C",
+          "name": "Google Sheets account 3"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "e5a04b44-231d-4015-82f1-ee6606318c2a",
+              "leftValue": "={{ $json.output.imagenproducto }}",
+              "rightValue": "",
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        -2912,
+        848
+      ],
+      "id": "fed6b44f-9e5b-45aa-a00d-934f59651e43",
+      "name": "uso imagen producto"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "70a040a6-16a7-4f47-b0f7-a20b16985f5e",
+              "leftValue": "={{ $json.output.sendImage }}",
+              "rightValue": true,
+              "operator": {
+                "type": "boolean",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        -2384,
+        928
+      ],
+      "id": "5b0738b3-fd76-49ef-9689-92c394ab1318",
+      "name": "uso enviar imagen?"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "40512a95-0b94-46c9-87a8-3e9eb65d40aa",
+              "leftValue": "={{ $json.tipo_mensaje }}",
+              "rightValue": "Primer mensaje",
+              "operator": {
+                "type": "string",
+                "operation": "equals",
+                "name": "filter.operator.equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        -4096,
+        800
+      ],
+      "id": "4b466ac0-ce68-4ab0-9da7-596d9ad4ba61",
+      "name": "primer mensaje?"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "1e64c429-1949-4a3f-ab30-4d1c2364b4ac",
+              "leftValue": "={{ $json.id }}",
+              "rightValue": "",
+              "operator": {
+                "type": "string",
+                "operation": "notEmpty",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        -624,
+        80
+      ],
+      "id": "41a38651-9744-4523-8845-73e937b032bd",
+      "name": "imagen producto esta vacio"
+    },
+    {
+      "parameters": {
+        "operation": "append",
+        "documentId": {
+          "__rl": true,
+          "value": "1BBigXd9cM014ZVimnIvaXCcIVYuoHFDSq2ndYbWqAk8",
+          "mode": "list",
+          "cachedResultName": "Historial Baby's World",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1BBigXd9cM014ZVimnIvaXCcIVYuoHFDSq2ndYbWqAk8/edit?usp=drivesdk"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "gid=0",
+          "mode": "list",
+          "cachedResultName": "Hoja 1",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1JKyl2AqZNcteKR7NE3WU9t8U7NFaGQ857wNlcjz3r-8/edit#gid=0"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "id": "={{ $json.contacts[0].wa_id }}",
+            "rol": "asesor",
+            "timestamp": "={{$now.format('dd/MM/yyyy hh:mm:ss')}}",
+            "mensaje": "={{ $('Loop Over Items1').item.json.titulo }}",
+            "fecha": "={{ $now.format(\"dd/MM/yyyy\") }}",
+            "context_id_whatsapp": "={{ $json.messages[0].id }}"
+          },
+          "matchingColumns": [
+            "id"
+          ],
+          "schema": [
+            {
+              "id": "id",
+              "displayName": "id",
+              "required": false,
+              "defaultMatch": true,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "timestamp",
+              "displayName": "timestamp",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "rol",
+              "displayName": "rol",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "mensaje",
+              "displayName": "mensaje",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "fecha",
+              "displayName": "fecha",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "context_id_whatsapp",
+              "displayName": "context_id_whatsapp",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [
+        176,
+        384
+      ],
+      "id": "0445c72d-8bdb-4f47-a99d-16b91ff1cb62",
+      "name": "Guarda Historial4",
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "Pf0TYy2joLTmqt2C",
+          "name": "Google Sheets account 3"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "831072da-2975-4097-b6bc-a0d90c68710a",
+              "leftValue": "={{ $json.name }}",
+              "rightValue": "",
+              "operator": {
+                "type": "string",
+                "operation": "exists",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        896,
+        1536
+      ],
+      "id": "3822863e-b65d-4452-95d8-34fb7a22a9bb",
+      "name": "SKU encontrado"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "26809cf7-fe0c-4276-897c-caf71455483f",
+              "leftValue": "={{ $json.id }}",
+              "rightValue": true,
+              "operator": {
+                "type": "string",
+                "operation": "exists",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        1824,
+        1392
+      ],
+      "id": "3a76efdf-46d4-498e-9761-e6979dbb5912",
+      "name": "Imagen descargada"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "149223f2-5e43-43aa-82db-71d17ee118fe",
+              "leftValue": "={{ $json.name }}",
+              "rightValue": "",
+              "operator": {
+                "type": "string",
+                "operation": "exists",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        -192,
+        16
+      ],
+      "id": "fe61a387-4eec-439a-be4a-3df7edac50dc",
+      "name": "If3"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "44128b3d-b7f5-4eca-b4b8-71f8d19191d2",
+              "leftValue": "={{ $json.id }}",
+              "rightValue": "",
+              "operator": {
+                "type": "string",
+                "operation": "exists",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        -2160,
+        448
+      ],
+      "id": "a1444ce5-6c09-454a-a28c-3ca5c1b3f0a4",
+      "name": "Existe carpeta categoria"
+    },
+    {
+      "parameters": {
+        "resource": "fileFolder",
+        "searchMethod": "query",
+        "queryString": "='{{ $json.id }}' in parents and mimeType = 'application/vnd.google-apps.folder' and trashed = false",
+        "filter": {},
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleDrive",
+      "typeVersion": 3,
+      "position": [
+        -1936,
+        304
+      ],
+      "id": "f715c056-c8b0-4535-8912-08faf4640c4e",
+      "name": "Productos categoria",
+      "alwaysOutputData": true,
+      "credentials": {
+        "googleDriveOAuth2Api": {
+          "id": "55RafwUzcXl8phIg",
+          "name": "Google Drive account 3"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "a6e2e03b-4e51-463a-81f3-2d7dcbc3c6f9",
+              "leftValue": "={{ $json.id }}",
+              "rightValue": "",
+              "operator": {
+                "type": "string",
+                "operation": "exists",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        -1680,
+        304
+      ],
+      "id": "c119d80f-e901-4f18-a411-8830aad5f4f2",
+      "name": "Existen productos en categoria"
+    },
+    {
+      "parameters": {
+        "jsCode": "const products = $('uso imagen producto').first().json.output.catalog[0].productos\nconst folders = $('Productos categoria').all();\n\nconst result = products.map((item, index) => {\n  const tittle = item.titulo.toUpperCase();\n  const folderMatch = folders.find(x => x.json.name === tittle);\n\n  return {\n    json: {\n      titulo: tittle,\n      idFolder: folderMatch ? folderMatch.json.id : null,\n      paired: !!folderMatch\n    },\n    pairedItem: {\n      item: index\n    }\n};\n});\n\nreturn result;"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -1472,
+        192
+      ],
+      "id": "3cdd02fa-b01e-4fec-af7c-6452433d5a96",
+      "name": "Sanetiza productos"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "fc608a17-81c4-49dc-95d1-e885397d1fe7",
+              "leftValue": "={{ $json.idFolder }}",
+              "rightValue": "",
+              "operator": {
+                "type": "string",
+                "operation": "notEmpty",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        -1040,
+        208
+      ],
+      "id": "f4896033-33c5-48a0-9918-414c5ffd2799",
+      "name": "Existe id folder"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "690dc1fd-e279-4c01-a6bb-f0d2f68379e8",
+              "name": "message",
+              "value": "={{ $json.output.replyText }}",
+              "type": "string"
+            },
+            {
+              "id": "e68d9a33-003b-454f-a90f-3cdfbf582bdd",
+              "name": "catalog",
+              "value": "={{ $json.output.catalog }}",
+              "type": "array"
+            },
+            {
+              "id": "a1dec3f1-bbfb-4c31-98cf-a955ed6f453d",
+              "name": "categoria",
+              "value": "={{ $json.output.categoria }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        -1920,
+        1488
+      ],
+      "id": "486c7ba9-e574-42d6-881c-4fb07ed59cef",
+      "name": "Edit Fields"
+    },
+    {
+      "parameters": {
+        "options": {
+          "reset": "={{ $('Recorre productos').context.done }}"
+        }
+      },
+      "type": "n8n-nodes-base.splitInBatches",
+      "typeVersion": 3,
+      "position": [
+        -256,
+        1536
+      ],
+      "id": "7912dad4-7c82-4592-ba3c-c5768f474f59",
+      "name": "Recorre productos"
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "type": "n8n-nodes-base.splitInBatches",
+      "typeVersion": 3,
+      "position": [
+        -1424,
+        1488
+      ],
+      "id": "3b7e0720-aadc-46dd-8326-78091be7916b",
+      "name": "Recorre categorias"
+    },
+    {
+      "parameters": {
+        "jsCode": "return $('Recorre categorias').first().json.productos"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -480,
+        1488
+      ],
+      "id": "ceb8307b-fd5e-4405-8e1e-4780b440b3e3",
+      "name": "sanetiza productos"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "22a2a5d9-7aef-411d-bb1b-b122e6f6e4e8",
+              "leftValue": "={{ $json.id }}",
+              "rightValue": "",
+              "operator": {
+                "type": "string",
+                "operation": "exists",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        -752,
+        1504
+      ],
+      "id": "944bc549-458e-4d3f-a891-2c3aa1a2cfae",
+      "name": "id categoria existe"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "b0aca2b3-6051-431d-ac50-dbfbf5cf5a25",
+              "leftValue": "={{ $('sanetiza productos').item.json.skus }}",
+              "rightValue": 1,
+              "operator": {
+                "type": "array",
+                "operation": "lengthGt",
+                "rightType": "number"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        432,
+        1440
+      ],
+      "id": "45f28d46-704d-4b45-bf65-6a0fcbbac4d0",
+      "name": "Imagen principal"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "22a2a5d9-7aef-411d-bb1b-b122e6f6e4e8",
+              "leftValue": "={{ $json.id }}",
+              "rightValue": "",
+              "operator": {
+                "type": "string",
+                "operation": "exists",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        240,
+        1552
+      ],
+      "id": "075dc371-568a-49c8-941f-08d977dfa35e",
+      "name": "existe carpeta producto"
+    },
+    {
+      "parameters": {
+        "resource": "fileFolder",
+        "searchMethod": "query",
+        "queryString": "='{{ $('existe carpeta producto').item.json.id }}' in parents and name = '1.jpeg' and mimeType contains 'image' and trashed = false",
+        "filter": {},
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleDrive",
+      "typeVersion": 3,
+      "position": [
+        704,
+        1328
+      ],
+      "id": "4d4f1350-0415-4c92-91a6-ef821f2094e0",
+      "name": "Obtiene imagen principal",
+      "credentials": {
+        "googleDriveOAuth2Api": {
+          "id": "55RafwUzcXl8phIg",
+          "name": "Google Drive account 3"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "resource": "fileFolder",
+        "searchMethod": "query",
+        "queryString": "='{{ $json.id }}' in parents and mimeType contains 'image' and trashed = false",
+        "limit": 1,
+        "filter": {},
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleDrive",
+      "typeVersion": 3,
+      "position": [
+        1120,
+        1520
+      ],
+      "id": "9f0e5260-d566-493e-be98-67115f36b898",
+      "name": "obtener imagen sku",
+      "alwaysOutputData": true,
+      "credentials": {
+        "googleDriveOAuth2Api": {
+          "id": "55RafwUzcXl8phIg",
+          "name": "Google Drive account 3"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "b217703e-1ac3-4a79-a200-fc14dc0d20c7",
+              "leftValue": "={{ $json.id }}",
+              "rightValue": "",
+              "operator": {
+                "type": "string",
+                "operation": "exists",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        1328,
+        1520
+      ],
+      "id": "d7431062-4e33-4cfe-b600-a5c8f1ff3143",
+      "name": "Existe imagen sku"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "8279b28b-537f-4392-aaf6-bb86f2c550be",
+              "leftValue": "={{ $json.id }}",
+              "rightValue": "",
+              "operator": {
+                "type": "string",
+                "operation": "exists",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        912,
+        1328
+      ],
+      "id": "8649d70b-3b7d-4111-a415-f968885f7845",
+      "name": "Existe imagen principal"
+    },
+    {
+      "parameters": {
+        "workflowId": {
+          "__rl": true,
+          "value": "yGjwaIUC-L7VOHskiDT9n",
+          "mode": "list",
+          "cachedResultUrl": "/workflow/yGjwaIUC-L7VOHskiDT9n",
+          "cachedResultName": "Babys World — agente de pruebas"
+        },
+        "workflowInputs": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "mensaje": "={{ $json.ultima_respuesta.replyText }}"
+          },
+          "matchingColumns": [
+            "mensaje"
+          ],
+          "schema": [
+            {
+              "id": "mensaje",
+              "displayName": "mensaje",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string",
+              "removed": false
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": true
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.executeWorkflow",
+      "typeVersion": 1.3,
+      "position": [
+        -512,
+        960
+      ],
+      "id": "2bfdc55c-94af-47c2-b219-64fffb759c5f",
+      "name": "Call 'Automated Testing Agent'"
+    }
+  ],
+  "connections": {
+    "Simple Memory": {
+      "ai_memory": [
+        [
+          {
+            "node": "Agente Principal",
+            "type": "ai_memory",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Preparar para memoria": {
+      "main": [
+        [
+          {
+            "node": "Code",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code": {
+      "main": [
+        [
+          {
+            "node": "Call 'Automated Testing Agent'",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Embeddings OpenAI": {
+      "ai_embedding": [
+        [
+          {
+            "node": "Tienda/Negocio",
+            "type": "ai_embedding",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Agente Principal": {
+      "main": [
+        [
+          {
+            "node": "uso imagen producto",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Modelo De Chat2": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "Agente Principal",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Llamada a historial de clientes": {
+      "main": [
+        [
+          {
+            "node": "Convertir Entrada",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Convertir Entrada": {
+      "main": [
+        [
+          {
+            "node": "Agente Principal",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Convertir mensaje": {
+      "main": [
+        [
+          {
+            "node": "primer mensaje?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "When Executed by Another Workflow": {
+      "main": [
+        [
+          {
+            "node": "Convertir mensaje",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Guarda Historial": {
+      "main": [
+        [
+          {
+            "node": "Information Extractor",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Information Extractor": {
+      "main": [
+        [
+          {
+            "node": "If1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "OpenAI Chat Model1": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "Information Extractor",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "If1": {
+      "main": [
+        [
+          {
+            "node": "Append or update row in sheet",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Append or update row in sheet1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Append or update row in sheet": {
+      "main": [
+        [
+          {
+            "node": "No Operation, do nothing",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Tienda/Negocio": {
+      "ai_tool": [
+        [
+          {
+            "node": "Agente Principal",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Structured Output Parser": {
+      "ai_outputParser": [
+        [
+          {
+            "node": "Agente Principal",
+            "type": "ai_outputParser",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Set Root Folder": {
+      "main": [
+        [
+          {
+            "node": "Drive_Find_Category_Folder",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Drive_Find_Category_Folder": {
+      "main": [
+        [
+          {
+            "node": "id categoria existe",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Drive_Find_Product_Folder": {
+      "main": [
+        [
+          {
+            "node": "existe carpeta producto",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Drive_Find_SKU_Folder": {
+      "main": [
+        [
+          {
+            "node": "SKU encontrado",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Download file": {
+      "main": [
+        [
+          {
+            "node": "Imagen descargada",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Think": {
+      "ai_tool": [
+        [
+          {
+            "node": "Agente Principal",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Append or update row in sheet1": {
+      "main": [
+        [
+          {
+            "node": "No Operation, do nothing1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Normalize_Catalog_List": {
+      "main": [
+        [
+          {
+            "node": "Recorre categorias",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Catalogo": {
+      "ai_tool": [
+        [
+          {
+            "node": "Agente Principal",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Loop Over Items1": {
+      "main": [
+        [
+          {
+            "node": "Preparar para memoria",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Existe id folder",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "categorias": {
+      "main": [
+        [
+          {
+            "node": "Existe carpeta categoria",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "obtener imagenes": {
+      "main": [
+        [
+          {
+            "node": "imagen producto esta vacio",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "descargar imagenes": {
+      "main": [
+        [
+          {
+            "node": "If3",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Guarda Historial1": {
+      "main": [
+        [
+          {
+            "node": "Loop Over Items1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Guarda Historial2": {
+      "main": [
+        [
+          {
+            "node": "Recorre categorias",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Guarda Historial3": {
+      "main": [
+        [
+          {
+            "node": "Recorre categorias",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "uso imagen producto": {
+      "main": [
+        [
+          {
+            "node": "categorias",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "uso enviar imagen?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "uso enviar imagen?": {
+      "main": [
+        [
+          {
+            "node": "Edit Fields",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Preparar para memoria",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "primer mensaje?": {
+      "main": [
+        [
+          {
+            "node": "Llamada a historial de clientes",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Convertir Entrada",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "imagen producto esta vacio": {
+      "main": [
+        [
+          {
+            "node": "descargar imagenes",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Guarda Historial4",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Guarda Historial4": {
+      "main": [
+        [
+          {
+            "node": "Loop Over Items1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "SKU encontrado": {
+      "main": [
+        [
+          {
+            "node": "obtener imagen sku",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Guarda Historial3",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Imagen descargada": {
+      "main": [
+        [
+          {
+            "node": "Guarda Historial2",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Guarda Historial3",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "If3": {
+      "main": [
+        [
+          {
+            "node": "Guarda Historial1",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Guarda Historial4",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Existe carpeta categoria": {
+      "main": [
+        [
+          {
+            "node": "Productos categoria",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Preparar para memoria",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Productos categoria": {
+      "main": [
+        [
+          {
+            "node": "Existen productos en categoria",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Existen productos en categoria": {
+      "main": [
+        [
+          {
+            "node": "Sanetiza productos",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Preparar para memoria",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Sanetiza productos": {
+      "main": [
+        [
+          {
+            "node": "Loop Over Items1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Existe id folder": {
+      "main": [
+        [
+          {
+            "node": "obtener imagenes",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Guarda Historial4",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Edit Fields": {
+      "main": [
+        [
+          {
+            "node": "Normalize_Catalog_List",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Recorre productos": {
+      "main": [
+        [
+          {
+            "node": "Recorre categorias",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Drive_Find_Product_Folder",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Recorre categorias": {
+      "main": [
+        [
+          {
+            "node": "Preparar para memoria",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Set Root Folder",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "sanetiza productos": {
+      "main": [
+        [
+          {
+            "node": "Recorre productos",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "id categoria existe": {
+      "main": [
+        [
+          {
+            "node": "sanetiza productos",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Guarda Historial3",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Imagen principal": {
+      "main": [
+        [
+          {
+            "node": "Obtiene imagen principal",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Drive_Find_SKU_Folder",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "existe carpeta producto": {
+      "main": [
+        [
+          {
+            "node": "Imagen principal",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Guarda Historial3",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "obtener imagen sku": {
+      "main": [
+        [
+          {
+            "node": "Existe imagen sku",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Existe imagen sku": {
+      "main": [
+        [
+          {
+            "node": "Download file",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Guarda Historial3",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Obtiene imagen principal": {
+      "main": [
+        [
+          {
+            "node": "Existe imagen principal",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Existe imagen principal": {
+      "main": [
+        [
+          {
+            "node": "Download file",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Guarda Historial3",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Call 'Automated Testing Agent'": {
+      "main": [
+        [
+          {
+            "node": "Guarda Historial",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "nodeGroups": [],
+  "settings": {
+    "executionOrder": "v1",
+    "availableInMCP": false
+  },
+  "staticData": null,
+  "pinData": {
+    "When Executed by Another Workflow": [
+      {
+        "json": {
+          "session_id": "573337062951",
+          "message": "¡Ay, querido, muchas gracias por ayudarme! Mira, lo que más me importa es que sea fácil de manejar y liviano, ya sabes, estos brazos ya no son lo que eran. Pero también quiero que mi nieto esté cómodo, así que un asiento acolchado suena bien.\n\nY sí, siempre llevo mi bolso y alguna que otra cosita, así que una buena canasta abajo sería muy útil. ¿Tienes alguna recomendación que combine todo eso?",
+          "tipo_mensaje": "Conversacion existente"
+        },
+        "pairedItem": {
+          "item": 0
+        }
+      }
+    ]
+  },
+  "meta": null,
+  "tags": [
+    {
+      "id": "6e1haF3pXukz6KVf",
+      "name": "env:dev",
+      "createdAt": "2025-05-27T01:29:25.680Z",
+      "updatedAt": "2026-02-11T00:17:23.837Z"
+    }
+  ],
+  "shared": [
+    {
+      "role": "workflow:owner",
+      "workflowId": "kegjv1z28dztmtJz9OEYp",
+      "projectId": "8h8pwWGcWlnGEym3",
+      "createdAt": "2026-02-12T00:16:13.496Z",
+      "updatedAt": "2026-02-12T00:16:13.496Z"
+    }
+  ],
+  "activeVersion": null
+}
