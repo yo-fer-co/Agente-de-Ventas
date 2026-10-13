@@ -1,0 +1,31 @@
+{
+  "id": "Nhqbj4QTCYr3fv6o",
+  "name": "Modificación de menú Shopify",
+  "active": false,
+  "activeVersionId": null,
+  "createdAt": "2025-12-15T23:52:31.898Z",
+  "updatedAt": "2025-12-15T23:52:31.898Z",
+  "isArchived": false,
+  "versionId": "e83f1cde-3cbb-4329-bbad-3366379c3c40",
+  "triggerCount": 0,
+  "nodes": [],
+  "connections": {},
+  "nodeGroups": [],
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "staticData": null,
+  "pinData": {},
+  "meta": null,
+  "tags": [],
+  "shared": [
+    {
+      "role": "workflow:owner",
+      "workflowId": "Nhqbj4QTCYr3fv6o",
+      "projectId": "8h8pwWGcWlnGEym3",
+      "createdAt": "2025-12-15T23:52:31.900Z",
+      "updatedAt": "2025-12-15T23:52:31.900Z"
+    }
+  ],
+  "activeVersion": null
+}
