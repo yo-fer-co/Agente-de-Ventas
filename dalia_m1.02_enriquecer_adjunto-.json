@@ -1,0 +1,1082 @@
+{
+  "id": "JU62JanjEB5FeTUk",
+  "name": "DALIA_M1.02_Enriquecer_adjunto",
+  "active": true,
+  "activeVersionId": "3336db3d-9647-4f01-8b41-dfa49c523fac",
+  "createdAt": "2026-10-06T16:32:51.085Z",
+  "updatedAt": "2026-10-06T16:34:46.381Z",
+  "isArchived": false,
+  "versionId": "3336db3d-9647-4f01-8b41-dfa49c523fac",
+  "triggerCount": 0,
+  "nodes": [
+    {
+      "id": "977f657e-bd40-4a9e-8122-f9d2eca5a919",
+      "name": "Entrada",
+      "type": "n8n-nodes-base.executeWorkflowTrigger",
+      "typeVersion": 1.2,
+      "position": [
+        0,
+        176
+      ],
+      "parameters": {
+        "inputSource": "passthrough"
+      }
+    },
+    {
+      "id": "73866c40-b3c7-4d05-9d8e-96deaeac5de1",
+      "name": "Plan de enriquecimiento",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.7,
+      "position": [
+        224,
+        176
+      ],
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "select dalia.m1_enrichment_plan($1::uuid) as p;",
+        "options": {
+          "queryReplacement": "={{ [ $json.message_id ] }}"
+        }
+      },
+      "credentials": {
+        "postgres": {
+          "id": "HfCgVAjUygK1vrkU",
+          "name": "DALIA dev Supabase"
+        }
+      }
+    },
+    {
+      "id": "88229cba-546e-49fe-91b2-88639a28c1d1",
+      "name": "Hay que enriquecer",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        448,
+        176
+      ],
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose"
+          },
+          "conditions": [
+            {
+              "leftValue": "={{ $json.p.action === \"process\" }}",
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        }
+      }
+    },
+    {
+      "id": "b6279cfe-42ab-4e95-8fbb-8cb5bd645bb1",
+      "name": "Solicitud del adjunto",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        672,
+        80
+      ],
+      "parameters": {
+        "mode": "manual",
+        "includeOtherFields": false,
+        "assignments": {
+          "assignments": [
+            {
+              "id": "p1",
+              "name": "port",
+              "value": "={{ $json.p.media_request.port }}",
+              "type": "string"
+            },
+            {
+              "id": "p2",
+              "name": "operation",
+              "value": "={{ $json.p.media_request.operation }}",
+              "type": "string"
+            },
+            {
+              "id": "p3",
+              "name": "input",
+              "value": "={{ $json.p.media_request.input }}",
+              "type": "object"
+            },
+            {
+              "id": "p4",
+              "name": "envelope",
+              "value": "={{ $json.p.media_request.envelope ?? {} }}",
+              "type": "object"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "96578972-9f9e-4c65-94ee-d801bc214865",
+      "name": "Descargar adjunto (INT.port)",
+      "type": "n8n-nodes-base.executeWorkflow",
+      "typeVersion": 1.3,
+      "position": [
+        896,
+        80
+      ],
+      "parameters": {
+        "mode": "each",
+        "source": "database",
+        "workflowId": {
+          "__rl": true,
+          "mode": "id",
+          "value": "5gbpWhv0zIA8bZ0w"
+        },
+        "options": {
+          "waitForSubWorkflow": true
+        }
+      }
+    },
+    {
+      "id": "6d2fafd3-48a4-470b-86dd-4d801a0914f4",
+      "name": "Preparar enriquecimiento",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1120,
+        80
+      ],
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "jsCode": "// M1.02 · Prepara el enriquecimiento a partir del adjunto descargado (binario \"data\" que devuelve INT.port channel.get_media)\n// Salida: {plan, media, store, model_request, skipped} y el mismo binario (para subirlo a Storage).\nconst plan = $('Plan de enriquecimiento').first().json.p;\nconst item = $input.first();\nconst res = item.json || {};\nconst bin = item.binary && item.binary.data;\nif (!res.ok || !bin) {\n  return [{ json: { plan, media: { ok: false, error: (res.error && (res.error.code || res.error.message)) || 'sin archivo' }, store: false, model_request: null } }];\n}\nconst buf = await this.helpers.getBinaryDataBuffer(0, 'data');\nconst mime = (res.data && res.data.mime_type) || bin.mimeType || plan.mime_type || 'application/octet-stream';\nconst media = { ok: true, bytes: buf.length, mime_type: mime };\nlet model_request = null, skipped = null;\nif (plan.kind === 'transcribe' || plan.kind === 'describe') {\n  if (buf.length > plan.max_bytes) {\n    skipped = 'too_large';\n  } else if (plan.kind === 'transcribe') {\n    const ext = (mime.split('/')[1] || 'ogg').split(';')[0].trim() || 'ogg';\n    model_request = { port: 'llm', operation: 'transcribe', envelope: plan.envelope || {},\n      input: { audio_base64: buf.toString('base64'), mime_type: mime.split(';')[0], filename: 'audio.' + ext,\n               language: plan.transcribe.language, model: plan.transcribe.model || undefined } };\n  } else {\n    model_request = { port: 'llm', operation: 'complete', envelope: plan.envelope || {},\n      input: { model: plan.describe.model || undefined, max_output_tokens: plan.describe.max_output_tokens,\n               messages: [ { role: 'user', content: [\n                 { type: 'text', text: plan.describe.prompt + (plan.caption ? '\\nLeyenda del cliente: ' + plan.caption : '') },\n                 { type: 'image_url', image_url: { url: 'data:' + mime.split(';')[0] + ';base64,' + buf.toString('base64') } } ] } ] } };\n  }\n}\nreturn [{ json: { plan, media, store: plan.store === true && !!(plan.storage && plan.storage.url), model_request, skipped }, binary: item.binary }];"
+      }
+    },
+    {
+      "id": "9319aa4c-eecd-49ae-b719-e901c9af1088",
+      "name": "Guardar en Storage",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        1344,
+        80
+      ],
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose"
+          },
+          "conditions": [
+            {
+              "leftValue": "={{ $json.store === true && $json.media.ok === true }}",
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        }
+      }
+    },
+    {
+      "id": "ec6ff04a-da94-4c58-a212-2c5e84014783",
+      "name": "Subir a Storage",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        1568,
+        0
+      ],
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $json.plan.storage.url + \"/object/\" + $json.plan.storage.bucket + \"/\" + $json.plan.storage.path }}",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpCustomAuth",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "x-upsert",
+              "value": "true"
+            },
+            {
+              "name": "content-type",
+              "value": "={{ $json.media.mime_type }}"
+            }
+          ]
+        },
+        "sendBody": true,
+        "contentType": "binaryData",
+        "inputDataFieldName": "data",
+        "options": {
+          "timeout": 30000,
+          "response": {
+            "response": {
+              "fullResponse": true,
+              "neverError": true,
+              "responseFormat": "json"
+            }
+          }
+        }
+      },
+      "onError": "continueRegularOutput"
+    },
+    {
+      "id": "3ef7cf2d-d925-4087-96d0-f2ce9935146d",
+      "name": "Requiere modelo",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        1792,
+        80
+      ],
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose"
+          },
+          "conditions": [
+            {
+              "leftValue": "={{ !!$(\"Preparar enriquecimiento\").first().json.model_request }}",
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        }
+      }
+    },
+    {
+      "id": "964571f3-eb14-4c93-b026-fd022ed94d70",
+      "name": "Solicitud al modelo",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        2016,
+        0
+      ],
+      "parameters": {
+        "mode": "manual",
+        "includeOtherFields": false,
+        "assignments": {
+          "assignments": [
+            {
+              "id": "p1",
+              "name": "port",
+              "value": "={{ $(\"Preparar enriquecimiento\").first().json.model_request.port }}",
+              "type": "string"
+            },
+            {
+              "id": "p2",
+              "name": "operation",
+              "value": "={{ $(\"Preparar enriquecimiento\").first().json.model_request.operation }}",
+              "type": "string"
+            },
+            {
+              "id": "p3",
+              "name": "input",
+              "value": "={{ $(\"Preparar enriquecimiento\").first().json.model_request.input }}",
+              "type": "object"
+            },
+            {
+              "id": "p4",
+              "name": "envelope",
+              "value": "={{ $(\"Preparar enriquecimiento\").first().json.model_request.envelope ?? {} }}",
+              "type": "object"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "585f539d-bb5f-458f-bb31-71c3e6d908fc",
+      "name": "Transcribir o describir (INT.port)",
+      "type": "n8n-nodes-base.executeWorkflow",
+      "typeVersion": 1.3,
+      "position": [
+        2240,
+        0
+      ],
+      "parameters": {
+        "mode": "each",
+        "source": "database",
+        "workflowId": {
+          "__rl": true,
+          "mode": "id",
+          "value": "5gbpWhv0zIA8bZ0w"
+        },
+        "options": {
+          "waitForSubWorkflow": true
+        }
+      }
+    },
+    {
+      "id": "57efaf12-2f2f-4660-970c-e7fdde01bc48",
+      "name": "Resultado del enriquecimiento",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        2464,
+        80
+      ],
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "jsCode": "// M1.02 · Reúne el resultado (descarga, Storage y modelo) para m1_set_enrichment\nconst prep = $('Preparar enriquecimiento').first().json;\nconst out = { kind: prep.plan.kind, media: prep.media, storage: null, model: null };\nif ($('Subir a Storage').isExecuted) {\n  const s = $('Subir a Storage').first().json;\n  const ok = !!s && s.statusCode >= 200 && s.statusCode < 300;\n  out.storage = { ok, path: prep.plan.storage.path, error: ok ? null : ('HTTP_' + (s && s.statusCode) + ' ' + JSON.stringify((s && s.body) || s.error || '').slice(0, 150)) };\n}\nif (prep.skipped) out.model = { skipped: prep.skipped };\nif ($('Transcribir o describir (INT.port)').isExecuted) {\n  const r = $('Transcribir o describir (INT.port)').first().json;\n  const text = r.ok ? (prep.plan.kind === 'transcribe' ? r.data && r.data.text : r.data && r.data.content) : null;\n  out.model = { status: r.status, text: text || null, model: r.data && r.data.model, cost_usd: r.cost_usd ?? null,\n                error: r.error ? (r.error.code || r.error.message) : null };\n}\nreturn [{ json: { message_id: prep.plan.message_id, result: out } }];"
+      }
+    },
+    {
+      "id": "96d5e75f-5772-47e4-bf15-d9de4a102a4c",
+      "name": "Registrar enriquecimiento",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.7,
+      "position": [
+        2688,
+        80
+      ],
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "select dalia.m1_set_enrichment($1::uuid, $2::jsonb) as e;",
+        "options": {
+          "queryReplacement": "={{ [ $json.message_id, JSON.stringify($json.result) ] }}"
+        }
+      },
+      "credentials": {
+        "postgres": {
+          "id": "HfCgVAjUygK1vrkU",
+          "name": "DALIA dev Supabase"
+        }
+      }
+    },
+    {
+      "id": "51f1bc36-f5ee-446b-a58c-03afadff00ab",
+      "name": "Salida",
+      "type": "n8n-nodes-base.noOp",
+      "typeVersion": 1,
+      "position": [
+        672,
+        272
+      ],
+      "parameters": {},
+      "notes": "H-L9-02: sin adjunto pendiente, devuelve un item a M1.04 para que siga con el cierre de la rafaga"
+    }
+  ],
+  "connections": {
+    "Entrada": {
+      "main": [
+        [
+          {
+            "node": "Plan de enriquecimiento",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Plan de enriquecimiento": {
+      "main": [
+        [
+          {
+            "node": "Hay que enriquecer",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Hay que enriquecer": {
+      "main": [
+        [
+          {
+            "node": "Solicitud del adjunto",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Salida",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Solicitud del adjunto": {
+      "main": [
+        [
+          {
+            "node": "Descargar adjunto (INT.port)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Descargar adjunto (INT.port)": {
+      "main": [
+        [
+          {
+            "node": "Preparar enriquecimiento",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Preparar enriquecimiento": {
+      "main": [
+        [
+          {
+            "node": "Guardar en Storage",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Guardar en Storage": {
+      "main": [
+        [
+          {
+            "node": "Subir a Storage",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Requiere modelo",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Subir a Storage": {
+      "main": [
+        [
+          {
+            "node": "Requiere modelo",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Requiere modelo": {
+      "main": [
+        [
+          {
+            "node": "Solicitud al modelo",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Resultado del enriquecimiento",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Solicitud al modelo": {
+      "main": [
+        [
+          {
+            "node": "Transcribir o describir (INT.port)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Transcribir o describir (INT.port)": {
+      "main": [
+        [
+          {
+            "node": "Resultado del enriquecimiento",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Resultado del enriquecimiento": {
+      "main": [
+        [
+          {
+            "node": "Registrar enriquecimiento",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "nodeGroups": [],
+  "settings": {
+    "executionOrder": "v1",
+    "availableInMCP": true,
+    "errorWorkflow": "cjjQno2MxMTT3Icc",
+    "timezone": "America/Bogota",
+    "saveDataErrorExecution": "all",
+    "saveDataSuccessExecution": "none",
+    "callerPolicy": "workflowsFromSameOwner"
+  },
+  "staticData": null,
+  "pinData": null,
+  "meta": {
+    "aiBuilderAssisted": true,
+    "builderVariant": "mcp"
+  },
+  "tags": [],
+  "shared": [
+    {
+      "role": "workflow:owner",
+      "workflowId": "JU62JanjEB5FeTUk",
+      "projectId": "tRHCC8ts4mkRGXGn",
+      "createdAt": "2026-10-09T21:09:17.857Z",
+      "updatedAt": "2026-10-09T21:09:17.857Z"
+    }
+  ],
+  "activeVersion": {
+    "versionId": "3336db3d-9647-4f01-8b41-dfa49c523fac",
+    "workflowId": "JU62JanjEB5FeTUk",
+    "nodes": [
+      {
+        "id": "977f657e-bd40-4a9e-8122-f9d2eca5a919",
+        "name": "Entrada",
+        "type": "n8n-nodes-base.executeWorkflowTrigger",
+        "typeVersion": 1.2,
+        "position": [
+          0,
+          176
+        ],
+        "parameters": {
+          "inputSource": "passthrough"
+        }
+      },
+      {
+        "id": "73866c40-b3c7-4d05-9d8e-96deaeac5de1",
+        "name": "Plan de enriquecimiento",
+        "type": "n8n-nodes-base.postgres",
+        "typeVersion": 2.7,
+        "position": [
+          224,
+          176
+        ],
+        "parameters": {
+          "operation": "executeQuery",
+          "query": "select dalia.m1_enrichment_plan($1::uuid) as p;",
+          "options": {
+            "queryReplacement": "={{ [ $json.message_id ] }}"
+          }
+        },
+        "credentials": {
+          "postgres": {
+            "id": "HfCgVAjUygK1vrkU",
+            "name": "DALIA dev Supabase"
+          }
+        }
+      },
+      {
+        "id": "88229cba-546e-49fe-91b2-88639a28c1d1",
+        "name": "Hay que enriquecer",
+        "type": "n8n-nodes-base.if",
+        "typeVersion": 2.2,
+        "position": [
+          448,
+          176
+        ],
+        "parameters": {
+          "conditions": {
+            "options": {
+              "caseSensitive": true,
+              "leftValue": "",
+              "typeValidation": "loose"
+            },
+            "conditions": [
+              {
+                "leftValue": "={{ $json.p.action === \"process\" }}",
+                "operator": {
+                  "type": "boolean",
+                  "operation": "true",
+                  "singleValue": true
+                }
+              }
+            ],
+            "combinator": "and"
+          }
+        }
+      },
+      {
+        "id": "b6279cfe-42ab-4e95-8fbb-8cb5bd645bb1",
+        "name": "Solicitud del adjunto",
+        "type": "n8n-nodes-base.set",
+        "typeVersion": 3.4,
+        "position": [
+          672,
+          80
+        ],
+        "parameters": {
+          "mode": "manual",
+          "includeOtherFields": false,
+          "assignments": {
+            "assignments": [
+              {
+                "id": "p1",
+                "name": "port",
+                "value": "={{ $json.p.media_request.port }}",
+                "type": "string"
+              },
+              {
+                "id": "p2",
+                "name": "operation",
+                "value": "={{ $json.p.media_request.operation }}",
+                "type": "string"
+              },
+              {
+                "id": "p3",
+                "name": "input",
+                "value": "={{ $json.p.media_request.input }}",
+                "type": "object"
+              },
+              {
+                "id": "p4",
+                "name": "envelope",
+                "value": "={{ $json.p.media_request.envelope ?? {} }}",
+                "type": "object"
+              }
+            ]
+          }
+        }
+      },
+      {
+        "id": "96578972-9f9e-4c65-94ee-d801bc214865",
+        "name": "Descargar adjunto (INT.port)",
+        "type": "n8n-nodes-base.executeWorkflow",
+        "typeVersion": 1.3,
+        "position": [
+          896,
+          80
+        ],
+        "parameters": {
+          "mode": "each",
+          "source": "database",
+          "workflowId": {
+            "__rl": true,
+            "mode": "id",
+            "value": "5gbpWhv0zIA8bZ0w"
+          },
+          "options": {
+            "waitForSubWorkflow": true
+          }
+        }
+      },
+      {
+        "id": "6d2fafd3-48a4-470b-86dd-4d801a0914f4",
+        "name": "Preparar enriquecimiento",
+        "type": "n8n-nodes-base.code",
+        "typeVersion": 2,
+        "position": [
+          1120,
+          80
+        ],
+        "parameters": {
+          "mode": "runOnceForAllItems",
+          "jsCode": "// M1.02 · Prepara el enriquecimiento a partir del adjunto descargado (binario \"data\" que devuelve INT.port channel.get_media)\n// Salida: {plan, media, store, model_request, skipped} y el mismo binario (para subirlo a Storage).\nconst plan = $('Plan de enriquecimiento').first().json.p;\nconst item = $input.first();\nconst res = item.json || {};\nconst bin = item.binary && item.binary.data;\nif (!res.ok || !bin) {\n  return [{ json: { plan, media: { ok: false, error: (res.error && (res.error.code || res.error.message)) || 'sin archivo' }, store: false, model_request: null } }];\n}\nconst buf = await this.helpers.getBinaryDataBuffer(0, 'data');\nconst mime = (res.data && res.data.mime_type) || bin.mimeType || plan.mime_type || 'application/octet-stream';\nconst media = { ok: true, bytes: buf.length, mime_type: mime };\nlet model_request = null, skipped = null;\nif (plan.kind === 'transcribe' || plan.kind === 'describe') {\n  if (buf.length > plan.max_bytes) {\n    skipped = 'too_large';\n  } else if (plan.kind === 'transcribe') {\n    const ext = (mime.split('/')[1] || 'ogg').split(';')[0].trim() || 'ogg';\n    model_request = { port: 'llm', operation: 'transcribe', envelope: plan.envelope || {},\n      input: { audio_base64: buf.toString('base64'), mime_type: mime.split(';')[0], filename: 'audio.' + ext,\n               language: plan.transcribe.language, model: plan.transcribe.model || undefined } };\n  } else {\n    model_request = { port: 'llm', operation: 'complete', envelope: plan.envelope || {},\n      input: { model: plan.describe.model || undefined, max_output_tokens: plan.describe.max_output_tokens,\n               messages: [ { role: 'user', content: [\n                 { type: 'text', text: plan.describe.prompt + (plan.caption ? '\\nLeyenda del cliente: ' + plan.caption : '') },\n                 { type: 'image_url', image_url: { url: 'data:' + mime.split(';')[0] + ';base64,' + buf.toString('base64') } } ] } ] } };\n  }\n}\nreturn [{ json: { plan, media, store: plan.store === true && !!(plan.storage && plan.storage.url), model_request, skipped }, binary: item.binary }];"
+        }
+      },
+      {
+        "id": "9319aa4c-eecd-49ae-b719-e901c9af1088",
+        "name": "Guardar en Storage",
+        "type": "n8n-nodes-base.if",
+        "typeVersion": 2.2,
+        "position": [
+          1344,
+          80
+        ],
+        "parameters": {
+          "conditions": {
+            "options": {
+              "caseSensitive": true,
+              "leftValue": "",
+              "typeValidation": "loose"
+            },
+            "conditions": [
+              {
+                "leftValue": "={{ $json.store === true && $json.media.ok === true }}",
+                "operator": {
+                  "type": "boolean",
+                  "operation": "true",
+                  "singleValue": true
+                }
+              }
+            ],
+            "combinator": "and"
+          }
+        }
+      },
+      {
+        "id": "ec6ff04a-da94-4c58-a212-2c5e84014783",
+        "name": "Subir a Storage",
+        "type": "n8n-nodes-base.httpRequest",
+        "typeVersion": 4.2,
+        "position": [
+          1568,
+          0
+        ],
+        "parameters": {
+          "method": "POST",
+          "url": "={{ $json.plan.storage.url + \"/object/\" + $json.plan.storage.bucket + \"/\" + $json.plan.storage.path }}",
+          "authentication": "genericCredentialType",
+          "genericAuthType": "httpCustomAuth",
+          "sendHeaders": true,
+          "headerParameters": {
+            "parameters": [
+              {
+                "name": "x-upsert",
+                "value": "true"
+              },
+              {
+                "name": "content-type",
+                "value": "={{ $json.media.mime_type }}"
+              }
+            ]
+          },
+          "sendBody": true,
+          "contentType": "binaryData",
+          "inputDataFieldName": "data",
+          "options": {
+            "timeout": 30000,
+            "response": {
+              "response": {
+                "fullResponse": true,
+                "neverError": true,
+                "responseFormat": "json"
+              }
+            }
+          }
+        },
+        "onError": "continueRegularOutput"
+      },
+      {
+        "id": "3ef7cf2d-d925-4087-96d0-f2ce9935146d",
+        "name": "Requiere modelo",
+        "type": "n8n-nodes-base.if",
+        "typeVersion": 2.2,
+        "position": [
+          1792,
+          80
+        ],
+        "parameters": {
+          "conditions": {
+            "options": {
+              "caseSensitive": true,
+              "leftValue": "",
+              "typeValidation": "loose"
+            },
+            "conditions": [
+              {
+                "leftValue": "={{ !!$(\"Preparar enriquecimiento\").first().json.model_request }}",
+                "operator": {
+                  "type": "boolean",
+                  "operation": "true",
+                  "singleValue": true
+                }
+              }
+            ],
+            "combinator": "and"
+          }
+        }
+      },
+      {
+        "id": "964571f3-eb14-4c93-b026-fd022ed94d70",
+        "name": "Solicitud al modelo",
+        "type": "n8n-nodes-base.set",
+        "typeVersion": 3.4,
+        "position": [
+          2016,
+          0
+        ],
+        "parameters": {
+          "mode": "manual",
+          "includeOtherFields": false,
+          "assignments": {
+            "assignments": [
+              {
+                "id": "p1",
+                "name": "port",
+                "value": "={{ $(\"Preparar enriquecimiento\").first().json.model_request.port }}",
+                "type": "string"
+              },
+              {
+                "id": "p2",
+                "name": "operation",
+                "value": "={{ $(\"Preparar enriquecimiento\").first().json.model_request.operation }}",
+                "type": "string"
+              },
+              {
+                "id": "p3",
+                "name": "input",
+                "value": "={{ $(\"Preparar enriquecimiento\").first().json.model_request.input }}",
+                "type": "object"
+              },
+              {
+                "id": "p4",
+                "name": "envelope",
+                "value": "={{ $(\"Preparar enriquecimiento\").first().json.model_request.envelope ?? {} }}",
+                "type": "object"
+              }
+            ]
+          }
+        }
+      },
+      {
+        "id": "585f539d-bb5f-458f-bb31-71c3e6d908fc",
+        "name": "Transcribir o describir (INT.port)",
+        "type": "n8n-nodes-base.executeWorkflow",
+        "typeVersion": 1.3,
+        "position": [
+          2240,
+          0
+        ],
+        "parameters": {
+          "mode": "each",
+          "source": "database",
+          "workflowId": {
+            "__rl": true,
+            "mode": "id",
+            "value": "5gbpWhv0zIA8bZ0w"
+          },
+          "options": {
+            "waitForSubWorkflow": true
+          }
+        }
+      },
+      {
+        "id": "57efaf12-2f2f-4660-970c-e7fdde01bc48",
+        "name": "Resultado del enriquecimiento",
+        "type": "n8n-nodes-base.code",
+        "typeVersion": 2,
+        "position": [
+          2464,
+          80
+        ],
+        "parameters": {
+          "mode": "runOnceForAllItems",
+          "jsCode": "// M1.02 · Reúne el resultado (descarga, Storage y modelo) para m1_set_enrichment\nconst prep = $('Preparar enriquecimiento').first().json;\nconst out = { kind: prep.plan.kind, media: prep.media, storage: null, model: null };\nif ($('Subir a Storage').isExecuted) {\n  const s = $('Subir a Storage').first().json;\n  const ok = !!s && s.statusCode >= 200 && s.statusCode < 300;\n  out.storage = { ok, path: prep.plan.storage.path, error: ok ? null : ('HTTP_' + (s && s.statusCode) + ' ' + JSON.stringify((s && s.body) || s.error || '').slice(0, 150)) };\n}\nif (prep.skipped) out.model = { skipped: prep.skipped };\nif ($('Transcribir o describir (INT.port)').isExecuted) {\n  const r = $('Transcribir o describir (INT.port)').first().json;\n  const text = r.ok ? (prep.plan.kind === 'transcribe' ? r.data && r.data.text : r.data && r.data.content) : null;\n  out.model = { status: r.status, text: text || null, model: r.data && r.data.model, cost_usd: r.cost_usd ?? null,\n                error: r.error ? (r.error.code || r.error.message) : null };\n}\nreturn [{ json: { message_id: prep.plan.message_id, result: out } }];"
+        }
+      },
+      {
+        "id": "96d5e75f-5772-47e4-bf15-d9de4a102a4c",
+        "name": "Registrar enriquecimiento",
+        "type": "n8n-nodes-base.postgres",
+        "typeVersion": 2.7,
+        "position": [
+          2688,
+          80
+        ],
+        "parameters": {
+          "operation": "executeQuery",
+          "query": "select dalia.m1_set_enrichment($1::uuid, $2::jsonb) as e;",
+          "options": {
+            "queryReplacement": "={{ [ $json.message_id, JSON.stringify($json.result) ] }}"
+          }
+        },
+        "credentials": {
+          "postgres": {
+            "id": "HfCgVAjUygK1vrkU",
+            "name": "DALIA dev Supabase"
+          }
+        }
+      },
+      {
+        "id": "51f1bc36-f5ee-446b-a58c-03afadff00ab",
+        "name": "Salida",
+        "type": "n8n-nodes-base.noOp",
+        "typeVersion": 1,
+        "position": [
+          672,
+          272
+        ],
+        "parameters": {},
+        "notes": "H-L9-02: sin adjunto pendiente, devuelve un item a M1.04 para que siga con el cierre de la rafaga"
+      }
+    ],
+    "connections": {
+      "Entrada": {
+        "main": [
+          [
+            {
+              "node": "Plan de enriquecimiento",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Plan de enriquecimiento": {
+        "main": [
+          [
+            {
+              "node": "Hay que enriquecer",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Hay que enriquecer": {
+        "main": [
+          [
+            {
+              "node": "Solicitud del adjunto",
+              "type": "main",
+              "index": 0
+            }
+          ],
+          [
+            {
+              "node": "Salida",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Solicitud del adjunto": {
+        "main": [
+          [
+            {
+              "node": "Descargar adjunto (INT.port)",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Descargar adjunto (INT.port)": {
+        "main": [
+          [
+            {
+              "node": "Preparar enriquecimiento",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Preparar enriquecimiento": {
+        "main": [
+          [
+            {
+              "node": "Guardar en Storage",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Guardar en Storage": {
+        "main": [
+          [
+            {
+              "node": "Subir a Storage",
+              "type": "main",
+              "index": 0
+            }
+          ],
+          [
+            {
+              "node": "Requiere modelo",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Subir a Storage": {
+        "main": [
+          [
+            {
+              "node": "Requiere modelo",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Requiere modelo": {
+        "main": [
+          [
+            {
+              "node": "Solicitud al modelo",
+              "type": "main",
+              "index": 0
+            }
+          ],
+          [
+            {
+              "node": "Resultado del enriquecimiento",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Solicitud al modelo": {
+        "main": [
+          [
+            {
+              "node": "Transcribir o describir (INT.port)",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Transcribir o describir (INT.port)": {
+        "main": [
+          [
+            {
+              "node": "Resultado del enriquecimiento",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Resultado del enriquecimiento": {
+        "main": [
+          [
+            {
+              "node": "Registrar enriquecimiento",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      }
+    },
+    "nodeGroups": [],
+    "authors": "Fabian Bocanegra (via MCP)",
+    "name": "Lote 12: M1.02 Enriquecer adjunto (con Salida)",
+    "description": "Created with 14 nodes: Entrada, Plan de enriquecimiento, Hay que enriquecer, Solicitud del adjunto, Descargar adjunto (INT.port) and 9 more",
+    "autosaved": false,
+    "createdAt": "2026-10-06T16:32:51.089Z",
+    "updatedAt": "2026-10-06T16:32:51.089Z"
+  }
+}
