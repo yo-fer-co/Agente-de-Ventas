@@ -1,0 +1,58 @@
+{
+  "id": "TPzpNNXIsLkKTKua",
+  "name": "DALIA_M5_03_Order_Management",
+  "active": false,
+  "activeVersionId": null,
+  "createdAt": "2026-08-21T03:38:01.174Z",
+  "updatedAt": "2026-08-21T03:38:03.115Z",
+  "isArchived": false,
+  "versionId": "d0922243-ca9b-4b57-b44c-3bd647bb9bb4",
+  "triggerCount": 0,
+  "nodes": [
+    {
+      "parameters": {},
+      "id": "84bd6327-ada5-4aa1-8b07-35d3309d5ebf",
+      "name": "M5_03_Input",
+      "type": "n8n-nodes-base.subworkflowTrigger",
+      "typeVersion": 1,
+      "position": [
+        0,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const payload = $input.first().json;\nconst transaction = payload.transaction || {};\nconst items = payload.items || [];\nconst customer = payload.customer || {};\n\nreturn [{ json: { result: { success: true, outcome: 'action_completed' }, transaction: { transaction_id: transaction.id, previous_status: transaction.status, current_status: 'order_created', sub_status: null, next_action: 'issue_invoice' }, route: { selected_flow: 'DALIA_M5_Commerce_Orchestrator', effective_action: 'create_order', reason: 'order_created_successfully' }, response: { message_required: false, message_type: null, reply_text: null, requested_fields: [] }, data: { order: { external_order_id: 'ext_order_' + transaction.id, items_count: items.length, customer_id: customer.customer_id, note: 'PLACEHOLDER - Reemplazar con integración Shopify' } }, error: null, trace: { trace_id: payload.trace?.trace_id, request_id: payload.trace?.request_id, workflow: 'DALIA_M5_03_Order_Management', stage: 'order_created', processed_at: new Date().toISOString() } } }];"
+      },
+      "id": "1c15d936-cdb8-47b6-9fe9-fd2cd6ce84bb",
+      "name": "01_Create_Order_Response",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        0,
+        224
+      ]
+    }
+  ],
+  "connections": {},
+  "nodeGroups": [],
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate",
+    "availableInMCP": false
+  },
+  "staticData": null,
+  "pinData": {},
+  "meta": null,
+  "tags": [],
+  "shared": [
+    {
+      "role": "workflow:owner",
+      "workflowId": "TPzpNNXIsLkKTKua",
+      "projectId": "8h8pwWGcWlnGEym3",
+      "createdAt": "2026-08-21T03:38:01.176Z",
+      "updatedAt": "2026-08-21T03:38:01.176Z"
+    }
+  ],
+  "activeVersion": null
+}
