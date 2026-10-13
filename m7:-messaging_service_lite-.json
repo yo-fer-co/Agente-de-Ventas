@@ -1,0 +1,3408 @@
+{
+  "id": "uUkm8XfKgUgR9AIf",
+  "name": "M7: Messaging_Service_Lite",
+  "active": true,
+  "activeVersionId": "5f644a83-8b59-4868-a39f-000926529a6f",
+  "createdAt": "2026-05-15T19:00:21.348Z",
+  "updatedAt": "2026-10-03T03:17:42.191Z",
+  "isArchived": false,
+  "versionId": "690ddcd3-4567-4f82-8515-b21032792f67",
+  "triggerCount": 0,
+  "nodes": [
+    {
+      "parameters": {
+        "inputSource": "passthrough"
+      },
+      "type": "n8n-nodes-base.executeWorkflowTrigger",
+      "typeVersion": 1.1,
+      "position": [
+        0,
+        0
+      ],
+      "id": "8aa9bd6e-d62f-415e-8ee4-5b7925ceab3d",
+      "name": "When Executed by Another Workflow"
+    },
+    {
+      "parameters": {
+        "jsCode": "const input = items[0]?.json || {};\n\nreturn [\n {\n   json: {\n     ...input,\n     m7_config: {\n       service_name: 'DALIA_M7_Messaging_Service_Lite',\n       service_version: 'v1',\n\n       contracts: {\n         request_schema_version: 'dalia.m3_to_m7.v1',\n         result_schema_version: 'dalia.m7.delivery_result.v1'\n       },\n\n       source: {\n         image_provider: 'google_drive',\n         drive_root_folder_id: '1msXda2akpa8wE_Dwcd4vNdtQh-_KHMaZ',\n         folder_strategy: 'category_sku_folder',\n         expected_structure: '/<category>/<sku>/<image_file>'\n       },\n\n       image_policy: {\n         allowed_mime_types: [\n           'image/jpeg',\n           'image/png',\n           'image/webp'\n         ],\n         preferred_name_signals: [\n           'principal',\n           'main',\n           'front',\n           '1'\n         ],\n         max_candidate_files: 10\n       },\n\n       presentation_policy: {\n         default_sequence: 'text_then_image',\n         product_image_modes: [\n           'single'\n         ],\n         allow_images_for_recommendation: false,\n         allow_images_for_product_detail: true\n       },\n\n       fallback_policy: {\n         image_not_found: 'image_not_found',\n         category_folder_not_found: 'category_folder_not_found',\n         product_folder_not_found: 'product_folder_not_found',\n         invalid_image_file: 'invalid_image_file'\n       },\n       text_template_policy: {\n         max_sentences: 4,\n         max_length: 520,\n         ask_one_question_at_end: true,\n         forbid_sku_in_text: true,\n         forbid_internal_terms: true,\n         avoid_price_unless_present: true,\n         avoid_stock_unless_present: true,\n         default_question: '¿Quieres que te comparta más detalles?',\n          fallback_question: '¿Quieres que te ayude a revisar esta opción?'\n        }\n     }\n   }\n }\n\n\n];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        224,
+        0
+      ],
+      "id": "a4b7debc-06ab-4696-939d-5498ca366933",
+      "name": "Load M7 Presentation Config"
+    },
+    {
+      "parameters": {
+        "jsCode": "function clean(value) {\n if (value === null || value === undefined) return '';\n return String(value).trim();\n}\n\nfunction firstArrayItem(value) {\n return Array.isArray(value) && value.length > 0 ? value[0] : null;\n}\n\nconst input = items[0]?.json || {};\nconst config = input.m7_config || {};\n\nconst trace = input.trace || {};\nconst channel = input.channel || {};\nconst message = input.message || {};\nconst presentation = input.presentation || {};\nconst catalog = input.catalog || {};\nconst control = input.control || {};\n\nconst firstImageCandidate = firstArrayItem(presentation.image_candidates);\nconst firstCatalogItem = firstArrayItem(catalog.items);\n\nconst productCandidate = firstImageCandidate || firstCatalogItem || {};\n\nconst sendImage = Boolean(presentation.sendImage);\nconst imageMode = clean(presentation.image_mode || 'none');\nconst responseType = clean(message.response_type);\n\nlet presentationMode = 'text_only';\n\nif (\n sendImage &&\n imageMode === 'single' &&\n responseType === 'product_detail'\n) {\n presentationMode = 'product_with_image';\n}\n\nif (!clean(message.replyText)) {\n presentationMode = 'invalid';\n}\n\nconst normalizedProduct = {\n product_id: clean(\n   productCandidate.product_id ||\n   productCandidate.sku\n ),\n sku: clean(\n   productCandidate.sku ||\n   productCandidate.product_id\n ),\n display_name: clean(productCandidate.display_name),\n category: clean(productCandidate.category),\n color: clean(productCandidate.color)\n};\n\nreturn [\n {\n   json: {\n     ...input,\n     m7_request: {\n       schema_version:\n         input.schema_version ||\n         config.contracts?.request_schema_version ||\n         'dalia.m3_to_m7.v1',\n\n       trace: {\n         event_id: clean(trace.event_id),\n         conversation_id: clean(trace.conversation_id),\n         session_id: clean(trace.session_id)\n       },\n\n       channel: {\n         name: clean(channel.name || 'whatsapp'),\n         user_id: clean(channel.user_id),\n         display_name: clean(channel.display_name)\n       },\n\n       message: {\n         replyText: clean(message.replyText),\n         response_type: responseType,\n         next_step: clean(message.next_step)\n       },\n\n       presentation: {\n         sendImage,\n         image_mode: imageMode,\n         image_candidates: Array.isArray(presentation.image_candidates)\n           ? presentation.image_candidates\n           : []\n       },\n\n       product: normalizedProduct,\n\n       catalog: {\n         used_catalog: catalog.used_catalog !== false,\n         matched: Boolean(catalog.matched),\n         match_type: clean(catalog.match_type),\n         items: Array.isArray(catalog.items) ? catalog.items : []\n       },\n\n       control: {\n         can_continue: control.can_continue !== false,\n         fallback_reason: clean(control.fallback_reason)\n       },\n\n       presentation_mode: presentationMode\n     }\n   }\n }\n];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        448,
+        0
+      ],
+      "id": "48945bc5-a06e-4c87-bbc0-23155620195c",
+      "name": "Normalize M7 Request"
+    },
+    {
+      "parameters": {
+        "jsCode": "function isEmpty(value) {\n return value === null || value === undefined || String(value).trim() === '';\n}\n\nconst input = items[0]?.json || {};\nconst request = input.m7_request || {};\n\n// 🚨 CHEAT CODE: Forzar el modo visual si la IA pidió mandar imagen\nif (request.presentation?.sendImage === true) {\n request.presentation_mode = 'product_with_image';\n}\n\nconst errors = [];\nconst warnings = [];\n\nif (isEmpty(request.channel?.user_id)) {\n errors.push('missing_channel_user_id');\n}\n\nif (isEmpty(request.message?.replyText)) {\n errors.push('missing_reply_text');\n}\n\nif (request.presentation_mode === 'product_with_image') {\n // 1. Relajar la regla: Permitir imágenes tanto en product_detail como en recommendation\n if (request.message?.response_type !== 'product_detail' && request.message?.response_type !== 'recommendation') {\n   errors.push('image_requested_for_invalid_response_type');\n }\n\n // 2. El chequeo estricto de SKU único solo aplica para product_detail\n if (request.message?.response_type === 'product_detail') {\n   if (isEmpty(request.product?.sku) && isEmpty(request.product?.product_id)) {\n     errors.push('missing_product_sku_or_product_id');\n   }\n   if (isEmpty(request.product?.category)) {\n     errors.push('missing_product_category');\n   }\n }\n}\n\nif (\n request.presentation?.sendImage === true &&\n request.presentation_mode !== 'product_with_image'\n) {\n warnings.push('send_image_requested_but_mode_not_product_with_image');\n}\n\nreturn [\n {\n   json: {\n     ...input,\n     m7_validation: {\n       valid: errors.length === 0,\n       errors,\n       warnings\n     }\n   }\n }\n];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        672,
+        0
+      ],
+      "id": "0d5185d1-1424-4448-8328-c76d7d6cbe83",
+      "name": "Validate M7 Request"
+    },
+    {
+      "parameters": {
+        "rules": {
+          "values": [
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 3
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $json.m7_request.presentation_mode }}",
+                    "rightValue": "text_only",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    },
+                    "id": "4063856a-edd1-45b6-9a3b-580ad3073f2f"
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "output 0"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 3
+                },
+                "conditions": [
+                  {
+                    "id": "15bf5c45-f59f-4b9c-810b-e5e8c007e305",
+                    "leftValue": "={{ $json.m7_request.presentation_mode }}",
+                    "rightValue": "product_with_image",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals",
+                      "name": "filter.operator.equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "output 1"
+            }
+          ]
+        },
+        "options": {
+          "fallbackOutput": "extra"
+        }
+      },
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 3.4,
+      "position": [
+        896,
+        -16
+      ],
+      "id": "28b7c2f5-1e51-4728-bf4f-ce02eb2f82e0",
+      "name": "Route Presentation Mode"
+    },
+    {
+      "parameters": {
+        "jsCode": "const input = items[0]?.json || {};\n\nreturn [\n {\n   json: {\n     ...input,\n     branch_context: {\n       branch: 'text_only',\n       configured_in_task: 1,\n       next_task: 2,\n       status: 'branch_entry_ready'\n     }\n   }\n }\n];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1120,
+        -192
+      ],
+      "id": "d388cdea-66b3-4d32-816b-920e637d3122",
+      "name": "Text Branch Entry"
+    },
+    {
+      "parameters": {
+        "jsCode": "const input = items[0]?.json || {};\n\nreturn [\n {\n   json: {\n     ...input,\n     branch_context: {\n       branch: 'product_with_image',\n       configured_in_task: 1,\n       status: 'image_resolution_started'\n     }\n   }\n }\n];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1120,
+        0
+      ],
+      "id": "65f2e177-2e7b-4ea6-9446-b336121e7b1c",
+      "name": "Product Image Branch Entry"
+    },
+    {
+      "parameters": {
+        "jsCode": "const input = items[0]?.json || {};\n\nreturn [\n {\n   json: {\n     schema_version: 'dalia.m7.delivery_result.v1',\n     success: false,\n     result_type: 'invalid_m7_request',\n     delivery: {\n       channel: input.m7_request?.channel?.name || 'whatsapp',\n       text_sent: false,\n       image_sent: false,\n       fallback_used: true\n     },\n     validation: input.m7_validation || {\n       valid: false,\n       errors: ['invalid_m7_request']\n     },\n     trace: input.m7_request?.trace || {}\n   }\n }\n];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1120,
+        192
+      ],
+      "id": "4565536f-c867-46ce-9ce0-b1ad164b2e2f",
+      "name": "Return Invalid M7 Request"
+    },
+    {
+      "parameters": {
+        "jsCode": "function clean(value) {\n if (value === null || value === undefined) return '';\n return String(value).trim();\n}\n\nfunction normalizeFolderName(value) {\n return clean(value)\n   .toUpperCase()\n   .replace(/\\s+/g, ' ');\n}\n\nconst input = items[0]?.json || {};\nconst request = input.m7_request || {};\nconst config = input.m7_config || {};\n\nconst product = request.product || {};\n\nconst sku = clean(product.sku || product.product_id);\nconst category = normalizeFolderName(product.category);\n\nconst imageLookup = {\n provider: 'google_drive',\n strategy: config.source?.folder_strategy || 'category_sku_folder',\n root_folder_id: config.source?.drive_root_folder_id || '',\n category_folder_name: category,\n product_folder_name: sku,\n sku,\n product_id: clean(product.product_id || sku),\n display_name: clean(product.display_name),\n allowed_mime_types: config.image_policy?.allowed_mime_types || [\n   'image/jpeg',\n   'image/png',\n   'image/webp'\n ],\n preferred_name_signals: config.image_policy?.preferred_name_signals || [\n   'principal',\n   'main',\n   'front',\n   '1'\n ]\n};\n\nreturn [\n {\n   json: {\n     ...input,\n     product_presentation_plan: {\n       product,\n       image_lookup: imageLookup,\n       sequence_mode: config.presentation_policy?.default_sequence || 'text_then_image'\n     }\n   }\n }\n];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1344,
+        0
+      ],
+      "id": "45eb1222-60e4-42e9-acfd-d44162450cdc",
+      "name": "Build Product Presentation Plan"
+    },
+    {
+      "parameters": {
+        "jsCode": "const planNode = $('Build Product Presentation Plan').first().json || {};\nconst folder = items[0]?.json || {};\n\nconst found = Boolean(folder.id);\n\nreturn [\n {\n   json: {\n     ...planNode,\n     image_resolution_step: {\n       category_folder: {\n         found,\n         id: folder.id || '',\n         name: folder.name || ''\n       }\n     }\n   }\n }\n];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1792,
+        0
+      ],
+      "id": "6a4abbc7-94c8-4692-9d97-3dd413344649",
+      "name": "Normalize Category Folder Result"
+    },
+    {
+      "parameters": {
+        "resource": "fileFolder",
+        "searchMethod": "query",
+        "queryString": "=mimeType = 'application/vnd.google-apps.folder' and trashed = false and name = '{{ $json.product_presentation_plan.image_lookup.category_folder_name }}' and '{{ $json.product_presentation_plan.image_lookup.root_folder_id }}' in parents",
+        "limit": 1,
+        "filter": {},
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleDrive",
+      "typeVersion": 3,
+      "position": [
+        1568,
+        0
+      ],
+      "id": "e59fd40e-dd58-420c-9dee-3ccf6af1aaba",
+      "name": "Find Category Folder",
+      "alwaysOutputData": true,
+      "credentials": {
+        "googleDriveOAuth2Api": {
+          "id": "lgNrEQGQeSWc6bsi",
+          "name": "Google Drive OAuth2 API"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "5e614916-647b-47a5-8129-3eeec13e2434",
+              "leftValue": "={{ $json.image_resolution_step.category_folder.found }}",
+              "rightValue": "",
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        2016,
+        0
+      ],
+      "id": "d6edc3f1-3108-4594-82fd-541cfd39f7d0",
+      "name": "IF Category Folder Found?"
+    },
+    {
+      "parameters": {
+        "resource": "fileFolder",
+        "searchMethod": "query",
+        "queryString": "=mimeType = 'application/vnd.google-apps.folder' and trashed = false and name = '{{ $json.product_presentation_plan.image_lookup.product_folder_name }}' and '{{ $json.image_resolution_step.category_folder.id }}' in parents",
+        "limit": 1,
+        "filter": {},
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleDrive",
+      "typeVersion": 3,
+      "position": [
+        2240,
+        -96
+      ],
+      "id": "535981f8-c209-44df-9b30-294ad3fe2117",
+      "name": "Find Product Folder",
+      "alwaysOutputData": true,
+      "credentials": {
+        "googleDriveOAuth2Api": {
+          "id": "lgNrEQGQeSWc6bsi",
+          "name": "Google Drive OAuth2 API"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const previous = $('Normalize Category Folder Result').first().json || {};\nconst folder = items[0]?.json || {};\n\nconst found = Boolean(folder.id);\n\nreturn [\n {\n   json: {\n     ...previous,\n     image_resolution_step: {\n       ...previous.image_resolution_step,\n       product_folder: {\n         found,\n         id: folder.id || '',\n         name: folder.name || ''\n       }\n     }\n   }\n }\n];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        2464,
+        -96
+      ],
+      "id": "6815330d-f5e7-4fb5-aa1c-af13483eb0ef",
+      "name": "Normalize Product Folder Result"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "4c9e466d-32f9-45cf-a8cf-6ed3fc9dddbd",
+              "leftValue": "={{ $json.image_resolution_step.product_folder.found }}",
+              "rightValue": "",
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        2688,
+        -96
+      ],
+      "id": "085d6d8d-b21e-434c-abca-1fcd277263a9",
+      "name": "IF Product Folder Found?"
+    },
+    {
+      "parameters": {
+        "resource": "fileFolder",
+        "searchMethod": "query",
+        "queryString": "=trashed = false and '{{ $json.image_resolution_step.product_folder.id }}' in parents and (  mimeType = 'image/jpeg'  or mimeType = 'image/png'  or mimeType = 'image/webp' )",
+        "limit": 10,
+        "filter": {},
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleDrive",
+      "typeVersion": 3,
+      "position": [
+        2912,
+        -192
+      ],
+      "id": "c39a8675-4f7c-4bbc-a2ac-b9d3310adbd1",
+      "name": "Find Image Files",
+      "alwaysOutputData": true,
+      "credentials": {
+        "googleDriveOAuth2Api": {
+          "id": "lgNrEQGQeSWc6bsi",
+          "name": "Google Drive OAuth2 API"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "function clean(value) {\n if (value === null || value === undefined) return '';\n return String(value).trim();\n}\n\nfunction normalize(value) {\n return clean(value)\n   .toLowerCase()\n   .normalize('NFD')\n   .replace(/[\\u0300-\\u036f]/g, '');\n}\n\nconst planNode = $('Normalize Product Folder Result').first().json || {};\nconst lookup = planNode.product_presentation_plan?.image_lookup || {};\n\nconst allowedMimeTypes = lookup.allowed_mime_types || [\n 'image/jpeg',\n 'image/png',\n 'image/webp'\n];\n\nconst preferredSignals = lookup.preferred_name_signals || [\n 'principal',\n 'main',\n 'front',\n '1'\n];\n\nconst files = items\n .map(item => item.json || {})\n .filter(file => file.id)\n .filter(file => {\n   if (!file.mimeType) return true;\n   return allowedMimeTypes.includes(file.mimeType);\n });\n\nconst scoredFiles = files.map(file => {\n const fileName = normalize(file.name);\n let score = 0;\n\n if (preferredSignals.some(signal => fileName.includes(normalize(signal)))) {\n   score += 100;\n }\n\n if (fileName.includes(normalize(lookup.sku))) {\n   score += 50;\n }\n\n const modifiedTime = file.modifiedTime\n   ? new Date(file.modifiedTime).getTime()\n   : 0;\n\n return {\n   ...file,\n   _selection_score: score,\n   _modified_time_number: modifiedTime\n };\n});\n\nscoredFiles.sort((a, b) => {\n if (b._selection_score !== a._selection_score) {\n   return b._selection_score - a._selection_score;\n }\n\n return b._modified_time_number - a._modified_time_number;\n});\n\nconst selected = scoredFiles[0] || null;\n\nconst resolved = Boolean(selected?.id);\n\nreturn [\n {\n   json: {\n     ...planNode,\n     image_resolution: {\n       resolved,\n       source: 'google_drive',\n       provider: 'google_drive',\n       strategy: lookup.strategy || 'category_sku_folder',\n       product_id: lookup.product_id || '',\n       sku: lookup.sku || '',\n       display_name: lookup.display_name || '',\n       category: lookup.category_folder_name || '',\n       file_id: selected?.id || '',\n       file_name: selected?.name || '',\n       mime_type: selected?.mimeType || '',\n       web_view_link: selected?.webViewLink || '',\n       fallback_reason: resolved ? '' : 'image_not_found',\n       candidates_found: files.length\n     }\n   }\n }\n];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        3136,
+        -192
+      ],
+      "id": "7d944f2a-e4de-48d3-8366-3c2f71f7d1a9",
+      "name": "Select Product Image"
+    },
+    {
+      "parameters": {
+        "jsCode": "const input = items[0]?.json || {};\n\nreturn [\n {\n   json: {\n     schema_version: 'dalia.m7.image_resolution_result.v1',\n     success: Boolean(input.image_resolution?.resolved),\n     result_type: 'image_resolution_result',\n     trace: input.m7_request?.trace || {},\n     product: input.product_presentation_plan?.product || {},\n     image_resolution: input.image_resolution || {\n       resolved: false,\n       source: 'google_drive',\n       fallback_reason: 'image_not_found'\n     },\n     m7_request: input.m7_request,\n     product_presentation_plan: input.product_presentation_plan\n   }\n }\n];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        3360,
+        -192
+      ],
+      "id": "f9a09126-5cb6-48ab-8d74-6c1fc4ea71b7",
+      "name": "Return Image Resolution Result"
+    },
+    {
+      "parameters": {
+        "jsCode": "const input = items[0]?.json || {};\n\nlet reason = 'image_not_found';\n\nif (input.image_resolution_step?.category_folder?.found === false) {\n reason = 'category_folder_not_found';\n}\n\nif (input.image_resolution_step?.product_folder?.found === false) {\n reason = 'product_folder_not_found';\n}\n\nreturn [\n {\n   json: {\n     schema_version: 'dalia.m7.image_resolution_result.v1',\n     success: false,\n     result_type: 'image_resolution_result',\n     trace: input.m7_request?.trace || {},\n     product: input.product_presentation_plan?.product || {},\n     image_resolution: {\n       resolved: false,\n       source: 'google_drive',\n       provider: 'google_drive',\n       strategy: input.product_presentation_plan?.image_lookup?.strategy || 'category_sku_folder',\n       product_id: input.product_presentation_plan?.image_lookup?.product_id || '',\n       sku: input.product_presentation_plan?.image_lookup?.sku || '',\n       display_name: input.product_presentation_plan?.image_lookup?.display_name || '',\n       category: input.product_presentation_plan?.image_lookup?.category_folder_name || '',\n       file_id: '',\n       file_name: '',\n       mime_type: '',\n       web_view_link: '',\n       fallback_reason: reason,\n       candidates_found: 0\n     },\n     m7_request: input.m7_request,\n     product_presentation_plan: input.product_presentation_plan\n   }\n }\n];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        2240,
+        96
+      ],
+      "id": "d73e0105-b1f9-4f5b-b55e-895b62f3bd8a",
+      "name": "Return Image Not Found Result"
+    },
+    {
+      "parameters": {
+        "jsCode": "const input = items[0]?.json || {};\n\nlet reason = 'image_not_found';\n\nif (input.image_resolution_step?.category_folder?.found === false) {\n reason = 'category_folder_not_found';\n}\n\nif (input.image_resolution_step?.product_folder?.found === false) {\n reason = 'product_folder_not_found';\n}\n\nreturn [\n {\n   json: {\n     schema_version: 'dalia.m7.image_resolution_result.v1',\n     success: false,\n     result_type: 'image_resolution_result',\n     trace: input.m7_request?.trace || {},\n     product: input.product_presentation_plan?.product || {},\n     image_resolution: {\n       resolved: false,\n       source: 'google_drive',\n       provider: 'google_drive',\n       strategy: input.product_presentation_plan?.image_lookup?.strategy || 'category_sku_folder',\n       product_id: input.product_presentation_plan?.image_lookup?.product_id || '',\n       sku: input.product_presentation_plan?.image_lookup?.sku || '',\n       display_name: input.product_presentation_plan?.image_lookup?.display_name || '',\n       category: input.product_presentation_plan?.image_lookup?.category_folder_name || '',\n       file_id: '',\n       file_name: '',\n       mime_type: '',\n       web_view_link: '',\n       fallback_reason: reason,\n       candidates_found: 0\n     },\n     m7_request: input.m7_request,\n     product_presentation_plan: input.product_presentation_plan\n   }\n }\n];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        2912,
+        0
+      ],
+      "id": "9e362158-ed8a-44e8-a34f-dbdfdeb1e71c",
+      "name": "Return Image Not Found Result1"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "b86b2159-bed5-4b06-9911-d4b0459de547",
+              "leftValue": "={{ $json.image_resolution.resolved }}",
+              "rightValue": "",
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        3584,
+        -192
+      ],
+      "id": "8932a7f6-50e3-44ab-97db-fe66a5b76595",
+      "name": "Image Resolved"
+    },
+    {
+      "parameters": {
+        "jsCode": "const input = items[0]?.json || {};\n\nfunction inferFallbackReason(input) {\n if (input.image_resolution?.fallback_reason) {\n   return input.image_resolution.fallback_reason;\n }\n\n if (input.media_preparation?.fallback_reason) {\n   return input.media_preparation.fallback_reason;\n }\n\n if (input.whatsapp_media?.fallback_reason) {\n   return input.whatsapp_media.fallback_reason;\n }\n\n if (input.image_resolution_step?.category_folder?.found === false) {\n   return 'category_folder_not_found';\n }\n\n if (input.image_resolution_step?.product_folder?.found === false) {\n   return 'product_folder_not_found';\n }\n\n return 'image_not_available';\n}\n\nreturn [\n {\n   json: {\n     ...input,\n     image_fallback: {\n       active: true,\n       reason: inferFallbackReason(input),\n       source: 'google_drive',\n       user_visible: false\n     },\n     branch_context: {\n       branch: 'image_fallback',\n       configured_in_task: 4,\n       status: 'fallback_started'\n     }\n   }\n }\n];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        5936,
+        -96
+      ],
+      "id": "b2a0d8eb-9b52-4664-9397-8ee692e08964",
+      "name": "Image Fallback Branch Entry"
+    },
+    {
+      "parameters": {
+        "operation": "download",
+        "fileId": {
+          "__rl": true,
+          "value": "={{ $json.image_resolution.file_id }}",
+          "mode": "id"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleDrive",
+      "typeVersion": 3,
+      "position": [
+        3808,
+        -272
+      ],
+      "id": "017e902f-beac-476b-9a3a-98fdc65c0150",
+      "name": "Download Image From Google Drive",
+      "credentials": {
+        "googleDriveOAuth2Api": {
+          "id": "lgNrEQGQeSWc6bsi",
+          "name": "Google Drive OAuth2 API"
+        }
+      },
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "jsCode": "const input = items[0]?.json || {};\nconst binary = items[0]?.binary || {};\n\nconst imageResolution =\n $('Select Product Image').first().json.image_resolution || {};\n\nconst m7Request =\n $('Select Product Image').first().json.m7_request || {};\n\nconst hasBinary = Boolean(binary.data);\n\nreturn [\n {\n   json: {\n     ...$('Select Product Image').first().json,\n     media_preparation: {\n       ready: hasBinary,\n       binary_property: 'data',\n       file_id: imageResolution.file_id || '',\n       file_name: imageResolution.file_name || '',\n       mime_type: imageResolution.mime_type || 'image/jpeg',\n       product_id: imageResolution.product_id || '',\n       sku: imageResolution.sku || '',\n       display_name: imageResolution.display_name || '',\n       fallback_reason: hasBinary ? '' : 'google_drive_download_failed'\n     },\n     m7_request: m7Request\n   },\n   binary\n }\n];\n"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        4816,
+        -272
+      ],
+      "id": "635d00bc-8aca-4a52-a282-32a478f2e08d",
+      "name": "Prepare WhatsApp Media Upload"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "213bb223-0f0f-41c1-a8c1-552ccc6a5c3f",
+              "leftValue": "={{ $json.media_preparation.ready }}",
+              "rightValue": "",
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        5040,
+        -272
+      ],
+      "id": "151621e1-1fe0-489d-baaa-7244db465a12",
+      "name": "Media Ready?"
+    },
+    {
+      "parameters": {
+        "resource": "media",
+        "phoneNumberId": "1104496126080610",
+        "mediaPropertyName": "=data",
+        "additionalFields": {}
+      },
+      "type": "n8n-nodes-base.whatsApp",
+      "typeVersion": 1.1,
+      "position": [
+        5264,
+        -336
+      ],
+      "id": "baf1c206-9f9e-4a95-abef-1853fa8431ab",
+      "name": "Upload WhatsApp Media",
+      "webhookId": "3c375c51-2a0f-4709-9018-832a2df82509",
+      "credentials": {
+        "whatsAppApi": {
+          "id": "3lZ90gsbMgk8fR6e",
+          "name": "WhatsApp account 4"
+        }
+      },
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "jsCode": "const uploadResult = items[0]?.json || {};\nconst previous = $('Prepare WhatsApp Media Upload').first().json || {};\n\nconst mediaId =\n uploadResult.id ||\n uploadResult.media_id ||\n uploadResult.media?.id ||\n '';\n\nreturn [\n {\n   json: {\n     ...previous,\n     whatsapp_media: {\n       uploaded: Boolean(mediaId),\n       media_id: mediaId,\n       raw_result: uploadResult,\n       fallback_reason: mediaId ? '' : 'whatsapp_media_upload_failed'\n     }\n   },\n   binary: items[0]?.binary || {}\n }\n];\n"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        5488,
+        -336
+      ],
+      "id": "b24c3f7b-caf9-4a33-89e2-454d027c15f0",
+      "name": "Normalize WhatsApp Media Upload"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "b5907b6f-bde8-4c6c-92c0-0bbb440dc580",
+              "leftValue": "={{ $json.whatsapp_media.uploaded }}",
+              "rightValue": "",
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        5712,
+        -336
+      ],
+      "id": "51d51b25-681a-425b-ba93-60aa95184e6a",
+      "name": "WhatsApp Media Uploaded"
+    },
+    {
+      "parameters": {
+        "operation": "send",
+        "phoneNumberId": "1104496126080610",
+        "recipientPhoneNumber": "={{ $json.channel.user_id.split('_').pop() }}",
+        "textBody": "={{ $json.whatsapp_text_message.text }}",
+        "additionalFields": {}
+      },
+      "type": "n8n-nodes-base.whatsApp",
+      "typeVersion": 1.1,
+      "position": [
+        6384,
+        -384
+      ],
+      "id": "0f8b9ee9-b2da-4ce9-b511-709b5db8a644",
+      "name": "Send WhatsApp Text",
+      "webhookId": "aa19080e-fb9d-49da-b8ea-86d7b108ced1",
+      "credentials": {
+        "whatsAppApi": {
+          "id": "3lZ90gsbMgk8fR6e",
+          "name": "WhatsApp account 4"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const sendResult = items[0]?.json || {};\nconst previous = $('Build Product Text Template').first().json || {};\n\nconst messageId =\n sendResult.messages?.[0]?.id ||\n sendResult.message_id ||\n sendResult.id ||\n '';\n\nreturn [\n {\n   json: {\n     ...previous,\n     text_delivery: {\n       sent: Boolean(messageId) || Object.keys(sendResult).length > 0,\n       message_id: messageId,\n       sequence_order: 1,\n       raw_result: sendResult\n     }\n   }\n }\n];\n"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        6608,
+        -384
+      ],
+      "id": "081ef7b2-e9f3-4511-b121-068daf467caa",
+      "name": "Normalize Text Send Result"
+    },
+    {
+      "parameters": {
+        "jsCode": "const input = items[0]?.json || {};\nconst request = input.m7_request || {};\nconst media = input.whatsapp_media || {};\nconst image = input.image_resolution || {};\n\nreturn [\n {\n   json: {\n     ...input,\n     whatsapp_image_message: {\n       ready: Boolean(media.media_id),\n       to: request.channel?.user_id || '',\n       media_id: media.media_id || '',\n       caption: '',\n       sequence_order: 2,\n       product_id: image.product_id || '',\n       sku: image.sku || '',\n       display_name: image.display_name || ''\n     }\n   }\n }\n];\n"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        7504,
+        -384
+      ],
+      "id": "ac514f52-1f5c-445a-8b1d-8c032a2721f0",
+      "name": "Build WhatsApp Image Message"
+    },
+    {
+      "parameters": {
+        "operation": "send",
+        "phoneNumberId": "1104496126080610",
+        "recipientPhoneNumber": "={{ $json.channel.user_id.split('_').pop() }}",
+        "messageType": "image",
+        "mediaPath": "useMediaId",
+        "mediaId": "={{ $json.whatsapp_image_message.media_id }}",
+        "additionalFields": {}
+      },
+      "type": "n8n-nodes-base.whatsApp",
+      "typeVersion": 1.1,
+      "position": [
+        7728,
+        -384
+      ],
+      "id": "e5207f30-c694-426c-b7f9-2758abebf811",
+      "name": "Send WhatsApp Image",
+      "webhookId": "d5ff56c3-586e-49dc-b1b1-14ce9cab39f8",
+      "credentials": {
+        "whatsAppApi": {
+          "id": "3lZ90gsbMgk8fR6e",
+          "name": "WhatsApp account 4"
+        }
+      },
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "jsCode": "const sendResult = items[0]?.json || {};\nconst previous = $('Build WhatsApp Image Message').first().json || {};\n\nconst messageId =\n sendResult.messages?.[0]?.id ||\n sendResult.message_id ||\n sendResult.id ||\n '';\n\nreturn [\n {\n   json: {\n     ...previous,\n     image_delivery: {\n       sent: Boolean(messageId) || Object.keys(sendResult).length > 0,\n       message_id: messageId,\n       sequence_order: 2,\n       raw_result: sendResult\n     }\n   }\n }\n];\n"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        7952,
+        -384
+      ],
+      "id": "9b72c297-b4f4-4615-a1c7-04505c468cfa",
+      "name": "Normalize Image Send Result"
+    },
+    {
+      "parameters": {
+        "jsCode": "const input = items[0]?.json || {};\n\nreturn [\n {\n   json: {\n     schema_version: 'dalia.m7.delivery_result.v1',\n     success: Boolean(input.text_delivery?.sent && input.image_delivery?.sent),\n     result_type: 'product_presentation_delivery_result',\n\n     delivery: {\n       channel: input.m7_request?.channel?.name || 'whatsapp',\n       sequence_mode: 'text_then_image',\n       text_sent: Boolean(input.text_delivery?.sent),\n       image_sent: Boolean(input.image_delivery?.sent),\n       fallback_used: false,\n       text_template: {\n       source: input.product_text_template?.source || '',\n       validated: input.product_text_validation?.valid !== false,\n       fallback_applied: Boolean(input.product_text_validation?.fallback_applied)\n      },\n       order: [\n         {\n           type: 'text',\n           sent: Boolean(input.text_delivery?.sent),\n           sequence_order: 1,\n           message_id: input.text_delivery?.message_id || ''\n         },\n         {\n           type: 'image',\n           sent: Boolean(input.image_delivery?.sent),\n           sequence_order: 2,\n           message_id: input.image_delivery?.message_id || ''\n         }\n       ]\n     },\n\n     image: {\n       resolved: Boolean(input.image_resolution?.resolved),\n       source: 'google_drive',\n       product_id: input.image_resolution?.product_id || '',\n       sku: input.image_resolution?.sku || '',\n       display_name: input.image_resolution?.display_name || '',\n       file_id: input.image_resolution?.file_id || '',\n       file_name: input.image_resolution?.file_name || '',\n       whatsapp_media_id: input.whatsapp_media?.media_id || ''\n     },\n\n     trace: input.m7_request?.trace || {},\n\n     validation: {\n       m7_request_valid: input.m7_validation?.valid !== false,\n       image_resolved: Boolean(input.image_resolution?.resolved),\n       media_uploaded: Boolean(input.whatsapp_media?.uploaded)\n     }\n   }\n }\n];\n"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        8816,
+        -384
+      ],
+      "id": "96f18d19-eff1-4f64-9cde-d9f3ef64bb4b",
+      "name": "Return M7 Product Presentation Result"
+    },
+    {
+      "parameters": {
+        "jsCode": "function clean(value) {\n if (value === null || value === undefined) return '';\n return String(value).trim();\n}\n\nfunction normalize(value) {\n return clean(value)\n   .toLowerCase()\n   .normalize('NFD')\n   .replace(/[\\u0300-\\u036f]/g, '');\n}\n\nfunction removeInternalTerms(text) {\n return clean(text)\n   .replace(/\\bSKU\\b/gi, '')\n   .replace(/\\bproduct_id\\b/gi, '')\n   .replace(/\\bimage_ref\\b/gi, '')\n   .replace(/\\bretrieval_score\\b/gi, '')\n   .replace(/\\bQdrant\\b/gi, '')\n   .replace(/\\bn8n\\b/gi, '')\n   .replace(/\\bGoogle Drive\\b/gi, '')\n   .replace(/\\bworkflow\\b/gi, '')\n   .replace(/\\bmódulo\\b/gi, '')\n   .replace(/\\bmodulo\\b/gi, '')\n   .replace(/\\s{2,}/g, ' ')\n   .trim();\n}\n\nfunction splitSentences(text) {\n return clean(text)\n   .split(/(?<=[.!?])\\s+/)\n   .map(sentence => sentence.trim())\n   .filter(Boolean);\n}\n\nfunction limitSentences(text, maxSentences) {\n const sentences = splitSentences(text);\n if (sentences.length <= maxSentences) return clean(text);\n return sentences.slice(0, maxSentences).join(' ');\n}\n\nfunction limitLength(text, maxLength) {\n const cleanText = clean(text);\n if (cleanText.length <= maxLength) return cleanText;\n return cleanText.slice(0, maxLength).replace(/\\s+\\S*$/, '').trim() + '.';\n}\n\nfunction hasQuestionAtEnd(text) {\n return /[?？]\\s*$/.test(clean(text));\n}\n\nfunction ensureQuestionAtEnd(text, question) {\n const cleanText = clean(text);\n\n if (!cleanText) return question;\n if (hasQuestionAtEnd(cleanText)) return cleanText;\n\n return `${cleanText} ${question}`;\n}\n\nfunction firstSentence(value) {\n const sentences = splitSentences(value);\n return sentences[0] || '';\n}\n\nfunction buildTemplateFromProduct(product, request, policy) {\n const productName = clean(product.display_name) || 'este producto';\n const category = clean(product.category);\n const color = clean(product.color);\n const description = clean(product.description_short);\n\n const benefit = firstSentence(description);\n\n let text = `Te muestro ${productName}.`;\n\n if (benefit) {\n   text += ` ${benefit}.`;\n } else if (category) {\n   text += ` Es una opción de la categoría ${category}.`;\n }\n\n if (color) {\n   text += ` En esta referencia lo tengo identificado en color ${color}.`;\n }\n\n text = ensureQuestionAtEnd(\n   text,\n   policy.default_question || '¿Quieres que te comparta más detalles?'\n );\n\n return text;\n}\n\nfunction isTextUsable(text, policy) {\n const value = clean(text);\n if (!value) return false;\n\n const normalized = normalize(value);\n\n const forbidden = [\n   'sku',\n   'product_id',\n   'image_ref',\n   'retrieval_score',\n   'qdrant',\n   'n8n',\n   'google drive',\n   'workflow',\n   'modulo',\n   'módulo'\n ];\n\n if (forbidden.some(term => normalized.includes(normalize(term)))) {\n   return false;\n }\n\n if (value.length > Number(policy.max_length || 520)) {\n   return false;\n }\n\n return true;\n}\n\nconst input = items[0]?.json || {};\nconst request = input.m7_request || {};\nconst config = input.m7_config || {};\nconst policy = config.text_template_policy || {};\n\nconst planProduct =\n input.product_presentation_plan?.product ||\n request.product ||\n {};\n\nconst catalogProduct =\n Array.isArray(request.catalog?.items) && request.catalog.items.length > 0\n   ? request.catalog.items[0]\n   : {};\n\nconst product = {\n ...catalogProduct,\n ...planProduct\n};\n\nconst rawReplyText = clean(request.message?.replyText);\n\nlet finalText = '';\n\nif (isTextUsable(rawReplyText, policy)) {\n finalText = rawReplyText;\n} else {\n finalText = buildTemplateFromProduct(product, request, policy);\n}\n\nfinalText = removeInternalTerms(finalText);\nfinalText = limitSentences(finalText, Number(policy.max_sentences || 4));\nfinalText = limitLength(finalText, Number(policy.max_length || 520));\nfinalText = ensureQuestionAtEnd(\n finalText,\n policy.default_question || '¿Quieres que te comparta más detalles?'\n);\n\nreturn [\n {\n   json: {\n     ...input,\n     product_text_template: {\n       ready: Boolean(finalText),\n       text: finalText,\n       source: isTextUsable(rawReplyText, policy)\n         ? 'm3_reply_text'\n         : 'm7_product_template',\n       product_id: product.product_id || product.sku || '',\n       sku: product.sku || product.product_id || '',\n       display_name: product.display_name || '',\n       category: product.category || '',\n       color: product.color || ''\n     },\n     whatsapp_text_message: {\n       ready: Boolean(finalText),\n       to: request.channel?.user_id || '',\n       text: finalText,\n       sequence_order: 1\n     }\n   }\n }\n];\n"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        5936,
+        -384
+      ],
+      "id": "70efb677-da26-460d-810e-d2f65dc7b2fd",
+      "name": "Build Product Text Template"
+    },
+    {
+      "parameters": {
+        "jsCode": "function clean(value) {\n if (value === null || value === undefined) return '';\n return String(value).trim();\n}\n\nfunction normalize(value) {\n return clean(value)\n   .toLowerCase()\n   .normalize('NFD')\n   .replace(/[\\u0300-\\u036f]/g, '');\n}\n\nfunction includesAny(text, terms) {\n const normalized = normalize(text);\n return terms.some(term => normalized.includes(normalize(term)));\n}\n\nfunction buildSafeText(input) {\n const product =\n   input.product_presentation_plan?.product ||\n   input.m7_request?.product ||\n   {};\n\n const productName = clean(product.display_name) || 'esta opción';\n\n return `Te muestro ${productName}. Es una alternativa que puede ajustarse a lo que estás buscando. ¿Quieres que te comparta más detalles?`;\n}\n\nconst input = items[0]?.json || {};\nconst text = clean(input.whatsapp_text_message?.text);\n\nconst policy = input.m7_config?.text_template_policy || {};\nconst violations = [];\n\nif (!text) {\n violations.push('empty_text');\n}\n\nif (text.length > Number(policy.max_length || 520)) {\n violations.push('text_too_long');\n}\n\nconst forbiddenTerms = [\n 'sku',\n 'product_id',\n 'image_ref',\n 'retrieval_score',\n 'qdrant',\n 'n8n',\n 'google drive',\n 'workflow',\n 'módulo',\n 'modulo'\n];\n\nif (includesAny(text, forbiddenTerms)) {\n violations.push('forbidden_internal_term');\n}\n\nif (!/[?？]\\s*$/.test(text)) {\n violations.push('missing_final_question');\n}\n\nlet finalText = text;\n\nif (violations.length > 0) {\n finalText = buildSafeText(input);\n}\n\nreturn [\n {\n   json: {\n     ...input,\n     product_text_validation: {\n       valid: violations.length === 0,\n       violations,\n       fallback_applied: violations.length > 0\n     },\n     whatsapp_text_message: {\n       ...(input.whatsapp_text_message || {}),\n       ready: true,\n       text: finalText,\n       sequence_order: 1\n     }\n   }\n }\n];\n"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        6160,
+        -384
+      ],
+      "id": "458ad906-8b06-41f1-a452-beb41afc3969",
+      "name": "Validate Product Text Template"
+    },
+    {
+      "parameters": {
+        "jsCode": "function clean(value) {\n if (value === null || value === undefined) return '';\n return String(value).trim();\n}\n\nfunction firstSentence(value) {\n const text = clean(value);\n if (!text) return '';\n const sentences = text\n   .split(/(?<=[.!?])\\s+/)\n   .map(s => s.trim())\n   .filter(Boolean);\n return sentences[0] || '';\n}\n\nfunction limitText(value, maxLength = 520) {\n const text = clean(value);\n if (text.length <= maxLength) return text;\n return text.slice(0, maxLength).replace(/\\s+\\S*$/, '').trim() + '.';\n}\n\nfunction removeInternalTerms(text) {\n return clean(text)\n   .replace(/\\bSKU\\b/gi, '')\n   .replace(/\\bproduct_id\\b/gi, '')\n   .replace(/\\bimage_ref\\b/gi, '')\n   .replace(/\\bGoogle Drive\\b/gi, '')\n   .replace(/\\bn8n\\b/gi, '')\n   .replace(/\\bworkflow\\b/gi, '')\n   .replace(/\\bmódulo\\b/gi, '')\n   .replace(/\\bmodulo\\b/gi, '')\n   .replace(/\\s{2,}/g, ' ')\n   .trim();\n}\n\nconst input = items[0]?.json || {};\nconst request = input.m7_request || {};\nconst product =\n input.product_presentation_plan?.product ||\n request.product ||\n {};\n\nconst productName =\n clean(product.display_name) ||\n clean(input.image_resolution?.display_name) ||\n 'esta opción';\n\nconst description =\n clean(product.description_short) ||\n clean(request.catalog?.items?.[0]?.description_short);\n\nconst benefit = firstSentence(description);\n\nlet text = '';\n\nif (benefit) {\n text = `Puedo contarte sobre ${productName}. ${benefit}. Por ahora no tengo una imagen disponible para mostrarte. ¿Quieres que te comparta más detalles?`;\n} else {\n text = `Puedo contarte sobre ${productName}. Por ahora no tengo una imagen disponible para mostrarte, pero puedo ayudarte con sus características. ¿Quieres que te comparta más detalles?`;\n}\n\ntext = removeInternalTerms(text);\ntext = limitText(text, input.m7_config?.text_template_policy?.max_length || 520);\n\nreturn [\n {\n   json: {\n     ...input,\n     image_fallback_text: {\n       ready: Boolean(text),\n       text,\n       reason: input.image_fallback?.reason || 'image_not_available',\n       product_id: product.product_id || product.sku || '',\n       sku: product.sku || product.product_id || '',\n       display_name: productName\n     },\n     whatsapp_text_message: {\n       ready: Boolean(text),\n       to: request.channel?.user_id || '',\n       text,\n       sequence_order: 1\n     }\n   }\n }\n];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        6160,
+        -96
+      ],
+      "id": "eee70421-142f-4595-b154-4e1571b16aaa",
+      "name": "Build Image Fallback Text"
+    },
+    {
+      "parameters": {
+        "jsCode": "function clean(value) {\n if (value === null || value === undefined) return '';\n return String(value).trim();\n}\n\nfunction normalize(value) {\n return clean(value)\n   .toLowerCase()\n   .normalize('NFD')\n   .replace(/[\\u0300-\\u036f]/g, '');\n}\n\nfunction includesAny(text, terms) {\n const normalized = normalize(text);\n return terms.some(term => normalized.includes(normalize(term)));\n}\n\nconst input = items[0]?.json || {};\nlet text = clean(input.whatsapp_text_message?.text);\n\nconst violations = [];\n\nif (!text) {\n violations.push('empty_fallback_text');\n}\n\nif (text.length > 520) {\n violations.push('fallback_text_too_long');\n}\n\nconst forbiddenTerms = [\n 'sku',\n 'product_id',\n 'image_ref',\n 'google drive',\n 'n8n',\n 'workflow',\n 'módulo',\n 'modulo',\n 'archivo',\n 'carpeta',\n 'error técnico'\n];\n\nif (includesAny(text, forbiddenTerms)) {\n violations.push('forbidden_internal_or_technical_term');\n}\n\nif (!/[?？]\\s*$/.test(text)) {\n violations.push('missing_final_question');\n}\n\nif (violations.length > 0) {\n const productName =\n   input.image_fallback_text?.display_name ||\n   input.m7_request?.product?.display_name ||\n   'esta opción';\n\n text = `Puedo ayudarte con ${productName}. Por ahora no tengo una imagen disponible para mostrarte. ¿Quieres que te comparta sus características?`;\n}\n\nreturn [\n {\n   json: {\n     ...input,\n     image_fallback_text_validation: {\n       valid: violations.length === 0,\n       violations,\n       fallback_text_rebuilt: violations.length > 0\n     },\n     whatsapp_text_message: {\n       ...(input.whatsapp_text_message || {}),\n       ready: true,\n       text,\n       sequence_order: 1\n     }\n   }\n }\n];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        6384,
+        -96
+      ],
+      "id": "11f2465f-e63c-47f2-9d04-f1644774260a",
+      "name": "Validate Image Fallback Text"
+    },
+    {
+      "parameters": {
+        "jsCode": "const sendResult = items[0]?.json || {};\nconst previous = $('Validate Image Fallback Text').first().json || {};\n\nconst messageId =\n sendResult.messages?.[0]?.id ||\n sendResult.message_id ||\n sendResult.id ||\n '';\n\nconst textSent =\n Boolean(messageId) ||\n Object.keys(sendResult).length > 0;\n\nreturn [\n {\n   json: {\n     ...previous,\n     fallback_text_delivery: {\n       sent: textSent,\n       message_id: messageId,\n       sequence_order: 1,\n       raw_result: sendResult\n     }\n   }\n }\n];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        6832,
+        -96
+      ],
+      "id": "19868238-90d7-498c-95a1-4f0d71ef8438",
+      "name": "Normalize Fallback Text Send Result"
+    },
+    {
+      "parameters": {
+        "jsCode": "const input = items[0]?.json || {};\n\nreturn [\n {\n   json: {\n     schema_version: 'dalia.m7.delivery_result.v1',\n     success: Boolean(input.fallback_text_delivery?.sent),\n     result_type: 'image_fallback_delivery_result',\n\n     delivery: {\n       channel: input.m7_request?.channel?.name || 'whatsapp',\n       sequence_mode: 'text_only_image_fallback',\n       text_sent: Boolean(input.fallback_text_delivery?.sent),\n       image_sent: false,\n       fallback_used: true,\n       fallback_reason:\n         input.image_fallback?.reason ||\n         input.image_fallback_text?.reason ||\n         'image_not_available',\n       order: [\n         {\n           type: 'text',\n           sent: Boolean(input.fallback_text_delivery?.sent),\n           sequence_order: 1,\n           message_id: input.fallback_text_delivery?.message_id || ''\n         }\n       ]\n     },\n\n     image: {\n       resolved: false,\n       source: 'google_drive',\n       product_id:\n         input.image_resolution?.product_id ||\n         input.image_fallback_text?.product_id ||\n         '',\n       sku:\n         input.image_resolution?.sku ||\n         input.image_fallback_text?.sku ||\n         '',\n       display_name:\n         input.image_resolution?.display_name ||\n         input.image_fallback_text?.display_name ||\n         '',\n       file_id: '',\n       file_name: '',\n       whatsapp_media_id: '',\n       fallback_reason:\n         input.image_fallback?.reason ||\n         input.image_fallback_text?.reason ||\n         'image_not_available'\n     },\n\n     trace: input.m7_request?.trace || {},\n\n     validation: {\n       fallback_text_valid:\n         input.image_fallback_text_validation?.valid !== false,\n       fallback_text_rebuilt:\n         Boolean(input.image_fallback_text_validation?.fallback_text_rebuilt)\n     }\n   }\n }\n];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        7056,
+        -96
+      ],
+      "id": "a21ced33-24b5-4b99-8f2d-579df6470803",
+      "name": "Return M7 Image Fallback Result"
+    },
+    {
+      "parameters": {
+        "operation": "send",
+        "phoneNumberId": "1104496126080610",
+        "recipientPhoneNumber": "={{ $json.channel.user_id.split('_').pop() }}",
+        "textBody": "={{ $json.whatsapp_text_message.text }}",
+        "additionalFields": {}
+      },
+      "type": "n8n-nodes-base.whatsApp",
+      "typeVersion": 1.1,
+      "position": [
+        6608,
+        -96
+      ],
+      "id": "d79f3992-037b-477d-a795-ff6f903d790e",
+      "name": "Send WhatsApp Text Only",
+      "webhookId": "aa19080e-fb9d-49da-b8ea-86d7b108ced1",
+      "credentials": {
+        "whatsAppApi": {
+          "id": "3lZ90gsbMgk8fR6e",
+          "name": "WhatsApp account 4"
+        }
+      },
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "jsCode": "function clean(value) {\n if (value === null || value === undefined) return '';\n return String(value).trim();\n}\n\nfunction makeEventId(prefix = 'evt') {\n return `${prefix}_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;\n}\n\nconst input = items[0]?.json || {};\n\nconst request = input.m7_request || {};\nconst delivery = input.delivery || {};\nconst image = input.image || input.image_resolution || {};\n\nconst textDelivery = input.text_delivery || input.fallback_text_delivery || {};\nconst imageDelivery = input.image_delivery || {};\n\nconst textSent = Boolean(delivery.text_sent ?? textDelivery.sent);\nconst imageSent = Boolean(delivery.image_sent ?? imageDelivery.sent);\nconst fallbackUsed = Boolean(delivery.fallback_used);\n\nconst status = textSent || imageSent\n ? 'success'\n : 'error';\n\nconst event = {\n schema_version: 'dalia.m8.event_request.v1',\n event: {\n   event_id: makeEventId('evt_m7'),\n   event_name: status === 'success' ? 'message_sent' : 'delivery_failed',\n   event_type: 'messaging',\n   module: 'M7',\n   status,\n   level: status === 'success' ? 'INFO' : 'ERROR',\n   timestamp: new Date().toISOString(),\n\n   trace: {\n     conversation_id: clean(request.trace?.conversation_id),\n     session_id: clean(request.trace?.session_id)\n   },\n\n   context: {\n     business_id: 'business_demo',\n     environment: 'demo',\n     channel: clean(request.channel?.name || 'whatsapp'),\n     user_id: clean(request.channel?.user_id),\n     display_name: clean(request.channel?.display_name)\n   },\n\n   correlation: {\n     message_id: clean(textDelivery.message_id || imageDelivery.message_id),\n     transaction_id: clean(input.commerce?.transaction_id),\n     handoff_id: clean(input.handoff?.handoff_id || request.control?.handoff_id)\n   },\n\n   payload: {\n     sequence_mode: clean(delivery.sequence_mode || input.product_presentation_plan?.sequence_mode),\n     text_sent: textSent,\n     image_sent: imageSent,\n     fallback_used: fallbackUsed,\n     text_message_id: clean(textDelivery.message_id),\n     image_message_id: clean(imageDelivery.message_id),\n     image_source: clean(image.source),\n     product_id: clean(image.product_id),\n     sku: clean(image.sku),\n     \n     // --- NUEVOS CAMPOS AGREGADOS PARA EL JUEZ M11 ---\n     visible_text_preview: clean(\n       input.m7_request?.message?.replyText ||\n       input.message?.replyText ||\n       input.response?.replyText ||\n       input.text_delivery?.text ||\n       ''\n     ).slice(0, 700),\n     \n     visible_units: [\n       ...(textSent ? [{ type: 'text', sent: true }] : []),\n       ...(imageSent ? [{ type: 'image', sent: true }] : [])\n     ],\n     \n     sequence_observed: imageSent && textSent\n       ? ['text', 'image']\n       : textSent\n       ? ['text']\n       : imageSent\n       ? ['image']\n       : []\n     // ------------------------------------------------\n   },\n\n   error: status === 'error' ? {\n     error_code: 'delivery_failed',\n     error_message: clean(delivery.fallback_reason || image.fallback_reason || 'Message delivery failed'),\n     error_node: 'M7 Delivery',\n     error_workflow: 'DALIA_M7_Messaging_Service_Lite'\n   } : null\n }\n};\n\nreturn [\n {\n   json: {\n     ...input,\n     _main_payload_before_m8: input,\n     m8_event_request: event\n   }\n }\n];\n"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        6832,
+        -384
+      ],
+      "id": "d7f4f869-c17e-4593-abc2-b24e34ab7a07",
+      "name": "Build M8 Event - Message Sent"
+    },
+    {
+      "parameters": {
+        "jsCode": "function clean(value) {\n if (value === null || value === undefined) return '';\n return String(value).trim();\n}\n\nfunction makeEventId(prefix = 'evt') {\n return `${prefix}_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;\n}\n\nconst input = items[0]?.json || {};\n\nconst request = input.m7_request || {};\nconst image = input.image_resolution || {};\nconst imageDelivery = input.image_delivery || {};\n\nconst event = {\n schema_version: 'dalia.m8.event_request.v1',\n event: {\n   event_id: makeEventId('evt_m7_image'),\n   event_name: 'image_sent',\n   event_type: 'messaging',\n   module: 'M7',\n   status: imageDelivery.sent ? 'success' : 'error',\n   level: imageDelivery.sent ? 'INFO' : 'ERROR',\n   timestamp: new Date().toISOString(),\n\n   trace: {\n     conversation_id: clean(request.trace?.conversation_id),\n     session_id: clean(request.trace?.session_id)\n   },\n\n   context: {\n     business_id: 'business_demo',\n     environment: 'demo',\n     channel: clean(request.channel?.name || 'whatsapp'),\n     user_id: clean(request.channel?.user_id),\n     display_name: clean(request.channel?.display_name)\n   },\n\n   correlation: {\n     message_id: clean(imageDelivery.message_id)\n   },\n\n   payload: {\n     image_sent: Boolean(imageDelivery.sent),\n     product_id: clean(image.product_id),\n     sku: clean(image.sku),\n     display_name: clean(image.display_name),\n     source: clean(image.source || 'google_drive'),\n     file_id: clean(image.file_id),\n     file_name: clean(image.file_name)\n   }\n }\n};\n\nreturn [\n {\n   json: {\n     ...input,\n     _main_payload_before_m8: input,\n     m8_event_request: event\n   }\n }\n];\n\n"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        8176,
+        -384
+      ],
+      "id": "5d042d85-e0ec-4e44-a865-572d7318cf59",
+      "name": "Build M8 Event - Image Sent"
+    },
+    {
+      "parameters": {
+        "workflowId": {
+          "__rl": true,
+          "value": "sGL1OJ3lklD6wBu0",
+          "mode": "list",
+          "cachedResultUrl": "/workflow/sGL1OJ3lklD6wBu0",
+          "cachedResultName": "Agente de Ventas - TEST — M8 Observability"
+        },
+        "workflowInputs": {
+          "mappingMode": "defineBelow",
+          "value": {},
+          "matchingColumns": [],
+          "schema": [],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": true
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.executeWorkflow",
+      "typeVersion": 1.3,
+      "position": [
+        8400,
+        -384
+      ],
+      "id": "307f2f9e-8e00-4f73-b820-f1edc611d2a3",
+      "name": "Call 'M8 Observability'",
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "workflowId": {
+          "__rl": true,
+          "value": "sGL1OJ3lklD6wBu0",
+          "mode": "list",
+          "cachedResultUrl": "/workflow/sGL1OJ3lklD6wBu0",
+          "cachedResultName": "Agente de Ventas - TEST — M8 Observability"
+        },
+        "workflowInputs": {
+          "mappingMode": "defineBelow",
+          "value": {},
+          "matchingColumns": [],
+          "schema": [],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": true
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.executeWorkflow",
+      "typeVersion": 1.3,
+      "position": [
+        7056,
+        -384
+      ],
+      "id": "aad97b9a-b86f-4e82-93db-6582fb339d57",
+      "name": "Call 'M8 Observability'1",
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "jsCode": "const original =\n $('Build M8 Event - Message Sent').first().json._main_payload_before_m8 ||\n {};\n\nconst m8Result = items[0]?.json || {};\n\nreturn [\n {\n   json: {\n     ...original,\n     m8_last_result: m8Result\n   }\n }\n];\n"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        7280,
+        -384
+      ],
+      "id": "06cb3e59-5b9d-46b4-ba4e-26753440112b",
+      "name": "Restore Main Payload After M8"
+    },
+    {
+      "parameters": {
+        "jsCode": "const original =\n $('Build M8 Event - Image Sent').first().json._main_payload_before_m8 ||\n {};\n\nconst m8Result = items[0]?.json || {};\n\nreturn [\n {\n   json: {\n     ...original,\n     m8_last_result: m8Result\n   }\n }\n];\n"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        8608,
+        -384
+      ],
+      "id": "186154e1-4d85-45ee-a6ea-65955848201c",
+      "name": "Restore Main Payload After M"
+    },
+    {
+      "parameters": {
+        "jsCode": "function clean(value) {\n  if (value === null || value === undefined) return '';\n  return String(value).trim();\n}\n\nfunction firstNonEmpty(...values) {\n  for (const value of values) {\n    const cleaned = clean(value);\n    if (cleaned) return cleaned;\n  }\n  return '';\n}\n\nconst input = items[0]?.json || {};\n// 👇 1. Capturamos el archivo binario que viene de Google Drive\nconst binary = items[0]?.binary; \n\nconst errorSource = {\n  module: 'M7',\n  workflow_name: 'DALIA_M7_Messaging_Service_Lite',\n  node_name: 'Download Image From Google Drive',\n  error_code: 'm7_drive_image_download_error',\n  recoverable: true\n};\n\nconst errorMessage = firstNonEmpty(\n  input.error?.message,\n  input.error?.errorMessage,\n  input.errorMessage,\n  input.errorDescription,\n  input.message,\n  input.description\n);\n\nconst hasError =\n  Boolean(input.error) ||\n  Boolean(input.errorMessage) ||\n  Boolean(input.errorDescription) ||\n  input.ok === false ||\n  input.success === false;\n\nreturn [\n  {\n    json: {\n      ...input,\n      controlled_error: {\n        detected: hasError,\n        module: errorSource.module,\n        workflow_name: errorSource.workflow_name,\n        node_name: errorSource.node_name,\n        error_code: errorSource.error_code,\n        error_message: errorMessage,\n        recoverable: errorSource.recoverable,\n        raw_result: input,\n        detected_at: new Date().toISOString()\n      }\n    },\n    // 👇 2. Le pasamos el archivo binario intacto al siguiente nodo\n    ...(binary ? { binary } : {}) \n  }\n];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        4016,
+        -272
+      ],
+      "id": "3cfb2338-a2f5-4dd1-afc6-01be811dc2cf",
+      "name": "Detect Controlled Error - Drive"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "bbfc69bc-86ef-4c74-8e2b-a57231f701cb",
+              "leftValue": "={{ $json.controlled_error.detected }}",
+              "rightValue": "",
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        4224,
+        -272
+      ],
+      "id": "1555173d-80ad-467f-826f-8d64653e4621",
+      "name": "If"
+    },
+    {
+      "parameters": {
+        "jsCode": "function clean(value) {\n if (value === null || value === undefined) return '';\n return String(value).trim();\n}\n\nfunction makeEventId(prefix = 'evt_error') {\n return `${prefix}_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;\n}\n\nfunction pickObject(...objects) {\n for (const obj of objects) {\n   if (obj && typeof obj === 'object' && Object.keys(obj).length > 0) {\n     return obj;\n   }\n }\n return {};\n}\n\nconst input = items[0]?.json || {};\nconst err = input.controlled_error || {};\n\nconst request =\n input.m7_request ||\n input.m6_request ||\n input.m5_request ||\n input.m4_request ||\n input.advisor_request ||\n input.m3_request ||\n input.normalized_input ||\n input;\n\nconst trace = pickObject(\n request.trace,\n input.trace,\n input.m7_output?.trace,\n input.m6_output?.trace,\n input.m5_output?.trace\n);\n\nconst context = pickObject(\n request.context,\n input.context,\n input.m7_output?.channel,\n input.m6_output?.context,\n input.m5_output?.context\n);\n\nconst commerce =\n input.commerce ||\n input.commerce_state ||\n input.existing_transaction ||\n input.m5_output?.commerce ||\n {};\n\nconst handoff =\n input.handoff ||\n input.handoff_package ||\n input.m6_output?.handoff ||\n {};\n\nconst event = {\n schema_version: 'dalia.m8.event_request.v1',\n event: {\n   event_id: makeEventId('evt_controlled_error'),\n   event_name: 'error',\n   event_type: 'error',\n   module: err.module || 'UNKNOWN',\n   status: 'error',\n   level: 'ERROR',\n   timestamp: new Date().toISOString(),\n\n   trace: {\n     conversation_id: clean(trace.conversation_id),\n     session_id: clean(trace.session_id),\n     parent_event_id: clean(trace.event_id)\n   },\n\n   context: {\n     business_id: clean(context.business_id || 'business_demo'),\n     environment: clean(context.environment || 'demo'),\n     channel: clean(context.channel || context.name || 'whatsapp'),\n     user_id: clean(context.user_id),\n     display_name: clean(context.display_name)\n   },\n\n   correlation: {\n     message_id: clean(request.input?.message_id || input.message_id),\n     transaction_id: clean(commerce.transaction_id),\n     handoff_id: clean(handoff.handoff_id),\n     correlation_id: clean(trace.conversation_id || trace.session_id),\n     trace_id: clean(trace.session_id)\n   },\n\n   payload: {\n     error_source: 'controlled_node_error',\n     workflow_name: err.workflow_name || '',\n     node_name: err.node_name || '',\n     recoverable: Boolean(err.recoverable),\n     module: err.module || '',\n     current_status:\n       commerce.status ||\n       handoff.status ||\n       input.status ||\n       '',\n     fallback_available: true\n   },\n\n   error: {\n     error_code: err.error_code || 'controlled_error',\n     error_message: err.error_message || 'Controlled node error',\n     error_node: err.node_name || '',\n     error_workflow: err.workflow_name || ''\n   },\n\n   metadata: {\n     detected_at: err.detected_at || new Date().toISOString()\n   }\n }\n};\n\nreturn [\n {\n   json: {\n     ...input,\n     m8_event_request: event\n   }\n }\n];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        4400,
+        -416
+      ],
+      "id": "2f37efe2-cea7-4d70-b4af-9eb3f49c9b6f",
+      "name": "Build M8 Event - Controlled Error1"
+    },
+    {
+      "parameters": {
+        "workflowId": {
+          "__rl": true,
+          "value": "sGL1OJ3lklD6wBu0",
+          "mode": "list",
+          "cachedResultUrl": "/workflow/sGL1OJ3lklD6wBu0",
+          "cachedResultName": "Agente de Ventas - TEST — M8 Observability"
+        },
+        "workflowInputs": {
+          "mappingMode": "defineBelow",
+          "value": {},
+          "matchingColumns": [],
+          "schema": [],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": true
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.executeWorkflow",
+      "typeVersion": 1.3,
+      "position": [
+        4624,
+        -416
+      ],
+      "id": "7d2c3e06-72cf-4ace-a5d2-83c2f209efe7",
+      "name": "Call 'M8 Observability'3",
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "operation": "send",
+        "phoneNumberId": "1104496126080610",
+        "recipientPhoneNumber": "={{ $json.channel.user_id.split('_').pop() }}",
+        "textBody": "={{ $json.message.replyText }}",
+        "additionalFields": {}
+      },
+      "type": "n8n-nodes-base.whatsApp",
+      "typeVersion": 1.1,
+      "position": [
+        1328,
+        -192
+      ],
+      "id": "ac193302-2a5b-44f1-be96-dd858889cd4c",
+      "name": "Send message",
+      "webhookId": "b460a29f-ef9b-4bb2-b571-1abe389a1f6b",
+      "credentials": {
+        "whatsAppApi": {
+          "id": "3lZ90gsbMgk8fR6e",
+          "name": "WhatsApp account 4"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "function makeEventId(prefix = 'evt') {\n  return `${prefix}_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;\n}\n\nconst sendResult = items[0]?.json || {};\nconst previous = $('Text Branch Entry').first().json || {};\nconst request = previous.m7_request || {};\n\nconst messageId =\n  sendResult.messages?.[0]?.id ||\n  sendResult.message_id ||\n  sendResult.id ||\n  '';\n\nconst textSent = Boolean(messageId) || Object.keys(sendResult).length > 0;\n\nconst event = {\n  schema_version: 'dalia.m8.event_request.v1',\n  event: {\n    event_id: makeEventId('evt_m7'),\n    event_name: textSent ? 'message_sent' : 'delivery_failed',\n    event_type: 'messaging',\n    module: 'M7',\n    status: textSent ? 'success' : 'error',\n    level: textSent ? 'INFO' : 'ERROR',\n    timestamp: new Date().toISOString(),\n\n    trace: {\n      conversation_id: request.trace?.conversation_id || '',\n      session_id: request.trace?.session_id || ''\n    },\n\n    context: {\n      business_id: 'business_demo',\n      environment: 'demo',\n      channel: request.channel?.name || 'whatsapp',\n      user_id: request.channel?.user_id || '',\n      display_name: request.channel?.display_name || ''\n    },\n\n    correlation: {\n      message_id: messageId\n    },\n\n    payload: {\n      sequence_mode: 'text_only',\n      text_sent: textSent,\n      text_message_id: messageId,\n      visible_text_preview: (request.message?.replyText || '').slice(0, 700),\n      visible_units: textSent ? [{ type: 'text', sent: true }] : [],\n      sequence_observed: textSent ? ['text'] : []\n    }\n  }\n};\n\nreturn [\n  {\n    json: {\n      ...previous,\n      text_delivery: { sent: textSent, message_id: messageId },\n      m8_event_request: event\n    }\n  }\n];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1536,
+        -192
+      ],
+      "id": "f6fab316-c26e-4b69-ab8b-9c2518abf3b1",
+      "name": "Build M8 Event - Simple Text"
+    },
+    {
+      "parameters": {
+        "workflowId": {
+          "__rl": true,
+          "value": "sGL1OJ3lklD6wBu0",
+          "mode": "list",
+          "cachedResultUrl": "/workflow/sGL1OJ3lklD6wBu0",
+          "cachedResultName": "Agente de Ventas - TEST — M8: Observability"
+        },
+        "workflowInputs": {
+          "mappingMode": "defineBelow",
+          "value": {},
+          "matchingColumns": [],
+          "schema": [],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": true
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.executeWorkflow",
+      "typeVersion": 1.3,
+      "position": [
+        1744,
+        -192
+      ],
+      "id": "d46b7b22-e651-467c-a3d9-6f6c3a78c42e",
+      "name": "Call 'M8: Observability'"
+    }
+  ],
+  "connections": {
+    "When Executed by Another Workflow": {
+      "main": [
+        [
+          {
+            "node": "Load M7 Presentation Config",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Load M7 Presentation Config": {
+      "main": [
+        [
+          {
+            "node": "Normalize M7 Request",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Normalize M7 Request": {
+      "main": [
+        [
+          {
+            "node": "Validate M7 Request",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Validate M7 Request": {
+      "main": [
+        [
+          {
+            "node": "Route Presentation Mode",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Route Presentation Mode": {
+      "main": [
+        [
+          {
+            "node": "Text Branch Entry",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Product Image Branch Entry",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Return Invalid M7 Request",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Product Image Branch Entry": {
+      "main": [
+        [
+          {
+            "node": "Build Product Presentation Plan",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Build Product Presentation Plan": {
+      "main": [
+        [
+          {
+            "node": "Find Category Folder",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Find Category Folder": {
+      "main": [
+        [
+          {
+            "node": "Normalize Category Folder Result",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Normalize Category Folder Result": {
+      "main": [
+        [
+          {
+            "node": "IF Category Folder Found?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "IF Category Folder Found?": {
+      "main": [
+        [
+          {
+            "node": "Find Product Folder",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Return Image Not Found Result",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Find Product Folder": {
+      "main": [
+        [
+          {
+            "node": "Normalize Product Folder Result",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Normalize Product Folder Result": {
+      "main": [
+        [
+          {
+            "node": "IF Product Folder Found?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "IF Product Folder Found?": {
+      "main": [
+        [
+          {
+            "node": "Find Image Files",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Return Image Not Found Result1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Find Image Files": {
+      "main": [
+        [
+          {
+            "node": "Select Product Image",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Select Product Image": {
+      "main": [
+        [
+          {
+            "node": "Return Image Resolution Result",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Image Resolved": {
+      "main": [
+        [
+          {
+            "node": "Download Image From Google Drive",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Image Fallback Branch Entry",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Download Image From Google Drive": {
+      "main": [
+        [
+          {
+            "node": "Detect Controlled Error - Drive",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Prepare WhatsApp Media Upload": {
+      "main": [
+        [
+          {
+            "node": "Media Ready?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Media Ready?": {
+      "main": [
+        [
+          {
+            "node": "Upload WhatsApp Media",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Image Fallback Branch Entry",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Upload WhatsApp Media": {
+      "main": [
+        [
+          {
+            "node": "Normalize WhatsApp Media Upload",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Normalize WhatsApp Media Upload": {
+      "main": [
+        [
+          {
+            "node": "WhatsApp Media Uploaded",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "WhatsApp Media Uploaded": {
+      "main": [
+        [
+          {
+            "node": "Build Product Text Template",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Image Fallback Branch Entry",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Send WhatsApp Text": {
+      "main": [
+        [
+          {
+            "node": "Normalize Text Send Result",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Normalize Text Send Result": {
+      "main": [
+        [
+          {
+            "node": "Build M8 Event - Message Sent",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Build WhatsApp Image Message": {
+      "main": [
+        [
+          {
+            "node": "Send WhatsApp Image",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Send WhatsApp Image": {
+      "main": [
+        [
+          {
+            "node": "Normalize Image Send Result",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Normalize Image Send Result": {
+      "main": [
+        [
+          {
+            "node": "Build M8 Event - Image Sent",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Return Image Resolution Result": {
+      "main": [
+        [
+          {
+            "node": "Image Resolved",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Build Product Text Template": {
+      "main": [
+        [
+          {
+            "node": "Validate Product Text Template",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Validate Product Text Template": {
+      "main": [
+        [
+          {
+            "node": "Send WhatsApp Text",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Image Fallback Branch Entry": {
+      "main": [
+        [
+          {
+            "node": "Build Image Fallback Text",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Build Image Fallback Text": {
+      "main": [
+        [
+          {
+            "node": "Validate Image Fallback Text",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Validate Image Fallback Text": {
+      "main": [
+        [
+          {
+            "node": "Send WhatsApp Text Only",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Normalize Fallback Text Send Result": {
+      "main": [
+        [
+          {
+            "node": "Return M7 Image Fallback Result",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Send WhatsApp Text Only": {
+      "main": [
+        [
+          {
+            "node": "Normalize Fallback Text Send Result",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Build M8 Event - Message Sent": {
+      "main": [
+        [
+          {
+            "node": "Call 'M8 Observability'1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Build M8 Event - Image Sent": {
+      "main": [
+        [
+          {
+            "node": "Call 'M8 Observability'",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Call 'M8 Observability'": {
+      "main": [
+        [
+          {
+            "node": "Restore Main Payload After M",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Call 'M8 Observability'1": {
+      "main": [
+        [
+          {
+            "node": "Restore Main Payload After M8",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Restore Main Payload After M8": {
+      "main": [
+        [
+          {
+            "node": "Build WhatsApp Image Message",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Restore Main Payload After M": {
+      "main": [
+        [
+          {
+            "node": "Return M7 Product Presentation Result",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Detect Controlled Error - Drive": {
+      "main": [
+        [
+          {
+            "node": "If",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "If": {
+      "main": [
+        [
+          {
+            "node": "Build M8 Event - Controlled Error1",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Prepare WhatsApp Media Upload",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Build M8 Event - Controlled Error1": {
+      "main": [
+        [
+          {
+            "node": "Call 'M8 Observability'3",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Call 'M8 Observability'3": {
+      "main": [
+        [
+          {
+            "node": "Image Fallback Branch Entry",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Text Branch Entry": {
+      "main": [
+        [
+          {
+            "node": "Send message",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Send message": {
+      "main": [
+        [
+          {
+            "node": "Build M8 Event - Simple Text",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Build M8 Event - Simple Text": {
+      "main": [
+        [
+          {
+            "node": "Call 'M8: Observability'",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Call 'M8: Observability'": {
+      "main": [
+        []
+      ]
+    }
+  },
+  "nodeGroups": [],
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate",
+    "timeSavedMode": "fixed",
+    "errorWorkflow": "sGL1OJ3lklD6wBu0",
+    "callerPolicy": "workflowsFromSameOwner",
+    "availableInMCP": false
+  },
+  "staticData": null,
+  "pinData": {
+    "When Executed by Another Workflow": [
+      {
+        "json": {
+          "ok": true,
+          "result": {
+            "message_id": 64,
+            "from": {
+              "id": 8786541991,
+              "is_bot": true,
+              "first_name": "Yoecodemotele",
+              "username": "DemoYoEco_bot"
+            },
+            "chat": {
+              "id": 5826865485,
+              "first_name": "eav_x3",
+              "username": "EAV205",
+              "type": "private"
+            },
+            "date": 1790996811,
+            "text": "Nombre: Fabian\nUser ID:wademo1104496126080610573213473953\n\nMensaje:\nHola\n\nThis message was sent automatically with [n8n](https://n8n.io/?utmsource=n8n-internal&utmmedium=poweredby&utmcampaign=n8n-nodes-base.telegram0061e7f2c3bca98d3d065c113e0d3fb1018b05409ad68390164b67598294063b)",
+            "entities": [
+              {
+                "offset": 25,
+                "length": 4,
+                "type": "italic"
+              },
+              {
+                "offset": 45,
+                "length": 29,
+                "type": "italic"
+              },
+              {
+                "offset": 115,
+                "length": 6,
+                "type": "italic"
+              },
+              {
+                "offset": 121,
+                "length": 158,
+                "type": "url"
+              },
+              {
+                "offset": 121,
+                "length": 19,
+                "type": "italic"
+              },
+              {
+                "offset": 163,
+                "length": 14,
+                "type": "italic"
+              },
+              {
+                "offset": 183,
+                "length": 32,
+                "type": "italic"
+              }
+            ],
+            "link_preview_options": {
+              "is_disabled": true
+            }
+          }
+        },
+        "pairedItem": {
+          "item": 0
+        }
+      }
+    ]
+  },
+  "meta": {
+    "templateCredsSetupCompleted": true
+  },
+  "tags": [],
+  "shared": [
+    {
+      "role": "workflow:owner",
+      "workflowId": "uUkm8XfKgUgR9AIf",
+      "projectId": "tRHCC8ts4mkRGXGn",
+      "createdAt": "2026-05-15T19:00:21.355Z",
+      "updatedAt": "2026-05-15T19:00:21.355Z"
+    }
+  ],
+  "activeVersion": {
+    "versionId": "5f644a83-8b59-4868-a39f-000926529a6f",
+    "workflowId": "uUkm8XfKgUgR9AIf",
+    "nodes": [
+      {
+        "parameters": {
+          "inputSource": "passthrough"
+        },
+        "type": "n8n-nodes-base.executeWorkflowTrigger",
+        "typeVersion": 1.1,
+        "position": [
+          0,
+          0
+        ],
+        "id": "8aa9bd6e-d62f-415e-8ee4-5b7925ceab3d",
+        "name": "When Executed by Another Workflow"
+      },
+      {
+        "parameters": {
+          "jsCode": "const input = items[0]?.json || {};\n\nreturn [\n {\n   json: {\n     ...input,\n     m7_config: {\n       service_name: 'DALIA_M7_Messaging_Service_Lite',\n       service_version: 'v1',\n\n       contracts: {\n         request_schema_version: 'dalia.m3_to_m7.v1',\n         result_schema_version: 'dalia.m7.delivery_result.v1'\n       },\n\n       source: {\n         image_provider: 'google_drive',\n         drive_root_folder_id: '1msXda2akpa8wE_Dwcd4vNdtQh-_KHMaZ',\n         folder_strategy: 'category_sku_folder',\n         expected_structure: '/<category>/<sku>/<image_file>'\n       },\n\n       image_policy: {\n         allowed_mime_types: [\n           'image/jpeg',\n           'image/png',\n           'image/webp'\n         ],\n         preferred_name_signals: [\n           'principal',\n           'main',\n           'front',\n           '1'\n         ],\n         max_candidate_files: 10\n       },\n\n       presentation_policy: {\n         default_sequence: 'text_then_image',\n         product_image_modes: [\n           'single'\n         ],\n         allow_images_for_recommendation: false,\n         allow_images_for_product_detail: true\n       },\n\n       fallback_policy: {\n         image_not_found: 'image_not_found',\n         category_folder_not_found: 'category_folder_not_found',\n         product_folder_not_found: 'product_folder_not_found',\n         invalid_image_file: 'invalid_image_file'\n       },\n       text_template_policy: {\n         max_sentences: 4,\n         max_length: 520,\n         ask_one_question_at_end: true,\n         forbid_sku_in_text: true,\n         forbid_internal_terms: true,\n         avoid_price_unless_present: true,\n         avoid_stock_unless_present: true,\n         default_question: '¿Quieres que te comparta más detalles?',\n          fallback_question: '¿Quieres que te ayude a revisar esta opción?'\n        }\n     }\n   }\n }\n\n\n];"
+        },
+        "type": "n8n-nodes-base.code",
+        "typeVersion": 2,
+        "position": [
+          224,
+          0
+        ],
+        "id": "a4b7debc-06ab-4696-939d-5498ca366933",
+        "name": "Load M7 Presentation Config"
+      },
+      {
+        "parameters": {
+          "jsCode": "function clean(value) {\n if (value === null || value === undefined) return '';\n return String(value).trim();\n}\n\nfunction firstArrayItem(value) {\n return Array.isArray(value) && value.length > 0 ? value[0] : null;\n}\n\nconst input = items[0]?.json || {};\nconst config = input.m7_config || {};\n\nconst trace = input.trace || {};\nconst channel = input.channel || {};\nconst message = input.message || {};\nconst presentation = input.presentation || {};\nconst catalog = input.catalog || {};\nconst control = input.control || {};\n\nconst firstImageCandidate = firstArrayItem(presentation.image_candidates);\nconst firstCatalogItem = firstArrayItem(catalog.items);\n\nconst productCandidate = firstImageCandidate || firstCatalogItem || {};\n\nconst sendImage = Boolean(presentation.sendImage);\nconst imageMode = clean(presentation.image_mode || 'none');\nconst responseType = clean(message.response_type);\n\nlet presentationMode = 'text_only';\n\nif (\n sendImage &&\n imageMode === 'single' &&\n responseType === 'product_detail'\n) {\n presentationMode = 'product_with_image';\n}\n\nif (!clean(message.replyText)) {\n presentationMode = 'invalid';\n}\n\nconst normalizedProduct = {\n product_id: clean(\n   productCandidate.product_id ||\n   productCandidate.sku\n ),\n sku: clean(\n   productCandidate.sku ||\n   productCandidate.product_id\n ),\n display_name: clean(productCandidate.display_name),\n category: clean(productCandidate.category),\n color: clean(productCandidate.color)\n};\n\nreturn [\n {\n   json: {\n     ...input,\n     m7_request: {\n       schema_version:\n         input.schema_version ||\n         config.contracts?.request_schema_version ||\n         'dalia.m3_to_m7.v1',\n\n       trace: {\n         event_id: clean(trace.event_id),\n         conversation_id: clean(trace.conversation_id),\n         session_id: clean(trace.session_id)\n       },\n\n       channel: {\n         name: clean(channel.name || 'whatsapp'),\n         user_id: clean(channel.user_id),\n         display_name: clean(channel.display_name)\n       },\n\n       message: {\n         replyText: clean(message.replyText),\n         response_type: responseType,\n         next_step: clean(message.next_step)\n       },\n\n       presentation: {\n         sendImage,\n         image_mode: imageMode,\n         image_candidates: Array.isArray(presentation.image_candidates)\n           ? presentation.image_candidates\n           : []\n       },\n\n       product: normalizedProduct,\n\n       catalog: {\n         used_catalog: catalog.used_catalog !== false,\n         matched: Boolean(catalog.matched),\n         match_type: clean(catalog.match_type),\n         items: Array.isArray(catalog.items) ? catalog.items : []\n       },\n\n       control: {\n         can_continue: control.can_continue !== false,\n         fallback_reason: clean(control.fallback_reason)\n       },\n\n       presentation_mode: presentationMode\n     }\n   }\n }\n];"
+        },
+        "type": "n8n-nodes-base.code",
+        "typeVersion": 2,
+        "position": [
+          448,
+          0
+        ],
+        "id": "48945bc5-a06e-4c87-bbc0-23155620195c",
+        "name": "Normalize M7 Request"
+      },
+      {
+        "parameters": {
+          "jsCode": "function isEmpty(value) {\n return value === null || value === undefined || String(value).trim() === '';\n}\n\nconst input = items[0]?.json || {};\nconst request = input.m7_request || {};\n\n// 🚨 CHEAT CODE: Forzar el modo visual si la IA pidió mandar imagen\nif (request.presentation?.sendImage === true) {\n request.presentation_mode = 'product_with_image';\n}\n\nconst errors = [];\nconst warnings = [];\n\nif (isEmpty(request.channel?.user_id)) {\n errors.push('missing_channel_user_id');\n}\n\nif (isEmpty(request.message?.replyText)) {\n errors.push('missing_reply_text');\n}\n\nif (request.presentation_mode === 'product_with_image') {\n // 1. Relajar la regla: Permitir imágenes tanto en product_detail como en recommendation\n if (request.message?.response_type !== 'product_detail' && request.message?.response_type !== 'recommendation') {\n   errors.push('image_requested_for_invalid_response_type');\n }\n\n // 2. El chequeo estricto de SKU único solo aplica para product_detail\n if (request.message?.response_type === 'product_detail') {\n   if (isEmpty(request.product?.sku) && isEmpty(request.product?.product_id)) {\n     errors.push('missing_product_sku_or_product_id');\n   }\n   if (isEmpty(request.product?.category)) {\n     errors.push('missing_product_category');\n   }\n }\n}\n\nif (\n request.presentation?.sendImage === true &&\n request.presentation_mode !== 'product_with_image'\n) {\n warnings.push('send_image_requested_but_mode_not_product_with_image');\n}\n\nreturn [\n {\n   json: {\n     ...input,\n     m7_validation: {\n       valid: errors.length === 0,\n       errors,\n       warnings\n     }\n   }\n }\n];"
+        },
+        "type": "n8n-nodes-base.code",
+        "typeVersion": 2,
+        "position": [
+          672,
+          0
+        ],
+        "id": "0d5185d1-1424-4448-8328-c76d7d6cbe83",
+        "name": "Validate M7 Request"
+      },
+      {
+        "parameters": {
+          "rules": {
+            "values": [
+              {
+                "conditions": {
+                  "options": {
+                    "caseSensitive": true,
+                    "leftValue": "",
+                    "typeValidation": "strict",
+                    "version": 3
+                  },
+                  "conditions": [
+                    {
+                      "leftValue": "={{ $json.m7_request.presentation_mode }}",
+                      "rightValue": "text_only",
+                      "operator": {
+                        "type": "string",
+                        "operation": "equals"
+                      },
+                      "id": "4063856a-edd1-45b6-9a3b-580ad3073f2f"
+                    }
+                  ],
+                  "combinator": "and"
+                },
+                "renameOutput": true,
+                "outputKey": "output 0"
+              },
+              {
+                "conditions": {
+                  "options": {
+                    "caseSensitive": true,
+                    "leftValue": "",
+                    "typeValidation": "strict",
+                    "version": 3
+                  },
+                  "conditions": [
+                    {
+                      "id": "15bf5c45-f59f-4b9c-810b-e5e8c007e305",
+                      "leftValue": "={{ $json.m7_request.presentation_mode }}",
+                      "rightValue": "product_with_image",
+                      "operator": {
+                        "type": "string",
+                        "operation": "equals",
+                        "name": "filter.operator.equals"
+                      }
+                    }
+                  ],
+                  "combinator": "and"
+                },
+                "renameOutput": true,
+                "outputKey": "output 1"
+              }
+            ]
+          },
+          "options": {
+            "fallbackOutput": "extra"
+          }
+        },
+        "type": "n8n-nodes-base.switch",
+        "typeVersion": 3.4,
+        "position": [
+          896,
+          -16
+        ],
+        "id": "28b7c2f5-1e51-4728-bf4f-ce02eb2f82e0",
+        "name": "Route Presentation Mode"
+      },
+      {
+        "parameters": {
+          "jsCode": "const input = items[0]?.json || {};\n\nreturn [\n {\n   json: {\n     ...input,\n     branch_context: {\n       branch: 'text_only',\n       configured_in_task: 1,\n       next_task: 2,\n       status: 'branch_entry_ready'\n     }\n   }\n }\n];"
+        },
+        "type": "n8n-nodes-base.code",
+        "typeVersion": 2,
+        "position": [
+          1120,
+          -192
+        ],
+        "id": "d388cdea-66b3-4d32-816b-920e637d3122",
+        "name": "Text Branch Entry"
+      },
+      {
+        "parameters": {
+          "jsCode": "const input = items[0]?.json || {};\n\nreturn [\n {\n   json: {\n     ...input,\n     branch_context: {\n       branch: 'product_with_image',\n       configured_in_task: 1,\n       status: 'image_resolution_started'\n     }\n   }\n }\n];"
+        },
+        "type": "n8n-nodes-base.code",
+        "typeVersion": 2,
+        "position": [
+          1120,
+          0
+        ],
+        "id": "65f2e177-2e7b-4ea6-9446-b336121e7b1c",
+        "name": "Product Image Branch Entry"
+      },
+      {
+        "parameters": {
+          "jsCode": "const input = items[0]?.json || {};\n\nreturn [\n {\n   json: {\n     schema_version: 'dalia.m7.delivery_result.v1',\n     success: false,\n     result_type: 'invalid_m7_request',\n     delivery: {\n       channel: input.m7_request?.channel?.name || 'whatsapp',\n       text_sent: false,\n       image_sent: false,\n       fallback_used: true\n     },\n     validation: input.m7_validation || {\n       valid: false,\n       errors: ['invalid_m7_request']\n     },\n     trace: input.m7_request?.trace || {}\n   }\n }\n];"
+        },
+        "type": "n8n-nodes-base.code",
+        "typeVersion": 2,
+        "position": [
+          1120,
+          192
+        ],
+        "id": "4565536f-c867-46ce-9ce0-b1ad164b2e2f",
+        "name": "Return Invalid M7 Request"
+      },
+      {
+        "parameters": {
+          "jsCode": "function clean(value) {\n if (value === null || value === undefined) return '';\n return String(value).trim();\n}\n\nfunction normalizeFolderName(value) {\n return clean(value)\n   .toUpperCase()\n   .replace(/\\s+/g, ' ');\n}\n\nconst input = items[0]?.json || {};\nconst request = input.m7_request || {};\nconst config = input.m7_config || {};\n\nconst product = request.product || {};\n\nconst sku = clean(product.sku || product.product_id);\nconst category = normalizeFolderName(product.category);\n\nconst imageLookup = {\n provider: 'google_drive',\n strategy: config.source?.folder_strategy || 'category_sku_folder',\n root_folder_id: config.source?.drive_root_folder_id || '',\n category_folder_name: category,\n product_folder_name: sku,\n sku,\n product_id: clean(product.product_id || sku),\n display_name: clean(product.display_name),\n allowed_mime_types: config.image_policy?.allowed_mime_types || [\n   'image/jpeg',\n   'image/png',\n   'image/webp'\n ],\n preferred_name_signals: config.image_policy?.preferred_name_signals || [\n   'principal',\n   'main',\n   'front',\n   '1'\n ]\n};\n\nreturn [\n {\n   json: {\n     ...input,\n     product_presentation_plan: {\n       product,\n       image_lookup: imageLookup,\n       sequence_mode: config.presentation_policy?.default_sequence || 'text_then_image'\n     }\n   }\n }\n];"
+        },
+        "type": "n8n-nodes-base.code",
+        "typeVersion": 2,
+        "position": [
+          1344,
+          0
+        ],
+        "id": "45eb1222-60e4-42e9-acfd-d44162450cdc",
+        "name": "Build Product Presentation Plan"
+      },
+      {
+        "parameters": {
+          "jsCode": "const planNode = $('Build Product Presentation Plan').first().json || {};\nconst folder = items[0]?.json || {};\n\nconst found = Boolean(folder.id);\n\nreturn [\n {\n   json: {\n     ...planNode,\n     image_resolution_step: {\n       category_folder: {\n         found,\n         id: folder.id || '',\n         name: folder.name || ''\n       }\n     }\n   }\n }\n];"
+        },
+        "type": "n8n-nodes-base.code",
+        "typeVersion": 2,
+        "position": [
+          1792,
+          0
+        ],
+        "id": "6a4abbc7-94c8-4692-9d97-3dd413344649",
+        "name": "Normalize Category Folder Result"
+      },
+      {
+        "parameters": {
+          "resource": "fileFolder",
+          "searchMethod": "query",
+          "queryString": "=mimeType = 'application/vnd.google-apps.folder' and trashed = false and name = '{{ $json.product_presentation_plan.image_lookup.category_folder_name }}' and '{{ $json.product_presentation_plan.image_lookup.root_folder_id }}' in parents",
+          "limit": 1,
+          "filter": {},
+          "options": {}
+        },
+        "type": "n8n-nodes-base.googleDrive",
+        "typeVersion": 3,
+        "position": [
+          1568,
+          0
+        ],
+        "id": "e59fd40e-dd58-420c-9dee-3ccf6af1aaba",
+        "name": "Find Category Folder",
+        "alwaysOutputData": true,
+        "credentials": {
+          "googleDriveOAuth2Api": {
+            "id": "lgNrEQGQeSWc6bsi",
+            "name": "Google Drive OAuth2 API"
+          }
+        }
+      },
+      {
+        "parameters": {
+          "conditions": {
+            "options": {
+              "caseSensitive": true,
+              "leftValue": "",
+              "typeValidation": "strict",
+              "version": 3
+            },
+            "conditions": [
+              {
+                "id": "5e614916-647b-47a5-8129-3eeec13e2434",
+                "leftValue": "={{ $json.image_resolution_step.category_folder.found }}",
+                "rightValue": "",
+                "operator": {
+                  "type": "boolean",
+                  "operation": "true",
+                  "singleValue": true
+                }
+              }
+            ],
+            "combinator": "and"
+          },
+          "options": {}
+        },
+        "type": "n8n-nodes-base.if",
+        "typeVersion": 2.3,
+        "position": [
+          2016,
+          0
+        ],
+        "id": "d6edc3f1-3108-4594-82fd-541cfd39f7d0",
+        "name": "IF Category Folder Found?"
+      },
+      {
+        "parameters": {
+          "resource": "fileFolder",
+          "searchMethod": "query",
+          "queryString": "=mimeType = 'application/vnd.google-apps.folder' and trashed = false and name = '{{ $json.product_presentation_plan.image_lookup.product_folder_name }}' and '{{ $json.image_resolution_step.category_folder.id }}' in parents",
+          "limit": 1,
+          "filter": {},
+          "options": {}
+        },
+        "type": "n8n-nodes-base.googleDrive",
+        "typeVersion": 3,
+        "position": [
+          2240,
+          -96
+        ],
+        "id": "535981f8-c209-44df-9b30-294ad3fe2117",
+        "name": "Find Product Folder",
+        "alwaysOutputData": true,
+        "credentials": {
+          "googleDriveOAuth2Api": {
+            "id": "lgNrEQGQeSWc6bsi",
+            "name": "Google Drive OAuth2 API"
+          }
+        }
+      },
+      {
+        "parameters": {
+          "jsCode": "const previous = $('Normalize Category Folder Result').first().json || {};\nconst folder = items[0]?.json || {};\n\nconst found = Boolean(folder.id);\n\nreturn [\n {\n   json: {\n     ...previous,\n     image_resolution_step: {\n       ...previous.image_resolution_step,\n       product_folder: {\n         found,\n         id: folder.id || '',\n         name: folder.name || ''\n       }\n     }\n   }\n }\n];"
+        },
+        "type": "n8n-nodes-base.code",
+        "typeVersion": 2,
+        "position": [
+          2464,
+          -96
+        ],
+        "id": "6815330d-f5e7-4fb5-aa1c-af13483eb0ef",
+        "name": "Normalize Product Folder Result"
+      },
+      {
+        "parameters": {
+          "conditions": {
+            "options": {
+              "caseSensitive": true,
+              "leftValue": "",
+              "typeValidation": "strict",
+              "version": 3
+            },
+            "conditions": [
+              {
+                "id": "4c9e466d-32f9-45cf-a8cf-6ed3fc9dddbd",
+                "leftValue": "={{ $json.image_resolution_step.product_folder.found }}",
+                "rightValue": "",
+                "operator": {
+                  "type": "boolean",
+                  "operation": "true",
+                  "singleValue": true
+                }
+              }
+            ],
+            "combinator": "and"
+          },
+          "options": {}
+        },
+        "type": "n8n-nodes-base.if",
+        "typeVersion": 2.3,
+        "position": [
+          2688,
+          -96
+        ],
+        "id": "085d6d8d-b21e-434c-abca-1fcd277263a9",
+        "name": "IF Product Folder Found?"
+      },
+      {
+        "parameters": {
+          "resource": "fileFolder",
+          "searchMethod": "query",
+          "queryString": "=trashed = false and '{{ $json.image_resolution_step.product_folder.id }}' in parents and (  mimeType = 'image/jpeg'  or mimeType = 'image/png'  or mimeType = 'image/webp' )",
+          "limit": 10,
+          "filter": {},
+          "options": {}
+        },
+        "type": "n8n-nodes-base.googleDrive",
+        "typeVersion": 3,
+        "position": [
+          2912,
+          -192
+        ],
+        "id": "c39a8675-4f7c-4bbc-a2ac-b9d3310adbd1",
+        "name": "Find Image Files",
+        "alwaysOutputData": true,
+        "credentials": {
+          "googleDriveOAuth2Api": {
+            "id": "lgNrEQGQeSWc6bsi",
+            "name": "Google Drive OAuth2 API"
+          }
+        }
+      },
+      {
+        "parameters": {
+          "jsCode": "function clean(value) {\n if (value === null || value === undefined) return '';\n return String(value).trim();\n}\n\nfunction normalize(value) {\n return clean(value)\n   .toLowerCase()\n   .normalize('NFD')\n   .replace(/[\\u0300-\\u036f]/g, '');\n}\n\nconst planNode = $('Normalize Product Folder Result').first().json || {};\nconst lookup = planNode.product_presentation_plan?.image_lookup || {};\n\nconst allowedMimeTypes = lookup.allowed_mime_types || [\n 'image/jpeg',\n 'image/png',\n 'image/webp'\n];\n\nconst preferredSignals = lookup.preferred_name_signals || [\n 'principal',\n 'main',\n 'front',\n '1'\n];\n\nconst files = items\n .map(item => item.json || {})\n .filter(file => file.id)\n .filter(file => {\n   if (!file.mimeType) return true;\n   return allowedMimeTypes.includes(file.mimeType);\n });\n\nconst scoredFiles = files.map(file => {\n const fileName = normalize(file.name);\n let score = 0;\n\n if (preferredSignals.some(signal => fileName.includes(normalize(signal)))) {\n   score += 100;\n }\n\n if (fileName.includes(normalize(lookup.sku))) {\n   score += 50;\n }\n\n const modifiedTime = file.modifiedTime\n   ? new Date(file.modifiedTime).getTime()\n   : 0;\n\n return {\n   ...file,\n   _selection_score: score,\n   _modified_time_number: modifiedTime\n };\n});\n\nscoredFiles.sort((a, b) => {\n if (b._selection_score !== a._selection_score) {\n   return b._selection_score - a._selection_score;\n }\n\n return b._modified_time_number - a._modified_time_number;\n});\n\nconst selected = scoredFiles[0] || null;\n\nconst resolved = Boolean(selected?.id);\n\nreturn [\n {\n   json: {\n     ...planNode,\n     image_resolution: {\n       resolved,\n       source: 'google_drive',\n       provider: 'google_drive',\n       strategy: lookup.strategy || 'category_sku_folder',\n       product_id: lookup.product_id || '',\n       sku: lookup.sku || '',\n       display_name: lookup.display_name || '',\n       category: lookup.category_folder_name || '',\n       file_id: selected?.id || '',\n       file_name: selected?.name || '',\n       mime_type: selected?.mimeType || '',\n       web_view_link: selected?.webViewLink || '',\n       fallback_reason: resolved ? '' : 'image_not_found',\n       candidates_found: files.length\n     }\n   }\n }\n];"
+        },
+        "type": "n8n-nodes-base.code",
+        "typeVersion": 2,
+        "position": [
+          3136,
+          -192
+        ],
+        "id": "7d944f2a-e4de-48d3-8366-3c2f71f7d1a9",
+        "name": "Select Product Image"
+      },
+      {
+        "parameters": {
+          "jsCode": "const input = items[0]?.json || {};\n\nreturn [\n {\n   json: {\n     schema_version: 'dalia.m7.image_resolution_result.v1',\n     success: Boolean(input.image_resolution?.resolved),\n     result_type: 'image_resolution_result',\n     trace: input.m7_request?.trace || {},\n     product: input.product_presentation_plan?.product || {},\n     image_resolution: input.image_resolution || {\n       resolved: false,\n       source: 'google_drive',\n       fallback_reason: 'image_not_found'\n     },\n     m7_request: input.m7_request,\n     product_presentation_plan: input.product_presentation_plan\n   }\n }\n];"
+        },
+        "type": "n8n-nodes-base.code",
+        "typeVersion": 2,
+        "position": [
+          3360,
+          -192
+        ],
+        "id": "f9a09126-5cb6-48ab-8d74-6c1fc4ea71b7",
+        "name": "Return Image Resolution Result"
+      },
+      {
+        "parameters": {
+          "jsCode": "const input = items[0]?.json || {};\n\nlet reason = 'image_not_found';\n\nif (input.image_resolution_step?.category_folder?.found === false) {\n reason = 'category_folder_not_found';\n}\n\nif (input.image_resolution_step?.product_folder?.found === false) {\n reason = 'product_folder_not_found';\n}\n\nreturn [\n {\n   json: {\n     schema_version: 'dalia.m7.image_resolution_result.v1',\n     success: false,\n     result_type: 'image_resolution_result',\n     trace: input.m7_request?.trace || {},\n     product: input.product_presentation_plan?.product || {},\n     image_resolution: {\n       resolved: false,\n       source: 'google_drive',\n       provider: 'google_drive',\n       strategy: input.product_presentation_plan?.image_lookup?.strategy || 'category_sku_folder',\n       product_id: input.product_presentation_plan?.image_lookup?.product_id || '',\n       sku: input.product_presentation_plan?.image_lookup?.sku || '',\n       display_name: input.product_presentation_plan?.image_lookup?.display_name || '',\n       category: input.product_presentation_plan?.image_lookup?.category_folder_name || '',\n       file_id: '',\n       file_name: '',\n       mime_type: '',\n       web_view_link: '',\n       fallback_reason: reason,\n       candidates_found: 0\n     },\n     m7_request: input.m7_request,\n     product_presentation_plan: input.product_presentation_plan\n   }\n }\n];"
+        },
+        "type": "n8n-nodes-base.code",
+        "typeVersion": 2,
+        "position": [
+          2240,
+          96
+        ],
+        "id": "d73e0105-b1f9-4f5b-b55e-895b62f3bd8a",
+        "name": "Return Image Not Found Result"
+      },
+      {
+        "parameters": {
+          "jsCode": "const input = items[0]?.json || {};\n\nlet reason = 'image_not_found';\n\nif (input.image_resolution_step?.category_folder?.found === false) {\n reason = 'category_folder_not_found';\n}\n\nif (input.image_resolution_step?.product_folder?.found === false) {\n reason = 'product_folder_not_found';\n}\n\nreturn [\n {\n   json: {\n     schema_version: 'dalia.m7.image_resolution_result.v1',\n     success: false,\n     result_type: 'image_resolution_result',\n     trace: input.m7_request?.trace || {},\n     product: input.product_presentation_plan?.product || {},\n     image_resolution: {\n       resolved: false,\n       source: 'google_drive',\n       provider: 'google_drive',\n       strategy: input.product_presentation_plan?.image_lookup?.strategy || 'category_sku_folder',\n       product_id: input.product_presentation_plan?.image_lookup?.product_id || '',\n       sku: input.product_presentation_plan?.image_lookup?.sku || '',\n       display_name: input.product_presentation_plan?.image_lookup?.display_name || '',\n       category: input.product_presentation_plan?.image_lookup?.category_folder_name || '',\n       file_id: '',\n       file_name: '',\n       mime_type: '',\n       web_view_link: '',\n       fallback_reason: reason,\n       candidates_found: 0\n     },\n     m7_request: input.m7_request,\n     product_presentation_plan: input.product_presentation_plan\n   }\n }\n];"
+        },
+        "type": "n8n-nodes-base.code",
+        "typeVersion": 2,
+        "position": [
+          2912,
+          0
+        ],
+        "id": "9e362158-ed8a-44e8-a34f-dbdfdeb1e71c",
+        "name": "Return Image Not Found Result1"
+      },
+      {
+        "parameters": {
+          "conditions": {
+            "options": {
+              "caseSensitive": true,
+              "leftValue": "",
+              "typeValidation": "strict",
+              "version": 3
+            },
+            "conditions": [
+              {
+                "id": "b86b2159-bed5-4b06-9911-d4b0459de547",
+                "leftValue": "={{ $json.image_resolution.resolved }}",
+                "rightValue": "",
+                "operator": {
+                  "type": "boolean",
+                  "operation": "true",
+                  "singleValue": true
+                }
+              }
+            ],
+            "combinator": "and"
+          },
+          "options": {}
+        },
+        "type": "n8n-nodes-base.if",
+        "typeVersion": 2.3,
+        "position": [
+          3584,
+          -192
+        ],
+        "id": "8932a7f6-50e3-44ab-97db-fe66a5b76595",
+        "name": "Image Resolved"
+      },
+      {
+        "parameters": {
+          "jsCode": "const input = items[0]?.json || {};\n\nfunction inferFallbackReason(input) {\n if (input.image_resolution?.fallback_reason) {\n   return input.image_resolution.fallback_reason;\n }\n\n if (input.media_preparation?.fallback_reason) {\n   return input.media_preparation.fallback_reason;\n }\n\n if (input.whatsapp_media?.fallback_reason) {\n   return input.whatsapp_media.fallback_reason;\n }\n\n if (input.image_resolution_step?.category_folder?.found === false) {\n   return 'category_folder_not_found';\n }\n\n if (input.image_resolution_step?.product_folder?.found === false) {\n   return 'product_folder_not_found';\n }\n\n return 'image_not_available';\n}\n\nreturn [\n {\n   json: {\n     ...input,\n     image_fallback: {\n       active: true,\n       reason: inferFallbackReason(input),\n       source: 'google_drive',\n       user_visible: false\n     },\n     branch_context: {\n       branch: 'image_fallback',\n       configured_in_task: 4,\n       status: 'fallback_started'\n     }\n   }\n }\n];"
+        },
+        "type": "n8n-nodes-base.code",
+        "typeVersion": 2,
+        "position": [
+          5936,
+          -96
+        ],
+        "id": "b2a0d8eb-9b52-4664-9397-8ee692e08964",
+        "name": "Image Fallback Branch Entry"
+      },
+      {
+        "parameters": {
+          "operation": "download",
+          "fileId": {
+            "__rl": true,
+            "value": "={{ $json.image_resolution.file_id }}",
+            "mode": "id"
+          },
+          "options": {}
+        },
+        "type": "n8n-nodes-base.googleDrive",
+        "typeVersion": 3,
+        "position": [
+          3808,
+          -272
+        ],
+        "id": "017e902f-beac-476b-9a3a-98fdc65c0150",
+        "name": "Download Image From Google Drive",
+        "credentials": {
+          "googleDriveOAuth2Api": {
+            "id": "lgNrEQGQeSWc6bsi",
+            "name": "Google Drive OAuth2 API"
+          }
+        },
+        "onError": "continueRegularOutput"
+      },
+      {
+        "parameters": {
+          "jsCode": "const input = items[0]?.json || {};\nconst binary = items[0]?.binary || {};\n\nconst imageResolution =\n $('Select Product Image').first().json.image_resolution || {};\n\nconst m7Request =\n $('Select Product Image').first().json.m7_request || {};\n\nconst hasBinary = Boolean(binary.data);\n\nreturn [\n {\n   json: {\n     ...$('Select Product Image').first().json,\n     media_preparation: {\n       ready: hasBinary,\n       binary_property: 'data',\n       file_id: imageResolution.file_id || '',\n       file_name: imageResolution.file_name || '',\n       mime_type: imageResolution.mime_type || 'image/jpeg',\n       product_id: imageResolution.product_id || '',\n       sku: imageResolution.sku || '',\n       display_name: imageResolution.display_name || '',\n       fallback_reason: hasBinary ? '' : 'google_drive_download_failed'\n     },\n     m7_request: m7Request\n   },\n   binary\n }\n];\n"
+        },
+        "type": "n8n-nodes-base.code",
+        "typeVersion": 2,
+        "position": [
+          4816,
+          -272
+        ],
+        "id": "635d00bc-8aca-4a52-a282-32a478f2e08d",
+        "name": "Prepare WhatsApp Media Upload"
+      },
+      {
+        "parameters": {
+          "conditions": {
+            "options": {
+              "caseSensitive": true,
+              "leftValue": "",
+              "typeValidation": "strict",
+              "version": 3
+            },
+            "conditions": [
+              {
+                "id": "213bb223-0f0f-41c1-a8c1-552ccc6a5c3f",
+                "leftValue": "={{ $json.media_preparation.ready }}",
+                "rightValue": "",
+                "operator": {
+                  "type": "boolean",
+                  "operation": "true",
+                  "singleValue": true
+                }
+              }
+            ],
+            "combinator": "and"
+          },
+          "options": {}
+        },
+        "type": "n8n-nodes-base.if",
+        "typeVersion": 2.3,
+        "position": [
+          5040,
+          -272
+        ],
+        "id": "151621e1-1fe0-489d-baaa-7244db465a12",
+        "name": "Media Ready?"
+      },
+      {
+        "parameters": {
+          "resource": "media",
+          "phoneNumberId": "1104496126080610",
+          "mediaPropertyName": "=data",
+          "additionalFields": {}
+        },
+        "type": "n8n-nodes-base.whatsApp",
+        "typeVersion": 1.1,
+        "position": [
+          5264,
+          -336
+        ],
+        "id": "baf1c206-9f9e-4a95-abef-1853fa8431ab",
+        "name": "Upload WhatsApp Media",
+        "webhookId": "3c375c51-2a0f-4709-9018-832a2df82509",
+        "credentials": {
+          "whatsAppApi": {
+            "id": "3lZ90gsbMgk8fR6e",
+            "name": "WhatsApp account 4"
+          }
+        },
+        "onError": "continueRegularOutput"
+      },
+      {
+        "parameters": {
+          "jsCode": "const uploadResult = items[0]?.json || {};\nconst previous = $('Prepare WhatsApp Media Upload').first().json || {};\n\nconst mediaId =\n uploadResult.id ||\n uploadResult.media_id ||\n uploadResult.media?.id ||\n '';\n\nreturn [\n {\n   json: {\n     ...previous,\n     whatsapp_media: {\n       uploaded: Boolean(mediaId),\n       media_id: mediaId,\n       raw_result: uploadResult,\n       fallback_reason: mediaId ? '' : 'whatsapp_media_upload_failed'\n     }\n   },\n   binary: items[0]?.binary || {}\n }\n];\n"
+        },
+        "type": "n8n-nodes-base.code",
+        "typeVersion": 2,
+        "position": [
+          5488,
+          -336
+        ],
+        "id": "b24c3f7b-caf9-4a33-89e2-454d027c15f0",
+        "name": "Normalize WhatsApp Media Upload"
+      },
+      {
+        "parameters": {
+          "conditions": {
+            "options": {
+              "caseSensitive": true,
+              "leftValue": "",
+              "typeValidation": "strict",
+              "version": 3
+            },
+            "conditions": [
+              {
+                "id": "b5907b6f-bde8-4c6c-92c0-0bbb440dc580",
+                "leftValue": "={{ $json.whatsapp_media.uploaded }}",
+                "rightValue": "",
+                "operator": {
+                  "type": "boolean",
+                  "operation": "true",
+                  "singleValue": true
+                }
+              }
+            ],
+            "combinator": "and"
+          },
+          "options": {}
+        },
+        "type": "n8n-nodes-base.if",
+        "typeVersion": 2.3,
+        "position": [
+          5712,
+          -336
+        ],
+        "id": "51d51b25-681a-425b-ba93-60aa95184e6a",
+        "name": "WhatsApp Media Uploaded"
+      },
+      {
+        "parameters": {
+          "operation": "send",
+          "phoneNumberId": "1104496126080610",
+          "recipientPhoneNumber": "={{ $json.channel.user_id.split('_').pop() }}",
+          "textBody": "={{ $json.whatsapp_text_message.text }}",
+          "additionalFields": {}
+        },
+        "type": "n8n-nodes-base.whatsApp",
+        "typeVersion": 1.1,
+        "position": [
+          6384,
+          -384
+        ],
+        "id": "0f8b9ee9-b2da-4ce9-b511-709b5db8a644",
+        "name": "Send WhatsApp Text",
+        "webhookId": "aa19080e-fb9d-49da-b8ea-86d7b108ced1",
+        "credentials": {
+          "whatsAppApi": {
+            "id": "3lZ90gsbMgk8fR6e",
+            "name": "WhatsApp account 4"
+          }
+        }
+      },
+      {
+        "parameters": {
+          "jsCode": "const sendResult = items[0]?.json || {};\nconst previous = $('Build Product Text Template').first().json || {};\n\nconst messageId =\n sendResult.messages?.[0]?.id ||\n sendResult.message_id ||\n sendResult.id ||\n '';\n\nreturn [\n {\n   json: {\n     ...previous,\n     text_delivery: {\n       sent: Boolean(messageId) || Object.keys(sendResult).length > 0,\n       message_id: messageId,\n       sequence_order: 1,\n       raw_result: sendResult\n     }\n   }\n }\n];\n"
+        },
+        "type": "n8n-nodes-base.code",
+        "typeVersion": 2,
+        "position": [
+          6608,
+          -384
+        ],
+        "id": "081ef7b2-e9f3-4511-b121-068daf467caa",
+        "name": "Normalize Text Send Result"
+      },
+      {
+        "parameters": {
+          "jsCode": "const input = items[0]?.json || {};\nconst request = input.m7_request || {};\nconst media = input.whatsapp_media || {};\nconst image = input.image_resolution || {};\n\nreturn [\n {\n   json: {\n     ...input,\n     whatsapp_image_message: {\n       ready: Boolean(media.media_id),\n       to: request.channel?.user_id || '',\n       media_id: media.media_id || '',\n       caption: '',\n       sequence_order: 2,\n       product_id: image.product_id || '',\n       sku: image.sku || '',\n       display_name: image.display_name || ''\n     }\n   }\n }\n];\n"
+        },
+        "type": "n8n-nodes-base.code",
+        "typeVersion": 2,
+        "position": [
+          7504,
+          -384
+        ],
+        "id": "ac514f52-1f5c-445a-8b1d-8c032a2721f0",
+        "name": "Build WhatsApp Image Message"
+      },
+      {
+        "parameters": {
+          "operation": "send",
+          "phoneNumberId": "1104496126080610",
+          "recipientPhoneNumber": "={{ $json.channel.user_id.split('_').pop() }}",
+          "messageType": "image",
+          "mediaPath": "useMediaId",
+          "mediaId": "={{ $json.whatsapp_image_message.media_id }}",
+          "additionalFields": {}
+        },
+        "type": "n8n-nodes-base.whatsApp",
+        "typeVersion": 1.1,
+        "position": [
+          7728,
+          -384
+        ],
+        "id": "e5207f30-c694-426c-b7f9-2758abebf811",
+        "name": "Send WhatsApp Image",
+        "webhookId": "d5ff56c3-586e-49dc-b1b1-14ce9cab39f8",
+        "credentials": {
+          "whatsAppApi": {
+            "id": "3lZ90gsbMgk8fR6e",
+            "name": "WhatsApp account 4"
+          }
+        },
+        "onError": "continueRegularOutput"
+      },
+      {
+        "parameters": {
+          "jsCode": "const sendResult = items[0]?.json || {};\nconst previous = $('Build WhatsApp Image Message').first().json || {};\n\nconst messageId =\n sendResult.messages?.[0]?.id ||\n sendResult.message_id ||\n sendResult.id ||\n '';\n\nreturn [\n {\n   json: {\n     ...previous,\n     image_delivery: {\n       sent: Boolean(messageId) || Object.keys(sendResult).length > 0,\n       message_id: messageId,\n       sequence_order: 2,\n       raw_result: sendResult\n     }\n   }\n }\n];\n"
+        },
+        "type": "n8n-nodes-base.code",
+        "typeVersion": 2,
+        "position": [
+          7952,
+          -384
+        ],
+        "id": "9b72c297-b4f4-4615-a1c7-04505c468cfa",
+        "name": "Normalize Image Send Result"
+      },
+      {
+        "parameters": {
+          "jsCode": "const input = items[0]?.json || {};\n\nreturn [\n {\n   json: {\n     schema_version: 'dalia.m7.delivery_result.v1',\n     success: Boolean(input.text_delivery?.sent && input.image_delivery?.sent),\n     result_type: 'product_presentation_delivery_result',\n\n     delivery: {\n       channel: input.m7_request?.channel?.name || 'whatsapp',\n       sequence_mode: 'text_then_image',\n       text_sent: Boolean(input.text_delivery?.sent),\n       image_sent: Boolean(input.image_delivery?.sent),\n       fallback_used: false,\n       text_template: {\n       source: input.product_text_template?.source || '',\n       validated: input.product_text_validation?.valid !== false,\n       fallback_applied: Boolean(input.product_text_validation?.fallback_applied)\n      },\n       order: [\n         {\n           type: 'text',\n           sent: Boolean(input.text_delivery?.sent),\n           sequence_order: 1,\n           message_id: input.text_delivery?.message_id || ''\n         },\n         {\n           type: 'image',\n           sent: Boolean(input.image_delivery?.sent),\n           sequence_order: 2,\n           message_id: input.image_delivery?.message_id || ''\n         }\n       ]\n     },\n\n     image: {\n       resolved: Boolean(input.image_resolution?.resolved),\n       source: 'google_drive',\n       product_id: input.image_resolution?.product_id || '',\n       sku: input.image_resolution?.sku || '',\n       display_name: input.image_resolution?.display_name || '',\n       file_id: input.image_resolution?.file_id || '',\n       file_name: input.image_resolution?.file_name || '',\n       whatsapp_media_id: input.whatsapp_media?.media_id || ''\n     },\n\n     trace: input.m7_request?.trace || {},\n\n     validation: {\n       m7_request_valid: input.m7_validation?.valid !== false,\n       image_resolved: Boolean(input.image_resolution?.resolved),\n       media_uploaded: Boolean(input.whatsapp_media?.uploaded)\n     }\n   }\n }\n];\n"
+        },
+        "type": "n8n-nodes-base.code",
+        "typeVersion": 2,
+        "position": [
+          8816,
+          -384
+        ],
+        "id": "96f18d19-eff1-4f64-9cde-d9f3ef64bb4b",
+        "name": "Return M7 Product Presentation Result"
+      },
+      {
+        "parameters": {
+          "jsCode": "function clean(value) {\n if (value === null || value === undefined) return '';\n return String(value).trim();\n}\n\nfunction normalize(value) {\n return clean(value)\n   .toLowerCase()\n   .normalize('NFD')\n   .replace(/[\\u0300-\\u036f]/g, '');\n}\n\nfunction removeInternalTerms(text) {\n return clean(text)\n   .replace(/\\bSKU\\b/gi, '')\n   .replace(/\\bproduct_id\\b/gi, '')\n   .replace(/\\bimage_ref\\b/gi, '')\n   .replace(/\\bretrieval_score\\b/gi, '')\n   .replace(/\\bQdrant\\b/gi, '')\n   .replace(/\\bn8n\\b/gi, '')\n   .replace(/\\bGoogle Drive\\b/gi, '')\n   .replace(/\\bworkflow\\b/gi, '')\n   .replace(/\\bmódulo\\b/gi, '')\n   .replace(/\\bmodulo\\b/gi, '')\n   .replace(/\\s{2,}/g, ' ')\n   .trim();\n}\n\nfunction splitSentences(text) {\n return clean(text)\n   .split(/(?<=[.!?])\\s+/)\n   .map(sentence => sentence.trim())\n   .filter(Boolean);\n}\n\nfunction limitSentences(text, maxSentences) {\n const sentences = splitSentences(text);\n if (sentences.length <= maxSentences) return clean(text);\n return sentences.slice(0, maxSentences).join(' ');\n}\n\nfunction limitLength(text, maxLength) {\n const cleanText = clean(text);\n if (cleanText.length <= maxLength) return cleanText;\n return cleanText.slice(0, maxLength).replace(/\\s+\\S*$/, '').trim() + '.';\n}\n\nfunction hasQuestionAtEnd(text) {\n return /[?？]\\s*$/.test(clean(text));\n}\n\nfunction ensureQuestionAtEnd(text, question) {\n const cleanText = clean(text);\n\n if (!cleanText) return question;\n if (hasQuestionAtEnd(cleanText)) return cleanText;\n\n return `${cleanText} ${question}`;\n}\n\nfunction firstSentence(value) {\n const sentences = splitSentences(value);\n return sentences[0] || '';\n}\n\nfunction buildTemplateFromProduct(product, request, policy) {\n const productName = clean(product.display_name) || 'este producto';\n const category = clean(product.category);\n const color = clean(product.color);\n const description = clean(product.description_short);\n\n const benefit = firstSentence(description);\n\n let text = `Te muestro ${productName}.`;\n\n if (benefit) {\n   text += ` ${benefit}.`;\n } else if (category) {\n   text += ` Es una opción de la categoría ${category}.`;\n }\n\n if (color) {\n   text += ` En esta referencia lo tengo identificado en color ${color}.`;\n }\n\n text = ensureQuestionAtEnd(\n   text,\n   policy.default_question || '¿Quieres que te comparta más detalles?'\n );\n\n return text;\n}\n\nfunction isTextUsable(text, policy) {\n const value = clean(text);\n if (!value) return false;\n\n const normalized = normalize(value);\n\n const forbidden = [\n   'sku',\n   'product_id',\n   'image_ref',\n   'retrieval_score',\n   'qdrant',\n   'n8n',\n   'google drive',\n   'workflow',\n   'modulo',\n   'módulo'\n ];\n\n if (forbidden.some(term => normalized.includes(normalize(term)))) {\n   return false;\n }\n\n if (value.length > Number(policy.max_length || 520)) {\n   return false;\n }\n\n return true;\n}\n\nconst input = items[0]?.json || {};\nconst request = input.m7_request || {};\nconst config = input.m7_config || {};\nconst policy = config.text_template_policy || {};\n\nconst planProduct =\n input.product_presentation_plan?.product ||\n request.product ||\n {};\n\nconst catalogProduct =\n Array.isArray(request.catalog?.items) && request.catalog.items.length > 0\n   ? request.catalog.items[0]\n   : {};\n\nconst product = {\n ...catalogProduct,\n ...planProduct\n};\n\nconst rawReplyText = clean(request.message?.replyText);\n\nlet finalText = '';\n\nif (isTextUsable(rawReplyText, policy)) {\n finalText = rawReplyText;\n} else {\n finalText = buildTemplateFromProduct(product, request, policy);\n}\n\nfinalText = removeInternalTerms(finalText);\nfinalText = limitSentences(finalText, Number(policy.max_sentences || 4));\nfinalText = limitLength(finalText, Number(policy.max_length || 520));\nfinalText = ensureQuestionAtEnd(\n finalText,\n policy.default_question || '¿Quieres que te comparta más detalles?'\n);\n\nreturn [\n {\n   json: {\n     ...input,\n     product_text_template: {\n       ready: Boolean(finalText),\n       text: finalText,\n       source: isTextUsable(rawReplyText, policy)\n         ? 'm3_reply_text'\n         : 'm7_product_template',\n       product_id: product.product_id || product.sku || '',\n       sku: product.sku || product.product_id || '',\n       display_name: product.display_name || '',\n       category: product.category || '',\n       color: product.color || ''\n     },\n     whatsapp_text_message: {\n       ready: Boolean(finalText),\n       to: request.channel?.user_id || '',\n       text: finalText,\n       sequence_order: 1\n     }\n   }\n }\n];\n"
+        },
+        "type": "n8n-nodes-base.code",
+        "typeVersion": 2,
+        "position": [
+          5936,
+          -384
+        ],
+        "id": "70efb677-da26-460d-810e-d2f65dc7b2fd",
+        "name": "Build Product Text Template"
+      },
+      {
+        "parameters": {
+          "jsCode": "function clean(value) {\n if (value === null || value === undefined) return '';\n return String(value).trim();\n}\n\nfunction normalize(value) {\n return clean(value)\n   .toLowerCase()\n   .normalize('NFD')\n   .replace(/[\\u0300-\\u036f]/g, '');\n}\n\nfunction includesAny(text, terms) {\n const normalized = normalize(text);\n return terms.some(term => normalized.includes(normalize(term)));\n}\n\nfunction buildSafeText(input) {\n const product =\n   input.product_presentation_plan?.product ||\n   input.m7_request?.product ||\n   {};\n\n const productName = clean(product.display_name) || 'esta opción';\n\n return `Te muestro ${productName}. Es una alternativa que puede ajustarse a lo que estás buscando. ¿Quieres que te comparta más detalles?`;\n}\n\nconst input = items[0]?.json || {};\nconst text = clean(input.whatsapp_text_message?.text);\n\nconst policy = input.m7_config?.text_template_policy || {};\nconst violations = [];\n\nif (!text) {\n violations.push('empty_text');\n}\n\nif (text.length > Number(policy.max_length || 520)) {\n violations.push('text_too_long');\n}\n\nconst forbiddenTerms = [\n 'sku',\n 'product_id',\n 'image_ref',\n 'retrieval_score',\n 'qdrant',\n 'n8n',\n 'google drive',\n 'workflow',\n 'módulo',\n 'modulo'\n];\n\nif (includesAny(text, forbiddenTerms)) {\n violations.push('forbidden_internal_term');\n}\n\nif (!/[?？]\\s*$/.test(text)) {\n violations.push('missing_final_question');\n}\n\nlet finalText = text;\n\nif (violations.length > 0) {\n finalText = buildSafeText(input);\n}\n\nreturn [\n {\n   json: {\n     ...input,\n     product_text_validation: {\n       valid: violations.length === 0,\n       violations,\n       fallback_applied: violations.length > 0\n     },\n     whatsapp_text_message: {\n       ...(input.whatsapp_text_message || {}),\n       ready: true,\n       text: finalText,\n       sequence_order: 1\n     }\n   }\n }\n];\n"
+        },
+        "type": "n8n-nodes-base.code",
+        "typeVersion": 2,
+        "position": [
+          6160,
+          -384
+        ],
+        "id": "458ad906-8b06-41f1-a452-beb41afc3969",
+        "name": "Validate Product Text Template"
+      },
+      {
+        "parameters": {
+          "jsCode": "function clean(value) {\n if (value === null || value === undefined) return '';\n return String(value).trim();\n}\n\nfunction firstSentence(value) {\n const text = clean(value);\n if (!text) return '';\n const sentences = text\n   .split(/(?<=[.!?])\\s+/)\n   .map(s => s.trim())\n   .filter(Boolean);\n return sentences[0] || '';\n}\n\nfunction limitText(value, maxLength = 520) {\n const text = clean(value);\n if (text.length <= maxLength) return text;\n return text.slice(0, maxLength).replace(/\\s+\\S*$/, '').trim() + '.';\n}\n\nfunction removeInternalTerms(text) {\n return clean(text)\n   .replace(/\\bSKU\\b/gi, '')\n   .replace(/\\bproduct_id\\b/gi, '')\n   .replace(/\\bimage_ref\\b/gi, '')\n   .replace(/\\bGoogle Drive\\b/gi, '')\n   .replace(/\\bn8n\\b/gi, '')\n   .replace(/\\bworkflow\\b/gi, '')\n   .replace(/\\bmódulo\\b/gi, '')\n   .replace(/\\bmodulo\\b/gi, '')\n   .replace(/\\s{2,}/g, ' ')\n   .trim();\n}\n\nconst input = items[0]?.json || {};\nconst request = input.m7_request || {};\nconst product =\n input.product_presentation_plan?.product ||\n request.product ||\n {};\n\nconst productName =\n clean(product.display_name) ||\n clean(input.image_resolution?.display_name) ||\n 'esta opción';\n\nconst description =\n clean(product.description_short) ||\n clean(request.catalog?.items?.[0]?.description_short);\n\nconst benefit = firstSentence(description);\n\nlet text = '';\n\nif (benefit) {\n text = `Puedo contarte sobre ${productName}. ${benefit}. Por ahora no tengo una imagen disponible para mostrarte. ¿Quieres que te comparta más detalles?`;\n} else {\n text = `Puedo contarte sobre ${productName}. Por ahora no tengo una imagen disponible para mostrarte, pero puedo ayudarte con sus características. ¿Quieres que te comparta más detalles?`;\n}\n\ntext = removeInternalTerms(text);\ntext = limitText(text, input.m7_config?.text_template_policy?.max_length || 520);\n\nreturn [\n {\n   json: {\n     ...input,\n     image_fallback_text: {\n       ready: Boolean(text),\n       text,\n       reason: input.image_fallback?.reason || 'image_not_available',\n       product_id: product.product_id || product.sku || '',\n       sku: product.sku || product.product_id || '',\n       display_name: productName\n     },\n     whatsapp_text_message: {\n       ready: Boolean(text),\n       to: request.channel?.user_id || '',\n       text,\n       sequence_order: 1\n     }\n   }\n }\n];"
+        },
+        "type": "n8n-nodes-base.code",
+        "typeVersion": 2,
+        "position": [
+          6160,
+          -96
+        ],
+        "id": "eee70421-142f-4595-b154-4e1571b16aaa",
+        "name": "Build Image Fallback Text"
+      },
+      {
+        "parameters": {
+          "jsCode": "function clean(value) {\n if (value === null || value === undefined) return '';\n return String(value).trim();\n}\n\nfunction normalize(value) {\n return clean(value)\n   .toLowerCase()\n   .normalize('NFD')\n   .replace(/[\\u0300-\\u036f]/g, '');\n}\n\nfunction includesAny(text, terms) {\n const normalized = normalize(text);\n return terms.some(term => normalized.includes(normalize(term)));\n}\n\nconst input = items[0]?.json || {};\nlet text = clean(input.whatsapp_text_message?.text);\n\nconst violations = [];\n\nif (!text) {\n violations.push('empty_fallback_text');\n}\n\nif (text.length > 520) {\n violations.push('fallback_text_too_long');\n}\n\nconst forbiddenTerms = [\n 'sku',\n 'product_id',\n 'image_ref',\n 'google drive',\n 'n8n',\n 'workflow',\n 'módulo',\n 'modulo',\n 'archivo',\n 'carpeta',\n 'error técnico'\n];\n\nif (includesAny(text, forbiddenTerms)) {\n violations.push('forbidden_internal_or_technical_term');\n}\n\nif (!/[?？]\\s*$/.test(text)) {\n violations.push('missing_final_question');\n}\n\nif (violations.length > 0) {\n const productName =\n   input.image_fallback_text?.display_name ||\n   input.m7_request?.product?.display_name ||\n   'esta opción';\n\n text = `Puedo ayudarte con ${productName}. Por ahora no tengo una imagen disponible para mostrarte. ¿Quieres que te comparta sus características?`;\n}\n\nreturn [\n {\n   json: {\n     ...input,\n     image_fallback_text_validation: {\n       valid: violations.length === 0,\n       violations,\n       fallback_text_rebuilt: violations.length > 0\n     },\n     whatsapp_text_message: {\n       ...(input.whatsapp_text_message || {}),\n       ready: true,\n       text,\n       sequence_order: 1\n     }\n   }\n }\n];"
+        },
+        "type": "n8n-nodes-base.code",
+        "typeVersion": 2,
+        "position": [
+          6384,
+          -96
+        ],
+        "id": "11f2465f-e63c-47f2-9d04-f1644774260a",
+        "name": "Validate Image Fallback Text"
+      },
+      {
+        "parameters": {
+          "jsCode": "const sendResult = items[0]?.json || {};\nconst previous = $('Validate Image Fallback Text').first().json || {};\n\nconst messageId =\n sendResult.messages?.[0]?.id ||\n sendResult.message_id ||\n sendResult.id ||\n '';\n\nconst textSent =\n Boolean(messageId) ||\n Object.keys(sendResult).length > 0;\n\nreturn [\n {\n   json: {\n     ...previous,\n     fallback_text_delivery: {\n       sent: textSent,\n       message_id: messageId,\n       sequence_order: 1,\n       raw_result: sendResult\n     }\n   }\n }\n];"
+        },
+        "type": "n8n-nodes-base.code",
+        "typeVersion": 2,
+        "position": [
+          6832,
+          -96
+        ],
+        "id": "19868238-90d7-498c-95a1-4f0d71ef8438",
+        "name": "Normalize Fallback Text Send Result"
+      },
+      {
+        "parameters": {
+          "jsCode": "const input = items[0]?.json || {};\n\nreturn [\n {\n   json: {\n     schema_version: 'dalia.m7.delivery_result.v1',\n     success: Boolean(input.fallback_text_delivery?.sent),\n     result_type: 'image_fallback_delivery_result',\n\n     delivery: {\n       channel: input.m7_request?.channel?.name || 'whatsapp',\n       sequence_mode: 'text_only_image_fallback',\n       text_sent: Boolean(input.fallback_text_delivery?.sent),\n       image_sent: false,\n       fallback_used: true,\n       fallback_reason:\n         input.image_fallback?.reason ||\n         input.image_fallback_text?.reason ||\n         'image_not_available',\n       order: [\n         {\n           type: 'text',\n           sent: Boolean(input.fallback_text_delivery?.sent),\n           sequence_order: 1,\n           message_id: input.fallback_text_delivery?.message_id || ''\n         }\n       ]\n     },\n\n     image: {\n       resolved: false,\n       source: 'google_drive',\n       product_id:\n         input.image_resolution?.product_id ||\n         input.image_fallback_text?.product_id ||\n         '',\n       sku:\n         input.image_resolution?.sku ||\n         input.image_fallback_text?.sku ||\n         '',\n       display_name:\n         input.image_resolution?.display_name ||\n         input.image_fallback_text?.display_name ||\n         '',\n       file_id: '',\n       file_name: '',\n       whatsapp_media_id: '',\n       fallback_reason:\n         input.image_fallback?.reason ||\n         input.image_fallback_text?.reason ||\n         'image_not_available'\n     },\n\n     trace: input.m7_request?.trace || {},\n\n     validation: {\n       fallback_text_valid:\n         input.image_fallback_text_validation?.valid !== false,\n       fallback_text_rebuilt:\n         Boolean(input.image_fallback_text_validation?.fallback_text_rebuilt)\n     }\n   }\n }\n];"
+        },
+        "type": "n8n-nodes-base.code",
+        "typeVersion": 2,
+        "position": [
+          7056,
+          -96
+        ],
+        "id": "a21ced33-24b5-4b99-8f2d-579df6470803",
+        "name": "Return M7 Image Fallback Result"
+      },
+      {
+        "parameters": {
+          "operation": "send",
+          "phoneNumberId": "1104496126080610",
+          "recipientPhoneNumber": "={{ $json.channel.user_id.split('_').pop() }}",
+          "textBody": "={{ $json.whatsapp_text_message.text }}",
+          "additionalFields": {}
+        },
+        "type": "n8n-nodes-base.whatsApp",
+        "typeVersion": 1.1,
+        "position": [
+          6608,
+          -96
+        ],
+        "id": "d79f3992-037b-477d-a795-ff6f903d790e",
+        "name": "Send WhatsApp Text Only",
+        "webhookId": "aa19080e-fb9d-49da-b8ea-86d7b108ced1",
+        "credentials": {
+          "whatsAppApi": {
+            "id": "3lZ90gsbMgk8fR6e",
+            "name": "WhatsApp account 4"
+          }
+        },
+        "onError": "continueRegularOutput"
+      },
+      {
+        "parameters": {
+          "jsCode": "function clean(value) {\n if (value === null || value === undefined) return '';\n return String(value).trim();\n}\n\nfunction makeEventId(prefix = 'evt') {\n return `${prefix}_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;\n}\n\nconst input = items[0]?.json || {};\n\nconst request = input.m7_request || {};\nconst delivery = input.delivery || {};\nconst image = input.image || input.image_resolution || {};\n\nconst textDelivery = input.text_delivery || input.fallback_text_delivery || {};\nconst imageDelivery = input.image_delivery || {};\n\nconst textSent = Boolean(delivery.text_sent ?? textDelivery.sent);\nconst imageSent = Boolean(delivery.image_sent ?? imageDelivery.sent);\nconst fallbackUsed = Boolean(delivery.fallback_used);\n\nconst status = textSent || imageSent\n ? 'success'\n : 'error';\n\nconst event = {\n schema_version: 'dalia.m8.event_request.v1',\n event: {\n   event_id: makeEventId('evt_m7'),\n   event_name: status === 'success' ? 'message_sent' : 'delivery_failed',\n   event_type: 'messaging',\n   module: 'M7',\n   status,\n   level: status === 'success' ? 'INFO' : 'ERROR',\n   timestamp: new Date().toISOString(),\n\n   trace: {\n     conversation_id: clean(request.trace?.conversation_id),\n     session_id: clean(request.trace?.session_id)\n   },\n\n   context: {\n     business_id: 'business_demo',\n     environment: 'demo',\n     channel: clean(request.channel?.name || 'whatsapp'),\n     user_id: clean(request.channel?.user_id),\n     display_name: clean(request.channel?.display_name)\n   },\n\n   correlation: {\n     message_id: clean(textDelivery.message_id || imageDelivery.message_id),\n     transaction_id: clean(input.commerce?.transaction_id),\n     handoff_id: clean(input.handoff?.handoff_id || request.control?.handoff_id)\n   },\n\n   payload: {\n     sequence_mode: clean(delivery.sequence_mode || input.product_presentation_plan?.sequence_mode),\n     text_sent: textSent,\n     image_sent: imageSent,\n     fallback_used: fallbackUsed,\n     text_message_id: clean(textDelivery.message_id),\n     image_message_id: clean(imageDelivery.message_id),\n     image_source: clean(image.source),\n     product_id: clean(image.product_id),\n     sku: clean(image.sku),\n     \n     // --- NUEVOS CAMPOS AGREGADOS PARA EL JUEZ M11 ---\n     visible_text_preview: clean(\n       input.m7_request?.message?.replyText ||\n       input.message?.replyText ||\n       input.response?.replyText ||\n       input.text_delivery?.text ||\n       ''\n     ).slice(0, 700),\n     \n     visible_units: [\n       ...(textSent ? [{ type: 'text', sent: true }] : []),\n       ...(imageSent ? [{ type: 'image', sent: true }] : [])\n     ],\n     \n     sequence_observed: imageSent && textSent\n       ? ['text', 'image']\n       : textSent\n       ? ['text']\n       : imageSent\n       ? ['image']\n       : []\n     // ------------------------------------------------\n   },\n\n   error: status === 'error' ? {\n     error_code: 'delivery_failed',\n     error_message: clean(delivery.fallback_reason || image.fallback_reason || 'Message delivery failed'),\n     error_node: 'M7 Delivery',\n     error_workflow: 'DALIA_M7_Messaging_Service_Lite'\n   } : null\n }\n};\n\nreturn [\n {\n   json: {\n     ...input,\n     _main_payload_before_m8: input,\n     m8_event_request: event\n   }\n }\n];\n"
+        },
+        "type": "n8n-nodes-base.code",
+        "typeVersion": 2,
+        "position": [
+          6832,
+          -384
+        ],
+        "id": "d7f4f869-c17e-4593-abc2-b24e34ab7a07",
+        "name": "Build M8 Event - Message Sent"
+      },
+      {
+        "parameters": {
+          "jsCode": "function clean(value) {\n if (value === null || value === undefined) return '';\n return String(value).trim();\n}\n\nfunction makeEventId(prefix = 'evt') {\n return `${prefix}_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;\n}\n\nconst input = items[0]?.json || {};\n\nconst request = input.m7_request || {};\nconst image = input.image_resolution || {};\nconst imageDelivery = input.image_delivery || {};\n\nconst event = {\n schema_version: 'dalia.m8.event_request.v1',\n event: {\n   event_id: makeEventId('evt_m7_image'),\n   event_name: 'image_sent',\n   event_type: 'messaging',\n   module: 'M7',\n   status: imageDelivery.sent ? 'success' : 'error',\n   level: imageDelivery.sent ? 'INFO' : 'ERROR',\n   timestamp: new Date().toISOString(),\n\n   trace: {\n     conversation_id: clean(request.trace?.conversation_id),\n     session_id: clean(request.trace?.session_id)\n   },\n\n   context: {\n     business_id: 'business_demo',\n     environment: 'demo',\n     channel: clean(request.channel?.name || 'whatsapp'),\n     user_id: clean(request.channel?.user_id),\n     display_name: clean(request.channel?.display_name)\n   },\n\n   correlation: {\n     message_id: clean(imageDelivery.message_id)\n   },\n\n   payload: {\n     image_sent: Boolean(imageDelivery.sent),\n     product_id: clean(image.product_id),\n     sku: clean(image.sku),\n     display_name: clean(image.display_name),\n     source: clean(image.source || 'google_drive'),\n     file_id: clean(image.file_id),\n     file_name: clean(image.file_name)\n   }\n }\n};\n\nreturn [\n {\n   json: {\n     ...input,\n     _main_payload_before_m8: input,\n     m8_event_request: event\n   }\n }\n];\n\n"
+        },
+        "type": "n8n-nodes-base.code",
+        "typeVersion": 2,
+        "position": [
+          8176,
+          -384
+        ],
+        "id": "5d042d85-e0ec-4e44-a865-572d7318cf59",
+        "name": "Build M8 Event - Image Sent"
+      },
+      {
+        "parameters": {
+          "workflowId": {
+            "__rl": true,
+            "value": "sGL1OJ3lklD6wBu0",
+            "mode": "list",
+            "cachedResultUrl": "/workflow/sGL1OJ3lklD6wBu0",
+            "cachedResultName": "Agente de Ventas - TEST — M8 Observability"
+          },
+          "workflowInputs": {
+            "mappingMode": "defineBelow",
+            "value": {},
+            "matchingColumns": [],
+            "schema": [],
+            "attemptToConvertTypes": false,
+            "convertFieldsToString": true
+          },
+          "options": {}
+        },
+        "type": "n8n-nodes-base.executeWorkflow",
+        "typeVersion": 1.3,
+        "position": [
+          8400,
+          -384
+        ],
+        "id": "307f2f9e-8e00-4f73-b820-f1edc611d2a3",
+        "name": "Call 'M8 Observability'",
+        "onError": "continueRegularOutput"
+      },
+      {
+        "parameters": {
+          "workflowId": {
+            "__rl": true,
+            "value": "sGL1OJ3lklD6wBu0",
+            "mode": "list",
+            "cachedResultUrl": "/workflow/sGL1OJ3lklD6wBu0",
+            "cachedResultName": "Agente de Ventas - TEST — M8 Observability"
+          },
+          "workflowInputs": {
+            "mappingMode": "defineBelow",
+            "value": {},
+            "matchingColumns": [],
+            "schema": [],
+            "attemptToConvertTypes": false,
+            "convertFieldsToString": true
+          },
+          "options": {}
+        },
+        "type": "n8n-nodes-base.executeWorkflow",
+        "typeVersion": 1.3,
+        "position": [
+          7056,
+          -384
+        ],
+        "id": "aad97b9a-b86f-4e82-93db-6582fb339d57",
+        "name": "Call 'M8 Observability'1",
+        "onError": "continueRegularOutput"
+      },
+      {
+        "parameters": {
+          "jsCode": "const original =\n $('Build M8 Event - Message Sent').first().json._main_payload_before_m8 ||\n {};\n\nconst m8Result = items[0]?.json || {};\n\nreturn [\n {\n   json: {\n     ...original,\n     m8_last_result: m8Result\n   }\n }\n];\n"
+        },
+        "type": "n8n-nodes-base.code",
+        "typeVersion": 2,
+        "position": [
+          7280,
+          -384
+        ],
+        "id": "06cb3e59-5b9d-46b4-ba4e-26753440112b",
+        "name": "Restore Main Payload After M8"
+      },
+      {
+        "parameters": {
+          "jsCode": "const original =\n $('Build M8 Event - Image Sent').first().json._main_payload_before_m8 ||\n {};\n\nconst m8Result = items[0]?.json || {};\n\nreturn [\n {\n   json: {\n     ...original,\n     m8_last_result: m8Result\n   }\n }\n];\n"
+        },
+        "type": "n8n-nodes-base.code",
+        "typeVersion": 2,
+        "position": [
+          8608,
+          -384
+        ],
+        "id": "186154e1-4d85-45ee-a6ea-65955848201c",
+        "name": "Restore Main Payload After M"
+      },
+      {
+        "parameters": {
+          "jsCode": "function clean(value) {\n  if (value === null || value === undefined) return '';\n  return String(value).trim();\n}\n\nfunction firstNonEmpty(...values) {\n  for (const value of values) {\n    const cleaned = clean(value);\n    if (cleaned) return cleaned;\n  }\n  return '';\n}\n\nconst input = items[0]?.json || {};\n// 👇 1. Capturamos el archivo binario que viene de Google Drive\nconst binary = items[0]?.binary; \n\nconst errorSource = {\n  module: 'M7',\n  workflow_name: 'DALIA_M7_Messaging_Service_Lite',\n  node_name: 'Download Image From Google Drive',\n  error_code: 'm7_drive_image_download_error',\n  recoverable: true\n};\n\nconst errorMessage = firstNonEmpty(\n  input.error?.message,\n  input.error?.errorMessage,\n  input.errorMessage,\n  input.errorDescription,\n  input.message,\n  input.description\n);\n\nconst hasError =\n  Boolean(input.error) ||\n  Boolean(input.errorMessage) ||\n  Boolean(input.errorDescription) ||\n  input.ok === false ||\n  input.success === false;\n\nreturn [\n  {\n    json: {\n      ...input,\n      controlled_error: {\n        detected: hasError,\n        module: errorSource.module,\n        workflow_name: errorSource.workflow_name,\n        node_name: errorSource.node_name,\n        error_code: errorSource.error_code,\n        error_message: errorMessage,\n        recoverable: errorSource.recoverable,\n        raw_result: input,\n        detected_at: new Date().toISOString()\n      }\n    },\n    // 👇 2. Le pasamos el archivo binario intacto al siguiente nodo\n    ...(binary ? { binary } : {}) \n  }\n];"
+        },
+        "type": "n8n-nodes-base.code",
+        "typeVersion": 2,
+        "position": [
+          4016,
+          -272
+        ],
+        "id": "3cfb2338-a2f5-4dd1-afc6-01be811dc2cf",
+        "name": "Detect Controlled Error - Drive"
+      },
+      {
+        "parameters": {
+          "conditions": {
+            "options": {
+              "caseSensitive": true,
+              "leftValue": "",
+              "typeValidation": "strict",
+              "version": 3
+            },
+            "conditions": [
+              {
+                "id": "bbfc69bc-86ef-4c74-8e2b-a57231f701cb",
+                "leftValue": "={{ $json.controlled_error.detected }}",
+                "rightValue": "",
+                "operator": {
+                  "type": "boolean",
+                  "operation": "true",
+                  "singleValue": true
+                }
+              }
+            ],
+            "combinator": "and"
+          },
+          "options": {}
+        },
+        "type": "n8n-nodes-base.if",
+        "typeVersion": 2.3,
+        "position": [
+          4224,
+          -272
+        ],
+        "id": "1555173d-80ad-467f-826f-8d64653e4621",
+        "name": "If"
+      },
+      {
+        "parameters": {
+          "jsCode": "function clean(value) {\n if (value === null || value === undefined) return '';\n return String(value).trim();\n}\n\nfunction makeEventId(prefix = 'evt_error') {\n return `${prefix}_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;\n}\n\nfunction pickObject(...objects) {\n for (const obj of objects) {\n   if (obj && typeof obj === 'object' && Object.keys(obj).length > 0) {\n     return obj;\n   }\n }\n return {};\n}\n\nconst input = items[0]?.json || {};\nconst err = input.controlled_error || {};\n\nconst request =\n input.m7_request ||\n input.m6_request ||\n input.m5_request ||\n input.m4_request ||\n input.advisor_request ||\n input.m3_request ||\n input.normalized_input ||\n input;\n\nconst trace = pickObject(\n request.trace,\n input.trace,\n input.m7_output?.trace,\n input.m6_output?.trace,\n input.m5_output?.trace\n);\n\nconst context = pickObject(\n request.context,\n input.context,\n input.m7_output?.channel,\n input.m6_output?.context,\n input.m5_output?.context\n);\n\nconst commerce =\n input.commerce ||\n input.commerce_state ||\n input.existing_transaction ||\n input.m5_output?.commerce ||\n {};\n\nconst handoff =\n input.handoff ||\n input.handoff_package ||\n input.m6_output?.handoff ||\n {};\n\nconst event = {\n schema_version: 'dalia.m8.event_request.v1',\n event: {\n   event_id: makeEventId('evt_controlled_error'),\n   event_name: 'error',\n   event_type: 'error',\n   module: err.module || 'UNKNOWN',\n   status: 'error',\n   level: 'ERROR',\n   timestamp: new Date().toISOString(),\n\n   trace: {\n     conversation_id: clean(trace.conversation_id),\n     session_id: clean(trace.session_id),\n     parent_event_id: clean(trace.event_id)\n   },\n\n   context: {\n     business_id: clean(context.business_id || 'business_demo'),\n     environment: clean(context.environment || 'demo'),\n     channel: clean(context.channel || context.name || 'whatsapp'),\n     user_id: clean(context.user_id),\n     display_name: clean(context.display_name)\n   },\n\n   correlation: {\n     message_id: clean(request.input?.message_id || input.message_id),\n     transaction_id: clean(commerce.transaction_id),\n     handoff_id: clean(handoff.handoff_id),\n     correlation_id: clean(trace.conversation_id || trace.session_id),\n     trace_id: clean(trace.session_id)\n   },\n\n   payload: {\n     error_source: 'controlled_node_error',\n     workflow_name: err.workflow_name || '',\n     node_name: err.node_name || '',\n     recoverable: Boolean(err.recoverable),\n     module: err.module || '',\n     current_status:\n       commerce.status ||\n       handoff.status ||\n       input.status ||\n       '',\n     fallback_available: true\n   },\n\n   error: {\n     error_code: err.error_code || 'controlled_error',\n     error_message: err.error_message || 'Controlled node error',\n     error_node: err.node_name || '',\n     error_workflow: err.workflow_name || ''\n   },\n\n   metadata: {\n     detected_at: err.detected_at || new Date().toISOString()\n   }\n }\n};\n\nreturn [\n {\n   json: {\n     ...input,\n     m8_event_request: event\n   }\n }\n];"
+        },
+        "type": "n8n-nodes-base.code",
+        "typeVersion": 2,
+        "position": [
+          4400,
+          -416
+        ],
+        "id": "2f37efe2-cea7-4d70-b4af-9eb3f49c9b6f",
+        "name": "Build M8 Event - Controlled Error1"
+      },
+      {
+        "parameters": {
+          "workflowId": {
+            "__rl": true,
+            "value": "sGL1OJ3lklD6wBu0",
+            "mode": "list",
+            "cachedResultUrl": "/workflow/sGL1OJ3lklD6wBu0",
+            "cachedResultName": "Agente de Ventas - TEST — M8 Observability"
+          },
+          "workflowInputs": {
+            "mappingMode": "defineBelow",
+            "value": {},
+            "matchingColumns": [],
+            "schema": [],
+            "attemptToConvertTypes": false,
+            "convertFieldsToString": true
+          },
+          "options": {}
+        },
+        "type": "n8n-nodes-base.executeWorkflow",
+        "typeVersion": 1.3,
+        "position": [
+          4624,
+          -416
+        ],
+        "id": "7d2c3e06-72cf-4ace-a5d2-83c2f209efe7",
+        "name": "Call 'M8 Observability'3",
+        "onError": "continueRegularOutput"
+      },
+      {
+        "parameters": {
+          "operation": "send",
+          "phoneNumberId": "1104496126080610",
+          "recipientPhoneNumber": "={{ $json.channel.user_id.split('_').pop() }}",
+          "textBody": "={{ $json.message.replyText }}",
+          "additionalFields": {}
+        },
+        "type": "n8n-nodes-base.whatsApp",
+        "typeVersion": 1.1,
+        "position": [
+          1328,
+          -192
+        ],
+        "id": "ac193302-2a5b-44f1-be96-dd858889cd4c",
+        "name": "Send message",
+        "webhookId": "b460a29f-ef9b-4bb2-b571-1abe389a1f6b",
+        "credentials": {
+          "whatsAppApi": {
+            "id": "3lZ90gsbMgk8fR6e",
+            "name": "WhatsApp account 4"
+          }
+        }
+      },
+      {
+        "parameters": {
+          "jsCode": "function makeEventId(prefix = 'evt') {\n  return `${prefix}_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;\n}\n\nconst sendResult = items[0]?.json || {};\nconst previous = $('Text Branch Entry').first().json || {};\nconst request = previous.m7_request || {};\n\nconst messageId =\n  sendResult.messages?.[0]?.id ||\n  sendResult.message_id ||\n  sendResult.id ||\n  '';\n\nconst textSent = Boolean(messageId) || Object.keys(sendResult).length > 0;\n\nconst event = {\n  schema_version: 'dalia.m8.event_request.v1',\n  event: {\n    event_id: makeEventId('evt_m7'),\n    event_name: textSent ? 'message_sent' : 'delivery_failed',\n    event_type: 'messaging',\n    module: 'M7',\n    status: textSent ? 'success' : 'error',\n    level: textSent ? 'INFO' : 'ERROR',\n    timestamp: new Date().toISOString(),\n\n    trace: {\n      conversation_id: request.trace?.conversation_id || '',\n      session_id: request.trace?.session_id || ''\n    },\n\n    context: {\n      business_id: 'business_demo',\n      environment: 'demo',\n      channel: request.channel?.name || 'whatsapp',\n      user_id: request.channel?.user_id || '',\n      display_name: request.channel?.display_name || ''\n    },\n\n    correlation: {\n      message_id: messageId\n    },\n\n    payload: {\n      sequence_mode: 'text_only',\n      text_sent: textSent,\n      text_message_id: messageId,\n      visible_text_preview: (request.message?.replyText || '').slice(0, 700),\n      visible_units: textSent ? [{ type: 'text', sent: true }] : [],\n      sequence_observed: textSent ? ['text'] : []\n    }\n  }\n};\n\nreturn [\n  {\n    json: {\n      ...previous,\n      text_delivery: { sent: textSent, message_id: messageId },\n      m8_event_request: event\n    }\n  }\n];"
+        },
+        "type": "n8n-nodes-base.code",
+        "typeVersion": 2,
+        "position": [
+          1536,
+          -192
+        ],
+        "id": "f6fab316-c26e-4b69-ab8b-9c2518abf3b1",
+        "name": "Build M8 Event - Simple Text"
+      },
+      {
+        "parameters": {
+          "workflowId": {
+            "__rl": true,
+            "value": "sGL1OJ3lklD6wBu0",
+            "mode": "list",
+            "cachedResultUrl": "/workflow/sGL1OJ3lklD6wBu0",
+            "cachedResultName": "Agente de Ventas - TEST — M8: Observability"
+          },
+          "workflowInputs": {
+            "mappingMode": "defineBelow",
+            "value": {},
+            "matchingColumns": [],
+            "schema": [],
+            "attemptToConvertTypes": false,
+            "convertFieldsToString": true
+          },
+          "options": {}
+        },
+        "type": "n8n-nodes-base.executeWorkflow",
+        "typeVersion": 1.3,
+        "position": [
+          1744,
+          -192
+        ],
+        "id": "d46b7b22-e651-467c-a3d9-6f6c3a78c42e",
+        "name": "Call 'M8: Observability'"
+      }
+    ],
+    "connections": {
+      "When Executed by Another Workflow": {
+        "main": [
+          [
+            {
+              "node": "Load M7 Presentation Config",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Load M7 Presentation Config": {
+        "main": [
+          [
+            {
+              "node": "Normalize M7 Request",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Normalize M7 Request": {
+        "main": [
+          [
+            {
+              "node": "Validate M7 Request",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Validate M7 Request": {
+        "main": [
+          [
+            {
+              "node": "Route Presentation Mode",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Route Presentation Mode": {
+        "main": [
+          [
+            {
+              "node": "Text Branch Entry",
+              "type": "main",
+              "index": 0
+            }
+          ],
+          [
+            {
+              "node": "Product Image Branch Entry",
+              "type": "main",
+              "index": 0
+            }
+          ],
+          [
+            {
+              "node": "Return Invalid M7 Request",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Product Image Branch Entry": {
+        "main": [
+          [
+            {
+              "node": "Build Product Presentation Plan",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Build Product Presentation Plan": {
+        "main": [
+          [
+            {
+              "node": "Find Category Folder",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Find Category Folder": {
+        "main": [
+          [
+            {
+              "node": "Normalize Category Folder Result",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Normalize Category Folder Result": {
+        "main": [
+          [
+            {
+              "node": "IF Category Folder Found?",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "IF Category Folder Found?": {
+        "main": [
+          [
+            {
+              "node": "Find Product Folder",
+              "type": "main",
+              "index": 0
+            }
+          ],
+          [
+            {
+              "node": "Return Image Not Found Result",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Find Product Folder": {
+        "main": [
+          [
+            {
+              "node": "Normalize Product Folder Result",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Normalize Product Folder Result": {
+        "main": [
+          [
+            {
+              "node": "IF Product Folder Found?",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "IF Product Folder Found?": {
+        "main": [
+          [
+            {
+              "node": "Find Image Files",
+              "type": "main",
+              "index": 0
+            }
+          ],
+          [
+            {
+              "node": "Return Image Not Found Result1",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Find Image Files": {
+        "main": [
+          [
+            {
+              "node": "Select Product Image",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Select Product Image": {
+        "main": [
+          [
+            {
+              "node": "Return Image Resolution Result",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Image Resolved": {
+        "main": [
+          [
+            {
+              "node": "Download Image From Google Drive",
+              "type": "main",
+              "index": 0
+            }
+          ],
+          [
+            {
+              "node": "Image Fallback Branch Entry",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Download Image From Google Drive": {
+        "main": [
+          [
+            {
+              "node": "Detect Controlled Error - Drive",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Prepare WhatsApp Media Upload": {
+        "main": [
+          [
+            {
+              "node": "Media Ready?",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Media Ready?": {
+        "main": [
+          [
+            {
+              "node": "Upload WhatsApp Media",
+              "type": "main",
+              "index": 0
+            }
+          ],
+          [
+            {
+              "node": "Image Fallback Branch Entry",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Upload WhatsApp Media": {
+        "main": [
+          [
+            {
+              "node": "Normalize WhatsApp Media Upload",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Normalize WhatsApp Media Upload": {
+        "main": [
+          [
+            {
+              "node": "WhatsApp Media Uploaded",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "WhatsApp Media Uploaded": {
+        "main": [
+          [
+            {
+              "node": "Build Product Text Template",
+              "type": "main",
+              "index": 0
+            }
+          ],
+          [
+            {
+              "node": "Image Fallback Branch Entry",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Send WhatsApp Text": {
+        "main": [
+          [
+            {
+              "node": "Normalize Text Send Result",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Normalize Text Send Result": {
+        "main": [
+          [
+            {
+              "node": "Build M8 Event - Message Sent",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Build WhatsApp Image Message": {
+        "main": [
+          [
+            {
+              "node": "Send WhatsApp Image",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Send WhatsApp Image": {
+        "main": [
+          [
+            {
+              "node": "Normalize Image Send Result",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Normalize Image Send Result": {
+        "main": [
+          [
+            {
+              "node": "Build M8 Event - Image Sent",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Return Image Resolution Result": {
+        "main": [
+          [
+            {
+              "node": "Image Resolved",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Build Product Text Template": {
+        "main": [
+          [
+            {
+              "node": "Validate Product Text Template",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Validate Product Text Template": {
+        "main": [
+          [
+            {
+              "node": "Send WhatsApp Text",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Image Fallback Branch Entry": {
+        "main": [
+          [
+            {
+              "node": "Build Image Fallback Text",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Build Image Fallback Text": {
+        "main": [
+          [
+            {
+              "node": "Validate Image Fallback Text",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Validate Image Fallback Text": {
+        "main": [
+          [
+            {
+              "node": "Send WhatsApp Text Only",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Normalize Fallback Text Send Result": {
+        "main": [
+          [
+            {
+              "node": "Return M7 Image Fallback Result",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Send WhatsApp Text Only": {
+        "main": [
+          [
+            {
+              "node": "Normalize Fallback Text Send Result",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Build M8 Event - Message Sent": {
+        "main": [
+          [
+            {
+              "node": "Call 'M8 Observability'1",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Build M8 Event - Image Sent": {
+        "main": [
+          [
+            {
+              "node": "Call 'M8 Observability'",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Call 'M8 Observability'": {
+        "main": [
+          [
+            {
+              "node": "Restore Main Payload After M",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Call 'M8 Observability'1": {
+        "main": [
+          [
+            {
+              "node": "Restore Main Payload After M8",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Restore Main Payload After M8": {
+        "main": [
+          [
+            {
+              "node": "Build WhatsApp Image Message",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Restore Main Payload After M": {
+        "main": [
+          [
+            {
+              "node": "Return M7 Product Presentation Result",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Detect Controlled Error - Drive": {
+        "main": [
+          [
+            {
+              "node": "If",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "If": {
+        "main": [
+          [
+            {
+              "node": "Build M8 Event - Controlled Error1",
+              "type": "main",
+              "index": 0
+            }
+          ],
+          [
+            {
+              "node": "Prepare WhatsApp Media Upload",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Build M8 Event - Controlled Error1": {
+        "main": [
+          [
+            {
+              "node": "Call 'M8 Observability'3",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Call 'M8 Observability'3": {
+        "main": [
+          [
+            {
+              "node": "Image Fallback Branch Entry",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Text Branch Entry": {
+        "main": [
+          [
+            {
+              "node": "Send message",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Send message": {
+        "main": [
+          [
+            {
+              "node": "Build M8 Event - Simple Text",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Build M8 Event - Simple Text": {
+        "main": [
+          [
+            {
+              "node": "Call 'M8: Observability'",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Call 'M8: Observability'": {
+        "main": [
+          []
+        ]
+      }
+    },
+    "nodeGroups": [],
+    "authors": "Emmanuel Arevalo",
+    "name": "Version 5f644a83",
+    "description": "",
+    "autosaved": true,
+    "createdAt": "2026-07-01T19:41:55.711Z",
+    "updatedAt": "2026-07-01T19:42:34.000Z"
+  }
+}
