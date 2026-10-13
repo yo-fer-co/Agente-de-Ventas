@@ -1,0 +1,56 @@
+{
+  "id": "i60cIsMOP9DRkIExXlwqf",
+  "name": "My workflow 13",
+  "active": false,
+  "activeVersionId": null,
+  "createdAt": "2026-01-29T22:55:05.915Z",
+  "updatedAt": "2026-02-26T01:25:18.000Z",
+  "isArchived": true,
+  "versionId": "c05446a6-bb99-4330-9007-10d9ff005fad",
+  "triggerCount": 0,
+  "nodes": [
+    {
+      "parameters": {
+        "authentication": "accessToken",
+        "topic": "products/update"
+      },
+      "type": "n8n-nodes-base.shopifyTrigger",
+      "typeVersion": 1,
+      "position": [
+        0,
+        0
+      ],
+      "id": "1ab898d8-9e4c-442a-bf26-094d8ce6ef23",
+      "name": "Shopify Trigger",
+      "webhookId": "e23d97f9-1a2d-47b2-9f43-4c9fe35e9ab5",
+      "credentials": {
+        "shopifyAccessTokenApi": {
+          "id": "1okEHh52lkfJokAf",
+          "name": "Shopify Access Token account"
+        }
+      }
+    }
+  ],
+  "connections": {},
+  "nodeGroups": [],
+  "settings": {
+    "executionOrder": "v1",
+    "availableInMCP": false
+  },
+  "staticData": null,
+  "pinData": {},
+  "meta": {
+    "templateCredsSetupCompleted": true
+  },
+  "tags": [],
+  "shared": [
+    {
+      "role": "workflow:owner",
+      "workflowId": "i60cIsMOP9DRkIExXlwqf",
+      "projectId": "8h8pwWGcWlnGEym3",
+      "createdAt": "2026-01-29T22:55:05.920Z",
+      "updatedAt": "2026-01-29T22:55:05.920Z"
+    }
+  ],
+  "activeVersion": null
+}
