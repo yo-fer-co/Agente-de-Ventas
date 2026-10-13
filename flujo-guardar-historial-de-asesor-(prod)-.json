@@ -1,0 +1,267 @@
+{
+  "id": "q3LUMg4wZS4m7h9h",
+  "name": "Flujo guardar historial de asesor (PROD)",
+  "active": true,
+  "activeVersionId": "034e1512-1b1f-455b-abf9-65be8f0d53cd",
+  "createdAt": "2026-03-06T02:14:14.821Z",
+  "updatedAt": "2026-03-06T02:14:52.830Z",
+  "isArchived": false,
+  "versionId": "034e1512-1b1f-455b-abf9-65be8f0d53cd",
+  "triggerCount": 0,
+  "nodes": [
+    {
+      "parameters": {
+        "workflowInputs": {
+          "values": [
+            {
+              "name": "id"
+            },
+            {
+              "name": "rol"
+            },
+            {
+              "name": "mensaje"
+            },
+            {
+              "name": "context_id_whatsapp"
+            },
+            {
+              "name": "context_relation_whatsapp"
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.executeWorkflowTrigger",
+      "typeVersion": 1.1,
+      "position": [
+        0,
+        0
+      ],
+      "id": "8d34d822-e90b-453d-98d0-4827b2418a14",
+      "name": "When Executed by Another Workflow"
+    },
+    {
+      "parameters": {
+        "tableId": "babys_world_prod_chat_history",
+        "fieldsUi": {
+          "fieldValues": [
+            {
+              "fieldId": "rol",
+              "fieldValue": "={{ $json.rol }}"
+            },
+            {
+              "fieldId": "message",
+              "fieldValue": "={{ $json.mensaje }}"
+            },
+            {
+              "fieldId": "context_id",
+              "fieldValue": "={{ $json.context_id_whatsapp }}"
+            },
+            {
+              "fieldId": "context_relation",
+              "fieldValue": "={{ $json.context_relation_whatsapp }}"
+            },
+            {
+              "fieldId": "session_id",
+              "fieldValue": "={{ $json.id }}"
+            },
+            {
+              "fieldId": "channel",
+              "fieldValue": "whatsapp"
+            },
+            {
+              "fieldId": "create_at",
+              "fieldValue": "={{ $now }}"
+            },
+            {
+              "fieldId": "create_date",
+              "fieldValue": "={{ $now.format('yyyy-MM-dd') }}"
+            },
+            {
+              "fieldId": "create_time",
+              "fieldValue": "={{ $now.format('HH:mm:ss') }}"
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.supabase",
+      "typeVersion": 1,
+      "position": [
+        272,
+        0
+      ],
+      "id": "2c2ad6be-1880-45e6-81c2-ef3b6b46e38e",
+      "name": "insert_chat_history",
+      "credentials": {
+        "supabaseApi": {
+          "id": "dtKFPWrXh0HZEyUt",
+          "name": "clients_database"
+        }
+      }
+    }
+  ],
+  "connections": {
+    "When Executed by Another Workflow": {
+      "main": [
+        [
+          {
+            "node": "insert_chat_history",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "nodeGroups": [],
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate",
+    "availableInMCP": false
+  },
+  "staticData": null,
+  "pinData": {
+    "When Executed by Another Workflow": [
+      {
+        "json": {
+          "id": null,
+          "timestamp": null,
+          "rol": null,
+          "mensaje": null,
+          "fecha": null,
+          "context_id_whatsapp": null,
+          "context_relation_whatsapp": null
+        }
+      }
+    ]
+  },
+  "meta": {
+    "templateCredsSetupCompleted": true
+  },
+  "tags": [],
+  "shared": [
+    {
+      "role": "workflow:owner",
+      "workflowId": "q3LUMg4wZS4m7h9h",
+      "projectId": "8h8pwWGcWlnGEym3",
+      "createdAt": "2026-03-06T02:14:14.826Z",
+      "updatedAt": "2026-03-06T02:14:14.826Z"
+    }
+  ],
+  "activeVersion": {
+    "versionId": "034e1512-1b1f-455b-abf9-65be8f0d53cd",
+    "workflowId": "q3LUMg4wZS4m7h9h",
+    "nodes": [
+      {
+        "parameters": {
+          "workflowInputs": {
+            "values": [
+              {
+                "name": "id"
+              },
+              {
+                "name": "rol"
+              },
+              {
+                "name": "mensaje"
+              },
+              {
+                "name": "context_id_whatsapp"
+              },
+              {
+                "name": "context_relation_whatsapp"
+              }
+            ]
+          }
+        },
+        "type": "n8n-nodes-base.executeWorkflowTrigger",
+        "typeVersion": 1.1,
+        "position": [
+          0,
+          0
+        ],
+        "id": "8d34d822-e90b-453d-98d0-4827b2418a14",
+        "name": "When Executed by Another Workflow"
+      },
+      {
+        "parameters": {
+          "tableId": "babys_world_prod_chat_history",
+          "fieldsUi": {
+            "fieldValues": [
+              {
+                "fieldId": "rol",
+                "fieldValue": "={{ $json.rol }}"
+              },
+              {
+                "fieldId": "message",
+                "fieldValue": "={{ $json.mensaje }}"
+              },
+              {
+                "fieldId": "context_id",
+                "fieldValue": "={{ $json.context_id_whatsapp }}"
+              },
+              {
+                "fieldId": "context_relation",
+                "fieldValue": "={{ $json.context_relation_whatsapp }}"
+              },
+              {
+                "fieldId": "session_id",
+                "fieldValue": "={{ $json.id }}"
+              },
+              {
+                "fieldId": "channel",
+                "fieldValue": "whatsapp"
+              },
+              {
+                "fieldId": "create_at",
+                "fieldValue": "={{ $now }}"
+              },
+              {
+                "fieldId": "create_date",
+                "fieldValue": "={{ $now.format('yyyy-MM-dd') }}"
+              },
+              {
+                "fieldId": "create_time",
+                "fieldValue": "={{ $now.format('HH:mm:ss') }}"
+              }
+            ]
+          }
+        },
+        "type": "n8n-nodes-base.supabase",
+        "typeVersion": 1,
+        "position": [
+          272,
+          0
+        ],
+        "id": "2c2ad6be-1880-45e6-81c2-ef3b6b46e38e",
+        "name": "insert_chat_history",
+        "credentials": {
+          "supabaseApi": {
+            "id": "dtKFPWrXh0HZEyUt",
+            "name": "clients_database"
+          }
+        }
+      }
+    ],
+    "connections": {
+      "When Executed by Another Workflow": {
+        "main": [
+          [
+            {
+              "node": "insert_chat_history",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      }
+    },
+    "nodeGroups": [],
+    "authors": "Kmilo Guerrero",
+    "name": "Version 034e1512",
+    "description": "",
+    "autosaved": true,
+    "createdAt": "2026-03-06T02:14:52.830Z",
+    "updatedAt": "2026-08-26T01:53:37.000Z"
+  }
+}
