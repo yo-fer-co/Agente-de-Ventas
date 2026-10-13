@@ -1,0 +1,1026 @@
+{
+  "id": "TDKzbZXvZLhvUarH",
+  "name": "M5_EVT_Shopify_Payment",
+  "active": false,
+  "activeVersionId": null,
+  "createdAt": "2026-08-05T21:49:56.489Z",
+  "updatedAt": "2026-10-07T23:38:58.000Z",
+  "isArchived": true,
+  "versionId": "64b09ae4-1f84-4194-b6ce-0a32e7dfed1e",
+  "triggerCount": 1,
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "shopify/payment",
+        "responseMode": "responseNode",
+        "options": {
+          "rawBody": true
+        }
+      },
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2.1,
+      "position": [
+        0,
+        0
+      ],
+      "id": "674fb8b0-04fb-4e15-aa0c-9f8297d94674",
+      "name": "Webhook",
+      "webhookId": "e363b8f7-d5db-4286-8f8a-4bfe57edccb3"
+    },
+    {
+      "parameters": {
+        "jsCode": "const input = $input.first().json ?? {};\n\nconst headers = input.headers ?? {};\nconst body = input.body ?? input;\n\nfunction getHeader(name) {\n  const lower = name.toLowerCase();\n\n  for (const [key, value] of Object.entries(headers)) {\n    if (key.toLowerCase() === lower) {\n      return Array.isArray(value) ? value[0] : value;\n    }\n  }\n\n  return null;\n}\n\nconst topic =\n  getHeader('x-shopify-topic') ??\n  getHeader('X-Shopify-Topic') ??\n  null;\n\nconst shopDomain =\n  getHeader('x-shopify-shop-domain') ??\n  getHeader('X-Shopify-Shop-Domain') ??\n  null;\n\nconst webhookId =\n  getHeader('x-shopify-webhook-id') ??\n  getHeader('X-Shopify-Webhook-Id') ??\n  null;\n\nconst hmac =\n  getHeader('x-shopify-hmac-sha256') ??\n  getHeader('X-Shopify-Hmac-Sha256') ??\n  null;\n\nreturn [\n  {\n    json: {\n      raw_webhook: {\n        headers,\n        body,\n        topic,\n        shop_domain: shopDomain,\n        webhook_id: webhookId,\n        hmac,\n        received_at: new Date().toISOString()\n      }\n    }\n  }\n];\n"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        208,
+        0
+      ],
+      "id": "7b7d81df-c54b-4e57-9f6d-3a277d4f23b9",
+      "name": "02_Extract_Raw_Webhook"
+    },
+    {
+      "parameters": {
+        "jsCode": "const crypto = require('crypto');\n\nconst payload = $input.first().json;\n\nconst webhook = payload.raw_webhook ?? {};\nconst receivedHmac = webhook.hmac ?? null;\n\nconst secret =\n  $vars.SHOPIFY_WEBHOOK_SECRET ?? null;\n\n/*\n * En producción, raw_body debe venir del Webhook/proxy.\n * Si no existe, este fallback reconstruye JSON y sirve solo para DEV.\n */\nconst rawBody =\n  webhook.raw_body ??\n  JSON.stringify(webhook.body ?? {});\n\nfunction safeCompareBase64(a, b) {\n  if (!a || !b) {\n    return false;\n  }\n\n  const aBuffer = Buffer.from(a, 'base64');\n  const bBuffer = Buffer.from(b, 'base64');\n\n  if (aBuffer.length !== bBuffer.length) {\n    return false;\n  }\n\n  return crypto.timingSafeEqual(aBuffer, bBuffer);\n}\n\nlet valid = false;\nlet reason = null;\n\nif (!secret) {\n  valid = false;\n  reason = 'missing_shopify_webhook_secret';\n} else if (!receivedHmac) {\n  valid = false;\n  reason = 'missing_shopify_hmac_header';\n} else {\n  const calculatedHmac = crypto\n    .createHmac('sha256', secret)\n    .update(rawBody, 'utf8')\n    .digest('base64');\n\n  valid = safeCompareBase64(\n    calculatedHmac,\n    receivedHmac\n  );\n\n  if (!valid) {\n    reason = 'invalid_hmac';\n  }\n}\n\nreturn [\n  {\n    json: {\n      ...payload,\n\n      security_validation: {\n        valid,\n        reason,\n        validated_at: new Date().toISOString()\n      }\n    }\n  }\n];\n"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        416,
+        0
+      ],
+      "id": "cc253ca8-a691-4ebc-bca7-40ee26ce40cd",
+      "name": "03_Verify_Shopify_HMAC"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "a2b6598f-bb45-4ef1-ab1b-b71e60acff60",
+              "leftValue": "={{ $json.security_validation.valid }}",
+              "rightValue": "",
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        624,
+        0
+      ],
+      "id": "7f1be7df-b7db-4f9b-8294-7c274f4d129d",
+      "name": "04_HMAC_Is_Valid"
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "{\n  \"success\": false,\n  \"error\": \"unauthorized\"\n}\n",
+        "options": {
+          "responseCode": 401
+        }
+      },
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.5,
+      "position": [
+        848,
+        160
+      ],
+      "id": "12bb3f0a-2b93-4a30-83ef-d4bb8eed4524",
+      "name": "04A_Return_Unauthorized",
+      "disabled": true
+    },
+    {
+      "parameters": {
+        "jsCode": "const payload = $input.first().json;\n\nconst webhook = payload.raw_webhook ?? {};\nconst order = webhook.body ?? {};\n\nfunction text(value) {\n  if (typeof value !== 'string') {\n    return value ?? null;\n  }\n\n  const trimmed = value.trim();\n  return trimmed.length > 0 ? trimmed : null;\n}\n\nfunction money(value) {\n  const number = Number(value);\n  return Number.isFinite(number) ? number : null;\n}\n\nconst topic =\n  text(webhook.topic) ??\n  'orders/paid';\n\nconst financialStatus =\n  text(order.financial_status) ??\n  text(order.displayFinancialStatus) ??\n  null;\n\nlet normalizedStatus = 'unknown';\n\nif (\n  topic === 'orders/paid' ||\n  financialStatus === 'paid' ||\n  financialStatus === 'authorized' ||\n  financialStatus === 'partially_paid'\n) {\n  normalizedStatus = 'confirmed';\n}\n\nif (\n  financialStatus === 'voided' ||\n  financialStatus === 'refunded' ||\n  financialStatus === 'partially_refunded'\n) {\n  normalizedStatus = 'failed';\n}\n\nconst noteAttributes =\n  Array.isArray(order.note_attributes)\n    ? order.note_attributes\n    : [];\n\nconst attributes =\n  Array.isArray(order.attributes)\n    ? order.attributes\n    : [];\n\nfunction findAttribute(key) {\n  const allAttributes = [\n    ...noteAttributes,\n    ...attributes\n  ];\n\n  const found = allAttributes.find((item) => {\n    const itemKey =\n      item.name ??\n      item.key ??\n      null;\n\n    return itemKey === key;\n  });\n\n  return found?.value ?? null;\n}\n\nconst transactionId =\n  text(findAttribute('dalia_transaction_id')) ??\n  text(order.dalia_transaction_id) ??\n  null;\n\nconst businessId =\n  text(findAttribute('dalia_business_id')) ??\n  text(order.dalia_business_id) ??\n  null;\n\nconst traceId =\n  text(findAttribute('dalia_trace_id')) ??\n  text(order.dalia_trace_id) ??\n  null;\n\nconst requestId =\n  text(findAttribute('dalia_request_id')) ??\n  text(order.dalia_request_id) ??\n  null;\n\nconst shopifyOrderId =\n  text(order.admin_graphql_api_id) ??\n  text(order.id) ??\n  null;\n\nconst shopifyCartToken =\n  text(order.cart_token) ??\n  text(order.cartToken) ??\n  null;\n\nconst shopifyCheckoutId =\n  text(order.checkout_id) ??\n  text(order.checkout_token) ??\n  null;\n\nconst eventId =\n  text(webhook.webhook_id) ??\n  text(order.id) ??\n  `${topic}:${shopifyOrderId}:${Date.now()}`;\n\nreturn [\n  {\n    json: {\n      ...payload,\n\n      normalized_shopify_event: {\n        provider: 'shopify',\n        topic,\n        event_id: eventId,\n        shop_domain:\n          webhook.shop_domain ?? null,\n\n        normalized_status: normalizedStatus,\n        financial_status: financialStatus,\n\n        shopify_order_id: shopifyOrderId,\n        shopify_cart_id: shopifyCartToken,\n        shopify_checkout_id: shopifyCheckoutId,\n\n        transaction_id: transactionId,\n        business_id: businessId,\n        trace_id: traceId,\n        request_id: requestId,\n\n        total_price:\n          money(order.total_price) ??\n          money(order.current_total_price),\n\n        currency:\n          text(order.currency)?.toUpperCase() ??\n          null,\n\n        customer: {\n          email:\n            text(order.email) ??\n            text(order.contact_email) ??\n            null,\n\n          phone:\n            text(order.phone) ??\n            text(order.customer?.phone) ??\n            null,\n\n          name:\n            text(order.customer?.first_name) && text(order.customer?.last_name)\n              ? `${text(order.customer.first_name)} ${text(order.customer.last_name)}`\n              : null\n        },\n\n        raw: order,\n\n        normalized_at:\n          new Date().toISOString()\n      }\n    }\n  }\n];\n"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        832,
+        -96
+      ],
+      "id": "426cb256-52eb-4e5b-bb8b-f79f5cd8f0a4",
+      "name": "05_Normalize_Shopify_Event"
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "with input_data as (\n    select\n        nullif($1::text, '')::uuid as provided_transaction_id,\n        nullif($2::text, '') as provided_business_id,\n        nullif($3::text, '') as shopify_cart_id,\n        nullif($4::text, '') as shopify_checkout_id,\n        $5::jsonb as workflow_payload\n),\n\nresolved_by_attribute as (\n    select\n        t.*\n    from commerce.transactions t\n    inner join input_data d\n        on t.id = d.provided_transaction_id\n    where\n        d.provided_transaction_id is not null\n        and (\n            d.provided_business_id is null\n            or t.business_id = d.provided_business_id\n        )\n    limit 1\n),\n\nresolved_by_payment as (\n    select\n        t.*\n    from commerce.payments p\n    inner join commerce.transactions t\n        on t.id = p.transaction_id\n    inner join input_data d\n        on true\n    where\n        p.provider = 'shopify'\n        and (\n            p.metadata ->> 'shopify_cart_id' = d.shopify_cart_id\n            or p.provider_payment_id = d.shopify_cart_id\n            or p.metadata ->> 'shopify_checkout_id' = d.shopify_checkout_id\n        )\n    order by p.created_at desc\n    limit 1\n),\n\nresolved_transaction as (\n    select to_jsonb(t) as transaction\n    from resolved_by_attribute t\n\n    union all\n\n    select to_jsonb(t) as transaction\n    from resolved_by_payment t\n\n    limit 1\n)\n\nselect\n    case\n        when exists (\n            select 1\n            from resolved_transaction\n        )\n        then true\n        else false\n    end as transaction_found,\n\n    (\n        select transaction\n        from resolved_transaction\n        limit 1\n    ) as transaction,\n\n    d.workflow_payload\n\nfrom input_data d;\n",
+        "options": {
+          "queryReplacement": "={{ [   $json.normalized_shopify_event.transaction_id,   $json.normalized_shopify_event.business_id,   $json.normalized_shopify_event.shopify_cart_id,   $json.normalized_shopify_event.shopify_checkout_id,   JSON.stringify($json) ] }}"
+        }
+      },
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [
+        1024,
+        -96
+      ],
+      "id": "e6f543b1-123c-49e5-a2f0-523bce928a94",
+      "name": "06_Resolve_DALIA_Transaction",
+      "credentials": {
+        "postgres": {
+          "id": "YQQz8BhJGmfwa1CY",
+          "name": "Postgres account"
+        }
+      },
+      "disabled": true
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "12cf19cc-3f61-4d08-8956-ed94ba0ce55e",
+              "leftValue": "={{ $json.transaction_found }}",
+              "rightValue": "",
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        1216,
+        -96
+      ],
+      "id": "93d9ea58-65b9-4422-a5d4-788b13d2675e",
+      "name": "07_Transaction_Found"
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "insert into commerce.events (\n    transaction_id,\n    event_type,\n    source,\n    status,\n    payload,\n    processed_at\n)\nvalues (\n    null,\n    'shopify_payment_webhook_unmatched',\n    'DALIA_M5_EVT_Shopify_Payment',\n    'received',\n    $1::jsonb,\n    now()\n)\nreturning id as event_id;\n",
+        "options": {
+          "queryReplacement": "={{ [   JSON.stringify($json.workflow_payload ?? $json) ] }}"
+        }
+      },
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [
+        1376,
+        96
+      ],
+      "id": "ce230f99-ce1d-4996-97bc-6e5d93449bf4",
+      "name": "07A_Register_Unmatched_Webhook",
+      "credentials": {
+        "postgres": {
+          "id": "YQQz8BhJGmfwa1CY",
+          "name": "Postgres account"
+        }
+      },
+      "disabled": true
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "{\n  \"success\": true,\n  \"status\": \"accepted_unmatched\"\n}\n",
+        "options": {
+          "responseCode": 202
+        }
+      },
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.5,
+      "position": [
+        1584,
+        96
+      ],
+      "id": "86690f1c-9220-46c5-886c-156b9c88b3a4",
+      "name": "07B_Return_Accepted_Unmatched",
+      "disabled": true
+    },
+    {
+      "parameters": {
+        "jsCode": "const result = $input.first().json;\n\nconst payload =\n  result.workflow_payload ?? {};\n\nconst event =\n  payload.normalized_shopify_event ?? {};\n\nconst transaction =\n  result.transaction ?? {};\n\nconst traceId =\n  event.trace_id ??\n  `trace_shopify_${event.event_id}`;\n\nconst requestId =\n  event.request_id ??\n  `req_shopify_${event.event_id}`;\n\nreturn [\n  {\n    json: {\n      request: {\n        request_id: requestId,\n        action: 'process_payment_event',\n        requested_at: new Date().toISOString(),\n        source_module: 'DALIA_M5_EVT_Shopify_Payment',\n        trace_id: traceId\n      },\n\n      context: {\n        business_id:\n          transaction.business_id ??\n          event.business_id ??\n          null,\n\n        session_id:\n          transaction.metadata?.session_id ??\n          null,\n\n        conversation_id:\n          transaction.metadata?.conversation_id ??\n          null,\n\n        channel: 'shopify_webhook',\n        locale: 'es-CO',\n        timezone: 'America/Bogota'\n      },\n\n      customer: {\n        customer_id:\n          transaction.customer_id ?? null,\n\n        name:\n          event.customer?.name ?? null,\n\n        phone:\n          event.customer?.phone ?? null,\n\n        email:\n          event.customer?.email ?? null,\n\n        metadata: {\n          source: 'shopify_webhook'\n        }\n      },\n\n      commercial_selection: {\n        currency:\n          transaction.currency ??\n          event.currency ??\n          'COP',\n\n        items: [],\n\n        total:\n          event.total_price ??\n          transaction.total ??\n          null,\n\n        customer_confirmation: {\n          confirmed: true,\n          confirmed_at:\n            new Date().toISOString()\n        }\n      },\n\n      advisor_validation: {\n        customer_checked: true,\n        product_validated: true,\n        price_validated: true,\n        stock_checked: true,\n        validated_at:\n          new Date().toISOString(),\n        valid_until:\n          new Date(Date.now() + 5 * 60000).toISOString(),\n        sources: {\n          payment: 'shopify_webhook'\n        }\n      },\n\n      business_configuration: {\n        payment: {\n          required: true,\n          mode: 'online',\n          provider: 'shopify',\n          allowed_methods: [\n            'shopify_checkout'\n          ],\n          confirmation_mode: 'callback'\n        },\n\n        invoicing:\n          transaction.metadata\n            ?.business_configuration\n            ?.invoicing ?? {\n            required: false,\n            mode: 'not_applicable'\n          },\n\n        fulfillment:\n          transaction.metadata\n            ?.business_configuration\n            ?.fulfillment ?? {\n            mode: 'store_pickup',\n            requires_address: false,\n            requires_city: false,\n            requires_email: false,\n            requires_phone: false\n          },\n\n        completion:\n          transaction.metadata\n            ?.business_configuration\n            ?.completion ?? {\n            completion_state: 'picked_up'\n          },\n\n        automation:\n          transaction.metadata\n            ?.business_configuration\n            ?.automation ?? {\n            level: 'semi_automated',\n            allow_human_handoff: true,\n            max_retries: 3\n          }\n      },\n\n      transaction_context: {\n        transaction_id:\n          transaction.id,\n\n        status:\n          transaction.status,\n\n        sub_status:\n          transaction.sub_status,\n\n        next_action:\n          transaction.next_action\n      },\n\n      external_event: {\n        provider: 'shopify',\n        topic: event.topic,\n        event_id: event.event_id,\n        shop_domain: event.shop_domain,\n\n        shopify_order_id:\n          event.shopify_order_id,\n\n        shopify_cart_id:\n          event.shopify_cart_id,\n\n        shopify_checkout_id:\n          event.shopify_checkout_id,\n\n        financial_status:\n          event.financial_status,\n\n        status:\n          event.normalized_status,\n\n        payment_status:\n          event.normalized_status,\n\n        total_price:\n          event.total_price,\n\n        currency:\n          event.currency,\n\n        transaction_id:\n          transaction.id,\n\n        raw:\n          event.raw\n      }\n    }\n  }\n];\n"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1440,
+        -192
+      ],
+      "id": "affac353-aa9d-4ae5-b035-8bdaf2491367",
+      "name": "08_Build_M5_Orchestrator_Input"
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "type": "n8n-nodes-base.executeWorkflow",
+      "typeVersion": 1.3,
+      "position": [
+        1632,
+        -192
+      ],
+      "id": "4cdae48e-fa6f-4f17-aabb-de64d5dc26c6",
+      "name": "Execute Workflow",
+      "disabled": true
+    }
+  ],
+  "connections": {
+    "Webhook": {
+      "main": [
+        [
+          {
+            "node": "02_Extract_Raw_Webhook",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "02_Extract_Raw_Webhook": {
+      "main": [
+        [
+          {
+            "node": "03_Verify_Shopify_HMAC",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "03_Verify_Shopify_HMAC": {
+      "main": [
+        [
+          {
+            "node": "04_HMAC_Is_Valid",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "04_HMAC_Is_Valid": {
+      "main": [
+        [
+          {
+            "node": "05_Normalize_Shopify_Event",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "04A_Return_Unauthorized",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "05_Normalize_Shopify_Event": {
+      "main": [
+        [
+          {
+            "node": "06_Resolve_DALIA_Transaction",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "06_Resolve_DALIA_Transaction": {
+      "main": [
+        [
+          {
+            "node": "07_Transaction_Found",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "07_Transaction_Found": {
+      "main": [
+        [
+          {
+            "node": "08_Build_M5_Orchestrator_Input",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "07A_Register_Unmatched_Webhook",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "07A_Register_Unmatched_Webhook": {
+      "main": [
+        [
+          {
+            "node": "07B_Return_Accepted_Unmatched",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "08_Build_M5_Orchestrator_Input": {
+      "main": [
+        [
+          {
+            "node": "Execute Workflow",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "nodeGroups": [],
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate",
+    "availableInMCP": false
+  },
+  "staticData": null,
+  "pinData": {
+    "Webhook": [
+      {
+        "json": {
+          "headers": {
+            "host": "yoeco.app.n8n.cloud",
+            "user-agent": "Shopify-Captain-Hook",
+            "content-length": "10956",
+            "accept": "*/*",
+            "accept-encoding": "gzip, br",
+            "cdn-loop": "cloudflare; loops=1; subreqs=1",
+            "cf-connecting-ip": "136.111.194.0",
+            "cf-ew-via": "15",
+            "cf-ipcountry": "US",
+            "cf-ray": "a2709212ba4bfa1b-ORD",
+            "cf-visitor": "{\"scheme\":\"https\"}",
+            "cf-worker": "n8n.cloud",
+            "content-type": "application/json",
+            "x-forwarded-for": "136.111.194.0, 172.70.130.176",
+            "x-forwarded-host": "yoeco.app.n8n.cloud",
+            "x-forwarded-port": "443",
+            "x-forwarded-proto": "https",
+            "x-forwarded-server": "traefik-prod-users-gwc-32-6dbd8ff6-58mlb",
+            "x-is-trusted": "yes",
+            "x-real-ip": "136.111.194.0",
+            "x-shopify-api-version": "2026-01",
+            "x-shopify-event-id": "1b33523e-4f69-46e3-bcbc-cea3976cfd15",
+            "x-shopify-hmac-sha256": "O0iNurUg86DDH5NowJij2bhX43Fxxid6tY081rNBX+8=",
+            "x-shopify-shop-domain": "9j7ghx-5q.myshopify.com",
+            "x-shopify-test": "true",
+            "x-shopify-topic": "orders/paid",
+            "x-shopify-triggered-at": "2026-08-06T19:50:26.581455648Z",
+            "x-shopify-webhook-id": "e8693b66-ada6-5025-a965-06bc3d29eb1b"
+          },
+          "params": {},
+          "query": {},
+          "body": {
+            "id": 820982911946154500,
+            "admin_graphql_api_id": "gid://shopify/Order/820982911946154508",
+            "app_id": null,
+            "browser_ip": null,
+            "buyer_accepts_marketing": true,
+            "cancel_reason": "customer",
+            "cancelled_at": "2026-08-06T14:50:26-05:00",
+            "cart_token": null,
+            "checkout_token": null,
+            "client_details": null,
+            "closed_at": null,
+            "company": null,
+            "confirmation_number": null,
+            "confirmed": false,
+            "contact_email": "jon@example.com",
+            "created_at": "2026-08-06T14:50:26-05:00",
+            "currency": "COP",
+            "current_shipping_price_set": {
+              "shop_money": {
+                "amount": "0.00",
+                "currency_code": "COP"
+              },
+              "presentment_money": {
+                "amount": "0.00",
+                "currency_code": "COP"
+              }
+            },
+            "current_subtotal_price": "1039044.98",
+            "current_subtotal_price_set": {
+              "shop_money": {
+                "amount": "1039044.98",
+                "currency_code": "COP"
+              },
+              "presentment_money": {
+                "amount": "1039044.98",
+                "currency_code": "COP"
+              }
+            },
+            "current_total_additional_fees_set": null,
+            "current_total_discounts": "0.00",
+            "current_total_discounts_set": {
+              "shop_money": {
+                "amount": "0.00",
+                "currency_code": "COP"
+              },
+              "presentment_money": {
+                "amount": "0.00",
+                "currency_code": "COP"
+              }
+            },
+            "current_total_duties_set": null,
+            "current_total_price": "1039044.98",
+            "current_total_price_set": {
+              "shop_money": {
+                "amount": "1039044.98",
+                "currency_code": "COP"
+              },
+              "presentment_money": {
+                "amount": "1039044.98",
+                "currency_code": "COP"
+              }
+            },
+            "current_total_tax": "0.00",
+            "current_total_tax_set": {
+              "shop_money": {
+                "amount": "0.00",
+                "currency_code": "COP"
+              },
+              "presentment_money": {
+                "amount": "0.00",
+                "currency_code": "COP"
+              }
+            },
+            "customer_locale": "es",
+            "device_id": null,
+            "discount_codes": [],
+            "duties_included": false,
+            "email": "jon@example.com",
+            "estimated_taxes": false,
+            "financial_status": "voided",
+            "fulfillment_status": null,
+            "landing_site": null,
+            "landing_site_ref": null,
+            "location_id": null,
+            "merchant_business_entity_id": "18364039382",
+            "merchant_of_record_app_id": null,
+            "name": "#9999",
+            "note": null,
+            "note_attributes": [],
+            "number": 234,
+            "order_number": 1234,
+            "order_status_url": "https://babysworld.com.co/78433288406/orders/123456abcd/authenticate?key=abcdefg",
+            "original_total_additional_fees_set": null,
+            "original_total_duties_set": null,
+            "payment_gateway_names": [
+              "visa",
+              "bogus"
+            ],
+            "phone": null,
+            "po_number": null,
+            "presentment_currency": "COP",
+            "processed_at": "2026-08-06T14:50:26-05:00",
+            "reference": null,
+            "referring_site": null,
+            "source_identifier": null,
+            "source_name": "web",
+            "source_url": null,
+            "subtotal_price": "1039034.98",
+            "subtotal_price_set": {
+              "shop_money": {
+                "amount": "1039034.98",
+                "currency_code": "COP"
+              },
+              "presentment_money": {
+                "amount": "1039034.98",
+                "currency_code": "COP"
+              }
+            },
+            "tags": "tag1, tag2",
+            "tax_exempt": false,
+            "tax_lines": [],
+            "taxes_included": false,
+            "test": true,
+            "token": "123456abcd",
+            "total_cash_rounding_payment_adjustment_set": {
+              "shop_money": {
+                "amount": "0.00",
+                "currency_code": "COP"
+              },
+              "presentment_money": {
+                "amount": "0.00",
+                "currency_code": "COP"
+              }
+            },
+            "total_cash_rounding_refund_adjustment_set": {
+              "shop_money": {
+                "amount": "0.00",
+                "currency_code": "COP"
+              },
+              "presentment_money": {
+                "amount": "0.00",
+                "currency_code": "COP"
+              }
+            },
+            "total_discounts": "20.00",
+            "total_discounts_set": {
+              "shop_money": {
+                "amount": "20.00",
+                "currency_code": "COP"
+              },
+              "presentment_money": {
+                "amount": "20.00",
+                "currency_code": "COP"
+              }
+            },
+            "total_line_items_price": "1039044.98",
+            "total_line_items_price_set": {
+              "shop_money": {
+                "amount": "1039044.98",
+                "currency_code": "COP"
+              },
+              "presentment_money": {
+                "amount": "1039044.98",
+                "currency_code": "COP"
+              }
+            },
+            "total_outstanding": "1039044.98",
+            "total_price": "1039034.98",
+            "total_price_set": {
+              "shop_money": {
+                "amount": "1039034.98",
+                "currency_code": "COP"
+              },
+              "presentment_money": {
+                "amount": "1039034.98",
+                "currency_code": "COP"
+              }
+            },
+            "total_shipping_price_set": {
+              "shop_money": {
+                "amount": "10.00",
+                "currency_code": "COP"
+              },
+              "presentment_money": {
+                "amount": "10.00",
+                "currency_code": "COP"
+              }
+            },
+            "total_tax": "0.00",
+            "total_tax_set": {
+              "shop_money": {
+                "amount": "0.00",
+                "currency_code": "COP"
+              },
+              "presentment_money": {
+                "amount": "0.00",
+                "currency_code": "COP"
+              }
+            },
+            "total_tip_received": "0.00",
+            "total_weight": 0,
+            "updated_at": "2026-08-06T14:50:26-05:00",
+            "user_id": null,
+            "billing_address": {
+              "first_name": "Steve",
+              "address1": "123 Shipping Street",
+              "phone": "555-555-SHIP",
+              "city": "Shippington",
+              "zip": "40003",
+              "province": "Kentucky",
+              "country": "United States",
+              "last_name": "Shipper",
+              "address2": null,
+              "company": "Shipping Company",
+              "latitude": null,
+              "longitude": null,
+              "name": "Steve Shipper",
+              "country_code": "US",
+              "province_code": "KY"
+            },
+            "customer": {
+              "id": 115310627314723950,
+              "created_at": null,
+              "updated_at": null,
+              "first_name": "John",
+              "last_name": "Smith",
+              "state": "disabled",
+              "note": null,
+              "verified_email": true,
+              "multipass_identifier": null,
+              "tax_exempt": false,
+              "email": "john@example.com",
+              "phone": null,
+              "currency": "COP",
+              "tax_exemptions": [],
+              "admin_graphql_api_id": "gid://shopify/Customer/115310627314723954",
+              "default_address": {
+                "id": 715243470612851200,
+                "customer_id": 115310627314723950,
+                "first_name": "John",
+                "last_name": "Smith",
+                "company": null,
+                "address1": "123 Elm St.",
+                "address2": null,
+                "city": "Ottawa",
+                "province": "Ontario",
+                "country": "Canada",
+                "zip": "K2H7A8",
+                "phone": "123-123-1234",
+                "name": "John Smith",
+                "province_code": "ON",
+                "country_code": "CA",
+                "country_name": "Canada",
+                "default": true
+              }
+            },
+            "discount_applications": [],
+            "fulfillments": [],
+            "line_items": [
+              {
+                "id": 866550311766439000,
+                "admin_graphql_api_id": "gid://shopify/LineItem/866550311766439020",
+                "attributed_staffs": [
+                  {
+                    "id": "gid://shopify/StaffMember/902541635",
+                    "quantity": 1
+                  }
+                ],
+                "current_quantity": 1,
+                "fulfillable_quantity": 1,
+                "fulfillment_service": "manual",
+                "fulfillment_status": null,
+                "gift_card": false,
+                "grams": 0,
+                "name": "COCHE ROPON",
+                "price": "260000.00",
+                "price_set": {
+                  "shop_money": {
+                    "amount": "260000.00",
+                    "currency_code": "COP"
+                  },
+                  "presentment_money": {
+                    "amount": "260000.00",
+                    "currency_code": "COP"
+                  }
+                },
+                "product_exists": true,
+                "product_id": 9192612921558,
+                "properties": [],
+                "quantity": 1,
+                "requires_shipping": true,
+                "sales_line_item_group_id": null,
+                "selling_plan_id": null,
+                "sku": "BW-20261330",
+                "taxable": true,
+                "title": "COCHE ROPON",
+                "total_discount": "0.00",
+                "total_discount_set": {
+                  "shop_money": {
+                    "amount": "0.00",
+                    "currency_code": "COP"
+                  },
+                  "presentment_money": {
+                    "amount": "0.00",
+                    "currency_code": "COP"
+                  }
+                },
+                "variant_id": 47600755179734,
+                "variant_inventory_management": null,
+                "variant_title": null,
+                "vendor": null,
+                "tax_lines": [],
+                "duties": [],
+                "discount_allocations": []
+              },
+              {
+                "id": 789012345678901200,
+                "admin_graphql_api_id": "gid://shopify/LineItem/789012345678901234",
+                "attributed_staffs": [],
+                "current_quantity": 1,
+                "fulfillable_quantity": 1,
+                "fulfillment_service": "manual",
+                "fulfillment_status": null,
+                "gift_card": false,
+                "grams": 0,
+                "name": "Lens Protection Plan (2 Year)",
+                "price": "19.99",
+                "price_set": {
+                  "shop_money": {
+                    "amount": "19.99",
+                    "currency_code": "COP"
+                  },
+                  "presentment_money": {
+                    "amount": "19.99",
+                    "currency_code": "COP"
+                  }
+                },
+                "product_exists": false,
+                "product_id": null,
+                "properties": [],
+                "quantity": 1,
+                "requires_shipping": true,
+                "sales_line_item_group_id": 234567890123456800,
+                "selling_plan_id": null,
+                "sku": "LENS-PROTECT-2YR",
+                "taxable": true,
+                "title": "Lens Protection Plan (2 Year)",
+                "total_discount": "0.00",
+                "total_discount_set": {
+                  "shop_money": {
+                    "amount": "0.00",
+                    "currency_code": "COP"
+                  },
+                  "presentment_money": {
+                    "amount": "0.00",
+                    "currency_code": "COP"
+                  }
+                },
+                "variant_id": null,
+                "variant_inventory_management": null,
+                "variant_title": null,
+                "vendor": null,
+                "tax_lines": [],
+                "duties": [],
+                "discount_allocations": []
+              },
+              {
+                "id": 890123456789012400,
+                "admin_graphql_api_id": "gid://shopify/LineItem/890123456789012345",
+                "attributed_staffs": [],
+                "current_quantity": 1,
+                "fulfillable_quantity": 1,
+                "fulfillment_service": "manual",
+                "fulfillment_status": null,
+                "gift_card": false,
+                "grams": 0,
+                "name": "Premium Leather Case",
+                "price": "24.99",
+                "price_set": {
+                  "shop_money": {
+                    "amount": "24.99",
+                    "currency_code": "COP"
+                  },
+                  "presentment_money": {
+                    "amount": "24.99",
+                    "currency_code": "COP"
+                  }
+                },
+                "product_exists": false,
+                "product_id": null,
+                "properties": [],
+                "quantity": 1,
+                "requires_shipping": true,
+                "sales_line_item_group_id": 234567890123456800,
+                "selling_plan_id": null,
+                "sku": "CASE-LEATHER-PREM",
+                "taxable": true,
+                "title": "Premium Leather Case",
+                "total_discount": "0.00",
+                "total_discount_set": {
+                  "shop_money": {
+                    "amount": "0.00",
+                    "currency_code": "COP"
+                  },
+                  "presentment_money": {
+                    "amount": "0.00",
+                    "currency_code": "COP"
+                  }
+                },
+                "variant_id": null,
+                "variant_inventory_management": null,
+                "variant_title": null,
+                "vendor": null,
+                "tax_lines": [],
+                "duties": [],
+                "discount_allocations": []
+              },
+              {
+                "id": 141249953214522980,
+                "admin_graphql_api_id": "gid://shopify/LineItem/141249953214522974",
+                "attributed_staffs": [],
+                "current_quantity": 1,
+                "fulfillable_quantity": 1,
+                "fulfillment_service": "manual",
+                "fulfillment_status": null,
+                "gift_card": false,
+                "grams": 0,
+                "name": "COCHE MALETA JUMPY",
+                "price": "380000.00",
+                "price_set": {
+                  "shop_money": {
+                    "amount": "380000.00",
+                    "currency_code": "COP"
+                  },
+                  "presentment_money": {
+                    "amount": "380000.00",
+                    "currency_code": "COP"
+                  }
+                },
+                "product_exists": true,
+                "product_id": 9192612987094,
+                "properties": [],
+                "quantity": 1,
+                "requires_shipping": true,
+                "sales_line_item_group_id": 142831562,
+                "selling_plan_id": null,
+                "sku": "BW-20261340",
+                "taxable": true,
+                "title": "COCHE MALETA JUMPY",
+                "total_discount": "0.00",
+                "total_discount_set": {
+                  "shop_money": {
+                    "amount": "0.00",
+                    "currency_code": "COP"
+                  },
+                  "presentment_money": {
+                    "amount": "0.00",
+                    "currency_code": "COP"
+                  }
+                },
+                "variant_id": 47600755441878,
+                "variant_inventory_management": null,
+                "variant_title": null,
+                "vendor": null,
+                "tax_lines": [],
+                "duties": [],
+                "discount_allocations": []
+              },
+              {
+                "id": 257004973105704600,
+                "admin_graphql_api_id": "gid://shopify/LineItem/257004973105704598",
+                "attributed_staffs": [],
+                "current_quantity": 1,
+                "fulfillable_quantity": 1,
+                "fulfillment_service": "manual",
+                "fulfillment_status": null,
+                "gift_card": false,
+                "grams": 0,
+                "name": "COCHE MALETA ZOOM",
+                "price": "399000.00",
+                "price_set": {
+                  "shop_money": {
+                    "amount": "399000.00",
+                    "currency_code": "COP"
+                  },
+                  "presentment_money": {
+                    "amount": "399000.00",
+                    "currency_code": "COP"
+                  }
+                },
+                "product_exists": true,
+                "product_id": 9192613019862,
+                "properties": [],
+                "quantity": 1,
+                "requires_shipping": true,
+                "sales_line_item_group_id": 142831562,
+                "selling_plan_id": null,
+                "sku": "BW-20261345",
+                "taxable": true,
+                "title": "COCHE MALETA ZOOM",
+                "total_discount": "0.00",
+                "total_discount_set": {
+                  "shop_money": {
+                    "amount": "0.00",
+                    "currency_code": "COP"
+                  },
+                  "presentment_money": {
+                    "amount": "0.00",
+                    "currency_code": "COP"
+                  }
+                },
+                "variant_id": 47600755540182,
+                "variant_inventory_management": null,
+                "variant_title": null,
+                "vendor": null,
+                "tax_lines": [],
+                "duties": [],
+                "discount_allocations": []
+              }
+            ],
+            "payment_terms": null,
+            "refunds": [],
+            "shipping_address": {
+              "first_name": "Steve",
+              "address1": "123 Shipping Street",
+              "phone": "555-555-SHIP",
+              "city": "Shippington",
+              "zip": "40003",
+              "province": "Kentucky",
+              "country": "United States",
+              "last_name": "Shipper",
+              "address2": null,
+              "company": "Shipping Company",
+              "latitude": null,
+              "longitude": null,
+              "name": "Steve Shipper",
+              "country_code": "US",
+              "province_code": "KY"
+            },
+            "shipping_lines": [
+              {
+                "id": 271878346596884000,
+                "carrier_identifier": null,
+                "code": null,
+                "current_discounted_price_set": {
+                  "shop_money": {
+                    "amount": "0.00",
+                    "currency_code": "COP"
+                  },
+                  "presentment_money": {
+                    "amount": "0.00",
+                    "currency_code": "COP"
+                  }
+                },
+                "discounted_price": "0.00",
+                "discounted_price_set": {
+                  "shop_money": {
+                    "amount": "0.00",
+                    "currency_code": "COP"
+                  },
+                  "presentment_money": {
+                    "amount": "0.00",
+                    "currency_code": "COP"
+                  }
+                },
+                "is_removed": false,
+                "phone": null,
+                "price": "10.00",
+                "price_set": {
+                  "shop_money": {
+                    "amount": "10.00",
+                    "currency_code": "COP"
+                  },
+                  "presentment_money": {
+                    "amount": "10.00",
+                    "currency_code": "COP"
+                  }
+                },
+                "requested_fulfillment_service_id": null,
+                "source": "shopify",
+                "title": "Generic Shipping",
+                "tax_lines": [],
+                "discount_allocations": []
+              }
+            ],
+            "returns": [],
+            "line_item_groups": []
+          },
+          "webhookUrl": "https://yoeco.app.n8n.cloud/webhook/shopify/payment",
+          "executionMode": "production"
+        },
+        "binary": {
+          "data": {
+            "data": "eyJpZCI6ODIwOTgyOTExOTQ2MTU0NTA4LCJhZG1pbl9ncmFwaHFsX2FwaV9pZCI6ImdpZDpcL1wvc2hvcGlmeVwvT3JkZXJcLzgyMDk4MjkxMTk0NjE1NDUwOCIsImFwcF9pZCI6bnVsbCwiYnJvd3Nlcl9pcCI6bnVsbCwiYnV5ZXJfYWNjZXB0c19tYXJrZXRpbmciOnRydWUsImNhbmNlbF9yZWFzb24iOiJjdXN0b21lciIsImNhbmNlbGxlZF9hdCI6IjIwMjYtMDgtMDZUMTQ6NTA6MjYtMDU6MDAiLCJjYXJ0X3Rva2VuIjpudWxsLCJjaGVja291dF90b2tlbiI6bnVsbCwiY2xpZW50X2RldGFpbHMiOm51bGwsImNsb3NlZF9hdCI6bnVsbCwiY29tcGFueSI6bnVsbCwiY29uZmlybWF0aW9uX251bWJlciI6bnVsbCwiY29uZmlybWVkIjpmYWxzZSwiY29udGFjdF9lbWFpbCI6ImpvbkBleGFtcGxlLmNvbSIsImNyZWF0ZWRfYXQiOiIyMDI2LTA4LTA2VDE0OjUwOjI2LTA1OjAwIiwiY3VycmVuY3kiOiJDT1AiLCJjdXJyZW50X3NoaXBwaW5nX3ByaWNlX3NldCI6eyJzaG9wX21vbmV5Ijp7ImFtb3VudCI6IjAuMDAiLCJjdXJyZW5jeV9jb2RlIjoiQ09QIn0sInByZXNlbnRtZW50X21vbmV5Ijp7ImFtb3VudCI6IjAuMDAiLCJjdXJyZW5jeV9jb2RlIjoiQ09QIn19LCJjdXJyZW50X3N1YnRvdGFsX3ByaWNlIjoiMTAzOTA0NC45OCIsImN1cnJlbnRfc3VidG90YWxfcHJpY2Vfc2V0Ijp7InNob3BfbW9uZXkiOnsiYW1vdW50IjoiMTAzOTA0NC45OCIsImN1cnJlbmN5X2NvZGUiOiJDT1AifSwicHJlc2VudG1lbnRfbW9uZXkiOnsiYW1vdW50IjoiMTAzOTA0NC45OCIsImN1cnJlbmN5X2NvZGUiOiJDT1AifX0sImN1cnJlbnRfdG90YWxfYWRkaXRpb25hbF9mZWVzX3NldCI6bnVsbCwiY3VycmVudF90b3RhbF9kaXNjb3VudHMiOiIwLjAwIiwiY3VycmVudF90b3RhbF9kaXNjb3VudHNfc2V0Ijp7InNob3BfbW9uZXkiOnsiYW1vdW50IjoiMC4wMCIsImN1cnJlbmN5X2NvZGUiOiJDT1AifSwicHJlc2VudG1lbnRfbW9uZXkiOnsiYW1vdW50IjoiMC4wMCIsImN1cnJlbmN5X2NvZGUiOiJDT1AifX0sImN1cnJlbnRfdG90YWxfZHV0aWVzX3NldCI6bnVsbCwiY3VycmVudF90b3RhbF9wcmljZSI6IjEwMzkwNDQuOTgiLCJjdXJyZW50X3RvdGFsX3ByaWNlX3NldCI6eyJzaG9wX21vbmV5Ijp7ImFtb3VudCI6IjEwMzkwNDQuOTgiLCJjdXJyZW5jeV9jb2RlIjoiQ09QIn0sInByZXNlbnRtZW50X21vbmV5Ijp7ImFtb3VudCI6IjEwMzkwNDQuOTgiLCJjdXJyZW5jeV9jb2RlIjoiQ09QIn19LCJjdXJyZW50X3RvdGFsX3RheCI6IjAuMDAiLCJjdXJyZW50X3RvdGFsX3RheF9zZXQiOnsic2hvcF9tb25leSI6eyJhbW91bnQiOiIwLjAwIiwiY3VycmVuY3lfY29kZSI6IkNPUCJ9LCJwcmVzZW50bWVudF9tb25leSI6eyJhbW91bnQiOiIwLjAwIiwiY3VycmVuY3lfY29kZSI6IkNPUCJ9fSwiY3VzdG9tZXJfbG9jYWxlIjoiZXMiLCJkZXZpY2VfaWQiOm51bGwsImRpc2NvdW50X2NvZGVzIjpbXSwiZHV0aWVzX2luY2x1ZGVkIjpmYWxzZSwiZW1haWwiOiJqb25AZXhhbXBsZS5jb20iLCJlc3RpbWF0ZWRfdGF4ZXMiOmZhbHNlLCJmaW5hbmNpYWxfc3RhdHVzIjoidm9pZGVkIiwiZnVsZmlsbG1lbnRfc3RhdHVzIjpudWxsLCJsYW5kaW5nX3NpdGUiOm51bGwsImxhbmRpbmdfc2l0ZV9yZWYiOm51bGwsImxvY2F0aW9uX2lkIjpudWxsLCJtZXJjaGFudF9idXNpbmVzc19lbnRpdHlfaWQiOiIxODM2NDAzOTM4MiIsIm1lcmNoYW50X29mX3JlY29yZF9hcHBfaWQiOm51bGwsIm5hbWUiOiIjOTk5OSIsIm5vdGUiOm51bGwsIm5vdGVfYXR0cmlidXRlcyI6W10sIm51bWJlciI6MjM0LCJvcmRlcl9udW1iZXIiOjEyMzQsIm9yZGVyX3N0YXR1c191cmwiOiJodHRwczpcL1wvYmFieXN3b3JsZC5jb20uY29cLzc4NDMzMjg4NDA2XC9vcmRlcnNcLzEyMzQ1NmFiY2RcL2F1dGhlbnRpY2F0ZT9rZXk9YWJjZGVmZyIsIm9yaWdpbmFsX3RvdGFsX2FkZGl0aW9uYWxfZmVlc19zZXQiOm51bGwsIm9yaWdpbmFsX3RvdGFsX2R1dGllc19zZXQiOm51bGwsInBheW1lbnRfZ2F0ZXdheV9uYW1lcyI6WyJ2aXNhIiwiYm9ndXMiXSwicGhvbmUiOm51bGwsInBvX251bWJlciI6bnVsbCwicHJlc2VudG1lbnRfY3VycmVuY3kiOiJDT1AiLCJwcm9jZXNzZWRfYXQiOiIyMDI2LTA4LTA2VDE0OjUwOjI2LTA1OjAwIiwicmVmZXJlbmNlIjpudWxsLCJyZWZlcnJpbmdfc2l0ZSI6bnVsbCwic291cmNlX2lkZW50aWZpZXIiOm51bGwsInNvdXJjZV9uYW1lIjoid2ViIiwic291cmNlX3VybCI6bnVsbCwic3VidG90YWxfcHJpY2UiOiIxMDM5MDM0Ljk4Iiwic3VidG90YWxfcHJpY2Vfc2V0Ijp7InNob3BfbW9uZXkiOnsiYW1vdW50IjoiMTAzOTAzNC45OCIsImN1cnJlbmN5X2NvZGUiOiJDT1AifSwicHJlc2VudG1lbnRfbW9uZXkiOnsiYW1vdW50IjoiMTAzOTAzNC45OCIsImN1cnJlbmN5X2NvZGUiOiJDT1AifX0sInRhZ3MiOiJ0YWcxLCB0YWcyIiwidGF4X2V4ZW1wdCI6ZmFsc2UsInRheF9saW5lcyI6W10sInRheGVzX2luY2x1ZGVkIjpmYWxzZSwidGVzdCI6dHJ1ZSwidG9rZW4iOiIxMjM0NTZhYmNkIiwidG90YWxfY2FzaF9yb3VuZGluZ19wYXltZW50X2FkanVzdG1lbnRfc2V0Ijp7InNob3BfbW9uZXkiOnsiYW1vdW50IjoiMC4wMCIsImN1cnJlbmN5X2NvZGUiOiJDT1AifSwicHJlc2VudG1lbnRfbW9uZXkiOnsiYW1vdW50IjoiMC4wMCIsImN1cnJlbmN5X2NvZGUiOiJDT1AifX0sInRvdGFsX2Nhc2hfcm91bmRpbmdfcmVmdW5kX2FkanVzdG1lbnRfc2V0Ijp7InNob3BfbW9uZXkiOnsiYW1vdW50IjoiMC4wMCIsImN1cnJlbmN5X2NvZGUiOiJDT1AifSwicHJlc2VudG1lbnRfbW9uZXkiOnsiYW1vdW50IjoiMC4wMCIsImN1cnJlbmN5X2NvZGUiOiJDT1AifX0sInRvdGFsX2Rpc2NvdW50cyI6IjIwLjAwIiwidG90YWxfZGlzY291bnRzX3NldCI6eyJzaG9wX21vbmV5Ijp7ImFtb3VudCI6IjIwLjAwIiwiY3VycmVuY3lfY29kZSI6IkNPUCJ9LCJwcmVzZW50bWVudF9tb25leSI6eyJhbW91bnQiOiIyMC4wMCIsImN1cnJlbmN5X2NvZGUiOiJDT1AifX0sInRvdGFsX2xpbmVfaXRlbXNfcHJpY2UiOiIxMDM5MDQ0Ljk4IiwidG90YWxfbGluZV9pdGVtc19wcmljZV9zZXQiOnsic2hvcF9tb25leSI6eyJhbW91bnQiOiIxMDM5MDQ0Ljk4IiwiY3VycmVuY3lfY29kZSI6IkNPUCJ9LCJwcmVzZW50bWVudF9tb25leSI6eyJhbW91bnQiOiIxMDM5MDQ0Ljk4IiwiY3VycmVuY3lfY29kZSI6IkNPUCJ9fSwidG90YWxfb3V0c3RhbmRpbmciOiIxMDM5MDQ0Ljk4IiwidG90YWxfcHJpY2UiOiIxMDM5MDM0Ljk4IiwidG90YWxfcHJpY2Vfc2V0Ijp7InNob3BfbW9uZXkiOnsiYW1vdW50IjoiMTAzOTAzNC45OCIsImN1cnJlbmN5X2NvZGUiOiJDT1AifSwicHJlc2VudG1lbnRfbW9uZXkiOnsiYW1vdW50IjoiMTAzOTAzNC45OCIsImN1cnJlbmN5X2NvZGUiOiJDT1AifX0sInRvdGFsX3NoaXBwaW5nX3ByaWNlX3NldCI6eyJzaG9wX21vbmV5Ijp7ImFtb3VudCI6IjEwLjAwIiwiY3VycmVuY3lfY29kZSI6IkNPUCJ9LCJwcmVzZW50bWVudF9tb25leSI6eyJhbW91bnQiOiIxMC4wMCIsImN1cnJlbmN5X2NvZGUiOiJDT1AifX0sInRvdGFsX3RheCI6IjAuMDAiLCJ0b3RhbF90YXhfc2V0Ijp7InNob3BfbW9uZXkiOnsiYW1vdW50IjoiMC4wMCIsImN1cnJlbmN5X2NvZGUiOiJDT1AifSwicHJlc2VudG1lbnRfbW9uZXkiOnsiYW1vdW50IjoiMC4wMCIsImN1cnJlbmN5X2NvZGUiOiJDT1AifX0sInRvdGFsX3RpcF9yZWNlaXZlZCI6IjAuMDAiLCJ0b3RhbF93ZWlnaHQiOjAsInVwZGF0ZWRfYXQiOiIyMDI2LTA4LTA2VDE0OjUwOjI2LTA1OjAwIiwidXNlcl9pZCI6bnVsbCwiYmlsbGluZ19hZGRyZXNzIjp7ImZpcnN0X25hbWUiOiJTdGV2ZSIsImFkZHJlc3MxIjoiMTIzIFNoaXBwaW5nIFN0cmVldCIsInBob25lIjoiNTU1LTU1NS1TSElQIiwiY2l0eSI6IlNoaXBwaW5ndG9uIiwiemlwIjoiNDAwMDMiLCJwcm92aW5jZSI6IktlbnR1Y2t5IiwiY291bnRyeSI6IlVuaXRlZCBTdGF0ZXMiLCJsYXN0X25hbWUiOiJTaGlwcGVyIiwiYWRkcmVzczIiOm51bGwsImNvbXBhbnkiOiJTaGlwcGluZyBDb21wYW55IiwibGF0aXR1ZGUiOm51bGwsImxvbmdpdHVkZSI6bnVsbCwibmFtZSI6IlN0ZXZlIFNoaXBwZXIiLCJjb3VudHJ5X2NvZGUiOiJVUyIsInByb3ZpbmNlX2NvZGUiOiJLWSJ9LCJjdXN0b21lciI6eyJpZCI6MTE1MzEwNjI3MzE0NzIzOTU0LCJjcmVhdGVkX2F0IjpudWxsLCJ1cGRhdGVkX2F0IjpudWxsLCJmaXJzdF9uYW1lIjoiSm9obiIsImxhc3RfbmFtZSI6IlNtaXRoIiwic3RhdGUiOiJkaXNhYmxlZCIsIm5vdGUiOm51bGwsInZlcmlmaWVkX2VtYWlsIjp0cnVlLCJtdWx0aXBhc3NfaWRlbnRpZmllciI6bnVsbCwidGF4X2V4ZW1wdCI6ZmFsc2UsImVtYWlsIjoiam9obkBleGFtcGxlLmNvbSIsInBob25lIjpudWxsLCJjdXJyZW5jeSI6IkNPUCIsInRheF9leGVtcHRpb25zIjpbXSwiYWRtaW5fZ3JhcGhxbF9hcGlfaWQiOiJnaWQ6XC9cL3Nob3BpZnlcL0N1c3RvbWVyXC8xMTUzMTA2MjczMTQ3MjM5NTQiLCJkZWZhdWx0X2FkZHJlc3MiOnsiaWQiOjcxNTI0MzQ3MDYxMjg1MTI0NSwiY3VzdG9tZXJfaWQiOjExNTMxMDYyNzMxNDcyMzk1NCwiZmlyc3RfbmFtZSI6IkpvaG4iLCJsYXN0X25hbWUiOiJTbWl0aCIsImNvbXBhbnkiOm51bGwsImFkZHJlc3MxIjoiMTIzIEVsbSBTdC4iLCJhZGRyZXNzMiI6bnVsbCwiY2l0eSI6Ik90dGF3YSIsInByb3ZpbmNlIjoiT250YXJpbyIsImNvdW50cnkiOiJDYW5hZGEiLCJ6aXAiOiJLMkg3QTgiLCJwaG9uZSI6IjEyMy0xMjMtMTIzNCIsIm5hbWUiOiJKb2huIFNtaXRoIiwicHJvdmluY2VfY29kZSI6Ik9OIiwiY291bnRyeV9jb2RlIjoiQ0EiLCJjb3VudHJ5X25hbWUiOiJDYW5hZGEiLCJkZWZhdWx0Ijp0cnVlfX0sImRpc2NvdW50X2FwcGxpY2F0aW9ucyI6W10sImZ1bGZpbGxtZW50cyI6W10sImxpbmVfaXRlbXMiOlt7ImlkIjo4NjY1NTAzMTE3NjY0MzkwMjAsImFkbWluX2dyYXBocWxfYXBpX2lkIjoiZ2lkOlwvXC9zaG9waWZ5XC9MaW5lSXRlbVwvODY2NTUwMzExNzY2NDM5MDIwIiwiYXR0cmlidXRlZF9zdGFmZnMiOlt7ImlkIjoiZ2lkOlwvXC9zaG9waWZ5XC9TdGFmZk1lbWJlclwvOTAyNTQxNjM1IiwicXVhbnRpdHkiOjF9XSwiY3VycmVudF9xdWFudGl0eSI6MSwiZnVsZmlsbGFibGVfcXVhbnRpdHkiOjEsImZ1bGZpbGxtZW50X3NlcnZpY2UiOiJtYW51YWwiLCJmdWxmaWxsbWVudF9zdGF0dXMiOm51bGwsImdpZnRfY2FyZCI6ZmFsc2UsImdyYW1zIjowLCJuYW1lIjoiQ09DSEUgUk9QT04iLCJwcmljZSI6IjI2MDAwMC4wMCIsInByaWNlX3NldCI6eyJzaG9wX21vbmV5Ijp7ImFtb3VudCI6IjI2MDAwMC4wMCIsImN1cnJlbmN5X2NvZGUiOiJDT1AifSwicHJlc2VudG1lbnRfbW9uZXkiOnsiYW1vdW50IjoiMjYwMDAwLjAwIiwiY3VycmVuY3lfY29kZSI6IkNPUCJ9fSwicHJvZHVjdF9leGlzdHMiOnRydWUsInByb2R1Y3RfaWQiOjkxOTI2MTI5MjE1NTgsInByb3BlcnRpZXMiOltdLCJxdWFudGl0eSI6MSwicmVxdWlyZXNfc2hpcHBpbmciOnRydWUsInNhbGVzX2xpbmVfaXRlbV9ncm91cF9pZCI6bnVsbCwic2VsbGluZ19wbGFuX2lkIjpudWxsLCJza3UiOiJCVy0yMDI2MTMzMCIsInRheGFibGUiOnRydWUsInRpdGxlIjoiQ09DSEUgUk9QT04iLCJ0b3RhbF9kaXNjb3VudCI6IjAuMDAiLCJ0b3RhbF9kaXNjb3VudF9zZXQiOnsic2hvcF9tb25leSI6eyJhbW91bnQiOiIwLjAwIiwiY3VycmVuY3lfY29kZSI6IkNPUCJ9LCJwcmVzZW50bWVudF9tb25leSI6eyJhbW91bnQiOiIwLjAwIiwiY3VycmVuY3lfY29kZSI6IkNPUCJ9fSwidmFyaWFudF9pZCI6NDc2MDA3NTUxNzk3MzQsInZhcmlhbnRfaW52ZW50b3J5X21hbmFnZW1lbnQiOm51bGwsInZhcmlhbnRfdGl0bGUiOm51bGwsInZlbmRvciI6bnVsbCwidGF4X2xpbmVzIjpbXSwiZHV0aWVzIjpbXSwiZGlzY291bnRfYWxsb2NhdGlvbnMiOltdfSx7ImlkIjo3ODkwMTIzNDU2Nzg5MDEyMzQsImFkbWluX2dyYXBocWxfYXBpX2lkIjoiZ2lkOlwvXC9zaG9waWZ5XC9MaW5lSXRlbVwvNzg5MDEyMzQ1Njc4OTAxMjM0IiwiYXR0cmlidXRlZF9zdGFmZnMiOltdLCJjdXJyZW50X3F1YW50aXR5IjoxLCJmdWxmaWxsYWJsZV9xdWFudGl0eSI6MSwiZnVsZmlsbG1lbnRfc2VydmljZSI6Im1hbnVhbCIsImZ1bGZpbGxtZW50X3N0YXR1cyI6bnVsbCwiZ2lmdF9jYXJkIjpmYWxzZSwiZ3JhbXMiOjAsIm5hbWUiOiJMZW5zIFByb3RlY3Rpb24gUGxhbiAoMiBZZWFyKSIsInByaWNlIjoiMTkuOTkiLCJwcmljZV9zZXQiOnsic2hvcF9tb25leSI6eyJhbW91bnQiOiIxOS45OSIsImN1cnJlbmN5X2NvZGUiOiJDT1AifSwicHJlc2VudG1lbnRfbW9uZXkiOnsiYW1vdW50IjoiMTkuOTkiLCJjdXJyZW5jeV9jb2RlIjoiQ09QIn19LCJwcm9kdWN0X2V4aXN0cyI6ZmFsc2UsInByb2R1Y3RfaWQiOm51bGwsInByb3BlcnRpZXMiOltdLCJxdWFudGl0eSI6MSwicmVxdWlyZXNfc2hpcHBpbmciOnRydWUsInNhbGVzX2xpbmVfaXRlbV9ncm91cF9pZCI6MjM0NTY3ODkwMTIzNDU2Nzg5LCJzZWxsaW5nX3BsYW5faWQiOm51bGwsInNrdSI6IkxFTlMtUFJPVEVDVC0yWVIiLCJ0YXhhYmxlIjp0cnVlLCJ0aXRsZSI6IkxlbnMgUHJvdGVjdGlvbiBQbGFuICgyIFllYXIpIiwidG90YWxfZGlzY291bnQiOiIwLjAwIiwidG90YWxfZGlzY291bnRfc2V0Ijp7InNob3BfbW9uZXkiOnsiYW1vdW50IjoiMC4wMCIsImN1cnJlbmN5X2NvZGUiOiJDT1AifSwicHJlc2VudG1lbnRfbW9uZXkiOnsiYW1vdW50IjoiMC4wMCIsImN1cnJlbmN5X2NvZGUiOiJDT1AifX0sInZhcmlhbnRfaWQiOm51bGwsInZhcmlhbnRfaW52ZW50b3J5X21hbmFnZW1lbnQiOm51bGwsInZhcmlhbnRfdGl0bGUiOm51bGwsInZlbmRvciI6bnVsbCwidGF4X2xpbmVzIjpbXSwiZHV0aWVzIjpbXSwiZGlzY291bnRfYWxsb2NhdGlvbnMiOltdfSx7ImlkIjo4OTAxMjM0NTY3ODkwMTIzNDUsImFkbWluX2dyYXBocWxfYXBpX2lkIjoiZ2lkOlwvXC9zaG9waWZ5XC9MaW5lSXRlbVwvODkwMTIzNDU2Nzg5MDEyMzQ1IiwiYXR0cmlidXRlZF9zdGFmZnMiOltdLCJjdXJyZW50X3F1YW50aXR5IjoxLCJmdWxmaWxsYWJsZV9xdWFudGl0eSI6MSwiZnVsZmlsbG1lbnRfc2VydmljZSI6Im1hbnVhbCIsImZ1bGZpbGxtZW50X3N0YXR1cyI6bnVsbCwiZ2lmdF9jYXJkIjpmYWxzZSwiZ3JhbXMiOjAsIm5hbWUiOiJQcmVtaXVtIExlYXRoZXIgQ2FzZSIsInByaWNlIjoiMjQuOTkiLCJwcmljZV9zZXQiOnsic2hvcF9tb25leSI6eyJhbW91bnQiOiIyNC45OSIsImN1cnJlbmN5X2NvZGUiOiJDT1AifSwicHJlc2VudG1lbnRfbW9uZXkiOnsiYW1vdW50IjoiMjQuOTkiLCJjdXJyZW5jeV9jb2RlIjoiQ09QIn19LCJwcm9kdWN0X2V4aXN0cyI6ZmFsc2UsInByb2R1Y3RfaWQiOm51bGwsInByb3BlcnRpZXMiOltdLCJxdWFudGl0eSI6MSwicmVxdWlyZXNfc2hpcHBpbmciOnRydWUsInNhbGVzX2xpbmVfaXRlbV9ncm91cF9pZCI6MjM0NTY3ODkwMTIzNDU2Nzg5LCJzZWxsaW5nX3BsYW5faWQiOm51bGwsInNrdSI6IkNBU0UtTEVBVEhFUi1QUkVNIiwidGF4YWJsZSI6dHJ1ZSwidGl0bGUiOiJQcmVtaXVtIExlYXRoZXIgQ2FzZSIsInRvdGFsX2Rpc2NvdW50IjoiMC4wMCIsInRvdGFsX2Rpc2NvdW50X3NldCI6eyJzaG9wX21vbmV5Ijp7ImFtb3VudCI6IjAuMDAiLCJjdXJyZW5jeV9jb2RlIjoiQ09QIn0sInByZXNlbnRtZW50X21vbmV5Ijp7ImFtb3VudCI6IjAuMDAiLCJjdXJyZW5jeV9jb2RlIjoiQ09QIn19LCJ2YXJpYW50X2lkIjpudWxsLCJ2YXJpYW50X2ludmVudG9yeV9tYW5hZ2VtZW50IjpudWxsLCJ2YXJpYW50X3RpdGxlIjpudWxsLCJ2ZW5kb3IiOm51bGwsInRheF9saW5lcyI6W10sImR1dGllcyI6W10sImRpc2NvdW50X2FsbG9jYXRpb25zIjpbXX0seyJpZCI6MTQxMjQ5OTUzMjE0NTIyOTc0LCJhZG1pbl9ncmFwaHFsX2FwaV9pZCI6ImdpZDpcL1wvc2hvcGlmeVwvTGluZUl0ZW1cLzE0MTI0OTk1MzIxNDUyMjk3NCIsImF0dHJpYnV0ZWRfc3RhZmZzIjpbXSwiY3VycmVudF9xdWFudGl0eSI6MSwiZnVsZmlsbGFibGVfcXVhbnRpdHkiOjEsImZ1bGZpbGxtZW50X3NlcnZpY2UiOiJtYW51YWwiLCJmdWxmaWxsbWVudF9zdGF0dXMiOm51bGwsImdpZnRfY2FyZCI6ZmFsc2UsImdyYW1zIjowLCJuYW1lIjoiQ09DSEUgTUFMRVRBIEpVTVBZIiwicHJpY2UiOiIzODAwMDAuMDAiLCJwcmljZV9zZXQiOnsic2hvcF9tb25leSI6eyJhbW91bnQiOiIzODAwMDAuMDAiLCJjdXJyZW5jeV9jb2RlIjoiQ09QIn0sInByZXNlbnRtZW50X21vbmV5Ijp7ImFtb3VudCI6IjM4MDAwMC4wMCIsImN1cnJlbmN5X2NvZGUiOiJDT1AifX0sInByb2R1Y3RfZXhpc3RzIjp0cnVlLCJwcm9kdWN0X2lkIjo5MTkyNjEyOTg3MDk0LCJwcm9wZXJ0aWVzIjpbXSwicXVhbnRpdHkiOjEsInJlcXVpcmVzX3NoaXBwaW5nIjp0cnVlLCJzYWxlc19saW5lX2l0ZW1fZ3JvdXBfaWQiOjE0MjgzMTU2Miwic2VsbGluZ19wbGFuX2lkIjpudWxsLCJza3UiOiJCVy0yMDI2MTM0MCIsInRheGFibGUiOnRydWUsInRpdGxlIjoiQ09DSEUgTUFMRVRBIEpVTVBZIiwidG90YWxfZGlzY291bnQiOiIwLjAwIiwidG90YWxfZGlzY291bnRfc2V0Ijp7InNob3BfbW9uZXkiOnsiYW1vdW50IjoiMC4wMCIsImN1cnJlbmN5X2NvZGUiOiJDT1AifSwicHJlc2VudG1lbnRfbW9uZXkiOnsiYW1vdW50IjoiMC4wMCIsImN1cnJlbmN5X2NvZGUiOiJDT1AifX0sInZhcmlhbnRfaWQiOjQ3NjAwNzU1NDQxODc4LCJ2YXJpYW50X2ludmVudG9yeV9tYW5hZ2VtZW50IjpudWxsLCJ2YXJpYW50X3RpdGxlIjpudWxsLCJ2ZW5kb3IiOm51bGwsInRheF9saW5lcyI6W10sImR1dGllcyI6W10sImRpc2NvdW50X2FsbG9jYXRpb25zIjpbXX0seyJpZCI6MjU3MDA0OTczMTA1NzA0NTk4LCJhZG1pbl9ncmFwaHFsX2FwaV9pZCI6ImdpZDpcL1wvc2hvcGlmeVwvTGluZUl0ZW1cLzI1NzAwNDk3MzEwNTcwNDU5OCIsImF0dHJpYnV0ZWRfc3RhZmZzIjpbXSwiY3VycmVudF9xdWFudGl0eSI6MSwiZnVsZmlsbGFibGVfcXVhbnRpdHkiOjEsImZ1bGZpbGxtZW50X3NlcnZpY2UiOiJtYW51YWwiLCJmdWxmaWxsbWVudF9zdGF0dXMiOm51bGwsImdpZnRfY2FyZCI6ZmFsc2UsImdyYW1zIjowLCJuYW1lIjoiQ09DSEUgTUFMRVRBIFpPT00iLCJwcmljZSI6IjM5OTAwMC4wMCIsInByaWNlX3NldCI6eyJzaG9wX21vbmV5Ijp7ImFtb3VudCI6IjM5OTAwMC4wMCIsImN1cnJlbmN5X2NvZGUiOiJDT1AifSwicHJlc2VudG1lbnRfbW9uZXkiOnsiYW1vdW50IjoiMzk5MDAwLjAwIiwiY3VycmVuY3lfY29kZSI6IkNPUCJ9fSwicHJvZHVjdF9leGlzdHMiOnRydWUsInByb2R1Y3RfaWQiOjkxOTI2MTMwMTk4NjIsInByb3BlcnRpZXMiOltdLCJxdWFudGl0eSI6MSwicmVxdWlyZXNfc2hpcHBpbmciOnRydWUsInNhbGVzX2xpbmVfaXRlbV9ncm91cF9pZCI6MTQyODMxNTYyLCJzZWxsaW5nX3BsYW5faWQiOm51bGwsInNrdSI6IkJXLTIwMjYxMzQ1IiwidGF4YWJsZSI6dHJ1ZSwidGl0bGUiOiJDT0NIRSBNQUxFVEEgWk9PTSIsInRvdGFsX2Rpc2NvdW50IjoiMC4wMCIsInRvdGFsX2Rpc2NvdW50X3NldCI6eyJzaG9wX21vbmV5Ijp7ImFtb3VudCI6IjAuMDAiLCJjdXJyZW5jeV9jb2RlIjoiQ09QIn0sInByZXNlbnRtZW50X21vbmV5Ijp7ImFtb3VudCI6IjAuMDAiLCJjdXJyZW5jeV9jb2RlIjoiQ09QIn19LCJ2YXJpYW50X2lkIjo0NzYwMDc1NTU0MDE4MiwidmFyaWFudF9pbnZlbnRvcnlfbWFuYWdlbWVudCI6bnVsbCwidmFyaWFudF90aXRsZSI6bnVsbCwidmVuZG9yIjpudWxsLCJ0YXhfbGluZXMiOltdLCJkdXRpZXMiOltdLCJkaXNjb3VudF9hbGxvY2F0aW9ucyI6W119XSwicGF5bWVudF90ZXJtcyI6bnVsbCwicmVmdW5kcyI6W10sInNoaXBwaW5nX2FkZHJlc3MiOnsiZmlyc3RfbmFtZSI6IlN0ZXZlIiwiYWRkcmVzczEiOiIxMjMgU2hpcHBpbmcgU3RyZWV0IiwicGhvbmUiOiI1NTUtNTU1LVNISVAiLCJjaXR5IjoiU2hpcHBpbmd0b24iLCJ6aXAiOiI0MDAwMyIsInByb3ZpbmNlIjoiS2VudHVja3kiLCJjb3VudHJ5IjoiVW5pdGVkIFN0YXRlcyIsImxhc3RfbmFtZSI6IlNoaXBwZXIiLCJhZGRyZXNzMiI6bnVsbCwiY29tcGFueSI6IlNoaXBwaW5nIENvbXBhbnkiLCJsYXRpdHVkZSI6bnVsbCwibG9uZ2l0dWRlIjpudWxsLCJuYW1lIjoiU3RldmUgU2hpcHBlciIsImNvdW50cnlfY29kZSI6IlVTIiwicHJvdmluY2VfY29kZSI6IktZIn0sInNoaXBwaW5nX2xpbmVzIjpbeyJpZCI6MjcxODc4MzQ2NTk2ODg0MDE1LCJjYXJyaWVyX2lkZW50aWZpZXIiOm51bGwsImNvZGUiOm51bGwsImN1cnJlbnRfZGlzY291bnRlZF9wcmljZV9zZXQiOnsic2hvcF9tb25leSI6eyJhbW91bnQiOiIwLjAwIiwiY3VycmVuY3lfY29kZSI6IkNPUCJ9LCJwcmVzZW50bWVudF9tb25leSI6eyJhbW91bnQiOiIwLjAwIiwiY3VycmVuY3lfY29kZSI6IkNPUCJ9fSwiZGlzY291bnRlZF9wcmljZSI6IjAuMDAiLCJkaXNjb3VudGVkX3ByaWNlX3NldCI6eyJzaG9wX21vbmV5Ijp7ImFtb3VudCI6IjAuMDAiLCJjdXJyZW5jeV9jb2RlIjoiQ09QIn0sInByZXNlbnRtZW50X21vbmV5Ijp7ImFtb3VudCI6IjAuMDAiLCJjdXJyZW5jeV9jb2RlIjoiQ09QIn19LCJpc19yZW1vdmVkIjpmYWxzZSwicGhvbmUiOm51bGwsInByaWNlIjoiMTAuMDAiLCJwcmljZV9zZXQiOnsic2hvcF9tb25leSI6eyJhbW91bnQiOiIxMC4wMCIsImN1cnJlbmN5X2NvZGUiOiJDT1AifSwicHJlc2VudG1lbnRfbW9uZXkiOnsiYW1vdW50IjoiMTAuMDAiLCJjdXJyZW5jeV9jb2RlIjoiQ09QIn19LCJyZXF1ZXN0ZWRfZnVsZmlsbG1lbnRfc2VydmljZV9pZCI6bnVsbCwic291cmNlIjoic2hvcGlmeSIsInRpdGxlIjoiR2VuZXJpYyBTaGlwcGluZyIsInRheF9saW5lcyI6W10sImRpc2NvdW50X2FsbG9jYXRpb25zIjpbXX1dLCJyZXR1cm5zIjpbXSwibGluZV9pdGVtX2dyb3VwcyI6W119",
+            "mimeType": "application/json"
+          }
+        },
+        "pairedItem": {
+          "item": 0
+        }
+      }
+    ]
+  },
+  "meta": {
+    "templateCredsSetupCompleted": true
+  },
+  "tags": [],
+  "shared": [
+    {
+      "role": "workflow:owner",
+      "workflowId": "TDKzbZXvZLhvUarH",
+      "projectId": "8h8pwWGcWlnGEym3",
+      "createdAt": "2026-08-05T21:49:56.491Z",
+      "updatedAt": "2026-08-05T21:49:56.491Z"
+    }
+  ],
+  "activeVersion": null
+}
