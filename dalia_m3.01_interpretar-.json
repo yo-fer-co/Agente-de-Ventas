@@ -1,0 +1,665 @@
+{
+  "id": "jXWtcjviuuzNlhim",
+  "name": "DALIA_M3.01_Interpretar",
+  "active": true,
+  "activeVersionId": "5b82a172-4e30-44e5-96d1-208032d0ed8c",
+  "createdAt": "2026-10-04T14:07:36.869Z",
+  "updatedAt": "2026-10-04T14:09:16.101Z",
+  "isArchived": false,
+  "versionId": "5b82a172-4e30-44e5-96d1-208032d0ed8c",
+  "triggerCount": 0,
+  "nodes": [
+    {
+      "id": "33fd118d-a966-4300-bdd8-3435383f6401",
+      "name": "Entrada",
+      "type": "n8n-nodes-base.executeWorkflowTrigger",
+      "typeVersion": 1.2,
+      "position": [
+        0,
+        192
+      ],
+      "parameters": {
+        "inputSource": "passthrough"
+      }
+    },
+    {
+      "id": "50a0e539-2d8d-4825-a7cb-aa72c232a0b1",
+      "name": "Iniciar ejecucion",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.7,
+      "position": [
+        224,
+        192
+      ],
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "select dalia.m3_begin_run($1, $2::jsonb) as r;",
+        "options": {
+          "queryReplacement": "={{ [ \"interpret\", JSON.stringify($json) ] }}"
+        }
+      },
+      "credentials": {
+        "postgres": {
+          "id": "HfCgVAjUygK1vrkU",
+          "name": "DALIA dev Supabase"
+        }
+      },
+      "onError": "continueErrorOutput"
+    },
+    {
+      "id": "7b21a11c-05ee-424b-96cf-2fc343820a3a",
+      "name": "Lista para generar",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        448,
+        96
+      ],
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose"
+          },
+          "conditions": [
+            {
+              "leftValue": "={{ $json.r.status === \"ready\" }}",
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        }
+      }
+    },
+    {
+      "id": "f999433d-d108-410b-93e4-32b35ff61bca",
+      "name": "Preparar generacion",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.7,
+      "position": [
+        672,
+        0
+      ],
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "select dalia.m3_prepare_generation($1::uuid, $2::jsonb) as g;",
+        "options": {
+          "queryReplacement": "={{ [ $(\"Iniciar ejecucion\").first().json.r.run_id, null ] }}"
+        }
+      },
+      "credentials": {
+        "postgres": {
+          "id": "HfCgVAjUygK1vrkU",
+          "name": "DALIA dev Supabase"
+        }
+      }
+    },
+    {
+      "id": "f5dbba23-4e60-47e1-90dd-7d89cad13a33",
+      "name": "Preparar llamada al modelo",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        896,
+        0
+      ],
+      "parameters": {
+        "mode": "manual",
+        "includeOtherFields": false,
+        "assignments": {
+          "assignments": [
+            {
+              "id": "p1",
+              "name": "port",
+              "value": "={{ $json.g.llm_request.port }}",
+              "type": "string"
+            },
+            {
+              "id": "p2",
+              "name": "operation",
+              "value": "={{ $json.g.llm_request.operation }}",
+              "type": "string"
+            },
+            {
+              "id": "p3",
+              "name": "input",
+              "value": "={{ $json.g.llm_request.input }}",
+              "type": "object"
+            },
+            {
+              "id": "p4",
+              "name": "envelope",
+              "value": "={{ $(\"Entrada\").first().json.envelope ?? {} }}",
+              "type": "object"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "fe538c12-cd57-4abc-93c1-3f63c7fa1258",
+      "name": "Modelo por INT.port",
+      "type": "n8n-nodes-base.executeWorkflow",
+      "typeVersion": 1.3,
+      "position": [
+        1120,
+        0
+      ],
+      "parameters": {
+        "mode": "each",
+        "source": "database",
+        "workflowId": {
+          "__rl": true,
+          "mode": "id",
+          "value": "5gbpWhv0zIA8bZ0w"
+        },
+        "options": {
+          "waitForSubWorkflow": true
+        }
+      }
+    },
+    {
+      "id": "ab232df5-da6e-4550-a78f-fe60872aba8e",
+      "name": "Validar y completar",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.7,
+      "position": [
+        1344,
+        0
+      ],
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "select dalia.m3_complete_run($1::uuid, $2::jsonb) as result;",
+        "options": {
+          "queryReplacement": "={{ [ $(\"Iniciar ejecucion\").first().json.r.run_id, JSON.stringify($json) ] }}"
+        }
+      },
+      "credentials": {
+        "postgres": {
+          "id": "HfCgVAjUygK1vrkU",
+          "name": "DALIA dev Supabase"
+        }
+      }
+    },
+    {
+      "id": "c06b28cd-a3cf-4744-9993-189df8cd48b4",
+      "name": "Resultado sin generar",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        672,
+        192
+      ],
+      "parameters": {
+        "mode": "manual",
+        "includeOtherFields": false,
+        "assignments": {
+          "assignments": [
+            {
+              "id": "r1",
+              "name": "result",
+              "value": "={{ $json.r.status === \"replay\" ? $json.r.result : $json.r }}",
+              "type": "object"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "db517a54-0404-44bf-92e9-f2586185bc98",
+      "name": "Solicitud invalida",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        448,
+        288
+      ],
+      "parameters": {
+        "mode": "manual",
+        "includeOtherFields": false,
+        "assignments": {
+          "assignments": [
+            {
+              "id": "r1",
+              "name": "result",
+              "value": "={{ { status: \"invalid\", outcome: null, error: $json.error?.message ?? $json.error ?? \"solicitud inválida\" } }}",
+              "type": "object"
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "connections": {
+    "Entrada": {
+      "main": [
+        [
+          {
+            "node": "Iniciar ejecucion",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Iniciar ejecucion": {
+      "main": [
+        [
+          {
+            "node": "Lista para generar",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Solicitud invalida",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Lista para generar": {
+      "main": [
+        [
+          {
+            "node": "Preparar generacion",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Resultado sin generar",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Preparar generacion": {
+      "main": [
+        [
+          {
+            "node": "Preparar llamada al modelo",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Preparar llamada al modelo": {
+      "main": [
+        [
+          {
+            "node": "Modelo por INT.port",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Modelo por INT.port": {
+      "main": [
+        [
+          {
+            "node": "Validar y completar",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "nodeGroups": [],
+  "settings": {
+    "executionOrder": "v1",
+    "availableInMCP": true,
+    "errorWorkflow": "cjjQno2MxMTT3Icc",
+    "timezone": "America/Bogota",
+    "saveDataSuccessExecution": "none",
+    "callerPolicy": "workflowsFromSameOwner"
+  },
+  "staticData": null,
+  "pinData": null,
+  "meta": {
+    "aiBuilderAssisted": true,
+    "builderVariant": "mcp"
+  },
+  "tags": [],
+  "shared": [
+    {
+      "role": "workflow:owner",
+      "workflowId": "jXWtcjviuuzNlhim",
+      "projectId": "tRHCC8ts4mkRGXGn",
+      "createdAt": "2026-10-09T21:09:17.811Z",
+      "updatedAt": "2026-10-09T21:09:17.811Z"
+    }
+  ],
+  "activeVersion": {
+    "versionId": "5b82a172-4e30-44e5-96d1-208032d0ed8c",
+    "workflowId": "jXWtcjviuuzNlhim",
+    "nodes": [
+      {
+        "id": "33fd118d-a966-4300-bdd8-3435383f6401",
+        "name": "Entrada",
+        "type": "n8n-nodes-base.executeWorkflowTrigger",
+        "typeVersion": 1.2,
+        "position": [
+          0,
+          192
+        ],
+        "parameters": {
+          "inputSource": "passthrough"
+        }
+      },
+      {
+        "id": "50a0e539-2d8d-4825-a7cb-aa72c232a0b1",
+        "name": "Iniciar ejecucion",
+        "type": "n8n-nodes-base.postgres",
+        "typeVersion": 2.7,
+        "position": [
+          224,
+          192
+        ],
+        "parameters": {
+          "operation": "executeQuery",
+          "query": "select dalia.m3_begin_run($1, $2::jsonb) as r;",
+          "options": {
+            "queryReplacement": "={{ [ \"interpret\", JSON.stringify($json) ] }}"
+          }
+        },
+        "credentials": {
+          "postgres": {
+            "id": "HfCgVAjUygK1vrkU",
+            "name": "DALIA dev Supabase"
+          }
+        },
+        "onError": "continueErrorOutput"
+      },
+      {
+        "id": "7b21a11c-05ee-424b-96cf-2fc343820a3a",
+        "name": "Lista para generar",
+        "type": "n8n-nodes-base.if",
+        "typeVersion": 2.2,
+        "position": [
+          448,
+          96
+        ],
+        "parameters": {
+          "conditions": {
+            "options": {
+              "caseSensitive": true,
+              "leftValue": "",
+              "typeValidation": "loose"
+            },
+            "conditions": [
+              {
+                "leftValue": "={{ $json.r.status === \"ready\" }}",
+                "operator": {
+                  "type": "boolean",
+                  "operation": "true",
+                  "singleValue": true
+                }
+              }
+            ],
+            "combinator": "and"
+          }
+        }
+      },
+      {
+        "id": "f999433d-d108-410b-93e4-32b35ff61bca",
+        "name": "Preparar generacion",
+        "type": "n8n-nodes-base.postgres",
+        "typeVersion": 2.7,
+        "position": [
+          672,
+          0
+        ],
+        "parameters": {
+          "operation": "executeQuery",
+          "query": "select dalia.m3_prepare_generation($1::uuid, $2::jsonb) as g;",
+          "options": {
+            "queryReplacement": "={{ [ $(\"Iniciar ejecucion\").first().json.r.run_id, null ] }}"
+          }
+        },
+        "credentials": {
+          "postgres": {
+            "id": "HfCgVAjUygK1vrkU",
+            "name": "DALIA dev Supabase"
+          }
+        }
+      },
+      {
+        "id": "f5dbba23-4e60-47e1-90dd-7d89cad13a33",
+        "name": "Preparar llamada al modelo",
+        "type": "n8n-nodes-base.set",
+        "typeVersion": 3.4,
+        "position": [
+          896,
+          0
+        ],
+        "parameters": {
+          "mode": "manual",
+          "includeOtherFields": false,
+          "assignments": {
+            "assignments": [
+              {
+                "id": "p1",
+                "name": "port",
+                "value": "={{ $json.g.llm_request.port }}",
+                "type": "string"
+              },
+              {
+                "id": "p2",
+                "name": "operation",
+                "value": "={{ $json.g.llm_request.operation }}",
+                "type": "string"
+              },
+              {
+                "id": "p3",
+                "name": "input",
+                "value": "={{ $json.g.llm_request.input }}",
+                "type": "object"
+              },
+              {
+                "id": "p4",
+                "name": "envelope",
+                "value": "={{ $(\"Entrada\").first().json.envelope ?? {} }}",
+                "type": "object"
+              }
+            ]
+          }
+        }
+      },
+      {
+        "id": "fe538c12-cd57-4abc-93c1-3f63c7fa1258",
+        "name": "Modelo por INT.port",
+        "type": "n8n-nodes-base.executeWorkflow",
+        "typeVersion": 1.3,
+        "position": [
+          1120,
+          0
+        ],
+        "parameters": {
+          "mode": "each",
+          "source": "database",
+          "workflowId": {
+            "__rl": true,
+            "mode": "id",
+            "value": "5gbpWhv0zIA8bZ0w"
+          },
+          "options": {
+            "waitForSubWorkflow": true
+          }
+        }
+      },
+      {
+        "id": "ab232df5-da6e-4550-a78f-fe60872aba8e",
+        "name": "Validar y completar",
+        "type": "n8n-nodes-base.postgres",
+        "typeVersion": 2.7,
+        "position": [
+          1344,
+          0
+        ],
+        "parameters": {
+          "operation": "executeQuery",
+          "query": "select dalia.m3_complete_run($1::uuid, $2::jsonb) as result;",
+          "options": {
+            "queryReplacement": "={{ [ $(\"Iniciar ejecucion\").first().json.r.run_id, JSON.stringify($json) ] }}"
+          }
+        },
+        "credentials": {
+          "postgres": {
+            "id": "HfCgVAjUygK1vrkU",
+            "name": "DALIA dev Supabase"
+          }
+        }
+      },
+      {
+        "id": "c06b28cd-a3cf-4744-9993-189df8cd48b4",
+        "name": "Resultado sin generar",
+        "type": "n8n-nodes-base.set",
+        "typeVersion": 3.4,
+        "position": [
+          672,
+          192
+        ],
+        "parameters": {
+          "mode": "manual",
+          "includeOtherFields": false,
+          "assignments": {
+            "assignments": [
+              {
+                "id": "r1",
+                "name": "result",
+                "value": "={{ $json.r.status === \"replay\" ? $json.r.result : $json.r }}",
+                "type": "object"
+              }
+            ]
+          }
+        }
+      },
+      {
+        "id": "db517a54-0404-44bf-92e9-f2586185bc98",
+        "name": "Solicitud invalida",
+        "type": "n8n-nodes-base.set",
+        "typeVersion": 3.4,
+        "position": [
+          448,
+          288
+        ],
+        "parameters": {
+          "mode": "manual",
+          "includeOtherFields": false,
+          "assignments": {
+            "assignments": [
+              {
+                "id": "r1",
+                "name": "result",
+                "value": "={{ { status: \"invalid\", outcome: null, error: $json.error?.message ?? $json.error ?? \"solicitud inválida\" } }}",
+                "type": "object"
+              }
+            ]
+          }
+        }
+      }
+    ],
+    "connections": {
+      "Entrada": {
+        "main": [
+          [
+            {
+              "node": "Iniciar ejecucion",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Iniciar ejecucion": {
+        "main": [
+          [
+            {
+              "node": "Lista para generar",
+              "type": "main",
+              "index": 0
+            }
+          ],
+          [
+            {
+              "node": "Solicitud invalida",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Lista para generar": {
+        "main": [
+          [
+            {
+              "node": "Preparar generacion",
+              "type": "main",
+              "index": 0
+            }
+          ],
+          [
+            {
+              "node": "Resultado sin generar",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Preparar generacion": {
+        "main": [
+          [
+            {
+              "node": "Preparar llamada al modelo",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Preparar llamada al modelo": {
+        "main": [
+          [
+            {
+              "node": "Modelo por INT.port",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Modelo por INT.port": {
+        "main": [
+          [
+            {
+              "node": "Validar y completar",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      }
+    },
+    "nodeGroups": [],
+    "authors": "Fabian Bocanegra (via MCP)",
+    "name": "Lote 7 M3.01 instalación DEV",
+    "description": "Created with 9 nodes: Entrada, Iniciar ejecucion, Lista para generar, Preparar generacion, Preparar llamada al modelo and 4 more",
+    "autosaved": false,
+    "createdAt": "2026-10-04T14:07:36.873Z",
+    "updatedAt": "2026-10-04T14:07:36.873Z"
+  }
+}
