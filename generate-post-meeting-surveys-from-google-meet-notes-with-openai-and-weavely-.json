@@ -1,0 +1,559 @@
+{
+  "id": "55vUzGgtNSp6Nlyv",
+  "name": "Generate post-meeting surveys from Google Meet notes with OpenAI and Weavely",
+  "active": false,
+  "activeVersionId": null,
+  "createdAt": "2026-10-05T23:37:17.148Z",
+  "updatedAt": "2026-10-13T22:59:51.315Z",
+  "isArchived": false,
+  "versionId": "c3ae364c-fe46-4030-b120-bd864c59c870",
+  "triggerCount": 0,
+  "nodes": [
+    {
+      "parameters": {
+        "content": "## Generate post-meeting surveys from Google Meet notes with AI and Weavely\n\n![](https://cdn.prod.website-files.com/67e329da04590e10a74e5deb/69e0c804dbf96d011c7328a9_Screenshot%202026-04-16%20at%2013.28.52.png)\n\n@[youtube](xapyKQZQm7Q)\n\n\n## Who is it for\n\nTeams and individuals who run recurring meetings and want structured feedback without the manual effort of writing and sending surveys after every call.\n\n## How it works\n\n1. Google Calendar detects when a meeting ends\n2. Waits 10 minutes for Gemini to attach notes to the event\n3. Reads the Gemini notes doc from Google Drive\n4. An AI agent generates 5–7 tailored survey questions based on the actual discussion\n5. Weavely MCP builds and publishes the form automatically\n6. A Slack message is sent to the organiser to review and approve\n7. On approval, all attendees receive a branded email with the survey link\n\n## How to set up\n\n1. Update the **⚙️ Configuration** node with your calendar email and Slack user ID\n2. Connect **Google Calendar**, **Google Docs**, **Gmail**, **OpenAI**, and **Slack** credentials\n3. Enable Interactivity in your Slack app and set the request URL to your n8n webhook-waiting URL\n\n## Requirements\n\n- Google Workspace Business Standard or higher (for Gemini meeting notes)\n- OpenAI API key\n- Weavely account — free at [weavely.ai](https://weavely.ai)\n- Slack workspace and Gmail account\n\n## How to customise\n\n- Swap Google Calendar for Calendly or any other calendar trigger\n- Replace Gmail with a Slack message to the meeting channel\n- Swap OpenAI for any other LLM supported by n8n\n- Adjust the AI prompt to change the number or style of survey questions",
+        "height": 1100,
+        "width": 500,
+        "color": 4
+      },
+      "id": "3157608f-37ee-48a0-9670-d40e281d9424",
+      "name": "Sticky Note — Intro",
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [
+        368,
+        240
+      ],
+      "typeVersion": 1
+    },
+    {
+      "parameters": {
+        "content": "## ⚙️ Configure here\nUpdate these two values before activating the workflow:\n- `calendarId` → your Google Calendar email address\n- `slackUserId` → your Slack member ID (Slack profile → ··· → Copy member ID)",
+        "height": 200,
+        "width": 380,
+        "color": 3
+      },
+      "id": "sticky-config",
+      "name": "Sticky Note — Config",
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [
+        368,
+        1392
+      ],
+      "typeVersion": 1
+    },
+    {
+      "parameters": {
+        "content": "## 1. Trigger + wait\nFires every minute, detects when a meeting matching 'Meeting' has ended, then waits 10 minutes to ensure Gemini has generated and attached the notes doc to the event before re-fetching it.",
+        "height": 340,
+        "width": 560,
+        "color": 7
+      },
+      "id": "a17256f7-fbf5-40f2-ad69-ec90ac99d01a",
+      "name": "Sticky Note — Section 1",
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [
+        896,
+        544
+      ],
+      "typeVersion": 1
+    },
+    {
+      "parameters": {
+        "content": "## 2. Extract Gemini notes\nLooks for an attachment titled 'Notes by Gemini' on the calendar event, then reads the Google Doc content.\n\n**Note:** Requires Google Workspace Business Standard or higher for Gemini notes to be generated automatically.",
+        "height": 340,
+        "width": 540,
+        "color": 7
+      },
+      "id": "b880c2a2-eb08-4be1-9523-4c59b9acf2d9",
+      "name": "Sticky Note — Section 2",
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [
+        1488,
+        544
+      ],
+      "typeVersion": 1
+    },
+    {
+      "parameters": {
+        "content": "## 3. AI agent + Weavely MCP\nThe agent reads the meeting notes and generates 5–7 tailored survey questions, then uses the Weavely MCP tools to build and publish the form. A user-owned copy of the form is then created via the Weavely API, returning the share URL and a claim link.\n\n⚠️ Swap `gpt-4.1-mini` for `gpt-4o` if you want higher quality output.",
+        "height": 512,
+        "width": 680,
+        "color": 7
+      },
+      "id": "cfb36b9c-99a7-434c-b00c-1e085ce9189a",
+      "name": "Sticky Note — Section 3",
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [
+        2096,
+        544
+      ],
+      "typeVersion": 1
+    },
+    {
+      "parameters": {
+        "content": "## 4. Slack approval\nSends a Slack DM to the organiser with the Weavely claim link and Approve / Reject buttons. The workflow pauses here until a response is received.\n\n⚠️ Enable Interactivity in your Slack app settings and set the request URL to your n8n webhook-waiting URL, otherwise the buttons will open in a browser instead of responding inline in Slack.",
+        "height": 404,
+        "width": 560,
+        "color": 7
+      },
+      "id": "fb0a3510-0c11-4666-991c-22e87b508f47",
+      "name": "Sticky Note — Section 4",
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [
+        2848,
+        544
+      ],
+      "typeVersion": 1
+    },
+    {
+      "parameters": {
+        "content": "## 5. Send survey to attendees\nOn approval, sends a branded email to all meeting attendees with the Weavely share link. Rejected surveys are silently discarded (false branch of the If node).",
+        "height": 404,
+        "width": 360,
+        "color": 7
+      },
+      "id": "ba0802b9-7d97-4efc-a1c7-10e1ff93c7f8",
+      "name": "Sticky Note — Section 5",
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [
+        3424,
+        544
+      ],
+      "typeVersion": 1
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "config-calendar-id",
+              "name": "calendarId",
+              "type": "string",
+              "value": "user@example.com"
+            },
+            {
+              "id": "config-slack-user-id",
+              "name": "slackUserId",
+              "type": "string",
+              "value": "YOUR_SLACK_USER_ID"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "set-config",
+      "name": "⚙️ Configuration",
+      "type": "n8n-nodes-base.set",
+      "position": [
+        528,
+        1472
+      ],
+      "typeVersion": 3.4
+    },
+    {
+      "parameters": {
+        "pollTimes": {
+          "item": [
+            {
+              "hour": 19,
+              "minute": 15
+            }
+          ]
+        },
+        "calendarId": {
+          "__rl": true,
+          "value": "fabian@yoeco.com.co",
+          "mode": "list"
+        },
+        "triggerOn": "eventEnded",
+        "options": {
+          "matchTerm": "Prueba de calendario"
+        }
+      },
+      "id": "a7dfa840-0fe6-487b-8d97-4fa6a56d157e",
+      "name": "Google Calendar Trigger",
+      "type": "n8n-nodes-base.googleCalendarTrigger",
+      "position": [
+        960,
+        720
+      ],
+      "typeVersion": 1,
+      "credentials": {
+        "googleCalendarOAuth2Api": {
+          "id": "uQKSXlj2IMqkrkhL",
+          "name": "Calendar by Fabian"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "amount": 2,
+        "unit": "minutes"
+      },
+      "id": "87a790ec-ad48-4ca9-bbc8-525b9bca0ace",
+      "name": "Wait",
+      "type": "n8n-nodes-base.wait",
+      "position": [
+        1136,
+        1056
+      ],
+      "webhookId": "5f2a24a4-df3e-450c-956c-27e04ab2ec38",
+      "typeVersion": 1.1
+    },
+    {
+      "parameters": {
+        "operation": "get",
+        "calendar": {
+          "__rl": true,
+          "value": "fabian@yoeco.com.co",
+          "mode": "list",
+          "cachedResultName": "fabian@yoeco.com.co"
+        },
+        "eventId": "={{ $('Google Calendar Trigger').item.json.id }}",
+        "options": {}
+      },
+      "id": "f4b1a847-e483-4429-af15-88d572af6a6c",
+      "name": "Get an event",
+      "type": "n8n-nodes-base.googleCalendar",
+      "position": [
+        1344,
+        720
+      ],
+      "typeVersion": 1.3,
+      "credentials": {
+        "googleCalendarOAuth2Api": {
+          "id": "uQKSXlj2IMqkrkhL",
+          "name": "Calendar by Fabian"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const attachments = $input.first().json.attachments || []; \n\nconst notesDoc = attachments.find(a => a.title === \"Notas de Gemini\");\n\nreturn [{\n  json: {\n    notesFileId: notesDoc?.fileId || null,\n    notesFound: !!notesDoc,\n  }\n}];"
+      },
+      "id": "18b92f78-96b2-475f-9883-a474c08d7f53",
+      "name": "Filter Meeting Notes File",
+      "type": "n8n-nodes-base.code",
+      "position": [
+        1568,
+        720
+      ],
+      "typeVersion": 2
+    },
+    {
+      "parameters": {
+        "operation": "get",
+        "documentURL": "={{ $json.notesFileId }}"
+      },
+      "id": "5ce06644-b9d7-4994-9b48-4be84c6c3bc0",
+      "name": "Get a document",
+      "type": "n8n-nodes-base.googleDocs",
+      "position": [
+        1840,
+        720
+      ],
+      "typeVersion": 2,
+      "credentials": {
+        "googleDocsOAuth2Api": {
+          "id": "LttiJLhIw0HFDk45",
+          "name": "YE Services dev"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "=Eres un experto project manager encargado de la creación, actualización y gestión de los proyectos de YoEco.\n\nTu misión es gestionar los proyectos en Jira, ya sea creando nuevas tareas (issues, historias, bugs, incidentes o cualquier tipo de trabajo configurado para el espacio) o actualizando las existentes.\n\nOrganiza y prioriza las tareas que vienen de las notas de la reunión. Luego crea las tareas que sean necesarias crear y actualiza las que ya existan. {{ $json.content }}\n\n\nSi el contenido de las notas esta relacionado con una tarea existente abierta en el espacio de jira, actualizala con un nuevo comentario. Pero si la tarea no tiene nada que ver con una tarea ya existente, crea una nueva.\n\nNo hagas nada en confluence.\n\n\n\n\n\n",
+        "hasOutputParser": true,
+        "options": {}
+      },
+      "id": "e1e299f1-41a9-43bc-9396-0710626e9c0f",
+      "name": "AI Agent",
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "position": [
+        2176,
+        720
+      ],
+      "typeVersion": 3
+    },
+    {
+      "parameters": {
+        "model": {
+          "__rl": true,
+          "value": "gpt-4o-mini",
+          "mode": "list",
+          "cachedResultName": "gpt-4o-mini"
+        },
+        "builtInTools": {},
+        "options": {}
+      },
+      "id": "c13c006b-dfe8-4e95-983c-52e258609f0a",
+      "name": "OpenAI Chat Model",
+      "type": "@n8n/n8n-nodes-langchain.lmChatOpenAi",
+      "position": [
+        2112,
+        912
+      ],
+      "typeVersion": 1.3,
+      "credentials": {
+        "openAiApi": {
+          "id": "2SzcSmxabrSvH16W",
+          "name": "DALIA OpenAI"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsonSchemaExample": "{\n\t\"editor URL\": \"https://...\"\n}"
+      },
+      "id": "b8a330fa-35ef-46dc-9722-9587121d5aef",
+      "name": "Structured Output Parser",
+      "type": "@n8n/n8n-nodes-langchain.outputParserStructured",
+      "position": [
+        2608,
+        1120
+      ],
+      "typeVersion": 1.3
+    },
+    {
+      "parameters": {
+        "jsCode": "const output = $('AI Agent').item.json.output;\nconst url = typeof output === 'string' ? output : output['editor URL'];\nconst shadowFormId = url.split('/').pop();\n\n// Step 1: Fetch shadow form spec\nconst spec = await this.helpers.httpRequest({\n  method: 'GET',\n  url: `https://api.weavely.ai/forms/${shadowFormId}/client`,\n  headers: {\n    'Accept': 'application/json'\n  }\n});\n\n// Step 2: Create anonymous copy owned by the user\nconst newForm = await this.helpers.httpRequest({\n  method: 'POST',\n  url: 'https://api.weavely.ai/v1/forms',\n  headers: {\n    'Content-Type': 'application/json',\n    'Origin': 'https://forms.weavely.ai',\n    'Referer': 'https://forms.weavely.ai/'\n  },\n  body: JSON.stringify({\n    name: spec.name || 'Post-Meeting Survey',\n    publish: false,\n    formJSON: spec.formJSON,\n    themeJSON: spec.themeJSON,\n    settings: spec.settings,\n    logicRules: spec.logicRules || [],\n    eventTriggers: spec.eventTriggers || []\n  })\n});\n\nreturn [{\n  json: {\n    shareUrl: 'https://forms.weavely.ai/' + newForm.id,\n    claimUrl: newForm.editor + '?publish=true',\n    formId: newForm.id\n  }\n}];"
+      },
+      "id": "9cfd06ec-0cf6-40ed-ab47-0537104b7cdd",
+      "name": "Get Share URL",
+      "type": "n8n-nodes-base.code",
+      "position": [
+        2560,
+        720
+      ],
+      "typeVersion": 2
+    },
+    {
+      "parameters": {
+        "authentication": "oAuth2",
+        "operation": "sendAndWait",
+        "user": {
+          "__rl": true,
+          "mode": "id",
+          "value": ""
+        },
+        "message": "=New post-meeting survey ready for your approval:\n\n*Meeting:* {{ $('Get an event').item.json.summary }}\n\n*Step 1:* Click to claim and publish your form in Weavely (free account required):\n{{ $('Get Share URL').item.json.claimUrl }}\n\n*Step 2:* Once published, click Approve below to send the survey to all attendees.",
+        "options": {}
+      },
+      "id": "ca62f96f-7c08-44bb-ae92-bf6c6a235f8a",
+      "name": "Send message and wait for response",
+      "type": "n8n-nodes-base.slack",
+      "position": [
+        2912,
+        768
+      ],
+      "webhookId": "46b77235-f740-4c98-82ce-769bb0aee599",
+      "typeVersion": 2.4
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 3
+          },
+          "combinator": "and",
+          "conditions": [
+            {
+              "id": "935f9a3e-519e-41e0-8a37-c45f03716d80",
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              },
+              "leftValue": "={{ $json.data.approved }}",
+              "rightValue": false
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "54c3d98c-4a56-4bf8-9669-993278d932c1",
+      "name": "If",
+      "type": "n8n-nodes-base.if",
+      "position": [
+        3168,
+        768
+      ],
+      "typeVersion": 2.3
+    },
+    {
+      "parameters": {
+        "sendTo": "={{ $('Get an event').item.json.attendees.map(item => item[\"email\"]).join(', ') }}",
+        "subject": "={{ $('Get an event').item.json.summary }} — Post-meeting survey",
+        "message": "=<!DOCTYPE html>\n<html>\n<body style=\"margin:0;padding:0;background:#f4f4f4;font-family:Arial,sans-serif;\">\n  <table width=\"100%\" cellpadding=\"0\" cellspacing=\"0\" style=\"background:#f4f4f4;padding:40px 0;\">\n    <tr>\n      <td align=\"center\">\n        <table width=\"600\" cellpadding=\"0\" cellspacing=\"0\" style=\"background:#ffffff;border-radius:8px;overflow:hidden;\">\n          <tr>\n            <td style=\"background:#000000;padding:32px 40px;\">\n              <p style=\"margin:0;color:#ffffff;font-size:13px;letter-spacing:0.05em;text-transform:uppercase;\">Post-meeting survey</p>\n              <h1 style=\"margin:8px 0 0;color:#ffffff;font-size:24px;font-weight:600;line-height:1.3;\">{{ $('Get an event').item.json.summary }}</h1>\n            </td>\n          </tr>\n          <tr>\n            <td style=\"padding:40px;\">\n              <p style=\"margin:0 0 16px;color:#333333;font-size:15px;line-height:1.6;\">Hi,</p>\n              <p style=\"margin:0 0 24px;color:#333333;font-size:15px;line-height:1.6;\">Thanks for joining today's meeting. We'd love your quick feedback — it takes less than 2 minutes and helps us make future meetings more valuable.</p>\n              <table cellpadding=\"0\" cellspacing=\"0\" style=\"margin:0 0 32px;\">\n                <tr>\n                  <td style=\"background:#000000;border-radius:6px;\">\n                    <a href=\"{{ $('Get Share URL').item.json.shareUrl }}\" target=\"_blank\" style=\"display:inline-block;padding:14px 28px;color:#ffffff;font-size:15px;font-weight:600;text-decoration:none;\">Take the survey →</a>\n                  </td>\n                </tr>\n              </table>\n              <p style=\"margin:0 0 8px;color:#888888;font-size:13px;line-height:1.5;\">Or copy this link into your browser:</p>\n              <p style=\"margin:0 0 32px;font-size:13px;line-height:1.5;\"><a href=\"{{ $('Get Share URL').item.json.shareUrl }}\" style=\"color:#000000;word-break:break-all;\">{{ $('Get Share URL').item.json.shareUrl }}</a></p>\n              <table width=\"100%\" cellpadding=\"0\" cellspacing=\"0\" style=\"margin:0 0 32px;\"><tr><td style=\"border-top:1px solid #eeeeee;\"></td></tr></table>\n              <p style=\"margin:0;color:#888888;font-size:13px;line-height:1.6;\">This survey was automatically generated based on your meeting. If you have any questions, reply directly to this email.</p>\n            </td>\n          </tr>\n          <tr>\n            <td style=\"background:#f9f9f9;padding:24px 40px;border-top:1px solid #eeeeee;\">\n              <p style=\"margin:0;color:#aaaaaa;font-size:12px;line-height:1.6;text-align:center;\">Powered by <a href=\"https://weavely.ai\" style=\"color:#aaaaaa;\">Weavely</a></p>\n            </td>\n          </tr>\n        </table>\n      </td>\n    </tr>\n  </table>\n</body>\n</html>",
+        "options": {}
+      },
+      "id": "5f18f5bf-7b5e-488e-82c7-483d094352b7",
+      "name": "Send a message",
+      "type": "n8n-nodes-base.gmail",
+      "position": [
+        3552,
+        752
+      ],
+      "webhookId": "52511a9e-2b86-4922-9283-fb4293bc1b6b",
+      "typeVersion": 2.2
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "type": "@n8n/mcp-registry.atlassian",
+      "typeVersion": 1.1,
+      "position": [
+        2400,
+        928
+      ],
+      "id": "1038be69-3ffa-4984-b112-d310f48c7e2a",
+      "name": "Atlassian MCP",
+      "credentials": {
+        "atlassianMcpOAuth2Api": {
+          "id": "oI2JBeAsscJ5uU2Q",
+          "name": "Atlassian account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "needsFallback": true,
+        "options": {
+          "systemMessage": "Actúa como project manager experto de YoEco, responsable de la creación, actualización y gestión de sus proyectos.\nA partir de las notas de la reunión, genera una lista estructurada con:\n- tareas,\n- actualizaciones de temas ya en curso,\n- nuevas ideas,\n- asuntos que requieran gestión y seguimiento.\nClasifica cada elemento por proyecto, cuando la información lo permita deducir.\nPara cada elemento, incluye toda la información de control que pueda inferirse a partir de la información entregada, por ejemplo:\n- fecha de entrega,\n- tiempo necesario para completar la tarea,\n- nombre de la persona asignada,\n- producto o servicio impactado,\n- ambiente correspondiente: desarrollo, pruebas o producción,\n- prioridad,\n- fecha de inicio si aún no ha comenzado,\n- cualquier otro dato relevante para su gestión y seguimiento."
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 3.1,
+      "position": [
+        2176,
+        1088
+      ],
+      "id": "997f5593-584d-42b7-b7ff-39d2ebc34a0a",
+      "name": "AI Agent1"
+    }
+  ],
+  "connections": {
+    "If": {
+      "main": [
+        [
+          {
+            "node": "Send a message",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Wait": {
+      "main": [
+        []
+      ]
+    },
+    "AI Agent": {
+      "main": [
+        []
+      ]
+    },
+    "Get an event": {
+      "main": [
+        [
+          {
+            "node": "Filter Meeting Notes File",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get Share URL": {
+      "main": [
+        [
+          {
+            "node": "Send message and wait for response",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get a document": {
+      "main": [
+        []
+      ]
+    },
+    "OpenAI Chat Model": {
+      "ai_languageModel": [
+        []
+      ]
+    },
+    "Google Calendar Trigger": {
+      "main": [
+        [
+          {
+            "node": "Get an event",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Structured Output Parser": {
+      "ai_outputParser": [
+        []
+      ]
+    },
+    "Filter Meeting Notes File": {
+      "main": [
+        [
+          {
+            "node": "Get a document",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Send message and wait for response": {
+      "main": [
+        [
+          {
+            "node": "If",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Atlassian MCP": {
+      "ai_tool": [
+        []
+      ]
+    }
+  },
+  "nodeGroups": [],
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate"
+  },
+  "staticData": null,
+  "pinData": {},
+  "meta": {
+    "templateId": "15095"
+  },
+  "tags": [],
+  "shared": [
+    {
+      "role": "workflow:owner",
+      "workflowId": "55vUzGgtNSp6Nlyv",
+      "projectId": "tRHCC8ts4mkRGXGn",
+      "createdAt": "2026-10-09T21:09:12.087Z",
+      "updatedAt": "2026-10-09T21:09:12.087Z"
+    }
+  ],
+  "activeVersion": null
+}
