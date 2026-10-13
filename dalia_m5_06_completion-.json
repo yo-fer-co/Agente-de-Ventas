@@ -1,0 +1,58 @@
+{
+  "id": "BmsZzy0YkEa2Jaud",
+  "name": "DALIA_M5_06_Completion",
+  "active": false,
+  "activeVersionId": null,
+  "createdAt": "2026-08-21T03:44:53.177Z",
+  "updatedAt": "2026-08-21T03:44:59.601Z",
+  "isArchived": false,
+  "versionId": "11804650-24ae-4be4-a85c-2aecdb62d1f6",
+  "triggerCount": 0,
+  "nodes": [
+    {
+      "parameters": {},
+      "id": "57cc3998-fa2f-4b73-902a-8fc447d75420",
+      "name": "M5_06_Input",
+      "type": "n8n-nodes-base.subworkflowTrigger",
+      "typeVersion": 1,
+      "position": [
+        0,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const payload = $input.first().json;\nconst transaction = payload.transaction || {};\nconst completion_config = payload.configuration?.completion || {};\nconst completion_state = completion_config.completion_state || 'completed';\nconst fulfillment = payload.fulfillment_context || {};\n\nlet result_success = true;\nlet result_outcome = 'action_completed';\nlet new_status = 'completed';\nlet error = null;\n\nfunction validateCompletionState(current_status, completion_state, fulfillment_mode) {\n  const valid_transitions = {\n    'completed': ['payment_confirmed', 'invoiced', 'awaiting_shipment', 'ready_for_pickup', 'digital_delivery_ready'],\n    'picked_up': ['ready_for_pickup'],\n    'delivered': ['awaiting_shipment']\n  };\n  \n  const allowed = valid_transitions[completion_state] || [];\n  return allowed.includes(current_status);\n}\n\nfunction canCompleteTransaction(completion_state, fulfillment_mode, current_status) {\n  if (completion_state === 'picked_up') {\n    return fulfillment_mode === 'store_pickup' && current_status === 'ready_for_pickup';\n  } else if (completion_state === 'delivered') {\n    return fulfillment_mode === 'home_delivery' && current_status === 'awaiting_shipment';\n  } else if (completion_state === 'completed') {\n    return validateCompletionState(current_status, completion_state, fulfillment_mode);\n  }\n  return false;\n}\n\nconst can_complete = canCompleteTransaction(completion_state, fulfillment.mode, transaction.status);\n\nif (!can_complete) {\n  result_success = false;\n  result_outcome = 'action_failed';\n  new_status = 'completion_blocked';\n  error = {\n    code: 'TRANSACTION_NOT_READY_FOR_COMPLETION',\n    category: 'business_rule',\n    message: `Transaction cannot be completed. Current status: ${transaction.status}, required state: ${completion_state}`,\n    retryable: false,\n    details: {\n      current_status: transaction.status,\n      required_completion_state: completion_state,\n      fulfillment_mode: fulfillment.mode\n    }\n  };\n}\n\nif (result_success) {\n  if (completion_state === 'picked_up') {\n    new_status = 'picked_up';\n  } else if (completion_state === 'delivered') {\n    new_status = 'delivered';\n  }\n}\n\nconst completion_data = result_success ? {\n  completion_state: completion_state,\n  final_status: new_status,\n  completed_at: new Date().toISOString(),\n  completion_verified: true,\n  fulfillment_mode: fulfillment.mode || null,\n  summary: {\n    transaction_id: transaction.id,\n    customer_id: payload.customer?.customer_id || null,\n    total_amount: payload.commercial_context?.total || 0,\n    currency: payload.commercial_context?.currency || 'COP',\n    items_count: (payload.items || []).length,\n    fulfillment_method: fulfillment.mode || 'unknown'\n  }\n} : null;\n\nreturn [{\n  json: {\n    result: {\n      success: result_success,\n      outcome: result_outcome\n    },\n    transaction: {\n      transaction_id: transaction.id,\n      previous_status: transaction.status,\n      current_status: new_status,\n      sub_status: null,\n      next_action: result_success ? null : 'handle_error'\n    },\n    route: {\n      selected_flow: 'DALIA_M5_Commerce_Orchestrator',\n      effective_action: 'complete_transaction',\n      reason: result_success ? 'transaction_completion_finalized' : 'completion_preconditions_not_met'\n    },\n    response: {\n      message_required: false,\n      message_type: null,\n      reply_text: null,\n      requested_fields: []\n    },\n    data: {\n      completion: completion_data || {}\n    },\n    error: error,\n    trace: {\n      trace_id: payload.trace?.trace_id || null,\n      request_id: payload.trace?.request_id || null,\n      workflow: 'DALIA_M5_06_Completion',\n      stage: 'transaction_completion_finalized',\n      processed_at: new Date().toISOString()\n    }\n  }\n}];"
+      },
+      "id": "7e97d307-e412-489d-92f5-1ac7d3e90ec3",
+      "name": "01_Complete_Transaction_With_Validation",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        0,
+        224
+      ]
+    }
+  ],
+  "connections": {},
+  "nodeGroups": [],
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate",
+    "availableInMCP": false
+  },
+  "staticData": null,
+  "pinData": {},
+  "meta": null,
+  "tags": [],
+  "shared": [
+    {
+      "role": "workflow:owner",
+      "workflowId": "BmsZzy0YkEa2Jaud",
+      "projectId": "8h8pwWGcWlnGEym3",
+      "createdAt": "2026-08-21T03:44:53.179Z",
+      "updatedAt": "2026-08-21T03:44:53.179Z"
+    }
+  ],
+  "activeVersion": null
+}
