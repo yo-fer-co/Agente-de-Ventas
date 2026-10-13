@@ -1,0 +1,980 @@
+{
+  "id": "SG1aoJAEF5p6PBjN",
+  "name": "DALIA_M1.04_Consolidar_rafaga",
+  "active": true,
+  "activeVersionId": "ce31842f-5bb9-400d-96fc-46051d709f91",
+  "createdAt": "2026-10-06T16:33:18.136Z",
+  "updatedAt": "2026-10-06T16:34:47.740Z",
+  "isArchived": false,
+  "versionId": "ce31842f-5bb9-400d-96fc-46051d709f91",
+  "triggerCount": 0,
+  "nodes": [
+    {
+      "id": "31e63760-8897-4279-bcdc-c0bf9afa97df",
+      "name": "Entrada",
+      "type": "n8n-nodes-base.executeWorkflowTrigger",
+      "typeVersion": 1.2,
+      "position": [
+        0,
+        80
+      ],
+      "parameters": {
+        "inputSource": "passthrough"
+      }
+    },
+    {
+      "id": "e90468f7-e127-421b-a642-b2b73a3be1f8",
+      "name": "Accion de ingreso",
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 3.2,
+      "position": [
+        224,
+        80
+      ],
+      "parameters": {
+        "rules": {
+          "values": [
+            {
+              "outputKey": "enriquecer",
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict"
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $json.r.action }}",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    },
+                    "rightValue": "enrich"
+                  }
+                ],
+                "combinator": "or"
+              }
+            },
+            {
+              "outputKey": "esperar",
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict"
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $json.r.action }}",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    },
+                    "rightValue": "wait"
+                  }
+                ],
+                "combinator": "or"
+              }
+            }
+          ]
+        },
+        "options": {
+          "fallbackOutput": "extra",
+          "renameFallbackOutput": "Desconocido"
+        }
+      }
+    },
+    {
+      "id": "6c04f2be-b326-4776-ac24-82fff38c394c",
+      "name": "Pedido de enriquecimiento",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        448,
+        0
+      ],
+      "parameters": {
+        "mode": "raw",
+        "jsonOutput": "={{ JSON.stringify({ message_id: $json.r.message_id }) }}",
+        "options": {}
+      }
+    },
+    {
+      "id": "d34b7116-712e-480f-b08e-64e54e0ddeef",
+      "name": "Enriquecer adjunto (M1.02)",
+      "type": "n8n-nodes-base.executeWorkflow",
+      "typeVersion": 1.3,
+      "position": [
+        672,
+        0
+      ],
+      "parameters": {
+        "mode": "each",
+        "source": "database",
+        "workflowId": {
+          "__rl": true,
+          "mode": "id",
+          "value": "JU62JanjEB5FeTUk"
+        },
+        "options": {
+          "waitForSubWorkflow": true
+        }
+      },
+      "onError": "continueRegularOutput"
+    },
+    {
+      "id": "2a663ba0-36a7-4f38-a762-570f807ce180",
+      "name": "Consultar cierre",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.7,
+      "position": [
+        896,
+        80
+      ],
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "select dalia.m1_close_burst($1::uuid, $2::bigint, 'M1.04') as c;",
+        "options": {
+          "queryReplacement": "={{ [ $(\"Entrada\").first().json.r.conversation_id, $(\"Entrada\").first().json.r.burst_seq ] }}"
+        }
+      },
+      "credentials": {
+        "postgres": {
+          "id": "HfCgVAjUygK1vrkU",
+          "name": "DALIA dev Supabase"
+        }
+      }
+    },
+    {
+      "id": "166a2a8d-5aae-4ae0-8b70-3c906a71cd3e",
+      "name": "Estado de la rafaga",
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 3.2,
+      "position": [
+        1120,
+        80
+      ],
+      "parameters": {
+        "rules": {
+          "values": [
+            {
+              "outputKey": "entregar",
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict"
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $json.c.action }}",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    },
+                    "rightValue": "deliver"
+                  }
+                ],
+                "combinator": "or"
+              }
+            },
+            {
+              "outputKey": "esperar",
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict"
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $json.c.action }}",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    },
+                    "rightValue": "wait"
+                  }
+                ],
+                "combinator": "or"
+              }
+            }
+          ]
+        },
+        "options": {
+          "fallbackOutput": "extra",
+          "renameFallbackOutput": "Desconocido"
+        }
+      }
+    },
+    {
+      "id": "b81f1803-6ea6-4bca-8591-82bef29e685d",
+      "name": "Turno para M2",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        2016,
+        80
+      ],
+      "parameters": {
+        "mode": "raw",
+        "jsonOutput": "={{ JSON.stringify($json.c.turn) }}",
+        "options": {}
+      }
+    },
+    {
+      "id": "eb9de8f2-aeee-4445-a622-40460180ff8c",
+      "name": "Procesar turno (M2.01)",
+      "type": "n8n-nodes-base.executeWorkflow",
+      "typeVersion": 1.3,
+      "position": [
+        2240,
+        80
+      ],
+      "parameters": {
+        "mode": "each",
+        "source": "database",
+        "workflowId": {
+          "__rl": true,
+          "mode": "id",
+          "value": "3pbxdp2jPBwAdzQm"
+        },
+        "options": {
+          "waitForSubWorkflow": false
+        }
+      }
+    },
+    {
+      "id": "f5cd766d-9852-47dd-b5d6-3e50ddcd7051",
+      "name": "Marcar entregada",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.7,
+      "position": [
+        2464,
+        80
+      ],
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "select dalia.m1_mark_delivered($1::uuid, $2::bigint, 'M1.04') as d;",
+        "options": {
+          "queryReplacement": "={{ [ $(\"Turno para M2\").first().json.conversation_id, $(\"Turno para M2\").first().json.burst_seq ] }}"
+        }
+      },
+      "credentials": {
+        "postgres": {
+          "id": "HfCgVAjUygK1vrkU",
+          "name": "DALIA dev Supabase"
+        }
+      }
+    },
+    {
+      "id": "ab769344-7bf8-45d1-96fa-0fb9b7856877",
+      "name": "Esperar ventana",
+      "type": "n8n-nodes-base.wait",
+      "typeVersion": 1.1,
+      "position": [
+        1344,
+        144
+      ],
+      "parameters": {
+        "resume": "timeInterval",
+        "amount": "={{ Math.max(0.2, ($json.c.wait_ms ?? 0) / 1000) }}",
+        "unit": "seconds"
+      },
+      "webhookId": "aaf80f98-81c7-4d35-96ad-c74a97c4e5e9"
+    },
+    {
+      "id": "76f5c87a-613c-4b2b-8880-5058e26f856e",
+      "name": "Cerrar rafaga",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.7,
+      "position": [
+        1568,
+        144
+      ],
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "select dalia.m1_close_burst($1::uuid, $2::bigint, 'M1.04') as c;",
+        "options": {
+          "queryReplacement": "={{ [ $(\"Entrada\").first().json.r.conversation_id, $(\"Entrada\").first().json.r.burst_seq ] }}"
+        }
+      },
+      "credentials": {
+        "postgres": {
+          "id": "HfCgVAjUygK1vrkU",
+          "name": "DALIA dev Supabase"
+        }
+      }
+    },
+    {
+      "id": "e86b4591-8853-4448-818e-f3bd26bd7f43",
+      "name": "Entregar",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        1792,
+        144
+      ],
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose"
+          },
+          "conditions": [
+            {
+              "leftValue": "={{ $json.c.action === \"deliver\" }}",
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        }
+      }
+    }
+  ],
+  "connections": {
+    "Entrada": {
+      "main": [
+        [
+          {
+            "node": "Accion de ingreso",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Accion de ingreso": {
+      "main": [
+        [
+          {
+            "node": "Pedido de enriquecimiento",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Consultar cierre",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Pedido de enriquecimiento": {
+      "main": [
+        [
+          {
+            "node": "Enriquecer adjunto (M1.02)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Enriquecer adjunto (M1.02)": {
+      "main": [
+        [
+          {
+            "node": "Consultar cierre",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Consultar cierre": {
+      "main": [
+        [
+          {
+            "node": "Estado de la rafaga",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Estado de la rafaga": {
+      "main": [
+        [
+          {
+            "node": "Turno para M2",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Esperar ventana",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Turno para M2": {
+      "main": [
+        [
+          {
+            "node": "Procesar turno (M2.01)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Procesar turno (M2.01)": {
+      "main": [
+        [
+          {
+            "node": "Marcar entregada",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Esperar ventana": {
+      "main": [
+        [
+          {
+            "node": "Cerrar rafaga",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Cerrar rafaga": {
+      "main": [
+        [
+          {
+            "node": "Entregar",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Entregar": {
+      "main": [
+        [
+          {
+            "node": "Turno para M2",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "nodeGroups": [],
+  "settings": {
+    "executionOrder": "v1",
+    "availableInMCP": true,
+    "errorWorkflow": "cjjQno2MxMTT3Icc",
+    "timezone": "America/Bogota",
+    "saveDataErrorExecution": "all",
+    "saveDataSuccessExecution": "none",
+    "callerPolicy": "workflowsFromSameOwner"
+  },
+  "staticData": null,
+  "pinData": null,
+  "meta": {
+    "aiBuilderAssisted": true,
+    "builderVariant": "mcp"
+  },
+  "tags": [],
+  "shared": [
+    {
+      "role": "workflow:owner",
+      "workflowId": "SG1aoJAEF5p6PBjN",
+      "projectId": "tRHCC8ts4mkRGXGn",
+      "createdAt": "2026-10-09T21:09:17.859Z",
+      "updatedAt": "2026-10-09T21:09:17.859Z"
+    }
+  ],
+  "activeVersion": {
+    "versionId": "ce31842f-5bb9-400d-96fc-46051d709f91",
+    "workflowId": "SG1aoJAEF5p6PBjN",
+    "nodes": [
+      {
+        "id": "31e63760-8897-4279-bcdc-c0bf9afa97df",
+        "name": "Entrada",
+        "type": "n8n-nodes-base.executeWorkflowTrigger",
+        "typeVersion": 1.2,
+        "position": [
+          0,
+          80
+        ],
+        "parameters": {
+          "inputSource": "passthrough"
+        }
+      },
+      {
+        "id": "e90468f7-e127-421b-a642-b2b73a3be1f8",
+        "name": "Accion de ingreso",
+        "type": "n8n-nodes-base.switch",
+        "typeVersion": 3.2,
+        "position": [
+          224,
+          80
+        ],
+        "parameters": {
+          "rules": {
+            "values": [
+              {
+                "outputKey": "enriquecer",
+                "conditions": {
+                  "options": {
+                    "caseSensitive": true,
+                    "leftValue": "",
+                    "typeValidation": "strict"
+                  },
+                  "conditions": [
+                    {
+                      "leftValue": "={{ $json.r.action }}",
+                      "operator": {
+                        "type": "string",
+                        "operation": "equals"
+                      },
+                      "rightValue": "enrich"
+                    }
+                  ],
+                  "combinator": "or"
+                }
+              },
+              {
+                "outputKey": "esperar",
+                "conditions": {
+                  "options": {
+                    "caseSensitive": true,
+                    "leftValue": "",
+                    "typeValidation": "strict"
+                  },
+                  "conditions": [
+                    {
+                      "leftValue": "={{ $json.r.action }}",
+                      "operator": {
+                        "type": "string",
+                        "operation": "equals"
+                      },
+                      "rightValue": "wait"
+                    }
+                  ],
+                  "combinator": "or"
+                }
+              }
+            ]
+          },
+          "options": {
+            "fallbackOutput": "extra",
+            "renameFallbackOutput": "Desconocido"
+          }
+        }
+      },
+      {
+        "id": "6c04f2be-b326-4776-ac24-82fff38c394c",
+        "name": "Pedido de enriquecimiento",
+        "type": "n8n-nodes-base.set",
+        "typeVersion": 3.4,
+        "position": [
+          448,
+          0
+        ],
+        "parameters": {
+          "mode": "raw",
+          "jsonOutput": "={{ JSON.stringify({ message_id: $json.r.message_id }) }}",
+          "options": {}
+        }
+      },
+      {
+        "id": "d34b7116-712e-480f-b08e-64e54e0ddeef",
+        "name": "Enriquecer adjunto (M1.02)",
+        "type": "n8n-nodes-base.executeWorkflow",
+        "typeVersion": 1.3,
+        "position": [
+          672,
+          0
+        ],
+        "parameters": {
+          "mode": "each",
+          "source": "database",
+          "workflowId": {
+            "__rl": true,
+            "mode": "id",
+            "value": "JU62JanjEB5FeTUk"
+          },
+          "options": {
+            "waitForSubWorkflow": true
+          }
+        },
+        "onError": "continueRegularOutput"
+      },
+      {
+        "id": "2a663ba0-36a7-4f38-a762-570f807ce180",
+        "name": "Consultar cierre",
+        "type": "n8n-nodes-base.postgres",
+        "typeVersion": 2.7,
+        "position": [
+          896,
+          80
+        ],
+        "parameters": {
+          "operation": "executeQuery",
+          "query": "select dalia.m1_close_burst($1::uuid, $2::bigint, 'M1.04') as c;",
+          "options": {
+            "queryReplacement": "={{ [ $(\"Entrada\").first().json.r.conversation_id, $(\"Entrada\").first().json.r.burst_seq ] }}"
+          }
+        },
+        "credentials": {
+          "postgres": {
+            "id": "HfCgVAjUygK1vrkU",
+            "name": "DALIA dev Supabase"
+          }
+        }
+      },
+      {
+        "id": "166a2a8d-5aae-4ae0-8b70-3c906a71cd3e",
+        "name": "Estado de la rafaga",
+        "type": "n8n-nodes-base.switch",
+        "typeVersion": 3.2,
+        "position": [
+          1120,
+          80
+        ],
+        "parameters": {
+          "rules": {
+            "values": [
+              {
+                "outputKey": "entregar",
+                "conditions": {
+                  "options": {
+                    "caseSensitive": true,
+                    "leftValue": "",
+                    "typeValidation": "strict"
+                  },
+                  "conditions": [
+                    {
+                      "leftValue": "={{ $json.c.action }}",
+                      "operator": {
+                        "type": "string",
+                        "operation": "equals"
+                      },
+                      "rightValue": "deliver"
+                    }
+                  ],
+                  "combinator": "or"
+                }
+              },
+              {
+                "outputKey": "esperar",
+                "conditions": {
+                  "options": {
+                    "caseSensitive": true,
+                    "leftValue": "",
+                    "typeValidation": "strict"
+                  },
+                  "conditions": [
+                    {
+                      "leftValue": "={{ $json.c.action }}",
+                      "operator": {
+                        "type": "string",
+                        "operation": "equals"
+                      },
+                      "rightValue": "wait"
+                    }
+                  ],
+                  "combinator": "or"
+                }
+              }
+            ]
+          },
+          "options": {
+            "fallbackOutput": "extra",
+            "renameFallbackOutput": "Desconocido"
+          }
+        }
+      },
+      {
+        "id": "b81f1803-6ea6-4bca-8591-82bef29e685d",
+        "name": "Turno para M2",
+        "type": "n8n-nodes-base.set",
+        "typeVersion": 3.4,
+        "position": [
+          2016,
+          80
+        ],
+        "parameters": {
+          "mode": "raw",
+          "jsonOutput": "={{ JSON.stringify($json.c.turn) }}",
+          "options": {}
+        }
+      },
+      {
+        "id": "eb9de8f2-aeee-4445-a622-40460180ff8c",
+        "name": "Procesar turno (M2.01)",
+        "type": "n8n-nodes-base.executeWorkflow",
+        "typeVersion": 1.3,
+        "position": [
+          2240,
+          80
+        ],
+        "parameters": {
+          "mode": "each",
+          "source": "database",
+          "workflowId": {
+            "__rl": true,
+            "mode": "id",
+            "value": "3pbxdp2jPBwAdzQm"
+          },
+          "options": {
+            "waitForSubWorkflow": false
+          }
+        }
+      },
+      {
+        "id": "f5cd766d-9852-47dd-b5d6-3e50ddcd7051",
+        "name": "Marcar entregada",
+        "type": "n8n-nodes-base.postgres",
+        "typeVersion": 2.7,
+        "position": [
+          2464,
+          80
+        ],
+        "parameters": {
+          "operation": "executeQuery",
+          "query": "select dalia.m1_mark_delivered($1::uuid, $2::bigint, 'M1.04') as d;",
+          "options": {
+            "queryReplacement": "={{ [ $(\"Turno para M2\").first().json.conversation_id, $(\"Turno para M2\").first().json.burst_seq ] }}"
+          }
+        },
+        "credentials": {
+          "postgres": {
+            "id": "HfCgVAjUygK1vrkU",
+            "name": "DALIA dev Supabase"
+          }
+        }
+      },
+      {
+        "id": "ab769344-7bf8-45d1-96fa-0fb9b7856877",
+        "name": "Esperar ventana",
+        "type": "n8n-nodes-base.wait",
+        "typeVersion": 1.1,
+        "position": [
+          1344,
+          144
+        ],
+        "parameters": {
+          "resume": "timeInterval",
+          "amount": "={{ Math.max(0.2, ($json.c.wait_ms ?? 0) / 1000) }}",
+          "unit": "seconds"
+        },
+        "webhookId": "aaf80f98-81c7-4d35-96ad-c74a97c4e5e9"
+      },
+      {
+        "id": "76f5c87a-613c-4b2b-8880-5058e26f856e",
+        "name": "Cerrar rafaga",
+        "type": "n8n-nodes-base.postgres",
+        "typeVersion": 2.7,
+        "position": [
+          1568,
+          144
+        ],
+        "parameters": {
+          "operation": "executeQuery",
+          "query": "select dalia.m1_close_burst($1::uuid, $2::bigint, 'M1.04') as c;",
+          "options": {
+            "queryReplacement": "={{ [ $(\"Entrada\").first().json.r.conversation_id, $(\"Entrada\").first().json.r.burst_seq ] }}"
+          }
+        },
+        "credentials": {
+          "postgres": {
+            "id": "HfCgVAjUygK1vrkU",
+            "name": "DALIA dev Supabase"
+          }
+        }
+      },
+      {
+        "id": "e86b4591-8853-4448-818e-f3bd26bd7f43",
+        "name": "Entregar",
+        "type": "n8n-nodes-base.if",
+        "typeVersion": 2.2,
+        "position": [
+          1792,
+          144
+        ],
+        "parameters": {
+          "conditions": {
+            "options": {
+              "caseSensitive": true,
+              "leftValue": "",
+              "typeValidation": "loose"
+            },
+            "conditions": [
+              {
+                "leftValue": "={{ $json.c.action === \"deliver\" }}",
+                "operator": {
+                  "type": "boolean",
+                  "operation": "true",
+                  "singleValue": true
+                }
+              }
+            ],
+            "combinator": "and"
+          }
+        }
+      }
+    ],
+    "connections": {
+      "Entrada": {
+        "main": [
+          [
+            {
+              "node": "Accion de ingreso",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Accion de ingreso": {
+        "main": [
+          [
+            {
+              "node": "Pedido de enriquecimiento",
+              "type": "main",
+              "index": 0
+            }
+          ],
+          [
+            {
+              "node": "Consultar cierre",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Pedido de enriquecimiento": {
+        "main": [
+          [
+            {
+              "node": "Enriquecer adjunto (M1.02)",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Enriquecer adjunto (M1.02)": {
+        "main": [
+          [
+            {
+              "node": "Consultar cierre",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Consultar cierre": {
+        "main": [
+          [
+            {
+              "node": "Estado de la rafaga",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Estado de la rafaga": {
+        "main": [
+          [
+            {
+              "node": "Turno para M2",
+              "type": "main",
+              "index": 0
+            }
+          ],
+          [
+            {
+              "node": "Esperar ventana",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Turno para M2": {
+        "main": [
+          [
+            {
+              "node": "Procesar turno (M2.01)",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Procesar turno (M2.01)": {
+        "main": [
+          [
+            {
+              "node": "Marcar entregada",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Esperar ventana": {
+        "main": [
+          [
+            {
+              "node": "Cerrar rafaga",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Cerrar rafaga": {
+        "main": [
+          [
+            {
+              "node": "Entregar",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Entregar": {
+        "main": [
+          [
+            {
+              "node": "Turno para M2",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      }
+    },
+    "nodeGroups": [],
+    "authors": "Fabian Bocanegra (via MCP)",
+    "name": "Lote 12: M1.04 Consolidar ráfaga",
+    "description": "Created with 12 nodes: Entrada, Accion de ingreso, Pedido de enriquecimiento, Enriquecer adjunto (M1.02), Consultar cierre and 7 more",
+    "autosaved": false,
+    "createdAt": "2026-10-06T16:33:18.139Z",
+    "updatedAt": "2026-10-06T16:33:18.139Z"
+  }
+}
