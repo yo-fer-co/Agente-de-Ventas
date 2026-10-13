@@ -1,0 +1,97 @@
+{
+  "id": "97BdbsSszNpjNQN4",
+  "name": "Setup: Wipe Qdrant Test Collection (Baby'sWorld_Catalogo_Test)",
+  "active": false,
+  "activeVersionId": null,
+  "createdAt": "2026-09-03T21:24:58.694Z",
+  "updatedAt": "2026-09-03T21:24:58.694Z",
+  "isArchived": false,
+  "versionId": "4fead1bb-914c-4945-b72c-794dd4aea294",
+  "triggerCount": 0,
+  "nodes": [
+    {
+      "parameters": {
+        "content": "## Setup: Wipe Qdrant Test Collection (Baby'sWorld_Catalogo_Test)\n\nWorkflow de un solo uso, manual (Manual Trigger, sin webhook, sin activar) para limpiar por completo la coleccion de PRUEBAS de Qdrant antes de recargar el catalogo desde cero.\n\nQue hace: borra la coleccion completa 'Baby'sWorld_Catalogo_Test' (DELETE /collections/...). Esto elimina TODOS los puntos y TODOS los indices de payload que tenia (product_id, variant_id, product_type, title, descripcion, collections) -- no borra solo los puntos, borra la coleccion entera.\n\nNo toca 'BabysWorld_Catalogo' (la coleccion REAL de produccion, sin '_Test') -- la URL apunta explicitamente a la de pruebas.\n\nPasos despues de ejecutar este workflow:\n1. Volver a ejecutar 'Setup: Create Qdrant Payload Indexes (Baby'sWorld_Catalogo_Test)' (ya importado) para recrear la coleccion (con la misma config de vectores que la real) y los 6 indices de payload.\n2. Recargar el catalogo: correr 'descargar_productos_shopify.bat' + 'cargar_catalogo_a_qdrant.py' para repoblar la coleccion de pruebas con datos frescos, ya con 'collections' y 'qdrant_written_at' consistentes en todos los puntos (sin la mezcla de datos viejos/nuevos que habia antes de este reset).",
+        "height": 460,
+        "width": 620,
+        "color": 4
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        -80,
+        -96
+      ],
+      "id": "f2072839-76d2-4863-a484-bc7b09721fa5",
+      "name": "Sticky_Wipe_Note"
+    },
+    {
+      "parameters": {},
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [
+        -80,
+        464
+      ],
+      "id": "6ce195bf-e31b-4579-a3d9-3b730390fe79",
+      "name": "When clicking ‘Execute workflow’"
+    },
+    {
+      "parameters": {
+        "method": "DELETE",
+        "url": "https://1537c683-48da-4631-ab76-ad698b6b9881.us-east-1-0.aws.cloud.qdrant.io:6333/collections/Baby'sWorld_Catalogo_Test",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "qdrantApi",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        416,
+        464
+      ],
+      "id": "c6771a8c-d0e9-43c7-9e9e-16bf24ceed5e",
+      "name": "Qdrant_Delete_Test_Collection",
+      "credentials": {
+        "qdrantApi": {
+          "id": "ZYv8vdr6tkTS4jYz",
+          "name": "QdrantApi account 3"
+        }
+      },
+      "continueOnFail": true,
+      "onError": "continueRegularOutput"
+    }
+  ],
+  "connections": {
+    "When clicking ‘Execute workflow’": {
+      "main": [
+        [
+          {
+            "node": "Qdrant_Delete_Test_Collection",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "nodeGroups": [],
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate"
+  },
+  "staticData": null,
+  "pinData": {},
+  "meta": null,
+  "tags": [],
+  "shared": [
+    {
+      "role": "workflow:owner",
+      "workflowId": "97BdbsSszNpjNQN4",
+      "projectId": "8h8pwWGcWlnGEym3",
+      "createdAt": "2026-09-03T21:24:58.696Z",
+      "updatedAt": "2026-09-03T21:24:58.696Z"
+    }
+  ],
+  "activeVersion": null
+}
