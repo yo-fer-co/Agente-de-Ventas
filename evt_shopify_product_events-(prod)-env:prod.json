@@ -1,0 +1,729 @@
+{
+  "id": "0w0JIuxfPc20QN9V",
+  "name": "EVT_Shopify_Product_Events (PROD)",
+  "active": true,
+  "activeVersionId": "52beacca-3e1a-45ea-83b0-cff23cd80b92",
+  "createdAt": "2026-10-08T23:30:19.382Z",
+  "updatedAt": "2026-10-09T00:05:37.598Z",
+  "isArchived": false,
+  "versionId": "52beacca-3e1a-45ea-83b0-cff23cd80b92",
+  "triggerCount": 1,
+  "nodes": [
+    {
+      "parameters": {
+        "content": "## EVT_Shopify_Product_Events\n\nListener dedicado para eventos de PRODUCTOS de Shopify (products/create, products/update, products/delete).\n\nEs un workflow nuevo e independiente de M5_EVT_Shopify_Payment: no lo llama, no depende de el, no comparte ejecucion con el. Solo replica su MISMA FORMA (Webhook + verificacion HMAC manual), que ya esta probada en produccion para pagos.\n\nURL de produccion confirmada: https://yoeco.app.n8n.cloud/webhook/shopify/products\n\n01_Extract_Raw_Webhook: decodifica el body crudo (Raw Body activado) para el HMAC, y por separado parsea ese mismo texto a JSON para 'body' — convirtiendo primero a string cualquier entero de 16+ digitos (los ids de Shopify llegan a tener 19 digitos, mas alla de Number.MAX_SAFE_INTEGER) para no perder precision al parsear.",
+        "height": 380,
+        "width": 460,
+        "color": 5
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        5872,
+        -400
+      ],
+      "id": "b15d855b-64aa-4109-a7a0-c41058d7c174",
+      "name": "Sticky_a36898ef"
+    },
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "shopify/products",
+        "options": {
+          "rawBody": true
+        }
+      },
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2.1,
+      "position": [
+        6336,
+        -128
+      ],
+      "id": "be1c8502-1486-4f2b-a338-a708f225b7f6",
+      "name": "Webhook",
+      "webhookId": "15b88dd0-55d4-4a72-bd6b-4ea05f854119"
+    },
+    {
+      "parameters": {
+        "jsCode": "const item = $input.first();\nconst headers = item.json.headers ?? {};\n\n// Con \"Raw Body\" activado en el nodo Webhook, el body crudo llega como dato binario.\n// Se usa el helper oficial de n8n (this.helpers.getBinaryDataBuffer) en vez de leer\n// item.binary.data.data a mano: la doc de n8n desaconseja el acceso directo porque\n// no funciona si el binario esta almacenado en filesystem/S3, y de paso evita tener\n// que referenciar Buffer/N8nBinary directamente (esos son los dos errores del editor).\nlet rawBody;\ntry {\n  const buffer = await this.helpers.getBinaryDataBuffer(0, 'data');\n  rawBody = buffer.toString('utf8');\n} catch (e) {\n  // Sin binario disponible (p.ej. si \"Raw Body\" llegara a estar desactivado): fallback anterior.\n  rawBody = JSON.stringify(item.json.body ?? item.json);\n}\n\n// Confirmado contra la doc de Shopify (verify-deliveries): el HMAC se calcula\n// sobre el body crudo, antes de cualquier parseo — por eso raw_body sale de arriba,\n// y body (para Product_Management) se obtiene parseando ese mismo texto.\nlet body;\ntry {\n  // Los IDs de Shopify pueden tener hasta 19 digitos, mas alla del limite seguro\n  // de Number en JS (Number.MAX_SAFE_INTEGER, 16 digitos). Antes de parsear, se\n  // envuelven en comillas los enteros de 16+ digitos para que JSON.parse los deje\n  // como string exacto (sin redondear) en vez de como Number.\n  const safeRawBody = rawBody.replace(/:(\\s*)(-?\\d{16,})(\\s*[,}\\]])/g, ':$1\"$2\"$3');\n  body = JSON.parse(safeRawBody);\n} catch (e) {\n  body = item.json.body ?? {};\n}\n\nreturn [{\n  json: {\n    headers,\n    body,\n    raw_body: rawBody,\n    received_at: new Date().toISOString()\n  }\n}];\n"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        6576,
+        -128
+      ],
+      "id": "3e69a62d-3434-450c-aaae-fc5a7540f667",
+      "name": "01_Extract_Raw_Webhook"
+    },
+    {
+      "parameters": {
+        "workflowId": {
+          "__rl": true,
+          "value": "aoJFiLVFrOr04ILs",
+          "mode": "list",
+          "cachedResultUrl": "/workflow/aoJFiLVFrOr04ILs",
+          "cachedResultName": "Babys World — Subflow: Parse Shopify Webhook Headers (Catalogo)"
+        },
+        "workflowInputs": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "headers": "={{ $json.headers }}"
+          },
+          "matchingColumns": [
+            "headers"
+          ],
+          "schema": [
+            {
+              "id": "headers",
+              "displayName": "headers",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "object",
+              "removed": false
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": true
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.executeWorkflow",
+      "typeVersion": 1.2,
+      "position": [
+        6816,
+        -128
+      ],
+      "id": "6211bf1f-c255-425c-8117-eabee8268f12",
+      "name": "Call_Parse_Shopify_Headers"
+    },
+    {
+      "parameters": {
+        "workflowId": {
+          "__rl": true,
+          "value": "Xdodv0vmnbB0nVNt",
+          "mode": "list",
+          "cachedResultUrl": "/workflow/Xdodv0vmnbB0nVNt",
+          "cachedResultName": "Babys World — Subflow: Verify Shopify HMAC (Catalogo)"
+        },
+        "workflowInputs": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "raw_body": "={{ $('01_Extract_Raw_Webhook').item.json.raw_body }}",
+            "hmac_header": "={{ $json.hmac }}",
+            "secret_name": "=SHOPIFY_WEBHOOK_SECRET"
+          },
+          "matchingColumns": [],
+          "schema": [
+            {
+              "id": "raw_body",
+              "displayName": "raw_body",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string"
+            },
+            {
+              "id": "hmac_header",
+              "displayName": "hmac_header",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string"
+            },
+            {
+              "id": "secret_name",
+              "displayName": "secret_name",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string"
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": true
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.executeWorkflow",
+      "typeVersion": 1.2,
+      "position": [
+        7056,
+        -128
+      ],
+      "id": "4fe34d18-ce55-4533-9aa1-d63c95032ea5",
+      "name": "Call_Verify_Shopify_HMAC"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "38c1088a-8ccb-43b4-8c06-d9294ec4c047",
+              "leftValue": "={{ $json.valid === true && ($('Call_Parse_Shopify_Headers').item.json.topic || '').startsWith('products/') }}",
+              "rightValue": "",
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        7296,
+        -128
+      ],
+      "id": "a172afca-e18e-4a90-bc74-2a8651d1bf73",
+      "name": "Gate_HMAC_And_Topic"
+    },
+    {
+      "parameters": {
+        "jsCode": "const topic = $('Call_Parse_Shopify_Headers').item.json.topic;\nconst product = $('01_Extract_Raw_Webhook').item.json.body;\n\nreturn [{\n  json: {\n    topic,\n    product\n  }\n}];\n"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        7536,
+        -256
+      ],
+      "id": "823d64b2-ce46-403f-9ed4-24c800fcf95e",
+      "name": "Build_Product_Management_Input"
+    },
+    {
+      "parameters": {
+        "workflowId": {
+          "__rl": true,
+          "value": "HPhKJvra1skVILfI",
+          "mode": "list",
+          "cachedResultUrl": "/workflow/HPhKJvra1skVILfI",
+          "cachedResultName": "Babys World — Product_Management (PROD)"
+        },
+        "workflowInputs": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "topic": "={{ $json.topic }}",
+            "product": "={{ $json.product }}"
+          },
+          "matchingColumns": [],
+          "schema": [
+            {
+              "id": "topic",
+              "displayName": "topic",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string",
+              "removed": false
+            },
+            {
+              "id": "product",
+              "displayName": "product",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "object",
+              "removed": false
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": true
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.executeWorkflow",
+      "typeVersion": 1.2,
+      "position": [
+        7776,
+        -256
+      ],
+      "id": "99ba32fd-5788-4907-b5d0-4ad6a504c611",
+      "name": "Call_Product_Management"
+    },
+    {
+      "parameters": {
+        "jsCode": "const parseResult = $('Call_Parse_Shopify_Headers').item.json ?? {};\nconst verifyResult = $json ?? {};\n\nreturn [{\n  json: {\n    accepted: false,\n    reason: verifyResult.reason ?? 'topic_not_product_related_or_invalid_hmac',\n    topic: parseResult.topic ?? null,\n    webhook_id: parseResult.webhook_id ?? null\n  }\n}];\n"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        7536,
+        -16
+      ],
+      "id": "a35a7a44-4af7-451b-8e3e-e32b94723f64",
+      "name": "Build_Rejection_Output"
+    }
+  ],
+  "connections": {
+    "Webhook": {
+      "main": [
+        [
+          {
+            "node": "01_Extract_Raw_Webhook",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "01_Extract_Raw_Webhook": {
+      "main": [
+        [
+          {
+            "node": "Call_Parse_Shopify_Headers",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Call_Parse_Shopify_Headers": {
+      "main": [
+        [
+          {
+            "node": "Call_Verify_Shopify_HMAC",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Call_Verify_Shopify_HMAC": {
+      "main": [
+        [
+          {
+            "node": "Gate_HMAC_And_Topic",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Gate_HMAC_And_Topic": {
+      "main": [
+        [
+          {
+            "node": "Build_Product_Management_Input",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Build_Rejection_Output",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Build_Product_Management_Input": {
+      "main": [
+        [
+          {
+            "node": "Call_Product_Management",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "nodeGroups": [],
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate",
+    "availableInMCP": false,
+    "timeSavedMode": "fixed",
+    "errorWorkflow": "GZN4CJ6QgYxm77J7",
+    "callerPolicy": "workflowsFromSameOwner"
+  },
+  "staticData": null,
+  "pinData": {},
+  "meta": null,
+  "tags": [
+    {
+      "id": "2nDb4zfpAXOj9Pvx",
+      "name": "env:prod",
+      "createdAt": "2026-02-25T21:45:46.330Z",
+      "updatedAt": "2026-02-25T21:45:46.330Z"
+    }
+  ],
+  "shared": [
+    {
+      "role": "workflow:owner",
+      "workflowId": "0w0JIuxfPc20QN9V",
+      "projectId": "8h8pwWGcWlnGEym3",
+      "createdAt": "2026-10-08T23:30:19.384Z",
+      "updatedAt": "2026-10-08T23:30:19.384Z"
+    }
+  ],
+  "activeVersion": {
+    "versionId": "52beacca-3e1a-45ea-83b0-cff23cd80b92",
+    "workflowId": "0w0JIuxfPc20QN9V",
+    "nodes": [
+      {
+        "parameters": {
+          "content": "## EVT_Shopify_Product_Events\n\nListener dedicado para eventos de PRODUCTOS de Shopify (products/create, products/update, products/delete).\n\nEs un workflow nuevo e independiente de M5_EVT_Shopify_Payment: no lo llama, no depende de el, no comparte ejecucion con el. Solo replica su MISMA FORMA (Webhook + verificacion HMAC manual), que ya esta probada en produccion para pagos.\n\nURL de produccion confirmada: https://yoeco.app.n8n.cloud/webhook/shopify/products\n\n01_Extract_Raw_Webhook: decodifica el body crudo (Raw Body activado) para el HMAC, y por separado parsea ese mismo texto a JSON para 'body' — convirtiendo primero a string cualquier entero de 16+ digitos (los ids de Shopify llegan a tener 19 digitos, mas alla de Number.MAX_SAFE_INTEGER) para no perder precision al parsear.",
+          "height": 380,
+          "width": 460,
+          "color": 5
+        },
+        "type": "n8n-nodes-base.stickyNote",
+        "typeVersion": 1,
+        "position": [
+          5872,
+          -400
+        ],
+        "id": "b15d855b-64aa-4109-a7a0-c41058d7c174",
+        "name": "Sticky_a36898ef"
+      },
+      {
+        "parameters": {
+          "httpMethod": "POST",
+          "path": "shopify/products",
+          "options": {
+            "rawBody": true
+          }
+        },
+        "type": "n8n-nodes-base.webhook",
+        "typeVersion": 2.1,
+        "position": [
+          6336,
+          -128
+        ],
+        "id": "be1c8502-1486-4f2b-a338-a708f225b7f6",
+        "name": "Webhook",
+        "webhookId": "15b88dd0-55d4-4a72-bd6b-4ea05f854119"
+      },
+      {
+        "parameters": {
+          "jsCode": "const item = $input.first();\nconst headers = item.json.headers ?? {};\n\n// Con \"Raw Body\" activado en el nodo Webhook, el body crudo llega como dato binario.\n// Se usa el helper oficial de n8n (this.helpers.getBinaryDataBuffer) en vez de leer\n// item.binary.data.data a mano: la doc de n8n desaconseja el acceso directo porque\n// no funciona si el binario esta almacenado en filesystem/S3, y de paso evita tener\n// que referenciar Buffer/N8nBinary directamente (esos son los dos errores del editor).\nlet rawBody;\ntry {\n  const buffer = await this.helpers.getBinaryDataBuffer(0, 'data');\n  rawBody = buffer.toString('utf8');\n} catch (e) {\n  // Sin binario disponible (p.ej. si \"Raw Body\" llegara a estar desactivado): fallback anterior.\n  rawBody = JSON.stringify(item.json.body ?? item.json);\n}\n\n// Confirmado contra la doc de Shopify (verify-deliveries): el HMAC se calcula\n// sobre el body crudo, antes de cualquier parseo — por eso raw_body sale de arriba,\n// y body (para Product_Management) se obtiene parseando ese mismo texto.\nlet body;\ntry {\n  // Los IDs de Shopify pueden tener hasta 19 digitos, mas alla del limite seguro\n  // de Number en JS (Number.MAX_SAFE_INTEGER, 16 digitos). Antes de parsear, se\n  // envuelven en comillas los enteros de 16+ digitos para que JSON.parse los deje\n  // como string exacto (sin redondear) en vez de como Number.\n  const safeRawBody = rawBody.replace(/:(\\s*)(-?\\d{16,})(\\s*[,}\\]])/g, ':$1\"$2\"$3');\n  body = JSON.parse(safeRawBody);\n} catch (e) {\n  body = item.json.body ?? {};\n}\n\nreturn [{\n  json: {\n    headers,\n    body,\n    raw_body: rawBody,\n    received_at: new Date().toISOString()\n  }\n}];\n"
+        },
+        "type": "n8n-nodes-base.code",
+        "typeVersion": 2,
+        "position": [
+          6576,
+          -128
+        ],
+        "id": "3e69a62d-3434-450c-aaae-fc5a7540f667",
+        "name": "01_Extract_Raw_Webhook"
+      },
+      {
+        "parameters": {
+          "workflowId": {
+            "__rl": true,
+            "value": "aoJFiLVFrOr04ILs",
+            "mode": "list",
+            "cachedResultUrl": "/workflow/aoJFiLVFrOr04ILs",
+            "cachedResultName": "Babys World — Subflow: Parse Shopify Webhook Headers (Catalogo)"
+          },
+          "workflowInputs": {
+            "mappingMode": "defineBelow",
+            "value": {
+              "headers": "={{ $json.headers }}"
+            },
+            "matchingColumns": [
+              "headers"
+            ],
+            "schema": [
+              {
+                "id": "headers",
+                "displayName": "headers",
+                "required": false,
+                "defaultMatch": false,
+                "display": true,
+                "canBeUsedToMatch": true,
+                "type": "object",
+                "removed": false
+              }
+            ],
+            "attemptToConvertTypes": false,
+            "convertFieldsToString": true
+          },
+          "options": {}
+        },
+        "type": "n8n-nodes-base.executeWorkflow",
+        "typeVersion": 1.2,
+        "position": [
+          6816,
+          -128
+        ],
+        "id": "6211bf1f-c255-425c-8117-eabee8268f12",
+        "name": "Call_Parse_Shopify_Headers"
+      },
+      {
+        "parameters": {
+          "workflowId": {
+            "__rl": true,
+            "value": "Xdodv0vmnbB0nVNt",
+            "mode": "list",
+            "cachedResultUrl": "/workflow/Xdodv0vmnbB0nVNt",
+            "cachedResultName": "Babys World — Subflow: Verify Shopify HMAC (Catalogo)"
+          },
+          "workflowInputs": {
+            "mappingMode": "defineBelow",
+            "value": {
+              "raw_body": "={{ $('01_Extract_Raw_Webhook').item.json.raw_body }}",
+              "hmac_header": "={{ $json.hmac }}",
+              "secret_name": "=SHOPIFY_WEBHOOK_SECRET"
+            },
+            "matchingColumns": [],
+            "schema": [
+              {
+                "id": "raw_body",
+                "displayName": "raw_body",
+                "required": false,
+                "defaultMatch": false,
+                "display": true,
+                "canBeUsedToMatch": true,
+                "type": "string"
+              },
+              {
+                "id": "hmac_header",
+                "displayName": "hmac_header",
+                "required": false,
+                "defaultMatch": false,
+                "display": true,
+                "canBeUsedToMatch": true,
+                "type": "string"
+              },
+              {
+                "id": "secret_name",
+                "displayName": "secret_name",
+                "required": false,
+                "defaultMatch": false,
+                "display": true,
+                "canBeUsedToMatch": true,
+                "type": "string"
+              }
+            ],
+            "attemptToConvertTypes": false,
+            "convertFieldsToString": true
+          },
+          "options": {}
+        },
+        "type": "n8n-nodes-base.executeWorkflow",
+        "typeVersion": 1.2,
+        "position": [
+          7056,
+          -128
+        ],
+        "id": "4fe34d18-ce55-4533-9aa1-d63c95032ea5",
+        "name": "Call_Verify_Shopify_HMAC"
+      },
+      {
+        "parameters": {
+          "conditions": {
+            "options": {
+              "caseSensitive": true,
+              "leftValue": "",
+              "typeValidation": "strict",
+              "version": 3
+            },
+            "conditions": [
+              {
+                "id": "38c1088a-8ccb-43b4-8c06-d9294ec4c047",
+                "leftValue": "={{ $json.valid === true && ($('Call_Parse_Shopify_Headers').item.json.topic || '').startsWith('products/') }}",
+                "rightValue": "",
+                "operator": {
+                  "type": "boolean",
+                  "operation": "true",
+                  "singleValue": true
+                }
+              }
+            ],
+            "combinator": "and"
+          },
+          "options": {}
+        },
+        "type": "n8n-nodes-base.if",
+        "typeVersion": 2.3,
+        "position": [
+          7296,
+          -128
+        ],
+        "id": "a172afca-e18e-4a90-bc74-2a8651d1bf73",
+        "name": "Gate_HMAC_And_Topic"
+      },
+      {
+        "parameters": {
+          "jsCode": "const topic = $('Call_Parse_Shopify_Headers').item.json.topic;\nconst product = $('01_Extract_Raw_Webhook').item.json.body;\n\nreturn [{\n  json: {\n    topic,\n    product\n  }\n}];\n"
+        },
+        "type": "n8n-nodes-base.code",
+        "typeVersion": 2,
+        "position": [
+          7536,
+          -256
+        ],
+        "id": "823d64b2-ce46-403f-9ed4-24c800fcf95e",
+        "name": "Build_Product_Management_Input"
+      },
+      {
+        "parameters": {
+          "workflowId": {
+            "__rl": true,
+            "value": "HPhKJvra1skVILfI",
+            "mode": "list",
+            "cachedResultUrl": "/workflow/HPhKJvra1skVILfI",
+            "cachedResultName": "Babys World — Product_Management (PROD)"
+          },
+          "workflowInputs": {
+            "mappingMode": "defineBelow",
+            "value": {
+              "topic": "={{ $json.topic }}",
+              "product": "={{ $json.product }}"
+            },
+            "matchingColumns": [],
+            "schema": [
+              {
+                "id": "topic",
+                "displayName": "topic",
+                "required": false,
+                "defaultMatch": false,
+                "display": true,
+                "canBeUsedToMatch": true,
+                "type": "string",
+                "removed": false
+              },
+              {
+                "id": "product",
+                "displayName": "product",
+                "required": false,
+                "defaultMatch": false,
+                "display": true,
+                "canBeUsedToMatch": true,
+                "type": "object",
+                "removed": false
+              }
+            ],
+            "attemptToConvertTypes": false,
+            "convertFieldsToString": true
+          },
+          "options": {}
+        },
+        "type": "n8n-nodes-base.executeWorkflow",
+        "typeVersion": 1.2,
+        "position": [
+          7776,
+          -256
+        ],
+        "id": "99ba32fd-5788-4907-b5d0-4ad6a504c611",
+        "name": "Call_Product_Management"
+      },
+      {
+        "parameters": {
+          "jsCode": "const parseResult = $('Call_Parse_Shopify_Headers').item.json ?? {};\nconst verifyResult = $json ?? {};\n\nreturn [{\n  json: {\n    accepted: false,\n    reason: verifyResult.reason ?? 'topic_not_product_related_or_invalid_hmac',\n    topic: parseResult.topic ?? null,\n    webhook_id: parseResult.webhook_id ?? null\n  }\n}];\n"
+        },
+        "type": "n8n-nodes-base.code",
+        "typeVersion": 2,
+        "position": [
+          7536,
+          -16
+        ],
+        "id": "a35a7a44-4af7-451b-8e3e-e32b94723f64",
+        "name": "Build_Rejection_Output"
+      }
+    ],
+    "connections": {
+      "Webhook": {
+        "main": [
+          [
+            {
+              "node": "01_Extract_Raw_Webhook",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "01_Extract_Raw_Webhook": {
+        "main": [
+          [
+            {
+              "node": "Call_Parse_Shopify_Headers",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Call_Parse_Shopify_Headers": {
+        "main": [
+          [
+            {
+              "node": "Call_Verify_Shopify_HMAC",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Call_Verify_Shopify_HMAC": {
+        "main": [
+          [
+            {
+              "node": "Gate_HMAC_And_Topic",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Gate_HMAC_And_Topic": {
+        "main": [
+          [
+            {
+              "node": "Build_Product_Management_Input",
+              "type": "main",
+              "index": 0
+            }
+          ],
+          [
+            {
+              "node": "Build_Rejection_Output",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Build_Product_Management_Input": {
+        "main": [
+          [
+            {
+              "node": "Call_Product_Management",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      }
+    },
+    "nodeGroups": [],
+    "authors": "Michelo Vaca Cardozo",
+    "name": "Version 52beacca",
+    "description": "",
+    "autosaved": true,
+    "createdAt": "2026-10-08T23:43:18.430Z",
+    "updatedAt": "2026-10-09T00:11:20.000Z"
+  }
+}
