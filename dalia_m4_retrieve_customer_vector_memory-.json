@@ -1,0 +1,379 @@
+{
+  "id": "a7JPvXYw3GdsXkLH",
+  "name": "DALIA_M4_Retrieve_Customer_Vector_Memory",
+  "active": true,
+  "activeVersionId": "0418d0dd-dfa0-4e2e-8332-f3e73ca65bff",
+  "createdAt": "2026-06-12T18:28:46.584Z",
+  "updatedAt": "2026-06-18T19:55:09.251Z",
+  "isArchived": false,
+  "versionId": "88eeafc4-957c-4db5-8a1a-90247398da33",
+  "triggerCount": 0,
+  "nodes": [
+    {
+      "parameters": {
+        "inputSource": "passthrough"
+      },
+      "type": "n8n-nodes-base.executeWorkflowTrigger",
+      "typeVersion": 1.2,
+      "position": [
+        0,
+        0
+      ],
+      "id": "4ddc6b85-e41c-4f72-b4a4-14e5ea453ccc",
+      "name": "When Executed by Another Workflow"
+    },
+    {
+      "parameters": {
+        "jsCode": "const input = $input.first().json;\n\nconst userMessage   = input.user_message || input.message || \"\";\nconst sessionMemory = input.session_memory || {};\nconst lastProduct   = sessionMemory.last_product;\nconst currentCity   = sessionMemory.city;\n\n// Construir una query semánticamente rica\n// No usar solo el mensaje literal: enriquecer con contexto de búsqueda\nlet queryParts = [];\n\nqueryParts.push(`Cliente pregunta: \"${userMessage}\".`);\nqueryParts.push(\"Buscar recuerdos sobre: productos consultados, preferencias de compra, ciudad de entrega, necesidades anteriores, compras iniciadas, interacciones previas.\");\n\nif (lastProduct) {\n  queryParts.push(`Producto en sesión actual: ${lastProduct.product_name || lastProduct.product_id}.`);\n}\nif (currentCity) {\n  queryParts.push(`Ciudad en sesión actual: ${currentCity}.`);\n}\n\n// Agregar contexto semántico extra según señales del mensaje\nconst msgLower = userMessage.toLowerCase();\nif (msgLower.includes(\"agua\") || msgLower.includes(\"llevar\") || msgLower.includes(\"termo\") || msgLower.includes(\"botella\")) {\n  queryParts.push(\"Contexto adicional: recipientes para líquidos, termos, productos para llevar bebidas.\");\n}\nif (msgLower.includes(\"eco\") || msgLower.includes(\"natural\") || msgLower.includes(\"bambú\") || msgLower.includes(\"sostenible\")) {\n  queryParts.push(\"Contexto adicional: productos ecológicos, sostenibles, de materiales naturales.\");\n}\n\nconst semanticQuery = queryParts.join(\" \").trim();\n\nreturn [{ json: { ...input, semantic_memory_query: semanticQuery } }];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        208,
+        0
+      ],
+      "id": "8aa4bdfc-e205-4b20-9929-5f18be171c36",
+      "name": "Build Customer Semantic Memory Query"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.openai.com/v1/embeddings",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "openAiApi",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"input\": \"{{$json[\"message\"]}}\",\n  \"model\": \"text-embedding-ada-002\"\n}\n",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        400,
+        0
+      ],
+      "id": "40c52a20-d743-4741-bcbd-e7298fd1a501",
+      "name": "Embedding inicial",
+      "credentials": {
+        "openAiApi": {
+          "id": "xxcNO1cCgQSruzFp",
+          "name": "OpenAI account 3"
+        }
+      },
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "url": "https://1537c683-48da-4631-ab76-ad698b6b9881.us-east-1-0.aws.cloud.qdrant.io/collections/dalia_customer_memory_demo/points",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "qdrantApi",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"query\": \"={{ $json.query_embedding }}\",\n  \"filter\": {\n    \"must\": [\n      {\n        \"key\": \"business_id\",\n        \"match\": { \"value\": \"={{ $json.context.business_id || 'business_demo' }}\" }\n      },\n      {\n        \"key\": \"user_id\",\n        \"match\": { \"value\": \"={{ $json.context.user_id }}\" }\n      }\n    ]\n  },\n  \"limit\": 5,\n  \"with_payload\": true,\n  \"with_vectors\": false\n}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [
+        608,
+        0
+      ],
+      "id": "040798cb-6fc4-401a-86a4-edf6fffaba09",
+      "name": "Query Qdrant Customer Memory",
+      "credentials": {
+        "qdrantApi": {
+          "id": "o2UFjTvg1tCw088v",
+          "name": "Qdrant account 3"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const input = $input.first().json;\n\n// Qdrant devuelve resultados en input.result o input.body.result\nconst rawResults = input.result || input?.body?.result || [];\n\nconst SCORE_HIGH   = 0.80;\nconst SCORE_MEDIUM = 0.65;\nconst MAX_MEMORIES = 3;\n\n// Filtrar y ordenar\nconst filtered = rawResults\n  .filter(r => r.score >= SCORE_MEDIUM)\n  .sort((a, b) => b.score - a.score)\n  .slice(0, MAX_MEMORIES);\n\n// Deduplicar por memory_type (mantener el de mayor score)\nconst seen = new Set();\nconst deduped = [];\nfor (const r of filtered) {\n  const key = r.payload?.memory_type + \"_\" + (r.payload?.product_id || \"\");\n  if (!seen.has(key)) {\n    seen.add(key);\n    deduped.push(r);\n  }\n}\n\nconst topScore     = deduped.length > 0 ? deduped[0].score : 0;\nconst hasUsable    = deduped.length > 0;\nconst confidence   = topScore >= SCORE_HIGH ? \"high\" : topScore >= SCORE_MEDIUM ? \"medium\" : \"low\";\n\nconst memories = deduped.map(r => ({\n  memory_type:  r.payload?.memory_type  || \"unknown\",\n  memory_text:  r.payload?.memory_text  || \"\",\n  product_name: r.payload?.product_name || null,\n  product_id:   r.payload?.product_id   || null,\n  category:     r.payload?.category     || null,\n  city:         r.payload?.city         || null,\n  score:        parseFloat((r.score).toFixed(4)),\n  confidence:   r.score >= SCORE_HIGH ? \"high\" : \"medium\"\n}));\n\nconst customerVectorMemory = {\n  retrieved:    true,\n  usable:       hasUsable,\n  top_score:    parseFloat(topScore.toFixed(4)),\n  confidence:   confidence,\n  results_count: deduped.length,\n  memories:     memories\n};\n\nreturn [{ json: { ...input, customer_vector_memory: customerVectorMemory } }];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        816,
+        0
+      ],
+      "id": "563fc378-1077-4b62-8595-707d7ec23c90",
+      "name": "Normalize Customer Vector Memory Results"
+    },
+    {
+      "parameters": {
+        "jsCode": "const input = $input.first().json;\nconst vm    = input.customer_vector_memory || {};\n\nif (!vm.usable || vm.memories.length === 0) {\n  return [{\n    json: {\n      ...input,\n      soft_customer_context: {\n        has_relevant_memory: false,\n        memory_confidence:   \"none\",\n        safe_summary:        null,\n        conversation_cues:   [],\n        do_not_say:          []\n      }\n    }\n  }];\n}\n\nconst memories = vm.memories;\n\n// Construir resumen seguro\nconst productMemories = memories.filter(m => m.memory_type === \"product_interest\" || m.memory_type === \"purchase_context\");\nconst prefMemories    = memories.filter(m => m.memory_type === \"preference\");\nconst cityMemories    = memories.filter(m => m.memory_type === \"city_or_location\");\n\nlet summaryParts = [];\n\nif (productMemories.length > 0) {\n  const pm = productMemories[0];\n  summaryParts.push(pm.product_name\n    ? `El cliente había mostrado interés en ${pm.product_name}.`\n    : pm.memory_text.substring(0, 120));\n}\nif (prefMemories.length > 0) {\n  summaryParts.push(\"Mostró preferencias por productos sostenibles o de uso diario.\");\n}\nif (cityMemories.length > 0 && cityMemories[0].city) {\n  summaryParts.push(`Ciudad mencionada anteriormente: ${cityMemories[0].city} (pendiente de confirmar).`);\n}\n\nconst safeSummary = summaryParts.join(\" \").trim();\n\n// Construir conversation_cues según los recuerdos\nconst cues = [];\nfor (const m of memories) {\n  if (m.memory_type === \"product_interest\" && m.product_name) {\n    cues.push(`Puede mencionar ${m.product_name} como opción si el cliente pregunta por productos similares.`);\n  }\n  if (m.memory_type === \"preference\") {\n    cues.push(\"Puede enfocar recomendaciones en productos sostenibles sin afirmarlo como certeza.\");\n  }\n  if (m.memory_type === \"city_or_location\" && m.city) {\n    cues.push(`Puede preguntar \"¿confirmamos ${m.city} como ciudad de entrega?\" en vez de asumirlo.`);\n  }\n  if (m.memory_type === \"purchase_context\" && m.product_name) {\n    cues.push(`Hay contexto de compra iniciada para ${m.product_name}. Confirmar antes de retomar.`);\n  }\n}\n\nconst softCustomerContext = {\n  has_relevant_memory: true,\n  memory_confidence:   vm.confidence,\n  safe_summary:        safeSummary,\n  conversation_cues:   cues,\n  do_not_say: [\n    \"Te tengo guardado\",\n    \"Sé que siempre compras\",\n    \"Tengo todo tu historial\",\n    \"Voy a usar tu dirección anterior sin confirmar\",\n    \"Ya sé que quieres comprar\"\n  ]\n};\n\nreturn [{ json: { ...input, soft_customer_context: softCustomerContext } }];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1024,
+        0
+      ],
+      "id": "17f904d9-a78d-4d9e-b2dc-5e45dbf91fc7",
+      "name": "Build Soft Customer Context"
+    }
+  ],
+  "connections": {
+    "When Executed by Another Workflow": {
+      "main": [
+        [
+          {
+            "node": "Build Customer Semantic Memory Query",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Build Customer Semantic Memory Query": {
+      "main": [
+        [
+          {
+            "node": "Embedding inicial",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Embedding inicial": {
+      "main": [
+        [
+          {
+            "node": "Query Qdrant Customer Memory",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Query Qdrant Customer Memory": {
+      "main": [
+        [
+          {
+            "node": "Normalize Customer Vector Memory Results",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Normalize Customer Vector Memory Results": {
+      "main": [
+        [
+          {
+            "node": "Build Soft Customer Context",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Build Soft Customer Context": {
+      "main": [
+        []
+      ]
+    }
+  },
+  "nodeGroups": [],
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate",
+    "availableInMCP": false
+  },
+  "staticData": null,
+  "pinData": {},
+  "meta": {
+    "templateCredsSetupCompleted": true
+  },
+  "tags": [],
+  "shared": [
+    {
+      "role": "workflow:owner",
+      "workflowId": "a7JPvXYw3GdsXkLH",
+      "projectId": "tRHCC8ts4mkRGXGn",
+      "createdAt": "2026-06-12T18:28:46.588Z",
+      "updatedAt": "2026-06-12T18:28:46.588Z"
+    }
+  ],
+  "activeVersion": {
+    "versionId": "0418d0dd-dfa0-4e2e-8332-f3e73ca65bff",
+    "workflowId": "a7JPvXYw3GdsXkLH",
+    "nodes": [
+      {
+        "parameters": {
+          "inputSource": "passthrough"
+        },
+        "type": "n8n-nodes-base.executeWorkflowTrigger",
+        "typeVersion": 1.2,
+        "position": [
+          0,
+          0
+        ],
+        "id": "4ddc6b85-e41c-4f72-b4a4-14e5ea453ccc",
+        "name": "When Executed by Another Workflow"
+      },
+      {
+        "parameters": {
+          "jsCode": "const input = $input.first().json;\n\nconst userMessage   = input.user_message || input.message || \"\";\nconst sessionMemory = input.session_memory || {};\nconst lastProduct   = sessionMemory.last_product;\nconst currentCity   = sessionMemory.city;\n\n// Construir una query semánticamente rica\n// No usar solo el mensaje literal: enriquecer con contexto de búsqueda\nlet queryParts = [];\n\nqueryParts.push(`Cliente pregunta: \"${userMessage}\".`);\nqueryParts.push(\"Buscar recuerdos sobre: productos consultados, preferencias de compra, ciudad de entrega, necesidades anteriores, compras iniciadas, interacciones previas.\");\n\nif (lastProduct) {\n  queryParts.push(`Producto en sesión actual: ${lastProduct.product_name || lastProduct.product_id}.`);\n}\nif (currentCity) {\n  queryParts.push(`Ciudad en sesión actual: ${currentCity}.`);\n}\n\n// Agregar contexto semántico extra según señales del mensaje\nconst msgLower = userMessage.toLowerCase();\nif (msgLower.includes(\"agua\") || msgLower.includes(\"llevar\") || msgLower.includes(\"termo\") || msgLower.includes(\"botella\")) {\n  queryParts.push(\"Contexto adicional: recipientes para líquidos, termos, productos para llevar bebidas.\");\n}\nif (msgLower.includes(\"eco\") || msgLower.includes(\"natural\") || msgLower.includes(\"bambú\") || msgLower.includes(\"sostenible\")) {\n  queryParts.push(\"Contexto adicional: productos ecológicos, sostenibles, de materiales naturales.\");\n}\n\nconst semanticQuery = queryParts.join(\" \").trim();\n\nreturn [{ json: { ...input, semantic_memory_query: semanticQuery } }];"
+        },
+        "type": "n8n-nodes-base.code",
+        "typeVersion": 2,
+        "position": [
+          208,
+          0
+        ],
+        "id": "8aa4bdfc-e205-4b20-9929-5f18be171c36",
+        "name": "Build Customer Semantic Memory Query"
+      },
+      {
+        "parameters": {
+          "method": "POST",
+          "url": "https://api.openai.com/v1/embeddings",
+          "authentication": "predefinedCredentialType",
+          "nodeCredentialType": "openAiApi",
+          "sendBody": true,
+          "specifyBody": "json",
+          "jsonBody": "={\n  \"input\": \"{{$json[\"message\"]}}\",\n  \"model\": \"text-embedding-ada-002\"\n}\n",
+          "options": {}
+        },
+        "type": "n8n-nodes-base.httpRequest",
+        "typeVersion": 4.2,
+        "position": [
+          400,
+          0
+        ],
+        "id": "40c52a20-d743-4741-bcbd-e7298fd1a501",
+        "name": "Embedding inicial",
+        "credentials": {
+          "openAiApi": {
+            "id": "xxcNO1cCgQSruzFp",
+            "name": "OpenAI account 3"
+          }
+        },
+        "onError": "continueRegularOutput"
+      },
+      {
+        "parameters": {
+          "url": "https://1537c683-48da-4631-ab76-ad698b6b9881.us-east-1-0.aws.cloud.qdrant.io/collections/dalia_customer_memory_demo/points",
+          "authentication": "predefinedCredentialType",
+          "nodeCredentialType": "qdrantApi",
+          "sendBody": true,
+          "specifyBody": "json",
+          "jsonBody": "={\n  \"query\": \"={{ $json.query_embedding }}\",\n  \"filter\": {\n    \"must\": [\n      {\n        \"key\": \"business_id\",\n        \"match\": { \"value\": \"={{ $json.context.business_id || 'business_demo' }}\" }\n      },\n      {\n        \"key\": \"user_id\",\n        \"match\": { \"value\": \"={{ $json.context.user_id }}\" }\n      }\n    ]\n  },\n  \"limit\": 5,\n  \"with_payload\": true,\n  \"with_vectors\": false\n}",
+          "options": {}
+        },
+        "type": "n8n-nodes-base.httpRequest",
+        "typeVersion": 4.4,
+        "position": [
+          608,
+          0
+        ],
+        "id": "040798cb-6fc4-401a-86a4-edf6fffaba09",
+        "name": "Query Qdrant Customer Memory",
+        "credentials": {
+          "qdrantApi": {
+            "id": "9oUogOvtDqsTDKBQ",
+            "name": "QdrantApi TEST"
+          }
+        }
+      },
+      {
+        "parameters": {
+          "jsCode": "const input = $input.first().json;\n\n// Qdrant devuelve resultados en input.result o input.body.result\nconst rawResults = input.result || input?.body?.result || [];\n\nconst SCORE_HIGH   = 0.80;\nconst SCORE_MEDIUM = 0.65;\nconst MAX_MEMORIES = 3;\n\n// Filtrar y ordenar\nconst filtered = rawResults\n  .filter(r => r.score >= SCORE_MEDIUM)\n  .sort((a, b) => b.score - a.score)\n  .slice(0, MAX_MEMORIES);\n\n// Deduplicar por memory_type (mantener el de mayor score)\nconst seen = new Set();\nconst deduped = [];\nfor (const r of filtered) {\n  const key = r.payload?.memory_type + \"_\" + (r.payload?.product_id || \"\");\n  if (!seen.has(key)) {\n    seen.add(key);\n    deduped.push(r);\n  }\n}\n\nconst topScore     = deduped.length > 0 ? deduped[0].score : 0;\nconst hasUsable    = deduped.length > 0;\nconst confidence   = topScore >= SCORE_HIGH ? \"high\" : topScore >= SCORE_MEDIUM ? \"medium\" : \"low\";\n\nconst memories = deduped.map(r => ({\n  memory_type:  r.payload?.memory_type  || \"unknown\",\n  memory_text:  r.payload?.memory_text  || \"\",\n  product_name: r.payload?.product_name || null,\n  product_id:   r.payload?.product_id   || null,\n  category:     r.payload?.category     || null,\n  city:         r.payload?.city         || null,\n  score:        parseFloat((r.score).toFixed(4)),\n  confidence:   r.score >= SCORE_HIGH ? \"high\" : \"medium\"\n}));\n\nconst customerVectorMemory = {\n  retrieved:    true,\n  usable:       hasUsable,\n  top_score:    parseFloat(topScore.toFixed(4)),\n  confidence:   confidence,\n  results_count: deduped.length,\n  memories:     memories\n};\n\nreturn [{ json: { ...input, customer_vector_memory: customerVectorMemory } }];"
+        },
+        "type": "n8n-nodes-base.code",
+        "typeVersion": 2,
+        "position": [
+          816,
+          0
+        ],
+        "id": "563fc378-1077-4b62-8595-707d7ec23c90",
+        "name": "Normalize Customer Vector Memory Results"
+      },
+      {
+        "parameters": {
+          "jsCode": "const input = $input.first().json;\nconst vm    = input.customer_vector_memory || {};\n\nif (!vm.usable || vm.memories.length === 0) {\n  return [{\n    json: {\n      ...input,\n      soft_customer_context: {\n        has_relevant_memory: false,\n        memory_confidence:   \"none\",\n        safe_summary:        null,\n        conversation_cues:   [],\n        do_not_say:          []\n      }\n    }\n  }];\n}\n\nconst memories = vm.memories;\n\n// Construir resumen seguro\nconst productMemories = memories.filter(m => m.memory_type === \"product_interest\" || m.memory_type === \"purchase_context\");\nconst prefMemories    = memories.filter(m => m.memory_type === \"preference\");\nconst cityMemories    = memories.filter(m => m.memory_type === \"city_or_location\");\n\nlet summaryParts = [];\n\nif (productMemories.length > 0) {\n  const pm = productMemories[0];\n  summaryParts.push(pm.product_name\n    ? `El cliente había mostrado interés en ${pm.product_name}.`\n    : pm.memory_text.substring(0, 120));\n}\nif (prefMemories.length > 0) {\n  summaryParts.push(\"Mostró preferencias por productos sostenibles o de uso diario.\");\n}\nif (cityMemories.length > 0 && cityMemories[0].city) {\n  summaryParts.push(`Ciudad mencionada anteriormente: ${cityMemories[0].city} (pendiente de confirmar).`);\n}\n\nconst safeSummary = summaryParts.join(\" \").trim();\n\n// Construir conversation_cues según los recuerdos\nconst cues = [];\nfor (const m of memories) {\n  if (m.memory_type === \"product_interest\" && m.product_name) {\n    cues.push(`Puede mencionar ${m.product_name} como opción si el cliente pregunta por productos similares.`);\n  }\n  if (m.memory_type === \"preference\") {\n    cues.push(\"Puede enfocar recomendaciones en productos sostenibles sin afirmarlo como certeza.\");\n  }\n  if (m.memory_type === \"city_or_location\" && m.city) {\n    cues.push(`Puede preguntar \"¿confirmamos ${m.city} como ciudad de entrega?\" en vez de asumirlo.`);\n  }\n  if (m.memory_type === \"purchase_context\" && m.product_name) {\n    cues.push(`Hay contexto de compra iniciada para ${m.product_name}. Confirmar antes de retomar.`);\n  }\n}\n\nconst softCustomerContext = {\n  has_relevant_memory: true,\n  memory_confidence:   vm.confidence,\n  safe_summary:        safeSummary,\n  conversation_cues:   cues,\n  do_not_say: [\n    \"Te tengo guardado\",\n    \"Sé que siempre compras\",\n    \"Tengo todo tu historial\",\n    \"Voy a usar tu dirección anterior sin confirmar\",\n    \"Ya sé que quieres comprar\"\n  ]\n};\n\nreturn [{ json: { ...input, soft_customer_context: softCustomerContext } }];"
+        },
+        "type": "n8n-nodes-base.code",
+        "typeVersion": 2,
+        "position": [
+          1024,
+          0
+        ],
+        "id": "17f904d9-a78d-4d9e-b2dc-5e45dbf91fc7",
+        "name": "Build Soft Customer Context"
+      }
+    ],
+    "connections": {
+      "When Executed by Another Workflow": {
+        "main": [
+          [
+            {
+              "node": "Build Customer Semantic Memory Query",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Build Customer Semantic Memory Query": {
+        "main": [
+          [
+            {
+              "node": "Embedding inicial",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Embedding inicial": {
+        "main": [
+          [
+            {
+              "node": "Query Qdrant Customer Memory",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Query Qdrant Customer Memory": {
+        "main": [
+          [
+            {
+              "node": "Normalize Customer Vector Memory Results",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Normalize Customer Vector Memory Results": {
+        "main": [
+          [
+            {
+              "node": "Build Soft Customer Context",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Build Soft Customer Context": {
+        "main": [
+          []
+        ]
+      }
+    },
+    "nodeGroups": [],
+    "authors": "Emmanuel Arevalo",
+    "name": "Version 0418d0dd",
+    "description": "",
+    "autosaved": true,
+    "createdAt": "2026-06-17T20:12:44.383Z",
+    "updatedAt": "2026-06-18T19:55:04.000Z"
+  }
+}
