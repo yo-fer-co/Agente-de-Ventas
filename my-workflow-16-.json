@@ -1,0 +1,94 @@
+{
+  "id": "RAAE64cQ59Umr0CbSL8JF",
+  "name": "My workflow 16",
+  "active": false,
+  "activeVersionId": null,
+  "createdAt": "2026-02-10T20:12:36.299Z",
+  "updatedAt": "2026-02-10T22:29:58.000Z",
+  "isArchived": true,
+  "versionId": "aacb47f0-5874-436d-afb3-2da1d2d57c1a",
+  "triggerCount": 0,
+  "nodes": [
+    {
+      "parameters": {
+        "updates": [
+          "messages"
+        ],
+        "options": {}
+      },
+      "type": "n8n-nodes-base.whatsAppTrigger",
+      "typeVersion": 1,
+      "position": [
+        0,
+        0
+      ],
+      "id": "55d22798-3ac3-4646-9b9a-a27fa7f0473f",
+      "name": "WhatsApp Trigger",
+      "webhookId": "12feaae8-6506-47a6-b16a-ccc9f6e2d948",
+      "credentials": {
+        "whatsAppTriggerApi": {
+          "id": "Z1wHUz0JEuzJhm0k",
+          "name": "Pruebas nuevo numero recibir mensaje"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "send",
+        "phoneNumberId": "992551847276777",
+        "recipientPhoneNumber": "5736108058407",
+        "textBody": "Hola",
+        "additionalFields": {}
+      },
+      "type": "n8n-nodes-base.whatsApp",
+      "typeVersion": 1.1,
+      "position": [
+        208,
+        0
+      ],
+      "id": "83dbfbd9-e6db-4192-b544-496a7a30a17b",
+      "name": "Send message",
+      "webhookId": "73c1b511-4a1f-4782-a98a-519398d972ba",
+      "credentials": {
+        "whatsAppApi": {
+          "id": "VkoCC1dvkFgJX0Kc",
+          "name": "Pruebas nuevo numero enviar mensaje"
+        }
+      }
+    }
+  ],
+  "connections": {
+    "WhatsApp Trigger": {
+      "main": [
+        [
+          {
+            "node": "Send message",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "nodeGroups": [],
+  "settings": {
+    "executionOrder": "v1",
+    "availableInMCP": false
+  },
+  "staticData": null,
+  "pinData": {},
+  "meta": {
+    "templateCredsSetupCompleted": true
+  },
+  "tags": [],
+  "shared": [
+    {
+      "role": "workflow:owner",
+      "workflowId": "RAAE64cQ59Umr0CbSL8JF",
+      "projectId": "8h8pwWGcWlnGEym3",
+      "createdAt": "2026-02-10T20:12:36.307Z",
+      "updatedAt": "2026-02-10T20:12:36.307Z"
+    }
+  ],
+  "activeVersion": null
+}
