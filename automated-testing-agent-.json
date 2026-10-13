@@ -1,0 +1,1174 @@
+{
+  "id": "kQVooonYjuXpNttPoMKTz",
+  "name": "Automated Testing Agent",
+  "active": true,
+  "activeVersionId": "f9feed6e-a6c6-43cf-b109-5d8ae37c3ed8",
+  "createdAt": "2026-01-30T21:25:16.721Z",
+  "updatedAt": "2026-04-30T19:47:17.909Z",
+  "isArchived": false,
+  "versionId": "f9feed6e-a6c6-43cf-b109-5d8ae37c3ed8",
+  "triggerCount": 1,
+  "nodes": [
+    {
+      "parameters": {
+        "documentId": {
+          "__rl": true,
+          "value": "105PK4YXs02WqrFSC8VbTvehlgV_KDfU7Bf9liR9674Q",
+          "mode": "list",
+          "cachedResultName": "conversacion pruebas agente",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/105PK4YXs02WqrFSC8VbTvehlgV_KDfU7Bf9liR9674Q/edit?usp=drivesdk"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "gid=0",
+          "mode": "list",
+          "cachedResultName": "Configuracion_Pruebas",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/105PK4YXs02WqrFSC8VbTvehlgV_KDfU7Bf9liR9674Q/edit#gid=0"
+        },
+        "options": {
+          "returnFirstMatch": true
+        }
+      },
+      "id": "c1690d1b-b5ac-4ddd-ae0e-f15dea1230d2",
+      "name": "Get Test Configuration",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [
+        768,
+        -160
+      ],
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "Pf0TYy2joLTmqt2C",
+          "name": "Google Sheets account 3"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "append",
+        "documentId": {
+          "__rl": true,
+          "value": "1HYEmkf9lJbiSFwc3nLGP5pdOMWnSdMPWj5DEkLTSE3o",
+          "mode": "list",
+          "cachedResultName": "pruebas agente",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1HYEmkf9lJbiSFwc3nLGP5pdOMWnSdMPWj5DEkLTSE3o/edit?usp=drivesdk"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "gid=0",
+          "mode": "list",
+          "cachedResultName": "Logs_Conversacion",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1HYEmkf9lJbiSFwc3nLGP5pdOMWnSdMPWj5DEkLTSE3o/edit#gid=0"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "mensaje": "={{ $('WhatsApp Webhook').item.json.messages[0].text.body }}",
+            "agente": "asesor",
+            "tiempo": "={{$now.format('yyyy-MM-dd-hh-mm-ss')}}"
+          },
+          "matchingColumns": [],
+          "schema": [
+            {
+              "id": "agente",
+              "displayName": "agente",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "mensaje",
+              "displayName": "mensaje",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "tiempo",
+              "displayName": "tiempo",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "id": "904957a4-48ee-4c07-a67f-86ab348f6ad9",
+      "name": "Log Incoming Message",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [
+        1312,
+        -160
+      ],
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "Pf0TYy2joLTmqt2C",
+          "name": "Google Sheets account 3"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "=Mensaje recibido de la tienda: {{ $('WhatsApp Webhook').item.json.messages[0].text.body }}",
+        "options": {
+          "systemMessage": "=Eres un cliente automatizado para pruebas de QA en WhatsApp. Tu configuración: Personalidad: {{ $('Get Test Configuration').first().json.Personalidad }}, Objetivo:{{ $('Get Test Configuration').item.json['Objetivo de Compra'] }} , Nivel de Paciencia:{{ $('Get Test Configuration').item.json['Nivel de Paciencia'] }}. Datos Técnicos:{{ $('Get Test Configuration').item.json['Datos Técnicos a Preguntar'] }}. Instrucciones: 1. Actúa como un cliente real con la personalidad especificada. 2. Tu objetivo en esta conversación es lograr lo indicado en Objetivo. 3. Ajusta tu nivel de paciencia según lo configurado. 4. Responde de manera natural y coherente en español. 5. Mantén el contexto de la conversación. 6. Sé consistente con tu personalidad durante toda la conversación. 7. Haz preguntas relevantes para lograr tu objetivo. 8. Responde de forma concisa como lo haría un cliente real por WhatsApp. Recuerda: Estás probando el sistema de atención al cliente, así que actúa de manera realista según tu configuración.\n\n"
+        }
+      },
+      "id": "42d2ac7c-39df-4bbc-b360-1a857ea97762",
+      "name": "AI Customer Agent",
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 3.1,
+      "position": [
+        1536,
+        -160
+      ]
+    },
+    {
+      "parameters": {
+        "model": {
+          "__rl": true,
+          "mode": "id",
+          "value": "gpt-4o"
+        },
+        "builtInTools": {},
+        "options": {
+          "temperature": 0.8
+        }
+      },
+      "id": "3332e9ba-d621-4bc1-9ef6-89158fa1d1c6",
+      "name": "OpenAI GPT-4o",
+      "type": "@n8n/n8n-nodes-langchain.lmChatOpenAi",
+      "typeVersion": 1.3,
+      "position": [
+        1536,
+        48
+      ],
+      "credentials": {
+        "openAiApi": {
+          "id": "zACGOxtwAjrFvDag",
+          "name": "OpenAi_YoEco_DEV"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "sessionIdType": "customKey",
+        "sessionKey": "={{ $('WhatsApp Webhook').item.json.messages[0].from }}",
+        "contextWindowLength": 15
+      },
+      "id": "40f5d930-1bcb-4fac-a2ff-ccb80c256241",
+      "name": "Conversation Memory",
+      "type": "@n8n/n8n-nodes-langchain.memoryBufferWindow",
+      "typeVersion": 1.3,
+      "position": [
+        1632,
+        16
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "append",
+        "documentId": {
+          "__rl": true,
+          "value": "1HYEmkf9lJbiSFwc3nLGP5pdOMWnSdMPWj5DEkLTSE3o",
+          "mode": "list",
+          "cachedResultName": "pruebas agente",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1HYEmkf9lJbiSFwc3nLGP5pdOMWnSdMPWj5DEkLTSE3o/edit?usp=drivesdk"
+        },
+        "sheetName": {
+          "__rl": true,
+          "mode": "name",
+          "value": "Logs_Conversacion"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "mensaje": "={{ $json.output }}",
+            "agente": "agente pruebas",
+            "tiempo": "={{$now.format('yyyy-MM-dd-hh-mm-ss')}}"
+          },
+          "matchingColumns": [],
+          "schema": [
+            {
+              "id": "agente",
+              "displayName": "agente",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "mensaje",
+              "displayName": "mensaje",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "tiempo",
+              "displayName": "tiempo",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "id": "484d1fcb-0f14-4678-8550-f181561687b0",
+      "name": "Log AI Response",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [
+        1888,
+        -160
+      ],
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "Pf0TYy2joLTmqt2C",
+          "name": "Google Sheets account 3"
+        }
+      }
+    },
+    {
+      "parameters": {},
+      "id": "85425551-e86f-43f1-af7c-61b4afe66d02",
+      "name": "Simulate Typing",
+      "type": "n8n-nodes-base.wait",
+      "typeVersion": 1.1,
+      "position": [
+        2112,
+        -160
+      ],
+      "webhookId": "0c8b9d8d-bdb3-4ffd-9d76-c44ae7d6169b"
+    },
+    {
+      "parameters": {
+        "operation": "send",
+        "phoneNumberId": "992551847276777",
+        "recipientPhoneNumber": "57 333 7062951",
+        "textBody": "={{ $('AI Customer Agent').item.json.output }}",
+        "additionalFields": {}
+      },
+      "id": "350f95ba-8d26-4aae-b9bf-a9090a09994a",
+      "name": "Send WhatsApp Response",
+      "type": "n8n-nodes-base.whatsApp",
+      "typeVersion": 1.1,
+      "position": [
+        2336,
+        -160
+      ],
+      "webhookId": "231a5a28-7cae-4d9a-a99a-304e5c00f58d",
+      "credentials": {
+        "whatsAppApi": {
+          "id": "VkoCC1dvkFgJX0Kc",
+          "name": "Pruebas nuevo numero enviar mensaje"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "send",
+        "phoneNumberId": "992551847276777",
+        "recipientPhoneNumber": "57 333 7062951",
+        "textBody": "hola",
+        "additionalFields": {}
+      },
+      "id": "2d221369-da23-48a5-9e75-40a3e8f4c324",
+      "name": "Send WhatsApp Response1",
+      "type": "n8n-nodes-base.whatsApp",
+      "typeVersion": 1.1,
+      "position": [
+        1152,
+        -448
+      ],
+      "webhookId": "231a5a28-7cae-4d9a-a99a-304e5c00f58d",
+      "credentials": {
+        "whatsAppApi": {
+          "id": "VkoCC1dvkFgJX0Kc",
+          "name": "Pruebas nuevo numero enviar mensaje"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "e9658df8-c714-4781-bf69-8edfeab249d6",
+              "leftValue": "={{ $json['ID Caso'] }}",
+              "rightValue": "TEST-01",
+              "operator": {
+                "type": "string",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.filter",
+      "typeVersion": 2.3,
+      "position": [
+        1008,
+        -160
+      ],
+      "id": "fc7c0e2d-1e6e-487e-9717-73286388a436",
+      "name": "Filter"
+    },
+    {
+      "parameters": {
+        "updates": [
+          "messages"
+        ],
+        "options": {}
+      },
+      "id": "57cbbbd5-e3f3-4b43-8bea-1dffe758bee6",
+      "name": "WhatsApp Webhook",
+      "type": "n8n-nodes-base.whatsAppTrigger",
+      "typeVersion": 1,
+      "position": [
+        528,
+        -160
+      ],
+      "webhookId": "b078a78f-6f54-406d-9cec-138be79b6c3a",
+      "credentials": {
+        "whatsAppTriggerApi": {
+          "id": "Z1wHUz0JEuzJhm0k",
+          "name": "Pruebas nuevo numero recibir mensaje"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "append",
+        "documentId": {
+          "__rl": true,
+          "value": "1HYEmkf9lJbiSFwc3nLGP5pdOMWnSdMPWj5DEkLTSE3o",
+          "mode": "list",
+          "cachedResultName": "pruebas agente",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1HYEmkf9lJbiSFwc3nLGP5pdOMWnSdMPWj5DEkLTSE3o/edit?usp=drivesdk"
+        },
+        "sheetName": {
+          "__rl": true,
+          "mode": "name",
+          "value": "Logs_Conversacion"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "mensaje": "=hola",
+            "agente": "agente pruebas",
+            "tiempo": "={{$now.format('yyyy-MM-dd-hh-mm-ss')}}"
+          },
+          "matchingColumns": [],
+          "schema": [
+            {
+              "id": "agente",
+              "displayName": "agente",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "mensaje",
+              "displayName": "mensaje",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "tiempo",
+              "displayName": "tiempo",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "id": "038c0fc2-4a6d-449a-8d04-4b48b8faf2f9",
+      "name": "Log AI Response1",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [
+        1344,
+        -448
+      ],
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "Pf0TYy2joLTmqt2C",
+          "name": "Google Sheets account 3"
+        }
+      }
+    }
+  ],
+  "connections": {
+    "Get Test Configuration": {
+      "main": [
+        [
+          {
+            "node": "Filter",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Log Incoming Message": {
+      "main": [
+        [
+          {
+            "node": "AI Customer Agent",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "OpenAI GPT-4o": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "AI Customer Agent",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Conversation Memory": {
+      "ai_memory": [
+        [
+          {
+            "node": "AI Customer Agent",
+            "type": "ai_memory",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "AI Customer Agent": {
+      "main": [
+        [
+          {
+            "node": "Log AI Response",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Log AI Response": {
+      "main": [
+        [
+          {
+            "node": "Simulate Typing",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Simulate Typing": {
+      "main": [
+        [
+          {
+            "node": "Send WhatsApp Response",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Send WhatsApp Response1": {
+      "main": [
+        [
+          {
+            "node": "Log AI Response1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Filter": {
+      "main": [
+        [
+          {
+            "node": "Log Incoming Message",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "WhatsApp Webhook": {
+      "main": [
+        [
+          {
+            "node": "Get Test Configuration",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "nodeGroups": [],
+  "settings": {
+    "executionOrder": "v1",
+    "availableInMCP": false,
+    "binaryMode": "separate"
+  },
+  "staticData": null,
+  "pinData": {
+    "WhatsApp Webhook": [
+      {
+        "json": {
+          "messaging_product": "whatsapp",
+          "metadata": {
+            "display_phone_number": "573228521626",
+            "phone_number_id": "992551847276777"
+          },
+          "statuses": [
+            {
+              "id": "wamid.HBgMNTczMzM3MDYyOTUxFQIAERgSN0Y0MzM4N0UwMTM1QjJGNDcxAA==",
+              "status": "failed",
+              "timestamp": "1770764303",
+              "recipient_id": "573337062951",
+              "errors": [
+                {
+                  "code": 131047,
+                  "title": "Re-engagement message",
+                  "message": "Re-engagement message",
+                  "error_data": {
+                    "details": "Message failed to send because more than 24 hours have passed since the customer last replied to this number."
+                  },
+                  "href": "https://developers.facebook.com/docs/whatsapp/cloud-api/support/error-codes/"
+                }
+              ]
+            }
+          ],
+          "field": "messages"
+        },
+        "pairedItem": {
+          "item": 0
+        }
+      }
+    ]
+  },
+  "meta": {
+    "templateCredsSetupCompleted": true
+  },
+  "tags": [],
+  "shared": [
+    {
+      "role": "workflow:owner",
+      "workflowId": "kQVooonYjuXpNttPoMKTz",
+      "projectId": "8h8pwWGcWlnGEym3",
+      "createdAt": "2026-01-30T21:25:16.724Z",
+      "updatedAt": "2026-01-30T21:25:16.724Z"
+    }
+  ],
+  "activeVersion": {
+    "versionId": "f9feed6e-a6c6-43cf-b109-5d8ae37c3ed8",
+    "workflowId": "kQVooonYjuXpNttPoMKTz",
+    "nodes": [
+      {
+        "parameters": {
+          "documentId": {
+            "__rl": true,
+            "value": "105PK4YXs02WqrFSC8VbTvehlgV_KDfU7Bf9liR9674Q",
+            "mode": "list",
+            "cachedResultName": "conversacion pruebas agente",
+            "cachedResultUrl": "https://docs.google.com/spreadsheets/d/105PK4YXs02WqrFSC8VbTvehlgV_KDfU7Bf9liR9674Q/edit?usp=drivesdk"
+          },
+          "sheetName": {
+            "__rl": true,
+            "value": "gid=0",
+            "mode": "list",
+            "cachedResultName": "Configuracion_Pruebas",
+            "cachedResultUrl": "https://docs.google.com/spreadsheets/d/105PK4YXs02WqrFSC8VbTvehlgV_KDfU7Bf9liR9674Q/edit#gid=0"
+          },
+          "options": {
+            "returnFirstMatch": true
+          }
+        },
+        "id": "c1690d1b-b5ac-4ddd-ae0e-f15dea1230d2",
+        "name": "Get Test Configuration",
+        "type": "n8n-nodes-base.googleSheets",
+        "typeVersion": 4.7,
+        "position": [
+          768,
+          -160
+        ],
+        "credentials": {
+          "googleSheetsOAuth2Api": {
+            "id": "Pf0TYy2joLTmqt2C",
+            "name": "Google Sheets account 3"
+          }
+        }
+      },
+      {
+        "parameters": {
+          "operation": "append",
+          "documentId": {
+            "__rl": true,
+            "value": "1HYEmkf9lJbiSFwc3nLGP5pdOMWnSdMPWj5DEkLTSE3o",
+            "mode": "list",
+            "cachedResultName": "pruebas agente",
+            "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1HYEmkf9lJbiSFwc3nLGP5pdOMWnSdMPWj5DEkLTSE3o/edit?usp=drivesdk"
+          },
+          "sheetName": {
+            "__rl": true,
+            "value": "gid=0",
+            "mode": "list",
+            "cachedResultName": "Logs_Conversacion",
+            "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1HYEmkf9lJbiSFwc3nLGP5pdOMWnSdMPWj5DEkLTSE3o/edit#gid=0"
+          },
+          "columns": {
+            "mappingMode": "defineBelow",
+            "value": {
+              "mensaje": "={{ $('WhatsApp Webhook').item.json.messages[0].text.body }}",
+              "agente": "asesor",
+              "tiempo": "={{$now.format('yyyy-MM-dd-hh-mm-ss')}}"
+            },
+            "matchingColumns": [],
+            "schema": [
+              {
+                "id": "agente",
+                "displayName": "agente",
+                "required": false,
+                "defaultMatch": false,
+                "display": true,
+                "type": "string",
+                "canBeUsedToMatch": true,
+                "removed": false
+              },
+              {
+                "id": "mensaje",
+                "displayName": "mensaje",
+                "required": false,
+                "defaultMatch": false,
+                "display": true,
+                "type": "string",
+                "canBeUsedToMatch": true
+              },
+              {
+                "id": "tiempo",
+                "displayName": "tiempo",
+                "required": false,
+                "defaultMatch": false,
+                "display": true,
+                "type": "string",
+                "canBeUsedToMatch": true,
+                "removed": false
+              }
+            ],
+            "attemptToConvertTypes": false,
+            "convertFieldsToString": false
+          },
+          "options": {}
+        },
+        "id": "904957a4-48ee-4c07-a67f-86ab348f6ad9",
+        "name": "Log Incoming Message",
+        "type": "n8n-nodes-base.googleSheets",
+        "typeVersion": 4.7,
+        "position": [
+          1312,
+          -160
+        ],
+        "credentials": {
+          "googleSheetsOAuth2Api": {
+            "id": "Pf0TYy2joLTmqt2C",
+            "name": "Google Sheets account 3"
+          }
+        }
+      },
+      {
+        "parameters": {
+          "promptType": "define",
+          "text": "=Mensaje recibido de la tienda: {{ $('WhatsApp Webhook').item.json.messages[0].text.body }}",
+          "options": {
+            "systemMessage": "=Eres un cliente automatizado para pruebas de QA en WhatsApp. Tu configuración: Personalidad: {{ $('Get Test Configuration').first().json.Personalidad }}, Objetivo:{{ $('Get Test Configuration').item.json['Objetivo de Compra'] }} , Nivel de Paciencia:{{ $('Get Test Configuration').item.json['Nivel de Paciencia'] }}. Datos Técnicos:{{ $('Get Test Configuration').item.json['Datos Técnicos a Preguntar'] }}. Instrucciones: 1. Actúa como un cliente real con la personalidad especificada. 2. Tu objetivo en esta conversación es lograr lo indicado en Objetivo. 3. Ajusta tu nivel de paciencia según lo configurado. 4. Responde de manera natural y coherente en español. 5. Mantén el contexto de la conversación. 6. Sé consistente con tu personalidad durante toda la conversación. 7. Haz preguntas relevantes para lograr tu objetivo. 8. Responde de forma concisa como lo haría un cliente real por WhatsApp. Recuerda: Estás probando el sistema de atención al cliente, así que actúa de manera realista según tu configuración.\n\n"
+          }
+        },
+        "id": "42d2ac7c-39df-4bbc-b360-1a857ea97762",
+        "name": "AI Customer Agent",
+        "type": "@n8n/n8n-nodes-langchain.agent",
+        "typeVersion": 3.1,
+        "position": [
+          1536,
+          -160
+        ]
+      },
+      {
+        "parameters": {
+          "model": {
+            "__rl": true,
+            "mode": "id",
+            "value": "gpt-4o"
+          },
+          "builtInTools": {},
+          "options": {
+            "temperature": 0.8
+          }
+        },
+        "id": "3332e9ba-d621-4bc1-9ef6-89158fa1d1c6",
+        "name": "OpenAI GPT-4o",
+        "type": "@n8n/n8n-nodes-langchain.lmChatOpenAi",
+        "typeVersion": 1.3,
+        "position": [
+          1536,
+          48
+        ],
+        "credentials": {
+          "openAiApi": {
+            "id": "zACGOxtwAjrFvDag",
+            "name": "OpenAi_YoEco_DEV"
+          }
+        }
+      },
+      {
+        "parameters": {
+          "sessionIdType": "customKey",
+          "sessionKey": "={{ $('WhatsApp Webhook').item.json.messages[0].from }}",
+          "contextWindowLength": 15
+        },
+        "id": "40f5d930-1bcb-4fac-a2ff-ccb80c256241",
+        "name": "Conversation Memory",
+        "type": "@n8n/n8n-nodes-langchain.memoryBufferWindow",
+        "typeVersion": 1.3,
+        "position": [
+          1632,
+          16
+        ]
+      },
+      {
+        "parameters": {
+          "operation": "append",
+          "documentId": {
+            "__rl": true,
+            "value": "1HYEmkf9lJbiSFwc3nLGP5pdOMWnSdMPWj5DEkLTSE3o",
+            "mode": "list",
+            "cachedResultName": "pruebas agente",
+            "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1HYEmkf9lJbiSFwc3nLGP5pdOMWnSdMPWj5DEkLTSE3o/edit?usp=drivesdk"
+          },
+          "sheetName": {
+            "__rl": true,
+            "mode": "name",
+            "value": "Logs_Conversacion"
+          },
+          "columns": {
+            "mappingMode": "defineBelow",
+            "value": {
+              "mensaje": "={{ $json.output }}",
+              "agente": "agente pruebas",
+              "tiempo": "={{$now.format('yyyy-MM-dd-hh-mm-ss')}}"
+            },
+            "matchingColumns": [],
+            "schema": [
+              {
+                "id": "agente",
+                "displayName": "agente",
+                "required": false,
+                "defaultMatch": false,
+                "display": true,
+                "type": "string",
+                "canBeUsedToMatch": true,
+                "removed": false
+              },
+              {
+                "id": "mensaje",
+                "displayName": "mensaje",
+                "required": false,
+                "defaultMatch": false,
+                "display": true,
+                "type": "string",
+                "canBeUsedToMatch": true
+              },
+              {
+                "id": "tiempo",
+                "displayName": "tiempo",
+                "required": false,
+                "defaultMatch": false,
+                "display": true,
+                "type": "string",
+                "canBeUsedToMatch": true,
+                "removed": false
+              }
+            ],
+            "attemptToConvertTypes": false,
+            "convertFieldsToString": false
+          },
+          "options": {}
+        },
+        "id": "484d1fcb-0f14-4678-8550-f181561687b0",
+        "name": "Log AI Response",
+        "type": "n8n-nodes-base.googleSheets",
+        "typeVersion": 4.7,
+        "position": [
+          1888,
+          -160
+        ],
+        "credentials": {
+          "googleSheetsOAuth2Api": {
+            "id": "Pf0TYy2joLTmqt2C",
+            "name": "Google Sheets account 3"
+          }
+        }
+      },
+      {
+        "parameters": {},
+        "id": "85425551-e86f-43f1-af7c-61b4afe66d02",
+        "name": "Simulate Typing",
+        "type": "n8n-nodes-base.wait",
+        "typeVersion": 1.1,
+        "position": [
+          2112,
+          -160
+        ],
+        "webhookId": "0c8b9d8d-bdb3-4ffd-9d76-c44ae7d6169b"
+      },
+      {
+        "parameters": {
+          "operation": "send",
+          "phoneNumberId": "992551847276777",
+          "recipientPhoneNumber": "57 333 7062951",
+          "textBody": "={{ $('AI Customer Agent').item.json.output }}",
+          "additionalFields": {}
+        },
+        "id": "350f95ba-8d26-4aae-b9bf-a9090a09994a",
+        "name": "Send WhatsApp Response",
+        "type": "n8n-nodes-base.whatsApp",
+        "typeVersion": 1.1,
+        "position": [
+          2336,
+          -160
+        ],
+        "webhookId": "231a5a28-7cae-4d9a-a99a-304e5c00f58d",
+        "credentials": {
+          "whatsAppApi": {
+            "id": "VkoCC1dvkFgJX0Kc",
+            "name": "Pruebas nuevo numero enviar mensaje"
+          }
+        }
+      },
+      {
+        "parameters": {
+          "operation": "send",
+          "phoneNumberId": "992551847276777",
+          "recipientPhoneNumber": "57 333 7062951",
+          "textBody": "hola",
+          "additionalFields": {}
+        },
+        "id": "2d221369-da23-48a5-9e75-40a3e8f4c324",
+        "name": "Send WhatsApp Response1",
+        "type": "n8n-nodes-base.whatsApp",
+        "typeVersion": 1.1,
+        "position": [
+          1152,
+          -448
+        ],
+        "webhookId": "231a5a28-7cae-4d9a-a99a-304e5c00f58d",
+        "credentials": {
+          "whatsAppApi": {
+            "id": "VkoCC1dvkFgJX0Kc",
+            "name": "Pruebas nuevo numero enviar mensaje"
+          }
+        }
+      },
+      {
+        "parameters": {
+          "conditions": {
+            "options": {
+              "caseSensitive": true,
+              "leftValue": "",
+              "typeValidation": "strict",
+              "version": 3
+            },
+            "conditions": [
+              {
+                "id": "e9658df8-c714-4781-bf69-8edfeab249d6",
+                "leftValue": "={{ $json['ID Caso'] }}",
+                "rightValue": "TEST-01",
+                "operator": {
+                  "type": "string",
+                  "operation": "equals"
+                }
+              }
+            ],
+            "combinator": "and"
+          },
+          "options": {}
+        },
+        "type": "n8n-nodes-base.filter",
+        "typeVersion": 2.3,
+        "position": [
+          1008,
+          -160
+        ],
+        "id": "fc7c0e2d-1e6e-487e-9717-73286388a436",
+        "name": "Filter"
+      },
+      {
+        "parameters": {
+          "updates": [
+            "messages"
+          ],
+          "options": {}
+        },
+        "id": "57cbbbd5-e3f3-4b43-8bea-1dffe758bee6",
+        "name": "WhatsApp Webhook",
+        "type": "n8n-nodes-base.whatsAppTrigger",
+        "typeVersion": 1,
+        "position": [
+          528,
+          -160
+        ],
+        "webhookId": "b078a78f-6f54-406d-9cec-138be79b6c3a",
+        "credentials": {
+          "whatsAppTriggerApi": {
+            "id": "Z1wHUz0JEuzJhm0k",
+            "name": "Pruebas nuevo numero recibir mensaje"
+          }
+        }
+      },
+      {
+        "parameters": {
+          "operation": "append",
+          "documentId": {
+            "__rl": true,
+            "value": "1HYEmkf9lJbiSFwc3nLGP5pdOMWnSdMPWj5DEkLTSE3o",
+            "mode": "list",
+            "cachedResultName": "pruebas agente",
+            "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1HYEmkf9lJbiSFwc3nLGP5pdOMWnSdMPWj5DEkLTSE3o/edit?usp=drivesdk"
+          },
+          "sheetName": {
+            "__rl": true,
+            "mode": "name",
+            "value": "Logs_Conversacion"
+          },
+          "columns": {
+            "mappingMode": "defineBelow",
+            "value": {
+              "mensaje": "=hola",
+              "agente": "agente pruebas",
+              "tiempo": "={{$now.format('yyyy-MM-dd-hh-mm-ss')}}"
+            },
+            "matchingColumns": [],
+            "schema": [
+              {
+                "id": "agente",
+                "displayName": "agente",
+                "required": false,
+                "defaultMatch": false,
+                "display": true,
+                "type": "string",
+                "canBeUsedToMatch": true,
+                "removed": false
+              },
+              {
+                "id": "mensaje",
+                "displayName": "mensaje",
+                "required": false,
+                "defaultMatch": false,
+                "display": true,
+                "type": "string",
+                "canBeUsedToMatch": true
+              },
+              {
+                "id": "tiempo",
+                "displayName": "tiempo",
+                "required": false,
+                "defaultMatch": false,
+                "display": true,
+                "type": "string",
+                "canBeUsedToMatch": true,
+                "removed": false
+              }
+            ],
+            "attemptToConvertTypes": false,
+            "convertFieldsToString": false
+          },
+          "options": {}
+        },
+        "id": "038c0fc2-4a6d-449a-8d04-4b48b8faf2f9",
+        "name": "Log AI Response1",
+        "type": "n8n-nodes-base.googleSheets",
+        "typeVersion": 4.7,
+        "position": [
+          1344,
+          -448
+        ],
+        "credentials": {
+          "googleSheetsOAuth2Api": {
+            "id": "Pf0TYy2joLTmqt2C",
+            "name": "Google Sheets account 3"
+          }
+        }
+      }
+    ],
+    "connections": {
+      "Get Test Configuration": {
+        "main": [
+          [
+            {
+              "node": "Filter",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Log Incoming Message": {
+        "main": [
+          [
+            {
+              "node": "AI Customer Agent",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "OpenAI GPT-4o": {
+        "ai_languageModel": [
+          [
+            {
+              "node": "AI Customer Agent",
+              "type": "ai_languageModel",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Conversation Memory": {
+        "ai_memory": [
+          [
+            {
+              "node": "AI Customer Agent",
+              "type": "ai_memory",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "AI Customer Agent": {
+        "main": [
+          [
+            {
+              "node": "Log AI Response",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Log AI Response": {
+        "main": [
+          [
+            {
+              "node": "Simulate Typing",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Simulate Typing": {
+        "main": [
+          [
+            {
+              "node": "Send WhatsApp Response",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Send WhatsApp Response1": {
+        "main": [
+          [
+            {
+              "node": "Log AI Response1",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Filter": {
+        "main": [
+          [
+            {
+              "node": "Log Incoming Message",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "WhatsApp Webhook": {
+        "main": [
+          [
+            {
+              "node": "Get Test Configuration",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      }
+    },
+    "nodeGroups": [],
+    "authors": "Emmanuel Arevalo",
+    "name": "Version f9feed6e",
+    "description": "",
+    "autosaved": false,
+    "createdAt": "2026-04-30T19:47:17.910Z",
+    "updatedAt": "2026-04-30T19:47:23.000Z"
+  }
+}
