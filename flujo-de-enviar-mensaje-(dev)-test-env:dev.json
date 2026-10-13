@@ -1,0 +1,528 @@
+{
+  "id": "Hq1VTayGQz9saiVt",
+  "name": "Flujo de enviar mensaje (DEV) Test",
+  "active": true,
+  "activeVersionId": "12a1c7a0-c779-4f4b-b8e2-3026dada9f43",
+  "createdAt": "2026-04-07T20:12:39.041Z",
+  "updatedAt": "2026-09-30T15:45:33.371Z",
+  "isArchived": false,
+  "versionId": "12a1c7a0-c779-4f4b-b8e2-3026dada9f43",
+  "triggerCount": 0,
+  "nodes": [
+    {
+      "parameters": {
+        "workflowInputs": {
+          "values": [
+            {
+              "name": "session_id"
+            },
+            {
+              "name": "text_body"
+            },
+            {
+              "name": "caption"
+            },
+            {
+              "name": "imagen no disponible"
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.executeWorkflowTrigger",
+      "typeVersion": 1.1,
+      "position": [
+        -80,
+        -336
+      ],
+      "id": "005a8391-8822-4299-85d3-9aefac7232d1",
+      "name": "When Executed by Another Workflow"
+    },
+    {
+      "parameters": {
+        "rules": {
+          "values": [
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 3
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $json.caption }}",
+                    "rightValue": "",
+                    "operator": {
+                      "type": "string",
+                      "operation": "notEmpty",
+                      "singleValue": true
+                    },
+                    "id": "3f9b7f50-d633-40e9-9f1c-52d70d5cff37"
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "imagen"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 3
+                },
+                "conditions": [
+                  {
+                    "id": "421b1481-2e9d-41df-bce8-243948aba6e1",
+                    "leftValue": "={{ $json.text_body }}",
+                    "rightValue": "",
+                    "operator": {
+                      "type": "string",
+                      "operation": "notEmpty",
+                      "singleValue": true
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "Texto"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 3
+                },
+                "conditions": [
+                  {
+                    "id": "c21d24fa-3558-4303-8993-38687d8c01ae",
+                    "leftValue": "={{ $json['imagen no disponible'] }}",
+                    "rightValue": "",
+                    "operator": {
+                      "type": "string",
+                      "operation": "notEmpty",
+                      "singleValue": true
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "Imagen no disponible"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 3.4,
+      "position": [
+        160,
+        -352
+      ],
+      "id": "87e9f834-edc0-4b17-b405-4a6e00a25c4f",
+      "name": "Switch"
+    },
+    {
+      "parameters": {
+        "workflowId": {
+          "__rl": true,
+          "value": "yGjwaIUC-L7VOHskiDT9n",
+          "mode": "list",
+          "cachedResultUrl": "/workflow/yGjwaIUC-L7VOHskiDT9n",
+          "cachedResultName": "Babys World — Agente de Pruebas"
+        },
+        "workflowInputs": {
+          "mappingMode": "defineBelow",
+          "value": {},
+          "matchingColumns": [],
+          "schema": [],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": true
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.executeWorkflow",
+      "typeVersion": 1.3,
+      "position": [
+        464,
+        -336
+      ],
+      "id": "048349a6-90bb-48d2-94ac-69f7277f9d72",
+      "name": "Call 'Agente de Pruebas'"
+    },
+    {
+      "parameters": {
+        "operation": "send",
+        "phoneNumberId": "992551847276777",
+        "recipientPhoneNumber": "={{ $('When Executed by Another Workflow').item.json.session_id }}",
+        "messageType": "image",
+        "mediaPath": "useMedian8n",
+        "additionalFields": {
+          "mediaCaption": "={{ $('When Executed by Another Workflow').item.json.caption }}"
+        }
+      },
+      "type": "n8n-nodes-base.whatsApp",
+      "typeVersion": 1.1,
+      "position": [
+        464,
+        -592
+      ],
+      "id": "2d79dd8d-7cdb-4a6b-ae26-6dc8eb95191d",
+      "name": "Send image",
+      "webhookId": "3760bcd3-a899-4ccb-a3fe-aae8d5f6bcc2",
+      "credentials": {
+        "whatsAppApi": {
+          "id": "VkoCC1dvkFgJX0Kc",
+          "name": "Pruebas nuevo numero enviar mensaje"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "send",
+        "phoneNumberId": "992551847276777",
+        "recipientPhoneNumber": "={{ $('When Executed by Another Workflow').item.json.session_id }}",
+        "textBody": "={{ $('When Executed by Another Workflow').item.json['imagen no disponible'] }}",
+        "additionalFields": {}
+      },
+      "type": "n8n-nodes-base.whatsApp",
+      "typeVersion": 1.1,
+      "position": [
+        464,
+        -96
+      ],
+      "id": "e4980d7c-6a74-4d0c-b331-8a8053879716",
+      "name": "Send_text_image_not_available",
+      "webhookId": "dfe138fe-56c4-446e-bc25-de94f5ba8717",
+      "credentials": {
+        "whatsAppApi": {
+          "id": "VkoCC1dvkFgJX0Kc",
+          "name": "Pruebas nuevo numero enviar mensaje"
+        }
+      }
+    }
+  ],
+  "connections": {
+    "When Executed by Another Workflow": {
+      "main": [
+        [
+          {
+            "node": "Switch",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Switch": {
+      "main": [
+        [
+          {
+            "node": "Send image",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Call 'Agente de Pruebas'",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Send_text_image_not_available",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "nodeGroups": [],
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate",
+    "availableInMCP": false
+  },
+  "staticData": null,
+  "pinData": {},
+  "meta": {
+    "templateCredsSetupCompleted": true
+  },
+  "tags": [
+    {
+      "id": "6e1haF3pXukz6KVf",
+      "name": "env:dev",
+      "createdAt": "2025-05-27T01:29:25.680Z",
+      "updatedAt": "2026-02-11T00:17:23.837Z"
+    }
+  ],
+  "shared": [
+    {
+      "role": "workflow:owner",
+      "workflowId": "Hq1VTayGQz9saiVt",
+      "projectId": "8h8pwWGcWlnGEym3",
+      "createdAt": "2026-04-07T20:12:39.045Z",
+      "updatedAt": "2026-04-07T20:12:39.045Z"
+    }
+  ],
+  "activeVersion": {
+    "versionId": "12a1c7a0-c779-4f4b-b8e2-3026dada9f43",
+    "workflowId": "Hq1VTayGQz9saiVt",
+    "nodes": [
+      {
+        "parameters": {
+          "workflowInputs": {
+            "values": [
+              {
+                "name": "session_id"
+              },
+              {
+                "name": "text_body"
+              },
+              {
+                "name": "caption"
+              },
+              {
+                "name": "imagen no disponible"
+              }
+            ]
+          }
+        },
+        "type": "n8n-nodes-base.executeWorkflowTrigger",
+        "typeVersion": 1.1,
+        "position": [
+          -80,
+          -336
+        ],
+        "id": "005a8391-8822-4299-85d3-9aefac7232d1",
+        "name": "When Executed by Another Workflow"
+      },
+      {
+        "parameters": {
+          "rules": {
+            "values": [
+              {
+                "conditions": {
+                  "options": {
+                    "caseSensitive": true,
+                    "leftValue": "",
+                    "typeValidation": "strict",
+                    "version": 3
+                  },
+                  "conditions": [
+                    {
+                      "leftValue": "={{ $json.caption }}",
+                      "rightValue": "",
+                      "operator": {
+                        "type": "string",
+                        "operation": "notEmpty",
+                        "singleValue": true
+                      },
+                      "id": "3f9b7f50-d633-40e9-9f1c-52d70d5cff37"
+                    }
+                  ],
+                  "combinator": "and"
+                },
+                "renameOutput": true,
+                "outputKey": "imagen"
+              },
+              {
+                "conditions": {
+                  "options": {
+                    "caseSensitive": true,
+                    "leftValue": "",
+                    "typeValidation": "strict",
+                    "version": 3
+                  },
+                  "conditions": [
+                    {
+                      "id": "421b1481-2e9d-41df-bce8-243948aba6e1",
+                      "leftValue": "={{ $json.text_body }}",
+                      "rightValue": "",
+                      "operator": {
+                        "type": "string",
+                        "operation": "notEmpty",
+                        "singleValue": true
+                      }
+                    }
+                  ],
+                  "combinator": "and"
+                },
+                "renameOutput": true,
+                "outputKey": "Texto"
+              },
+              {
+                "conditions": {
+                  "options": {
+                    "caseSensitive": true,
+                    "leftValue": "",
+                    "typeValidation": "strict",
+                    "version": 3
+                  },
+                  "conditions": [
+                    {
+                      "id": "c21d24fa-3558-4303-8993-38687d8c01ae",
+                      "leftValue": "={{ $json['imagen no disponible'] }}",
+                      "rightValue": "",
+                      "operator": {
+                        "type": "string",
+                        "operation": "notEmpty",
+                        "singleValue": true
+                      }
+                    }
+                  ],
+                  "combinator": "and"
+                },
+                "renameOutput": true,
+                "outputKey": "Imagen no disponible"
+              }
+            ]
+          },
+          "options": {}
+        },
+        "type": "n8n-nodes-base.switch",
+        "typeVersion": 3.4,
+        "position": [
+          160,
+          -352
+        ],
+        "id": "87e9f834-edc0-4b17-b405-4a6e00a25c4f",
+        "name": "Switch"
+      },
+      {
+        "parameters": {
+          "workflowId": {
+            "__rl": true,
+            "value": "yGjwaIUC-L7VOHskiDT9n",
+            "mode": "list",
+            "cachedResultUrl": "/workflow/yGjwaIUC-L7VOHskiDT9n",
+            "cachedResultName": "Babys World — Agente de Pruebas"
+          },
+          "workflowInputs": {
+            "mappingMode": "defineBelow",
+            "value": {},
+            "matchingColumns": [],
+            "schema": [],
+            "attemptToConvertTypes": false,
+            "convertFieldsToString": true
+          },
+          "options": {}
+        },
+        "type": "n8n-nodes-base.executeWorkflow",
+        "typeVersion": 1.3,
+        "position": [
+          464,
+          -336
+        ],
+        "id": "048349a6-90bb-48d2-94ac-69f7277f9d72",
+        "name": "Call 'Agente de Pruebas'"
+      },
+      {
+        "parameters": {
+          "operation": "send",
+          "phoneNumberId": "992551847276777",
+          "recipientPhoneNumber": "={{ $('When Executed by Another Workflow').item.json.session_id }}",
+          "messageType": "image",
+          "mediaPath": "useMedian8n",
+          "additionalFields": {
+            "mediaCaption": "={{ $('When Executed by Another Workflow').item.json.caption }}"
+          }
+        },
+        "type": "n8n-nodes-base.whatsApp",
+        "typeVersion": 1.1,
+        "position": [
+          464,
+          -592
+        ],
+        "id": "2d79dd8d-7cdb-4a6b-ae26-6dc8eb95191d",
+        "name": "Send image",
+        "webhookId": "3760bcd3-a899-4ccb-a3fe-aae8d5f6bcc2",
+        "credentials": {
+          "whatsAppApi": {
+            "id": "VkoCC1dvkFgJX0Kc",
+            "name": "Pruebas nuevo numero enviar mensaje"
+          }
+        }
+      },
+      {
+        "parameters": {
+          "operation": "send",
+          "phoneNumberId": "992551847276777",
+          "recipientPhoneNumber": "={{ $('When Executed by Another Workflow').item.json.session_id }}",
+          "textBody": "={{ $('When Executed by Another Workflow').item.json['imagen no disponible'] }}",
+          "additionalFields": {}
+        },
+        "type": "n8n-nodes-base.whatsApp",
+        "typeVersion": 1.1,
+        "position": [
+          464,
+          -96
+        ],
+        "id": "e4980d7c-6a74-4d0c-b331-8a8053879716",
+        "name": "Send_text_image_not_available",
+        "webhookId": "dfe138fe-56c4-446e-bc25-de94f5ba8717",
+        "credentials": {
+          "whatsAppApi": {
+            "id": "VkoCC1dvkFgJX0Kc",
+            "name": "Pruebas nuevo numero enviar mensaje"
+          }
+        }
+      }
+    ],
+    "connections": {
+      "When Executed by Another Workflow": {
+        "main": [
+          [
+            {
+              "node": "Switch",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Switch": {
+        "main": [
+          [
+            {
+              "node": "Send image",
+              "type": "main",
+              "index": 0
+            }
+          ],
+          [
+            {
+              "node": "Call 'Agente de Pruebas'",
+              "type": "main",
+              "index": 0
+            }
+          ],
+          [
+            {
+              "node": "Send_text_image_not_available",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      }
+    },
+    "nodeGroups": [],
+    "authors": "Michelo Vaca Cardozo",
+    "name": "Version 12a1c7a0",
+    "description": "",
+    "autosaved": true,
+    "createdAt": "2026-09-30T15:45:33.372Z",
+    "updatedAt": "2026-09-30T15:45:37.000Z"
+  }
+}
