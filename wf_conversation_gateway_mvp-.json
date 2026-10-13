@@ -1,0 +1,188 @@
+{
+  "id": "1i3FSQjwQtfcmvjU",
+  "name": "WF_Conversation_Gateway_MVP",
+  "active": false,
+  "activeVersionId": null,
+  "createdAt": "2025-12-28T02:38:33.801Z",
+  "updatedAt": "2026-10-07T23:35:21.000Z",
+  "isArchived": true,
+  "versionId": "41be5faa-2e57-4c6c-8dee-a28746f0b83f",
+  "triggerCount": 0,
+  "nodes": [
+    {
+      "parameters": {
+        "inputSource": "passthrough"
+      },
+      "id": "c055762a-8fe7-4141-a639-df2372f30060",
+      "typeVersion": 1.1,
+      "name": "When Executed by Another Workflow",
+      "type": "n8n-nodes-base.executeWorkflowTrigger",
+      "position": [
+        272,
+        352
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "console.log('ConversationEvent (MVP):', $input.first().json);\nreturn items;\n"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        480,
+        352
+      ],
+      "id": "8b2c7607-60d5-45e5-87ab-bc3fbbd626de",
+      "name": "FN_Log_ConversationEvent"
+    },
+    {
+      "parameters": {
+        "modelId": {
+          "__rl": true,
+          "value": "gpt-4o-mini",
+          "mode": "list",
+          "cachedResultName": "GPT-4O-MINI"
+        },
+        "responses": {
+          "values": [
+            {
+              "content": "={{$json[\"text\"]}}"
+            },
+            {
+              "role": "system",
+              "content": "=Eres el agente conversacional MVP de YoEco.\nResponde siempre en el idioma detectado ({{$json[\"locale_hint\"]}} si quieres usar expresiones de n8n).\nResponde de forma clara, breve y amable.\nPor ahora no tienes acceso a sistemas externos ni a la base de conocimiento completa; si necesitas datos específicos de una tienda o negocio, responde de forma genérica e indica que es una demostración."
+            }
+          ]
+        },
+        "builtInTools": {},
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.openAi",
+      "typeVersion": 2.1,
+      "position": [
+        688,
+        352
+      ],
+      "id": "9057fea5-32a4-4778-b03b-8f4b53b46dbb",
+      "name": "AI_Generic_Conversational_MVP",
+      "credentials": {
+        "openAiApi": {
+          "id": "cm7TdxurmQCEHkxZ",
+          "name": "OpenAi account 4"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "// ConversationEvent original\nconst event = $('When Executed by Another Workflow').first().json; // entrada del workflow\n\n// Respuesta del nodo IA\nconst aiOutput = $input.first().json;\n\n// Dependiendo del nodo IA, ajusta cómo tomas el texto:\nconst replyText =\n  // OpenAI Chat clásico\n  aiOutput.output[0].content[0].text||                           // Otros modelos\n  'Lo siento, no pude generar una respuesta.';\n\nconst out = {\n  reply_text: replyText,\n  user_id: event.user_id,\n  chat_id: event.chat_id,\n  session_id: event.session_id || event.conversation_id,\n  metadata: {\n    domain: 'generic_mvp',\n    confidence: 1.0,\n    // aquí más adelante podremos añadir: client_id, use_case, etc.\n  }\n};\n\nreturn [{ json: out }];\n"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1040,
+        352
+      ],
+      "id": "2a623420-bfdc-453c-aedc-52f0b8d83397",
+      "name": "FN_Build_Reply_Object"
+    }
+  ],
+  "connections": {
+    "When Executed by Another Workflow": {
+      "main": [
+        [
+          {
+            "node": "FN_Log_ConversationEvent",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "FN_Log_ConversationEvent": {
+      "main": [
+        [
+          {
+            "node": "AI_Generic_Conversational_MVP",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "AI_Generic_Conversational_MVP": {
+      "main": [
+        [
+          {
+            "node": "FN_Build_Reply_Object",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "nodeGroups": [],
+  "settings": {
+    "executionOrder": "v1",
+    "timeSavedMode": "fixed",
+    "callerPolicy": "workflowsFromSameOwner",
+    "availableInMCP": false
+  },
+  "staticData": null,
+  "pinData": {
+    "When Executed by Another Workflow": [
+      {
+        "json": {
+          "event_id": "tg_1766893893000_4",
+          "channel": "telegram",
+          "client_hint": "yoeco_telegram_poc",
+          "client_id_hint": null,
+          "user_id": "tg:1103727157",
+          "chat_id": 1103727157,
+          "conversation_id": "tg_chat_1103727157",
+          "direction": "inbound",
+          "text": "Hola buenas noches",
+          "attachments": [],
+          "locale_hint": "en",
+          "timestamp": "2025-12-28T03:51:33.000Z",
+          "raw": {
+            "update_id": 437053526,
+            "message": {
+              "message_id": 4,
+              "from": {
+                "id": 1103727157,
+                "is_bot": false,
+                "first_name": "Fabian",
+                "username": "juepucha",
+                "language_code": "en"
+              },
+              "chat": {
+                "id": 1103727157,
+                "first_name": "Fabian",
+                "username": "juepucha",
+                "type": "private"
+              },
+              "date": 1766893893,
+              "text": "Hola buenas noches"
+            }
+          },
+          "session_id": "tg_chat_1103727157"
+        }
+      }
+    ]
+  },
+  "meta": {
+    "templateCredsSetupCompleted": true
+  },
+  "tags": [],
+  "shared": [
+    {
+      "role": "workflow:owner",
+      "workflowId": "1i3FSQjwQtfcmvjU",
+      "projectId": "8h8pwWGcWlnGEym3",
+      "createdAt": "2025-12-28T02:38:33.805Z",
+      "updatedAt": "2025-12-28T02:38:33.805Z"
+    }
+  ],
+  "activeVersion": null
+}
