@@ -1,0 +1,321 @@
+{
+  "id": "6EN0ERSiWqMmv0ZB",
+  "name": "DALIA_TEST.04_Proveedor_simulado",
+  "active": true,
+  "activeVersionId": "2cdbea6f-c569-4aae-8662-0699386509b7",
+  "createdAt": "2026-10-03T02:19:12.005Z",
+  "updatedAt": "2026-10-05T20:27:30.047Z",
+  "isArchived": false,
+  "versionId": "2cdbea6f-c569-4aae-8662-0699386509b7",
+  "triggerCount": 3,
+  "nodes": [
+    {
+      "id": "58d7b06d-9e3d-45b1-b202-eb0ff9bf3500",
+      "name": "Crear link simulado",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2.1,
+      "position": [
+        0,
+        0
+      ],
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "dalia/sim/payment/links",
+        "responseMode": "responseNode"
+      },
+      "webhookId": "10499838-db21-40ab-84d2-fa0cb93fcecb"
+    },
+    {
+      "id": "7ccf6a87-c3dc-4a0c-98da-a5d29fcceefe",
+      "name": "Responder link creado",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.5,
+      "position": [
+        224,
+        0
+      ],
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ JSON.stringify({ data: { id: \"SIMPAY-\" + ($json.body?.reference ?? \"sin-ref\") + ($json.body?.amount_in_cents != null ? \"-A\" + $json.body.amount_in_cents : \"\"), url: \"https://pago.simulado/\" + ($json.body?.reference ?? \"sin-ref\"), status: \"ACTIVE\", amount_in_cents: $json.body?.amount_in_cents ?? null } }) }}",
+        "options": {
+          "responseCode": 201
+        }
+      }
+    },
+    {
+      "id": "780fa262-6ec8-4c9d-8e56-fd221434b787",
+      "name": "Consultar link simulado",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2.1,
+      "position": [
+        0,
+        224
+      ],
+      "parameters": {
+        "httpMethod": "GET",
+        "path": "dalia/sim/payment/links",
+        "responseMode": "responseNode"
+      },
+      "webhookId": "458cb296-6669-441f-ae1f-0233343ccb9c"
+    },
+    {
+      "id": "9729bf6c-2d12-4906-a5bc-d9dfa182abe1",
+      "name": "Responder estado",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.5,
+      "position": [
+        224,
+        224
+      ],
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ JSON.stringify({ data: { id: $json.query?.id ?? null, status: \"PAID\", paid_at: $now.toISO(), amount_in_cents: (String($json.query?.id ?? \"\").match(/-A(\\d+)$/) || [])[1] ? Number(String($json.query.id).match(/-A(\\d+)$/)[1]) : null } }) }}",
+        "options": {
+          "responseCode": 200
+        }
+      }
+    },
+    {
+      "id": "be51df0d-bb10-4c55-bb76-acc9e950c942",
+      "name": "Reembolso simulado",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2.1,
+      "position": [
+        0,
+        448
+      ],
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "dalia/sim/payment/refunds",
+        "responseMode": "responseNode"
+      },
+      "webhookId": "18902179-edbb-4f01-9332-6812abe4f9c0"
+    },
+    {
+      "id": "9411c8e6-1bb8-4707-be56-62449a83f5dd",
+      "name": "Responder reembolso",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.5,
+      "position": [
+        224,
+        448
+      ],
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ JSON.stringify({ data: { id: \"SIMREF-\" + ($json.body?.payment_id ?? \"sin-ref\"), status: \"APPROVED\" } }) }}",
+        "options": {
+          "responseCode": 201
+        }
+      }
+    }
+  ],
+  "connections": {
+    "Crear link simulado": {
+      "main": [
+        [
+          {
+            "node": "Responder link creado",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Consultar link simulado": {
+      "main": [
+        [
+          {
+            "node": "Responder estado",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Reembolso simulado": {
+      "main": [
+        [
+          {
+            "node": "Responder reembolso",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "nodeGroups": [],
+  "settings": {
+    "executionOrder": "v1",
+    "availableInMCP": true,
+    "errorWorkflow": "cjjQno2MxMTT3Icc",
+    "timezone": "America/Bogota",
+    "saveManualExecutions": true,
+    "saveDataErrorExecution": "all",
+    "saveDataSuccessExecution": "all",
+    "callerPolicy": "workflowsFromSameOwner"
+  },
+  "staticData": null,
+  "pinData": null,
+  "meta": {
+    "aiBuilderAssisted": true,
+    "builderVariant": "mcp"
+  },
+  "tags": [],
+  "shared": [
+    {
+      "role": "workflow:owner",
+      "workflowId": "6EN0ERSiWqMmv0ZB",
+      "projectId": "tRHCC8ts4mkRGXGn",
+      "createdAt": "2026-10-09T21:09:17.764Z",
+      "updatedAt": "2026-10-09T21:09:17.764Z"
+    }
+  ],
+  "activeVersion": {
+    "versionId": "2cdbea6f-c569-4aae-8662-0699386509b7",
+    "workflowId": "6EN0ERSiWqMmv0ZB",
+    "nodes": [
+      {
+        "id": "58d7b06d-9e3d-45b1-b202-eb0ff9bf3500",
+        "name": "Crear link simulado",
+        "type": "n8n-nodes-base.webhook",
+        "typeVersion": 2.1,
+        "position": [
+          0,
+          0
+        ],
+        "parameters": {
+          "httpMethod": "POST",
+          "path": "dalia/sim/payment/links",
+          "responseMode": "responseNode"
+        },
+        "webhookId": "10499838-db21-40ab-84d2-fa0cb93fcecb"
+      },
+      {
+        "id": "7ccf6a87-c3dc-4a0c-98da-a5d29fcceefe",
+        "name": "Responder link creado",
+        "type": "n8n-nodes-base.respondToWebhook",
+        "typeVersion": 1.5,
+        "position": [
+          224,
+          0
+        ],
+        "parameters": {
+          "respondWith": "json",
+          "responseBody": "={{ JSON.stringify({ data: { id: \"SIMPAY-\" + ($json.body?.reference ?? \"sin-ref\") + ($json.body?.amount_in_cents != null ? \"-A\" + $json.body.amount_in_cents : \"\"), url: \"https://pago.simulado/\" + ($json.body?.reference ?? \"sin-ref\"), status: \"ACTIVE\", amount_in_cents: $json.body?.amount_in_cents ?? null } }) }}",
+          "options": {
+            "responseCode": 201
+          }
+        }
+      },
+      {
+        "id": "780fa262-6ec8-4c9d-8e56-fd221434b787",
+        "name": "Consultar link simulado",
+        "type": "n8n-nodes-base.webhook",
+        "typeVersion": 2.1,
+        "position": [
+          0,
+          224
+        ],
+        "parameters": {
+          "httpMethod": "GET",
+          "path": "dalia/sim/payment/links",
+          "responseMode": "responseNode"
+        },
+        "webhookId": "458cb296-6669-441f-ae1f-0233343ccb9c"
+      },
+      {
+        "id": "9729bf6c-2d12-4906-a5bc-d9dfa182abe1",
+        "name": "Responder estado",
+        "type": "n8n-nodes-base.respondToWebhook",
+        "typeVersion": 1.5,
+        "position": [
+          224,
+          224
+        ],
+        "parameters": {
+          "respondWith": "json",
+          "responseBody": "={{ JSON.stringify({ data: { id: $json.query?.id ?? null, status: \"PAID\", paid_at: $now.toISO(), amount_in_cents: (String($json.query?.id ?? \"\").match(/-A(\\d+)$/) || [])[1] ? Number(String($json.query.id).match(/-A(\\d+)$/)[1]) : null } }) }}",
+          "options": {
+            "responseCode": 200
+          }
+        }
+      },
+      {
+        "id": "be51df0d-bb10-4c55-bb76-acc9e950c942",
+        "name": "Reembolso simulado",
+        "type": "n8n-nodes-base.webhook",
+        "typeVersion": 2.1,
+        "position": [
+          0,
+          448
+        ],
+        "parameters": {
+          "httpMethod": "POST",
+          "path": "dalia/sim/payment/refunds",
+          "responseMode": "responseNode"
+        },
+        "webhookId": "18902179-edbb-4f01-9332-6812abe4f9c0"
+      },
+      {
+        "id": "9411c8e6-1bb8-4707-be56-62449a83f5dd",
+        "name": "Responder reembolso",
+        "type": "n8n-nodes-base.respondToWebhook",
+        "typeVersion": 1.5,
+        "position": [
+          224,
+          448
+        ],
+        "parameters": {
+          "respondWith": "json",
+          "responseBody": "={{ JSON.stringify({ data: { id: \"SIMREF-\" + ($json.body?.payment_id ?? \"sin-ref\"), status: \"APPROVED\" } }) }}",
+          "options": {
+            "responseCode": 201
+          }
+        }
+      }
+    ],
+    "connections": {
+      "Crear link simulado": {
+        "main": [
+          [
+            {
+              "node": "Responder link creado",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Consultar link simulado": {
+        "main": [
+          [
+            {
+              "node": "Responder estado",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Reembolso simulado": {
+        "main": [
+          [
+            {
+              "node": "Responder reembolso",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      }
+    },
+    "nodeGroups": [],
+    "authors": "Fabian Bocanegra (via MCP)",
+    "name": "H-L10-02: el estado del pago devuelve el monto",
+    "description": "Updated nodes: Responder link creado, Responder estado",
+    "autosaved": false,
+    "createdAt": "2026-10-05T20:27:30.048Z",
+    "updatedAt": "2026-10-05T20:27:30.048Z"
+  }
+}
