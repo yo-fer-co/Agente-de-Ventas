@@ -1,0 +1,81 @@
+{
+  "id": "atjp4VdPM6mL0qEq",
+  "name": "My workflow 9",
+  "active": false,
+  "activeVersionId": null,
+  "createdAt": "2025-11-24T22:45:38.734Z",
+  "updatedAt": "2025-11-24T22:47:23.000Z",
+  "isArchived": true,
+  "versionId": "95eeb4e2-4573-4901-9748-3d48586257a8",
+  "triggerCount": 0,
+  "nodes": [
+    {
+      "parameters": {},
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [
+        0,
+        0
+      ],
+      "id": "f2536ca2-1bf0-4be2-a587-94c6aa683fae",
+      "name": "When clicking ‘Execute workflow’"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://1537c683-48da-4631-ab76-ad698b6b9881.us-east-1-0.aws.cloud.qdrant.io:6333/collections/BabysWorld_Catalogo_TEST/points/scroll",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "qdrantApi",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ {\n  limit: 100,\n  with_payload: true,\n  with_vector: false,\n  // para la 1ª corrida no envíes offset; para corridas siguientes pega aquí el último next_page_offset\n  offset: $json.next_page_offset || undefined\n} }}\n",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        208,
+        0
+      ],
+      "id": "f3f78218-9b14-4428-8f2b-c2a0725b76da",
+      "name": "HTTP Request",
+      "credentials": {
+        "qdrantApi": {
+          "id": "ZYv8vdr6tkTS4jYz",
+          "name": "QdrantApi account 3"
+        }
+      }
+    }
+  ],
+  "connections": {
+    "When clicking ‘Execute workflow’": {
+      "main": [
+        [
+          {
+            "node": "HTTP Request",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "nodeGroups": [],
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "staticData": null,
+  "pinData": {},
+  "meta": null,
+  "tags": [],
+  "shared": [
+    {
+      "role": "workflow:owner",
+      "workflowId": "atjp4VdPM6mL0qEq",
+      "projectId": "8h8pwWGcWlnGEym3",
+      "createdAt": "2025-11-24T22:45:38.736Z",
+      "updatedAt": "2025-11-24T22:45:38.736Z"
+    }
+  ],
+  "activeVersion": null
+}
