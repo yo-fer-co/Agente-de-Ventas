@@ -1,0 +1,83 @@
+{
+  "id": "IAb5nRfABB5te4pZ",
+  "name": "DALIA_M5_04_Invoicing",
+  "active": false,
+  "activeVersionId": null,
+  "createdAt": "2026-08-21T03:41:22.350Z",
+  "updatedAt": "2026-08-21T03:41:22.350Z",
+  "isArchived": false,
+  "versionId": "8c1a8e53-28a5-40e4-9c63-57c2908efaea",
+  "triggerCount": 0,
+  "nodes": [
+    {
+      "parameters": {},
+      "id": "0b833784-339e-4686-ac20-849d81424d9f",
+      "name": "M5_04_Input",
+      "type": "n8n-nodes-base.subworkflowTrigger",
+      "typeVersion": 1,
+      "position": [
+        0,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const payload = $input.first().json;\nconst transaction = payload.transaction || {};\nconst invoicing_config = payload.configuration?.invoicing || {};\nconst mode = invoicing_config.mode || 'not_applicable';\nconst idempotency_key = `inv_${transaction.id}_${transaction.created_at}`;\nconst customer = payload.customer || {};\nconst items = payload.items || [];\nconst commercial = payload.commercial_context || {};\n\nlet result_success = true;\nlet result_outcome = 'action_completed';\nlet new_status = 'invoiced';\nlet next_action = null;\nlet invoice_data = null;\nlet error = null;\n\nfunction validateInvoicingConfiguration() {\n  const missingFields = [];\n  \n  if (mode === 'not_applicable') {\n    return { valid: true, missing: [] };\n  }\n  \n  if (mode === 'manual' || mode === 'external_provider') {\n    if (!customer.email) missingFields.push('customer.email');\n    if (!customer.document_type) missingFields.push('customer.document_type');\n    if (!customer.document_number) missingFields.push('customer.document_number');\n    if (!customer.name) missingFields.push('customer.name');\n  }\n  \n  if (mode === 'external_provider') {\n    if (!invoicing_config.provider) missingFields.push('provider');\n    if (!invoicing_config.api_key) missingFields.push('api_key');\n  }\n  \n  return {\n    valid: missingFields.length === 0,\n    missing: missingFields\n  };\n}\n\nfunction buildInvoicePayload() {\n  return {\n    invoice_id: null,\n    idempotency_key: idempotency_key,\n    status: 'pending',\n    mode: mode,\n    customer: {\n      name: customer.name || null,\n      email: customer.email || null,\n      document_type: customer.document_type || null,\n      document_number: customer.document_number || null,\n      phone: customer.phone || null,\n      city: customer.city || null,\n      address: customer.address || null\n    },\n    items: items.map(item => ({\n      sku: item.sku,\n      name: item.name,\n      quantity: item.quantity,\n      unit_price: item.unit_price,\n      subtotal: item.quantity * item.unit_price\n    })),\n    totals: {\n      currency: commercial.currency || 'COP',\n      subtotal: commercial.subtotal || 0,\n      discount: commercial.discount || 0,\n      shipping: commercial.shipping_cost || 0,\n      tax: commercial.tax || 0,\n      total: commercial.total || 0\n    },\n    issued_at: null,\n    issued_by: mode === 'external_provider' ? invoicing_config.provider : 'system',\n    reference_transaction_id: transaction.id\n  };\n}\n\nif (mode === 'not_applicable') {\n  invoice_data = {\n    mode: 'not_applicable',\n    status: 'skipped',\n    note: 'Invoicing not applicable for this business configuration'\n  };\n  new_status = transaction.status || 'payment_confirmed';\n  next_action = 'resolve_fulfillment_route';\n} else {\n  const validation = validateInvoicingConfiguration();\n  \n  if (!validation.valid) {\n    result_success = false;\n    result_outcome = 'missing_data';\n    new_status = 'invoicing_failed';\n    next_action = 'handle_error';\n    error = {\n      code: 'INVOICING_CONFIGURATION_INCOMPLETE',\n      category: 'configuration',\n      message: 'Required invoicing configuration fields are missing.',\n      retryable: false,\n      details: { missing_fields: validation.missing }\n    };\n  } else {\n    invoice_data = buildInvoicePayload();\n    \n    if (mode === 'manual') {\n      new_status = 'awaiting_invoice_issuance';\n      next_action = 'wait_invoice_event';\n      result_outcome = 'action_pending';\n    } else if (mode === 'external_provider') {\n      new_status = 'requesting_external_invoice';\n      next_action = 'request_external_invoice';\n      result_outcome = 'action_pending';\n    }\n  }\n}\n\nreturn [{\n  json: {\n    ...payload,\n    invoicing_execution: {\n      mode: mode,\n      configuration_valid: !error,\n      processed_at: new Date().toISOString()\n    }\n  }\n}, {\n  json: {\n    result: {\n      success: result_success,\n      outcome: result_outcome\n    },\n    transaction: {\n      transaction_id: transaction.id,\n      previous_status: transaction.status,\n      current_status: new_status,\n      sub_status: null,\n      next_action: next_action\n    },\n    route: {\n      selected_flow: 'DALIA_M5_Commerce_Orchestrator',\n      effective_action: 'issue_invoice',\n      reason: mode === 'not_applicable' ? 'invoicing_not_required' : 'invoicing_initiated'\n    },\n    response: {\n      message_required: false,\n      message_type: null,\n      reply_text: null,\n      requested_fields: []\n    },\n    data: {\n      invoicing: invoice_data || {}\n    },\n    error: error,\n    trace: {\n      trace_id: payload.trace?.trace_id || null,\n      request_id: payload.trace?.request_id || null,\n      workflow: 'DALIA_M5_04_Invoicing',\n      stage: 'invoicing_processed',\n      processed_at: new Date().toISOString()\n    }\n  }\n}];"
+      },
+      "id": "a4970f92-a7c0-448d-ae3e-04fce5a78063",
+      "name": "01_Process_Invoicing",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        0,
+        224
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const results = $input.all();\nconst output = results[results.length - 1].json;\n\nreturn [{\n  json: {\n    result: output.result || { success: false, outcome: 'transaction_failed' },\n    transaction: output.transaction || {},\n    route: output.route || {},\n    response: output.response || {},\n    data: output.data || {},\n    error: output.error || null,\n    trace: output.trace || {}\n  }\n}];"
+      },
+      "id": "28450fee-766a-4bfc-94d8-f190789c2f29",
+      "name": "02_Return_M5_04_Result",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        224,
+        224
+      ]
+    }
+  ],
+  "connections": {
+    "01_Process_Invoicing": {
+      "main": [
+        [
+          {
+            "node": "02_Return_M5_04_Result",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "nodeGroups": [],
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate",
+    "availableInMCP": false
+  },
+  "staticData": null,
+  "pinData": {},
+  "meta": null,
+  "tags": [],
+  "shared": [
+    {
+      "role": "workflow:owner",
+      "workflowId": "IAb5nRfABB5te4pZ",
+      "projectId": "8h8pwWGcWlnGEym3",
+      "createdAt": "2026-08-21T03:41:22.352Z",
+      "updatedAt": "2026-08-21T03:41:22.352Z"
+    }
+  ],
+  "activeVersion": null
+}
