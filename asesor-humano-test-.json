@@ -1,0 +1,33 @@
+{
+  "id": "D9LKHUfrkI4hK8S0",
+  "name": "Asesor Humano Test",
+  "active": false,
+  "activeVersionId": null,
+  "createdAt": "2026-07-14T21:52:50.273Z",
+  "updatedAt": "2026-07-14T21:52:54.351Z",
+  "isArchived": false,
+  "versionId": "8852505a-7f0b-4f1a-9024-b0ebd3ba3f6f",
+  "triggerCount": 0,
+  "nodes": [],
+  "connections": {},
+  "nodeGroups": [],
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate",
+    "availableInMCP": false
+  },
+  "staticData": null,
+  "pinData": {},
+  "meta": null,
+  "tags": [],
+  "shared": [
+    {
+      "role": "workflow:owner",
+      "workflowId": "D9LKHUfrkI4hK8S0",
+      "projectId": "8h8pwWGcWlnGEym3",
+      "createdAt": "2026-07-14T21:52:50.275Z",
+      "updatedAt": "2026-07-14T21:52:50.275Z"
+    }
+  ],
+  "activeVersion": null
+}
