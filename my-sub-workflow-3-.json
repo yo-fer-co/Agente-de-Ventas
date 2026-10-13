@@ -1,0 +1,38 @@
+{
+  "id": "4AvaHV6kRbsNitNq",
+  "name": "My Sub-Workflow 3",
+  "active": false,
+  "activeVersionId": null,
+  "createdAt": "2026-06-03T20:46:10.611Z",
+  "updatedAt": "2026-06-10T21:56:24.000Z",
+  "isArchived": true,
+  "versionId": "2f792775-8d74-4129-b7ef-fcd55865dd12",
+  "triggerCount": 1,
+  "nodes": [],
+  "connections": {},
+  "nodeGroups": [],
+  "settings": {
+    "executionOrder": "v1",
+    "availableInMCP": false,
+    "binaryMode": "separate",
+    "timeSavedMode": "fixed",
+    "errorWorkflow": "sGL1OJ3lklD6wBu0",
+    "callerPolicy": "workflowsFromSameOwner"
+  },
+  "staticData": null,
+  "pinData": {},
+  "meta": {
+    "templateCredsSetupCompleted": true
+  },
+  "tags": [],
+  "shared": [
+    {
+      "role": "workflow:owner",
+      "workflowId": "4AvaHV6kRbsNitNq",
+      "projectId": "tRHCC8ts4mkRGXGn",
+      "createdAt": "2026-06-03T20:46:10.614Z",
+      "updatedAt": "2026-06-03T20:46:10.614Z"
+    }
+  ],
+  "activeVersion": null
+}
