@@ -1,0 +1,156 @@
+{
+  "id": "axCWtNSJYQmvhI7b",
+  "name": "DALIA_TEST.13_Probar_ingreso",
+  "active": false,
+  "activeVersionId": null,
+  "createdAt": "2026-10-06T16:34:41.509Z",
+  "updatedAt": "2026-10-07T22:35:14.194Z",
+  "isArchived": false,
+  "versionId": "39148bce-da65-43cc-84bb-8e0bde786cf0",
+  "triggerCount": 0,
+  "nodes": [
+    {
+      "id": "a3622307-32c7-4bce-b131-a0decbe35320",
+      "name": "Probar ingreso",
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [
+        0,
+        0
+      ],
+      "parameters": {}
+    },
+    {
+      "id": "f517478c-6b80-41ee-93a6-b116bb6e65bb",
+      "name": "Datos de prueba",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        224,
+        0
+      ],
+      "parameters": {
+        "mode": "manual",
+        "includeOtherFields": false,
+        "assignments": {
+          "assignments": [
+            {
+              "id": "d1",
+              "name": "numero",
+              "value": "573000000003",
+              "type": "string"
+            },
+            {
+              "id": "d2",
+              "name": "nombre",
+              "value": "Cliente de prueba",
+              "type": "string"
+            },
+            {
+              "id": "d3",
+              "name": "texto",
+              "value": "Hola, buenas tardes",
+              "type": "string"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "1f443d8c-839c-4f05-86f9-5df37065ace5",
+      "name": "Mensaje de prueba",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        448,
+        0
+      ],
+      "parameters": {
+        "mode": "raw",
+        "jsonOutput": "={{ JSON.stringify({ contract: \"dalia.channel.inbound_message/1.0\", channel: \"whatsapp\", channel_account_ref: \"test13\", channel_message_id: \"test13-\" + $now.toMillis(), channel_thread_id: $json.numero, from: { channel_user_id: $json.numero, display_name: $json.nombre }, sent_at: $now.toISO(), received_at: $now.toISO(), family: \"content\", content_type: \"text\", text: $json.texto, raw: { simulated: true } }) }}",
+        "options": {}
+      }
+    },
+    {
+      "id": "9f99fade-6d2a-4aee-8fc4-3d7684f3dd74",
+      "name": "Llamar M1.01",
+      "type": "n8n-nodes-base.executeWorkflow",
+      "typeVersion": 1.3,
+      "position": [
+        672,
+        0
+      ],
+      "parameters": {
+        "mode": "each",
+        "source": "database",
+        "workflowId": {
+          "__rl": true,
+          "mode": "id",
+          "value": "BabIah2N7LEXNLCs"
+        },
+        "options": {
+          "waitForSubWorkflow": true
+        }
+      }
+    }
+  ],
+  "connections": {
+    "Probar ingreso": {
+      "main": [
+        [
+          {
+            "node": "Datos de prueba",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Datos de prueba": {
+      "main": [
+        [
+          {
+            "node": "Mensaje de prueba",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Mensaje de prueba": {
+      "main": [
+        [
+          {
+            "node": "Llamar M1.01",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "nodeGroups": [],
+  "settings": {
+    "executionOrder": "v1",
+    "availableInMCP": true,
+    "timezone": "America/Bogota",
+    "callerPolicy": "workflowsFromSameOwner"
+  },
+  "staticData": null,
+  "pinData": null,
+  "meta": {
+    "aiBuilderAssisted": true,
+    "builderVariant": "mcp"
+  },
+  "tags": [],
+  "shared": [
+    {
+      "role": "workflow:owner",
+      "workflowId": "axCWtNSJYQmvhI7b",
+      "projectId": "tRHCC8ts4mkRGXGn",
+      "createdAt": "2026-10-09T21:09:17.864Z",
+      "updatedAt": "2026-10-09T21:09:17.864Z"
+    }
+  ],
+  "activeVersion": null
+}
