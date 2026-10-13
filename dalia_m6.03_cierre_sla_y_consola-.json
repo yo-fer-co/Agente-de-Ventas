@@ -1,0 +1,1303 @@
+{
+  "id": "VMSbSABLgrcSSJox",
+  "name": "DALIA_M6.03_Cierre_SLA_y_consola",
+  "active": true,
+  "activeVersionId": "588ad820-5bcc-452d-8dec-587bb82836ef",
+  "createdAt": "2026-10-04T15:37:56.128Z",
+  "updatedAt": "2026-10-05T16:53:19.774Z",
+  "isArchived": false,
+  "versionId": "588ad820-5bcc-452d-8dec-587bb82836ef",
+  "triggerCount": 1,
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {}
+          ]
+        }
+      },
+      "id": "ee597021-49eb-45d8-ab08-08bdd24c82f5",
+      "name": "Cada 5 minutos",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.4,
+      "position": [
+        0,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "select dalia.m6_cycle('M6.03') as report;",
+        "options": {}
+      },
+      "id": "e8aec854-8bb4-4a7c-9671-9118771cdec9",
+      "name": "Ciclo de SLA y control",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.7,
+      "position": [
+        224,
+        0
+      ],
+      "credentials": {
+        "postgres": {
+          "id": "HfCgVAjUygK1vrkU",
+          "name": "DALIA dev Supabase"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "inputSource": "passthrough"
+      },
+      "id": "572437d6-a2d0-4fa8-9f9b-a56dcc28cfc4",
+      "name": "Job recibido",
+      "type": "n8n-nodes-base.executeWorkflowTrigger",
+      "typeVersion": 1.2,
+      "position": [
+        0,
+        688
+      ]
+    },
+    {
+      "parameters": {
+        "rules": {
+          "values": [
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 1
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $json.type }}",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    },
+                    "rightValue": "m6.sla_check"
+                  }
+                ],
+                "combinator": "and"
+              }
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 1
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $json.type }}",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    },
+                    "rightValue": "m6.lease_check"
+                  }
+                ],
+                "combinator": "and"
+              }
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 1
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $json.type }}",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    },
+                    "rightValue": "m6.sync"
+                  }
+                ],
+                "combinator": "and"
+              }
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 1
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $json.type }}",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    },
+                    "rightValue": "m6.privacy_erase"
+                  }
+                ],
+                "combinator": "and"
+              }
+            }
+          ]
+        },
+        "options": {
+          "fallbackOutput": "extra",
+          "renameFallbackOutput": "Desconocido"
+        }
+      },
+      "id": "03c638e7-2c85-413e-8135-45f9e350f09d",
+      "name": "Tipo de job",
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 3.2,
+      "position": [
+        224,
+        640
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "select dalia.m6_cycle('job') as result;",
+        "options": {}
+      },
+      "id": "9a281785-a2d7-4b50-9f67-86beaa4a8127",
+      "name": "Revisar SLA y control",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.7,
+      "position": [
+        1568,
+        224
+      ],
+      "credentials": {
+        "postgres": {
+          "id": "HfCgVAjUygK1vrkU",
+          "name": "DALIA dev Supabase"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "select dalia.sys_complete_job($1::uuid, $2::jsonb) as job_status;",
+        "options": {
+          "queryReplacement": "={{ [ $(\"Job recibido\").item.json.job_id, JSON.stringify($json.result ?? $json.step ?? {}) ] }}"
+        }
+      },
+      "id": "8e3be049-a609-49ea-a432-9ccaa5028c6c",
+      "name": "Completar job",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.7,
+      "position": [
+        1792,
+        544
+      ],
+      "credentials": {
+        "postgres": {
+          "id": "HfCgVAjUygK1vrkU",
+          "name": "DALIA dev Supabase"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "select dalia.m6_sync_next($1::jsonb) as step;",
+        "options": {
+          "queryReplacement": "={{ [ JSON.stringify($json.payload ?? {}) ] }}"
+        }
+      },
+      "id": "8b09ea80-627e-4507-b07b-32a1f6b3de2e",
+      "name": "Siguiente paso de sincronizacion",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.7,
+      "position": [
+        448,
+        544
+      ],
+      "credentials": {
+        "postgres": {
+          "id": "HfCgVAjUygK1vrkU",
+          "name": "DALIA dev Supabase"
+        }
+      },
+      "onError": "continueErrorOutput"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose",
+            "version": 1
+          },
+          "conditions": [
+            {
+              "leftValue": "={{ $json.step.action === \"port\" }}",
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "ea712ac8-3b9a-4d8b-b992-77953d57cb19",
+      "name": "Requiere puerto",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        672,
+        464
+      ]
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "p1",
+              "name": "port",
+              "value": "={{ $json.step.port_request.port }}",
+              "type": "string"
+            },
+            {
+              "id": "p2",
+              "name": "operation",
+              "value": "={{ $json.step.port_request.operation }}",
+              "type": "string"
+            },
+            {
+              "id": "p3",
+              "name": "input",
+              "value": "={{ $json.step.port_request.input }}",
+              "type": "object"
+            },
+            {
+              "id": "p4",
+              "name": "envelope",
+              "value": "={{ $json.step.port_request.envelope ?? {} }}",
+              "type": "object"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "f4c8a585-9962-44a8-8bd3-49b411ac20c1",
+      "name": "Preparar llamada a la consola",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        896,
+        416
+      ]
+    },
+    {
+      "parameters": {
+        "workflowId": {
+          "__rl": true,
+          "mode": "id",
+          "value": "5gbpWhv0zIA8bZ0w"
+        },
+        "mode": "each",
+        "options": {
+          "waitForSubWorkflow": true
+        }
+      },
+      "id": "43ad912e-1b25-4c75-94d1-d77e31e46757",
+      "name": "Consola por INT.port",
+      "type": "n8n-nodes-base.executeWorkflow",
+      "typeVersion": 1.3,
+      "position": [
+        1120,
+        416
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "select dalia.m6_sync_applied($1::jsonb, $2::jsonb, $3::jsonb) as result;",
+        "options": {
+          "queryReplacement": "={{ [ JSON.stringify($(\"Job recibido\").item.json.payload ?? {}), JSON.stringify($(\"Siguiente paso de sincronizacion\").item.json.step), JSON.stringify($json) ] }}"
+        }
+      },
+      "id": "ea2a0d38-d6c7-417f-9c99-db216e5dfc45",
+      "name": "Aplicar resultado",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.7,
+      "position": [
+        1344,
+        416
+      ],
+      "credentials": {
+        "postgres": {
+          "id": "HfCgVAjUygK1vrkU",
+          "name": "DALIA dev Supabase"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose",
+            "version": 1
+          },
+          "conditions": [
+            {
+              "leftValue": "={{ $json.result.job === \"retry\" }}",
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "f396d63e-d7d9-4bbc-9b7d-f11a21d69783",
+      "name": "Reintentar",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        1568,
+        416
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "select dalia.sys_fail_job($1::uuid, $2::jsonb, true) as job_status;",
+        "options": {
+          "queryReplacement": "={{ [ $(\"Job recibido\").item.json.job_id, JSON.stringify({ code: $json.result?.status ?? \"HANDLER_ERROR\", message: $json.error?.message ?? $json.result?.error?.message ?? $json.error ?? \"reintentar\" }) ] }}"
+        }
+      },
+      "id": "1ce1a046-f16c-495a-9544-0e19903813f2",
+      "name": "Fallar job (reintentable)",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.7,
+      "position": [
+        1792,
+        736
+      ],
+      "credentials": {
+        "postgres": {
+          "id": "HfCgVAjUygK1vrkU",
+          "name": "DALIA dev Supabase"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "select dalia.m6_privacy_erase($1::jsonb) as result;",
+        "options": {
+          "queryReplacement": "={{ [ JSON.stringify($json.payload ?? {}) ] }}"
+        }
+      },
+      "id": "c52eb139-0d7a-421a-b7b6-eafb7fb34cf5",
+      "name": "Olvidar casos del contacto",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.7,
+      "position": [
+        1568,
+        896
+      ],
+      "credentials": {
+        "postgres": {
+          "id": "HfCgVAjUygK1vrkU",
+          "name": "DALIA dev Supabase"
+        }
+      },
+      "onError": "continueErrorOutput"
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "select dalia.sys_fail_job($1::uuid, $2::jsonb, false) as job_status;",
+        "options": {
+          "queryReplacement": "={{ [ $json.job_id, JSON.stringify({ code: \"UNKNOWN_JOB_TYPE\", message: $json.type }) ] }}"
+        }
+      },
+      "id": "6cb82eec-e981-4fda-be4d-03017ae41da9",
+      "name": "Fallar job (tipo desconocido)",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.7,
+      "position": [
+        448,
+        1040
+      ],
+      "credentials": {
+        "postgres": {
+          "id": "HfCgVAjUygK1vrkU",
+          "name": "DALIA dev Supabase"
+        }
+      }
+    }
+  ],
+  "connections": {
+    "Cada 5 minutos": {
+      "main": [
+        [
+          {
+            "node": "Ciclo de SLA y control",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Job recibido": {
+      "main": [
+        [
+          {
+            "node": "Tipo de job",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Tipo de job": {
+      "main": [
+        [
+          {
+            "node": "Revisar SLA y control",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Revisar SLA y control",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Siguiente paso de sincronizacion",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Olvidar casos del contacto",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Fallar job (tipo desconocido)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Revisar SLA y control": {
+      "main": [
+        [
+          {
+            "node": "Completar job",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Siguiente paso de sincronizacion": {
+      "main": [
+        [
+          {
+            "node": "Requiere puerto",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Fallar job (reintentable)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Requiere puerto": {
+      "main": [
+        [
+          {
+            "node": "Preparar llamada a la consola",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Completar job",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Preparar llamada a la consola": {
+      "main": [
+        [
+          {
+            "node": "Consola por INT.port",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Consola por INT.port": {
+      "main": [
+        [
+          {
+            "node": "Aplicar resultado",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Aplicar resultado": {
+      "main": [
+        [
+          {
+            "node": "Reintentar",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Reintentar": {
+      "main": [
+        [
+          {
+            "node": "Fallar job (reintentable)",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Completar job",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Olvidar casos del contacto": {
+      "main": [
+        [
+          {
+            "node": "Completar job",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Fallar job (reintentable)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "nodeGroups": [],
+  "settings": {
+    "executionOrder": "v1",
+    "availableInMCP": true,
+    "errorWorkflow": "cjjQno2MxMTT3Icc",
+    "timezone": "America/Bogota",
+    "saveDataSuccessExecution": "none",
+    "callerPolicy": "workflowsFromSameOwner",
+    "binaryMode": "separate"
+  },
+  "staticData": {
+    "node:Cada 5 minutos": {
+      "recurrenceRules": [
+        null
+      ],
+      "recurrenceRuleSignatures": [
+        null
+      ]
+    }
+  },
+  "pinData": {},
+  "meta": {
+    "aiBuilderAssisted": true,
+    "builderVariant": "mcp"
+  },
+  "tags": [],
+  "shared": [
+    {
+      "role": "workflow:owner",
+      "workflowId": "VMSbSABLgrcSSJox",
+      "projectId": "tRHCC8ts4mkRGXGn",
+      "createdAt": "2026-10-09T21:09:17.821Z",
+      "updatedAt": "2026-10-09T21:09:17.821Z"
+    }
+  ],
+  "activeVersion": {
+    "versionId": "588ad820-5bcc-452d-8dec-587bb82836ef",
+    "workflowId": "VMSbSABLgrcSSJox",
+    "nodes": [
+      {
+        "parameters": {
+          "rule": {
+            "interval": [
+              {}
+            ]
+          }
+        },
+        "id": "ee597021-49eb-45d8-ab08-08bdd24c82f5",
+        "name": "Cada 5 minutos",
+        "type": "n8n-nodes-base.scheduleTrigger",
+        "typeVersion": 1.4,
+        "position": [
+          0,
+          0
+        ]
+      },
+      {
+        "parameters": {
+          "operation": "executeQuery",
+          "query": "select dalia.m6_cycle('M6.03') as report;",
+          "options": {}
+        },
+        "id": "e8aec854-8bb4-4a7c-9671-9118771cdec9",
+        "name": "Ciclo de SLA y control",
+        "type": "n8n-nodes-base.postgres",
+        "typeVersion": 2.7,
+        "position": [
+          224,
+          0
+        ],
+        "credentials": {
+          "postgres": {
+            "id": "HfCgVAjUygK1vrkU",
+            "name": "DALIA dev Supabase"
+          }
+        }
+      },
+      {
+        "parameters": {
+          "inputSource": "passthrough"
+        },
+        "id": "572437d6-a2d0-4fa8-9f9b-a56dcc28cfc4",
+        "name": "Job recibido",
+        "type": "n8n-nodes-base.executeWorkflowTrigger",
+        "typeVersion": 1.2,
+        "position": [
+          0,
+          688
+        ]
+      },
+      {
+        "parameters": {
+          "rules": {
+            "values": [
+              {
+                "conditions": {
+                  "options": {
+                    "caseSensitive": true,
+                    "leftValue": "",
+                    "typeValidation": "strict",
+                    "version": 1
+                  },
+                  "conditions": [
+                    {
+                      "leftValue": "={{ $json.type }}",
+                      "operator": {
+                        "type": "string",
+                        "operation": "equals"
+                      },
+                      "rightValue": "m6.sla_check"
+                    }
+                  ],
+                  "combinator": "and"
+                }
+              },
+              {
+                "conditions": {
+                  "options": {
+                    "caseSensitive": true,
+                    "leftValue": "",
+                    "typeValidation": "strict",
+                    "version": 1
+                  },
+                  "conditions": [
+                    {
+                      "leftValue": "={{ $json.type }}",
+                      "operator": {
+                        "type": "string",
+                        "operation": "equals"
+                      },
+                      "rightValue": "m6.lease_check"
+                    }
+                  ],
+                  "combinator": "and"
+                }
+              },
+              {
+                "conditions": {
+                  "options": {
+                    "caseSensitive": true,
+                    "leftValue": "",
+                    "typeValidation": "strict",
+                    "version": 1
+                  },
+                  "conditions": [
+                    {
+                      "leftValue": "={{ $json.type }}",
+                      "operator": {
+                        "type": "string",
+                        "operation": "equals"
+                      },
+                      "rightValue": "m6.sync"
+                    }
+                  ],
+                  "combinator": "and"
+                }
+              },
+              {
+                "conditions": {
+                  "options": {
+                    "caseSensitive": true,
+                    "leftValue": "",
+                    "typeValidation": "strict",
+                    "version": 1
+                  },
+                  "conditions": [
+                    {
+                      "leftValue": "={{ $json.type }}",
+                      "operator": {
+                        "type": "string",
+                        "operation": "equals"
+                      },
+                      "rightValue": "m6.privacy_erase"
+                    }
+                  ],
+                  "combinator": "and"
+                }
+              }
+            ]
+          },
+          "options": {
+            "fallbackOutput": "extra",
+            "renameFallbackOutput": "Desconocido"
+          }
+        },
+        "id": "03c638e7-2c85-413e-8135-45f9e350f09d",
+        "name": "Tipo de job",
+        "type": "n8n-nodes-base.switch",
+        "typeVersion": 3.2,
+        "position": [
+          224,
+          640
+        ]
+      },
+      {
+        "parameters": {
+          "operation": "executeQuery",
+          "query": "select dalia.m6_cycle('job') as result;",
+          "options": {}
+        },
+        "id": "9a281785-a2d7-4b50-9f67-86beaa4a8127",
+        "name": "Revisar SLA y control",
+        "type": "n8n-nodes-base.postgres",
+        "typeVersion": 2.7,
+        "position": [
+          1568,
+          224
+        ],
+        "credentials": {
+          "postgres": {
+            "id": "HfCgVAjUygK1vrkU",
+            "name": "DALIA dev Supabase"
+          }
+        }
+      },
+      {
+        "parameters": {
+          "operation": "executeQuery",
+          "query": "select dalia.sys_complete_job($1::uuid, $2::jsonb) as job_status;",
+          "options": {
+            "queryReplacement": "={{ [ $(\"Job recibido\").item.json.job_id, JSON.stringify($json.result ?? $json.step ?? {}) ] }}"
+          }
+        },
+        "id": "8e3be049-a609-49ea-a432-9ccaa5028c6c",
+        "name": "Completar job",
+        "type": "n8n-nodes-base.postgres",
+        "typeVersion": 2.7,
+        "position": [
+          1792,
+          544
+        ],
+        "credentials": {
+          "postgres": {
+            "id": "HfCgVAjUygK1vrkU",
+            "name": "DALIA dev Supabase"
+          }
+        }
+      },
+      {
+        "parameters": {
+          "operation": "executeQuery",
+          "query": "select dalia.m6_sync_next($1::jsonb) as step;",
+          "options": {
+            "queryReplacement": "={{ [ JSON.stringify($json.payload ?? {}) ] }}"
+          }
+        },
+        "id": "8b09ea80-627e-4507-b07b-32a1f6b3de2e",
+        "name": "Siguiente paso de sincronizacion",
+        "type": "n8n-nodes-base.postgres",
+        "typeVersion": 2.7,
+        "position": [
+          448,
+          544
+        ],
+        "credentials": {
+          "postgres": {
+            "id": "HfCgVAjUygK1vrkU",
+            "name": "DALIA dev Supabase"
+          }
+        },
+        "onError": "continueErrorOutput"
+      },
+      {
+        "parameters": {
+          "conditions": {
+            "options": {
+              "caseSensitive": true,
+              "leftValue": "",
+              "typeValidation": "loose",
+              "version": 1
+            },
+            "conditions": [
+              {
+                "leftValue": "={{ $json.step.action === \"port\" }}",
+                "operator": {
+                  "type": "boolean",
+                  "operation": "true",
+                  "singleValue": true
+                }
+              }
+            ],
+            "combinator": "and"
+          },
+          "options": {}
+        },
+        "id": "ea712ac8-3b9a-4d8b-b992-77953d57cb19",
+        "name": "Requiere puerto",
+        "type": "n8n-nodes-base.if",
+        "typeVersion": 2.2,
+        "position": [
+          672,
+          464
+        ]
+      },
+      {
+        "parameters": {
+          "assignments": {
+            "assignments": [
+              {
+                "id": "p1",
+                "name": "port",
+                "value": "={{ $json.step.port_request.port }}",
+                "type": "string"
+              },
+              {
+                "id": "p2",
+                "name": "operation",
+                "value": "={{ $json.step.port_request.operation }}",
+                "type": "string"
+              },
+              {
+                "id": "p3",
+                "name": "input",
+                "value": "={{ $json.step.port_request.input }}",
+                "type": "object"
+              },
+              {
+                "id": "p4",
+                "name": "envelope",
+                "value": "={{ $json.step.port_request.envelope ?? {} }}",
+                "type": "object"
+              }
+            ]
+          },
+          "options": {}
+        },
+        "id": "f4c8a585-9962-44a8-8bd3-49b411ac20c1",
+        "name": "Preparar llamada a la consola",
+        "type": "n8n-nodes-base.set",
+        "typeVersion": 3.4,
+        "position": [
+          896,
+          416
+        ]
+      },
+      {
+        "parameters": {
+          "workflowId": {
+            "__rl": true,
+            "mode": "id",
+            "value": "5gbpWhv0zIA8bZ0w"
+          },
+          "mode": "each",
+          "options": {
+            "waitForSubWorkflow": true
+          }
+        },
+        "id": "43ad912e-1b25-4c75-94d1-d77e31e46757",
+        "name": "Consola por INT.port",
+        "type": "n8n-nodes-base.executeWorkflow",
+        "typeVersion": 1.3,
+        "position": [
+          1120,
+          416
+        ]
+      },
+      {
+        "parameters": {
+          "operation": "executeQuery",
+          "query": "select dalia.m6_sync_applied($1::jsonb, $2::jsonb, $3::jsonb) as result;",
+          "options": {
+            "queryReplacement": "={{ [ JSON.stringify($(\"Job recibido\").item.json.payload ?? {}), JSON.stringify($(\"Siguiente paso de sincronizacion\").item.json.step), JSON.stringify($json) ] }}"
+          }
+        },
+        "id": "ea2a0d38-d6c7-417f-9c99-db216e5dfc45",
+        "name": "Aplicar resultado",
+        "type": "n8n-nodes-base.postgres",
+        "typeVersion": 2.7,
+        "position": [
+          1344,
+          416
+        ],
+        "credentials": {
+          "postgres": {
+            "id": "HfCgVAjUygK1vrkU",
+            "name": "DALIA dev Supabase"
+          }
+        }
+      },
+      {
+        "parameters": {
+          "conditions": {
+            "options": {
+              "caseSensitive": true,
+              "leftValue": "",
+              "typeValidation": "loose",
+              "version": 1
+            },
+            "conditions": [
+              {
+                "leftValue": "={{ $json.result.job === \"retry\" }}",
+                "operator": {
+                  "type": "boolean",
+                  "operation": "true",
+                  "singleValue": true
+                }
+              }
+            ],
+            "combinator": "and"
+          },
+          "options": {}
+        },
+        "id": "f396d63e-d7d9-4bbc-9b7d-f11a21d69783",
+        "name": "Reintentar",
+        "type": "n8n-nodes-base.if",
+        "typeVersion": 2.2,
+        "position": [
+          1568,
+          416
+        ]
+      },
+      {
+        "parameters": {
+          "operation": "executeQuery",
+          "query": "select dalia.sys_fail_job($1::uuid, $2::jsonb, true) as job_status;",
+          "options": {
+            "queryReplacement": "={{ [ $(\"Job recibido\").item.json.job_id, JSON.stringify({ code: $json.result?.status ?? \"HANDLER_ERROR\", message: $json.error?.message ?? $json.result?.error?.message ?? $json.error ?? \"reintentar\" }) ] }}"
+          }
+        },
+        "id": "1ce1a046-f16c-495a-9544-0e19903813f2",
+        "name": "Fallar job (reintentable)",
+        "type": "n8n-nodes-base.postgres",
+        "typeVersion": 2.7,
+        "position": [
+          1792,
+          736
+        ],
+        "credentials": {
+          "postgres": {
+            "id": "HfCgVAjUygK1vrkU",
+            "name": "DALIA dev Supabase"
+          }
+        }
+      },
+      {
+        "parameters": {
+          "operation": "executeQuery",
+          "query": "select dalia.m6_privacy_erase($1::jsonb) as result;",
+          "options": {
+            "queryReplacement": "={{ [ JSON.stringify($json.payload ?? {}) ] }}"
+          }
+        },
+        "id": "c52eb139-0d7a-421a-b7b6-eafb7fb34cf5",
+        "name": "Olvidar casos del contacto",
+        "type": "n8n-nodes-base.postgres",
+        "typeVersion": 2.7,
+        "position": [
+          1568,
+          896
+        ],
+        "credentials": {
+          "postgres": {
+            "id": "HfCgVAjUygK1vrkU",
+            "name": "DALIA dev Supabase"
+          }
+        },
+        "onError": "continueErrorOutput"
+      },
+      {
+        "parameters": {
+          "operation": "executeQuery",
+          "query": "select dalia.sys_fail_job($1::uuid, $2::jsonb, false) as job_status;",
+          "options": {
+            "queryReplacement": "={{ [ $json.job_id, JSON.stringify({ code: \"UNKNOWN_JOB_TYPE\", message: $json.type }) ] }}"
+          }
+        },
+        "id": "6cb82eec-e981-4fda-be4d-03017ae41da9",
+        "name": "Fallar job (tipo desconocido)",
+        "type": "n8n-nodes-base.postgres",
+        "typeVersion": 2.7,
+        "position": [
+          448,
+          1040
+        ],
+        "credentials": {
+          "postgres": {
+            "id": "HfCgVAjUygK1vrkU",
+            "name": "DALIA dev Supabase"
+          }
+        }
+      }
+    ],
+    "connections": {
+      "Cada 5 minutos": {
+        "main": [
+          [
+            {
+              "node": "Ciclo de SLA y control",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Job recibido": {
+        "main": [
+          [
+            {
+              "node": "Tipo de job",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Tipo de job": {
+        "main": [
+          [
+            {
+              "node": "Revisar SLA y control",
+              "type": "main",
+              "index": 0
+            }
+          ],
+          [
+            {
+              "node": "Revisar SLA y control",
+              "type": "main",
+              "index": 0
+            }
+          ],
+          [
+            {
+              "node": "Siguiente paso de sincronizacion",
+              "type": "main",
+              "index": 0
+            }
+          ],
+          [
+            {
+              "node": "Olvidar casos del contacto",
+              "type": "main",
+              "index": 0
+            }
+          ],
+          [
+            {
+              "node": "Fallar job (tipo desconocido)",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Revisar SLA y control": {
+        "main": [
+          [
+            {
+              "node": "Completar job",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Siguiente paso de sincronizacion": {
+        "main": [
+          [
+            {
+              "node": "Requiere puerto",
+              "type": "main",
+              "index": 0
+            }
+          ],
+          [
+            {
+              "node": "Fallar job (reintentable)",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Requiere puerto": {
+        "main": [
+          [
+            {
+              "node": "Preparar llamada a la consola",
+              "type": "main",
+              "index": 0
+            }
+          ],
+          [
+            {
+              "node": "Completar job",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Preparar llamada a la consola": {
+        "main": [
+          [
+            {
+              "node": "Consola por INT.port",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Consola por INT.port": {
+        "main": [
+          [
+            {
+              "node": "Aplicar resultado",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Aplicar resultado": {
+        "main": [
+          [
+            {
+              "node": "Reintentar",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Reintentar": {
+        "main": [
+          [
+            {
+              "node": "Fallar job (reintentable)",
+              "type": "main",
+              "index": 0
+            }
+          ],
+          [
+            {
+              "node": "Completar job",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Olvidar casos del contacto": {
+        "main": [
+          [
+            {
+              "node": "Completar job",
+              "type": "main",
+              "index": 0
+            }
+          ],
+          [
+            {
+              "node": "Fallar job (reintentable)",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      }
+    },
+    "nodeGroups": [],
+    "authors": "Fabian Bocanegra",
+    "name": "Version 588ad820",
+    "description": "",
+    "autosaved": true,
+    "createdAt": "2026-10-05T16:53:19.775Z",
+    "updatedAt": "2026-10-05T16:53:22.000Z"
+  }
+}
