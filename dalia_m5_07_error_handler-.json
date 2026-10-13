@@ -1,0 +1,58 @@
+{
+  "id": "ozB4o5WADOPPcKmv",
+  "name": "DALIA_M5_07_Error_Handler",
+  "active": false,
+  "activeVersionId": null,
+  "createdAt": "2026-08-21T03:45:15.778Z",
+  "updatedAt": "2026-08-21T03:48:47.701Z",
+  "isArchived": false,
+  "versionId": "1c4e483c-3f7c-4ac1-a686-495c9aedd5d2",
+  "triggerCount": 0,
+  "nodes": [
+    {
+      "parameters": {},
+      "id": "e0d8addf-629f-41e6-b9ad-23062ab824f3",
+      "name": "M5_07_Input",
+      "type": "n8n-nodes-base.subworkflowTrigger",
+      "typeVersion": 1,
+      "position": [
+        0,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const payload = $input.first().json;\nconst error = payload.error || {};\nconst transaction = payload.transaction || {};\nconst trace = payload.trace || {};\n\nfunction classifyError(error_obj) {\n  const code = error_obj.code || 'UNKNOWN_ERROR';\n  const category = error_obj.category || 'unknown';\n  \n  const error_classes = {\n    'PRETRANSACTION_DATA_INCONSISTENT': { class: 'validation', severity: 'critical', retryable: false },\n    'INVOICING_CONFIGURATION_INCOMPLETE': { class: 'configuration', severity: 'high', retryable: false },\n    'FULFILLMENT_CONFIGURATION_INCOMPLETE': { class: 'configuration', severity: 'high', retryable: false },\n    'TRANSACTION_NOT_READY_FOR_COMPLETION': { class: 'business_rule', severity: 'high', retryable: false },\n    'PAYMENT_PROCESSING_FAILED': { class: 'external_service', severity: 'critical', retryable: true },\n    'ORDER_CREATION_FAILED': { class: 'external_service', severity: 'high', retryable: true },\n    'INVOICE_CREATION_FAILED': { class: 'external_service', severity: 'medium', retryable: true },\n    'SHIPMENT_CREATION_FAILED': { class: 'external_service', severity: 'medium', retryable: true },\n    'DATABASE_CONNECTION_ERROR': { class: 'infrastructure', severity: 'critical', retryable: true },\n    'TIMEOUT_ERROR': { class: 'infrastructure', severity: 'medium', retryable: true },\n    'INVALID_CONFIGURATION': { class: 'configuration', severity: 'critical', retryable: false },\n    'AUTHENTICATION_FAILED': { class: 'security', severity: 'critical', retryable: false },\n    'DUPLICATE_OPERATION': { class: 'idempotency', severity: 'medium', retryable: false }\n  };\n  \n  return error_classes[code] || { class: category, severity: 'unknown', retryable: true };\n}\n\nfunction determineRecoveryStrategy(classification, error_obj) {\n  const strategy = {\n    action: 'none',\n    retry_count: 0,\n    retry_delay_seconds: 0,\n    escalate_to_human: false,\n    rollback_required: false,\n    webhook_notification: true\n  };\n  \n  if (classification.retryable && error_obj.retryable !== false) {\n    if (classification.class === 'external_service') {\n      strategy.action = 'retry';\n      strategy.retry_count = 3;\n      strategy.retry_delay_seconds = 60;\n    } else if (classification.class === 'infrastructure') {\n      strategy.action = 'retry';\n      strategy.retry_count = 5;\n      strategy.retry_delay_seconds = 30;\n    }\n  }\n  \n  if (classification.severity === 'critical' || classification.class === 'validation') {\n    strategy.escalate_to_human = true;\n  }\n  \n  if (classification.class === 'external_service' && !classification.retryable) {\n    strategy.escalate_to_human = true;\n  }\n  \n  return strategy;\n}\n\nfunction buildErrorNotification(error_obj, classification, strategy) {\n  const now = new Date();\n  \n  return {\n    error_id: `err_${transaction.id}_${now.getTime()}`,\n    timestamp: now.toISOString(),\n    transaction_id: transaction.id,\n    error: {\n      code: error_obj.code,\n      category: error_obj.category,\n      message: error_obj.message,\n      details: error_obj.details || {}\n    },\n    classification: {\n      error_class: classification.class,\n      severity: classification.severity,\n      retryable: classification.retryable\n    },\n    recovery: strategy,\n    trace: {\n      trace_id: trace.trace_id,\n      request_id: trace.request_id,\n      originating_workflow: trace.workflow,\n      originating_stage: trace.stage\n    }\n  };\n}\n\nconst classification = classifyError(error);\nconst strategy = determineRecoveryStrategy(classification, error);\nconst notification = buildErrorNotification(error, classification, strategy);\n\nlet next_action = 'handle_error';\nlet new_status = 'failed';\n\nif (strategy.escalate_to_human) {\n  next_action = 'handoff_to_human';\n  new_status = 'escalated';\n} else if (strategy.action === 'retry') {\n  next_action = 'retry_operation';\n  new_status = transaction.status || 'error_retry_pending';\n} else {\n  new_status = 'failed';\n}\n\nreturn [{\n  json: {\n    result: {\n      success: false,\n      outcome: 'error_handled'\n    },\n    transaction: {\n      transaction_id: transaction.id,\n      previous_status: transaction.status,\n      current_status: new_status,\n      sub_status: null,\n      next_action: next_action\n    },\n    route: {\n      selected_flow: 'DALIA_M5_Commerce_Orchestrator',\n      effective_action: 'handle_error',\n      reason: `error_${classification.class}_${classification.severity}`\n    },\n    response: {\n      message_required: strategy.escalate_to_human,\n      message_type: strategy.escalate_to_human ? 'error_escalation' : null,\n      reply_text: strategy.escalate_to_human ? `Se ha encontrado un error en tu compra y será revisada por nuestro equipo. Código: ${error.code}` : null,\n      requested_fields: []\n    },\n    data: {\n      error_handling: notification\n    },\n    error: null,\n    trace: {\n      trace_id: trace.trace_id || null,\n      request_id: trace.request_id || null,\n      workflow: 'DALIA_M5_07_Error_Handler',\n      stage: 'error_classified_and_handled',\n      processed_at: new Date().toISOString()\n    }\n  }\n}];"
+      },
+      "id": "0f5af57f-2883-4c4c-834b-16b26d2ba867",
+      "name": "01_Classify_And_Handle_Error",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        0,
+        224
+      ]
+    }
+  ],
+  "connections": {},
+  "nodeGroups": [],
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate",
+    "availableInMCP": false
+  },
+  "staticData": null,
+  "pinData": {},
+  "meta": null,
+  "tags": [],
+  "shared": [
+    {
+      "role": "workflow:owner",
+      "workflowId": "ozB4o5WADOPPcKmv",
+      "projectId": "8h8pwWGcWlnGEym3",
+      "createdAt": "2026-08-21T03:45:15.779Z",
+      "updatedAt": "2026-08-21T03:45:15.779Z"
+    }
+  ],
+  "activeVersion": null
+}
