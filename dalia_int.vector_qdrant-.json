@@ -1,0 +1,477 @@
+{
+  "id": "FI2OlRN7jHXhy2M6",
+  "name": "DALIA_INT.vector_qdrant",
+  "active": true,
+  "activeVersionId": "353ad6e7-5adc-4b40-afc5-2ac14d3ab0d7",
+  "createdAt": "2026-10-03T03:25:42.499Z",
+  "updatedAt": "2026-10-03T16:46:53.062Z",
+  "isArchived": false,
+  "versionId": "353ad6e7-5adc-4b40-afc5-2ac14d3ab0d7",
+  "triggerCount": 0,
+  "nodes": [
+    {
+      "id": "a7b88d83-0a8e-43f0-8474-35669500b161",
+      "name": "Solicitud del puerto",
+      "type": "n8n-nodes-base.executeWorkflowTrigger",
+      "typeVersion": 1.2,
+      "position": [
+        0,
+        192
+      ],
+      "parameters": {
+        "inputSource": "passthrough"
+      }
+    },
+    {
+      "id": "ea00c73c-7b78-4453-aa0f-6995fa47b606",
+      "name": "Construir solicitud Qdrant",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        224,
+        192
+      ],
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "jsCode": "// Construye la solicitud REST a Qdrant según la operación del puerto vector\nconst r = $json;\nconst s = r.settings || {};\nconst inp = r.input || {};\nconst base = (s.url || '').replace(/\\/$/, '');\nconst fail = (code, message) => ({ json: { skip: true, status: 'PERMANENT_ERROR', error: { code, message } } });\nif (!base) return fail('VALIDATION', 'settings.url del puerto vector no está configurado');\nconst collection = (s.collections || {})[inp.collection_key];\nif (!collection) return fail('VALIDATION', 'collection_key desconocida: ' + inp.collection_key + ' (use una de settings.collections)');\nconst c = encodeURIComponent(collection);\nlet method, path, body = null;\nswitch (r.operation) {\n  case 'ensure_collection':\n    method = 'PUT'; path = '/collections/' + c;\n    body = { vectors: { size: inp.vector_size || s.vector_size, distance: inp.distance || 'Cosine' } };\n    break;\n  case 'create_payload_index':\n    method = 'PUT'; path = '/collections/' + c + '/index?wait=true';\n    body = { field_name: inp.field_name, field_schema: inp.field_schema || 'keyword' };\n    break;\n  case 'upsert':\n    method = 'PUT'; path = '/collections/' + c + '/points?wait=true';\n    body = { points: inp.points || [] };\n    break;\n  case 'search':\n    method = 'POST'; path = '/collections/' + c + '/points/query';\n    body = { query: inp.vector, limit: inp.limit || 5, with_payload: true };\n    if (inp.filter) body.filter = inp.filter;\n    if (inp.score_threshold !== undefined && inp.score_threshold !== null) body.score_threshold = inp.score_threshold;\n    break;\n  case 'delete':\n    method = 'POST'; path = '/collections/' + c + '/points/delete?wait=true';\n    body = inp.ids ? { points: inp.ids } : { filter: inp.filter };\n    if (!inp.ids && !inp.filter) return fail('VALIDATION', 'delete requiere ids o filter');\n    break;\n  case 'scroll':\n    method = 'POST'; path = '/collections/' + c + '/points/scroll';\n    body = { limit: Math.min(inp.limit || 100, 1000), with_payload: true, with_vector: inp.with_vector === true };\n    if (inp.offset !== undefined && inp.offset !== null) body.offset = inp.offset;\n    if (inp.filter) body.filter = inp.filter;\n    break;\n  case 'count':\n    method = 'POST'; path = '/collections/' + c + '/points/count';\n    body = { exact: true };\n    if (inp.filter) body.filter = inp.filter;\n    break;\n  default:\n    return { json: { skip: true, status: 'NOT_SUPPORTED', error: { code: 'OPERATION_NOT_SUPPORTED', message: 'vector.' + r.operation } } };\n}\nreturn { json: { skip: false, method, url: base + path, body, collection, timeout_ms: s.timeout_ms || 5000 } };"
+      }
+    },
+    {
+      "id": "47e94c1f-b031-498f-9ecf-1241516756b6",
+      "name": "Solicitud ejecutable",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        448,
+        192
+      ],
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose"
+          },
+          "conditions": [
+            {
+              "leftValue": "={{ $json.skip === false }}",
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        }
+      }
+    },
+    {
+      "id": "bdf20c30-bb30-4fb3-be6e-3cb546430cb5",
+      "name": "Llamar a Qdrant",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.5,
+      "position": [
+        672,
+        96
+      ],
+      "parameters": {
+        "method": "={{ $json.method }}",
+        "url": "={{ $json.url }}",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "qdrantApi",
+        "sendBody": true,
+        "contentType": "json",
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify($json.body) }}",
+        "options": {
+          "timeout": "={{ $json.timeout_ms }}",
+          "response": {
+            "response": {
+              "fullResponse": true,
+              "neverError": true,
+              "responseFormat": "json"
+            }
+          }
+        }
+      },
+      "credentials": {
+        "qdrantApi": {
+          "id": "dgYmPbXNu5crRRiP",
+          "name": "Qdrant account 4"
+        }
+      },
+      "onError": "continueErrorOutput"
+    },
+    {
+      "id": "852fae4c-7c05-44fe-8f5a-9e96284bf07a",
+      "name": "Normalizar respuesta",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        896,
+        0
+      ],
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "jsCode": "// Normaliza la respuesta de Qdrant al contrato del puerto vector\nconst req = $('Solicitud del puerto').item.json;\nconst built = $('Construir solicitud Qdrant').item.json;\nconst res = $json;\nconst code = res.statusCode;\nconst body = res.body || {};\nconst op = req.operation;\nif (code >= 200 && code < 300) {\n  let data;\n  if (op === 'search') {\n    const points = body.result?.points || body.result || [];\n    data = { collection: built.collection, hits: points.map(p => ({ id: p.id, score: p.score, payload: p.payload || {} })) };\n  } else if (op === 'scroll') {\n    const points = body.result?.points || [];\n    data = { collection: built.collection, points: points.map(p => ({ id: p.id, payload: p.payload || {}, vector: p.vector ?? null })), next_offset: body.result?.next_page_offset ?? null };\n  } else if (op === 'count') {\n    data = { collection: built.collection, count: body.result?.count ?? 0 };\n  } else {\n    data = { collection: built.collection, result: body.result ?? true };\n  }\n  return { json: { status: 'OK', data, error: null } };\n}\nconst text = JSON.stringify(body);\nif (op === 'ensure_collection' && (code === 409 || /already exists/i.test(text))) {\n  return { json: { status: 'OK', data: { collection: built.collection, result: 'already_exists' }, error: null } };\n}\nif (code === 404) return { json: { status: 'NOT_FOUND', data: null, error: { code: 'COLLECTION_NOT_FOUND', message: text, http_status: code } } };\nconst retry = code === 408 || code === 429 || code >= 500;\nreturn { json: { status: retry ? 'RETRYABLE_ERROR' : 'PERMANENT_ERROR', data: null, error: { code: 'HTTP_' + code, message: body.status?.error || text, http_status: code } } };"
+      }
+    },
+    {
+      "id": "07e5935b-885b-49dc-a09e-61f4d014894f",
+      "name": "Solicitud no ejecutable",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        672,
+        288
+      ],
+      "parameters": {
+        "mode": "manual",
+        "includeOtherFields": false,
+        "assignments": {
+          "assignments": [
+            {
+              "id": "n1",
+              "name": "status",
+              "value": "={{ $json.status }}",
+              "type": "string"
+            },
+            {
+              "id": "n2",
+              "name": "error",
+              "value": "={{ $json.error }}",
+              "type": "object"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "e433d3b9-2614-4ca7-bd61-a6dce29a60f3",
+      "name": "Clasificar fallo",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        896,
+        192
+      ],
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "jsCode": "// Timeout o error de red en una operación NO sensible: reintentable\nconst msg = $json.error?.message ?? String($json.error ?? 'error de red');\nreturn { json: { status: 'RETRYABLE_ERROR', data: null, error: { code: /timeout/i.test(msg) ? 'TIMEOUT' : 'NETWORK_ERROR', message: msg } } };"
+      }
+    }
+  ],
+  "connections": {
+    "Solicitud del puerto": {
+      "main": [
+        [
+          {
+            "node": "Construir solicitud Qdrant",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Construir solicitud Qdrant": {
+      "main": [
+        [
+          {
+            "node": "Solicitud ejecutable",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Solicitud ejecutable": {
+      "main": [
+        [
+          {
+            "node": "Llamar a Qdrant",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Solicitud no ejecutable",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Llamar a Qdrant": {
+      "main": [
+        [
+          {
+            "node": "Normalizar respuesta",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Clasificar fallo",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "nodeGroups": [],
+  "settings": {
+    "executionOrder": "v1",
+    "availableInMCP": true,
+    "errorWorkflow": "cjjQno2MxMTT3Icc",
+    "timezone": "America/Bogota",
+    "saveManualExecutions": true,
+    "saveDataErrorExecution": "all",
+    "saveDataSuccessExecution": "all",
+    "callerPolicy": "workflowsFromSameOwner"
+  },
+  "staticData": null,
+  "pinData": null,
+  "meta": {
+    "aiBuilderAssisted": true,
+    "builderVariant": "mcp"
+  },
+  "tags": [],
+  "shared": [
+    {
+      "role": "workflow:owner",
+      "workflowId": "FI2OlRN7jHXhy2M6",
+      "projectId": "tRHCC8ts4mkRGXGn",
+      "createdAt": "2026-10-09T21:09:17.768Z",
+      "updatedAt": "2026-10-09T21:09:17.768Z"
+    }
+  ],
+  "activeVersion": {
+    "versionId": "353ad6e7-5adc-4b40-afc5-2ac14d3ab0d7",
+    "workflowId": "FI2OlRN7jHXhy2M6",
+    "nodes": [
+      {
+        "id": "a7b88d83-0a8e-43f0-8474-35669500b161",
+        "name": "Solicitud del puerto",
+        "type": "n8n-nodes-base.executeWorkflowTrigger",
+        "typeVersion": 1.2,
+        "position": [
+          0,
+          192
+        ],
+        "parameters": {
+          "inputSource": "passthrough"
+        }
+      },
+      {
+        "id": "ea00c73c-7b78-4453-aa0f-6995fa47b606",
+        "name": "Construir solicitud Qdrant",
+        "type": "n8n-nodes-base.code",
+        "typeVersion": 2,
+        "position": [
+          224,
+          192
+        ],
+        "parameters": {
+          "mode": "runOnceForEachItem",
+          "jsCode": "// Construye la solicitud REST a Qdrant según la operación del puerto vector\nconst r = $json;\nconst s = r.settings || {};\nconst inp = r.input || {};\nconst base = (s.url || '').replace(/\\/$/, '');\nconst fail = (code, message) => ({ json: { skip: true, status: 'PERMANENT_ERROR', error: { code, message } } });\nif (!base) return fail('VALIDATION', 'settings.url del puerto vector no está configurado');\nconst collection = (s.collections || {})[inp.collection_key];\nif (!collection) return fail('VALIDATION', 'collection_key desconocida: ' + inp.collection_key + ' (use una de settings.collections)');\nconst c = encodeURIComponent(collection);\nlet method, path, body = null;\nswitch (r.operation) {\n  case 'ensure_collection':\n    method = 'PUT'; path = '/collections/' + c;\n    body = { vectors: { size: inp.vector_size || s.vector_size, distance: inp.distance || 'Cosine' } };\n    break;\n  case 'create_payload_index':\n    method = 'PUT'; path = '/collections/' + c + '/index?wait=true';\n    body = { field_name: inp.field_name, field_schema: inp.field_schema || 'keyword' };\n    break;\n  case 'upsert':\n    method = 'PUT'; path = '/collections/' + c + '/points?wait=true';\n    body = { points: inp.points || [] };\n    break;\n  case 'search':\n    method = 'POST'; path = '/collections/' + c + '/points/query';\n    body = { query: inp.vector, limit: inp.limit || 5, with_payload: true };\n    if (inp.filter) body.filter = inp.filter;\n    if (inp.score_threshold !== undefined && inp.score_threshold !== null) body.score_threshold = inp.score_threshold;\n    break;\n  case 'delete':\n    method = 'POST'; path = '/collections/' + c + '/points/delete?wait=true';\n    body = inp.ids ? { points: inp.ids } : { filter: inp.filter };\n    if (!inp.ids && !inp.filter) return fail('VALIDATION', 'delete requiere ids o filter');\n    break;\n  case 'scroll':\n    method = 'POST'; path = '/collections/' + c + '/points/scroll';\n    body = { limit: Math.min(inp.limit || 100, 1000), with_payload: true, with_vector: inp.with_vector === true };\n    if (inp.offset !== undefined && inp.offset !== null) body.offset = inp.offset;\n    if (inp.filter) body.filter = inp.filter;\n    break;\n  case 'count':\n    method = 'POST'; path = '/collections/' + c + '/points/count';\n    body = { exact: true };\n    if (inp.filter) body.filter = inp.filter;\n    break;\n  default:\n    return { json: { skip: true, status: 'NOT_SUPPORTED', error: { code: 'OPERATION_NOT_SUPPORTED', message: 'vector.' + r.operation } } };\n}\nreturn { json: { skip: false, method, url: base + path, body, collection, timeout_ms: s.timeout_ms || 5000 } };"
+        }
+      },
+      {
+        "id": "47e94c1f-b031-498f-9ecf-1241516756b6",
+        "name": "Solicitud ejecutable",
+        "type": "n8n-nodes-base.if",
+        "typeVersion": 2.2,
+        "position": [
+          448,
+          192
+        ],
+        "parameters": {
+          "conditions": {
+            "options": {
+              "caseSensitive": true,
+              "leftValue": "",
+              "typeValidation": "loose"
+            },
+            "conditions": [
+              {
+                "leftValue": "={{ $json.skip === false }}",
+                "operator": {
+                  "type": "boolean",
+                  "operation": "true",
+                  "singleValue": true
+                }
+              }
+            ],
+            "combinator": "and"
+          }
+        }
+      },
+      {
+        "id": "bdf20c30-bb30-4fb3-be6e-3cb546430cb5",
+        "name": "Llamar a Qdrant",
+        "type": "n8n-nodes-base.httpRequest",
+        "typeVersion": 4.5,
+        "position": [
+          672,
+          96
+        ],
+        "parameters": {
+          "method": "={{ $json.method }}",
+          "url": "={{ $json.url }}",
+          "authentication": "predefinedCredentialType",
+          "nodeCredentialType": "qdrantApi",
+          "sendBody": true,
+          "contentType": "json",
+          "specifyBody": "json",
+          "jsonBody": "={{ JSON.stringify($json.body) }}",
+          "options": {
+            "timeout": "={{ $json.timeout_ms }}",
+            "response": {
+              "response": {
+                "fullResponse": true,
+                "neverError": true,
+                "responseFormat": "json"
+              }
+            }
+          }
+        },
+        "credentials": {
+          "qdrantApi": {
+            "id": "dgYmPbXNu5crRRiP",
+            "name": "Qdrant account 4"
+          }
+        },
+        "onError": "continueErrorOutput"
+      },
+      {
+        "id": "852fae4c-7c05-44fe-8f5a-9e96284bf07a",
+        "name": "Normalizar respuesta",
+        "type": "n8n-nodes-base.code",
+        "typeVersion": 2,
+        "position": [
+          896,
+          0
+        ],
+        "parameters": {
+          "mode": "runOnceForEachItem",
+          "jsCode": "// Normaliza la respuesta de Qdrant al contrato del puerto vector\nconst req = $('Solicitud del puerto').item.json;\nconst built = $('Construir solicitud Qdrant').item.json;\nconst res = $json;\nconst code = res.statusCode;\nconst body = res.body || {};\nconst op = req.operation;\nif (code >= 200 && code < 300) {\n  let data;\n  if (op === 'search') {\n    const points = body.result?.points || body.result || [];\n    data = { collection: built.collection, hits: points.map(p => ({ id: p.id, score: p.score, payload: p.payload || {} })) };\n  } else if (op === 'scroll') {\n    const points = body.result?.points || [];\n    data = { collection: built.collection, points: points.map(p => ({ id: p.id, payload: p.payload || {}, vector: p.vector ?? null })), next_offset: body.result?.next_page_offset ?? null };\n  } else if (op === 'count') {\n    data = { collection: built.collection, count: body.result?.count ?? 0 };\n  } else {\n    data = { collection: built.collection, result: body.result ?? true };\n  }\n  return { json: { status: 'OK', data, error: null } };\n}\nconst text = JSON.stringify(body);\nif (op === 'ensure_collection' && (code === 409 || /already exists/i.test(text))) {\n  return { json: { status: 'OK', data: { collection: built.collection, result: 'already_exists' }, error: null } };\n}\nif (code === 404) return { json: { status: 'NOT_FOUND', data: null, error: { code: 'COLLECTION_NOT_FOUND', message: text, http_status: code } } };\nconst retry = code === 408 || code === 429 || code >= 500;\nreturn { json: { status: retry ? 'RETRYABLE_ERROR' : 'PERMANENT_ERROR', data: null, error: { code: 'HTTP_' + code, message: body.status?.error || text, http_status: code } } };"
+        }
+      },
+      {
+        "id": "07e5935b-885b-49dc-a09e-61f4d014894f",
+        "name": "Solicitud no ejecutable",
+        "type": "n8n-nodes-base.set",
+        "typeVersion": 3.4,
+        "position": [
+          672,
+          288
+        ],
+        "parameters": {
+          "mode": "manual",
+          "includeOtherFields": false,
+          "assignments": {
+            "assignments": [
+              {
+                "id": "n1",
+                "name": "status",
+                "value": "={{ $json.status }}",
+                "type": "string"
+              },
+              {
+                "id": "n2",
+                "name": "error",
+                "value": "={{ $json.error }}",
+                "type": "object"
+              }
+            ]
+          }
+        }
+      },
+      {
+        "id": "e433d3b9-2614-4ca7-bd61-a6dce29a60f3",
+        "name": "Clasificar fallo",
+        "type": "n8n-nodes-base.code",
+        "typeVersion": 2,
+        "position": [
+          896,
+          192
+        ],
+        "parameters": {
+          "mode": "runOnceForEachItem",
+          "jsCode": "// Timeout o error de red en una operación NO sensible: reintentable\nconst msg = $json.error?.message ?? String($json.error ?? 'error de red');\nreturn { json: { status: 'RETRYABLE_ERROR', data: null, error: { code: /timeout/i.test(msg) ? 'TIMEOUT' : 'NETWORK_ERROR', message: msg } } };"
+        }
+      }
+    ],
+    "connections": {
+      "Solicitud del puerto": {
+        "main": [
+          [
+            {
+              "node": "Construir solicitud Qdrant",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Construir solicitud Qdrant": {
+        "main": [
+          [
+            {
+              "node": "Solicitud ejecutable",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Solicitud ejecutable": {
+        "main": [
+          [
+            {
+              "node": "Llamar a Qdrant",
+              "type": "main",
+              "index": 0
+            }
+          ],
+          [
+            {
+              "node": "Solicitud no ejecutable",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Llamar a Qdrant": {
+        "main": [
+          [
+            {
+              "node": "Normalizar respuesta",
+              "type": "main",
+              "index": 0
+            }
+          ],
+          [
+            {
+              "node": "Clasificar fallo",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      }
+    },
+    "nodeGroups": [],
+    "authors": "Fabian Bocanegra (via MCP)",
+    "name": "DALIA v1.0 lote 2 · instalación DEV",
+    "description": "Created with 7 nodes: Solicitud del puerto, Construir solicitud Qdrant, Solicitud ejecutable, Llamar a Qdrant, Normalizar respuesta and 2 more",
+    "autosaved": false,
+    "createdAt": "2026-10-03T03:25:42.501Z",
+    "updatedAt": "2026-10-03T03:25:42.501Z"
+  }
+}
