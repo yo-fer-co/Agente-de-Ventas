@@ -1,0 +1,1252 @@
+{
+  "id": "sGL1OJ3lklD6wBu0",
+  "name": "M8: Observability",
+  "active": true,
+  "activeVersionId": "de49f0ad-ca18-443a-9d25-6690ce2ae82c",
+  "createdAt": "2026-05-12T19:40:50.199Z",
+  "updatedAt": "2026-06-22T21:53:14.395Z",
+  "isArchived": false,
+  "versionId": "de49f0ad-ca18-443a-9d25-6690ce2ae82c",
+  "triggerCount": 0,
+  "nodes": [
+    {
+      "parameters": {
+        "inputSource": "passthrough"
+      },
+      "type": "n8n-nodes-base.executeWorkflowTrigger",
+      "typeVersion": 1.1,
+      "position": [
+        -368,
+        -112
+      ],
+      "id": "36cfd280-4e27-4e74-b7c7-d5b9c849c5da",
+      "name": "When Executed by Another Workflow"
+    },
+    {
+      "parameters": {
+        "jsCode": "const input = items[0]?.json || {};\n\nreturn [\n {\n   json: {\n     ...input,\n     m8_config: {\n       service_name: 'DALIA_M8_Observability_Service_Lite',\n       service_version: 'v1',\n\n       contracts: {\n         event_request_schema_version: 'dalia.m8.event_request.v1',\n         log_result_schema_version: 'dalia.m8.log_result.v1'\n       },\n\n       storage: {\n         provider: 'supabase',\n         events_table: 'dalia_observability_events_lite'\n       },\n\n       defaults: {\n         business_id: 'business_demo',\n         environment: 'demo',\n         status: 'success',\n         level: 'INFO',\n         latency_ms: 0\n       },\n\n       allowed_statuses: [\n         'success',\n         'warning',\n         'error'\n       ],\n\n       allowed_levels: [\n         'DEBUG',\n         'INFO',\n         'WARN',\n         'ERROR'\n       ],\n\n       allowed_event_types: [\n         'conversation',\n         'decision',\n         'advisor',\n         'catalog',\n         'commerce',\n         'handoff',\n         'messaging',\n         'memory',\n         'system',\n         'error'\n       ],\n\n       key_events: [\n         'message_received',\n         'message_normalized',\n         'intent_classified',\n         'response_generated',\n         'product_recommended',\n         'message_sent',\n         'image_sent',\n         'purchase_started',\n         'payment_pending',\n         'order_confirmed',\n         'shipment_created',\n         'handoff_triggered',\n         'handoff_human_notified',\n         'customer_memory_stored',\n         'customer_memory_retrieved',\n         'customer_memory_skipped',\n         'customer_memory_error',\n         'error'\n       ],\n\n       correlation_policy: {\n         require_event_id: true,\n         preserve_conversation_id: true,\n         preserve_session_id: true,\n         preserve_user_id: true,\n         preserve_transaction_id_when_available: true,\n         preserve_handoff_id_when_available: true\n       },\n\n       error_policy: {\n         never_block_main_flow: true,\n         log_invalid_events_as_warning: true,\n         default_error_event_name: 'error',\n         default_error_type: 'error'\n       }\n     }\n   }\n }\n];\n"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -160,
+        -112
+      ],
+      "id": "34f1351c-324a-4349-8baa-01afb372a9b6",
+      "name": "Load M8 Observability Config"
+    },
+    {
+      "parameters": {
+        "jsCode": "function clean(value) {\n if (value === null || value === undefined) return '';\n return String(value).trim();\n}\n\nfunction safeNumber(value, fallback = 0) {\n const n = Number(value);\n return Number.isFinite(n) ? n : fallback;\n}\n\nfunction makeEventId() {\n const ts = Date.now();\n const rand = Math.random().toString(36).slice(2, 10);\n return `evt_${ts}_${rand}`;\n}\n\nfunction normalizeLevel(value, fallback = 'INFO') {\n const level = clean(value).toUpperCase();\n const allowed = ['DEBUG', 'INFO', 'WARN', 'ERROR'];\n return allowed.includes(level) ? level : fallback;\n}\n\nfunction normalizeStatus(value, fallback = 'success') {\n const status = clean(value).toLowerCase();\n const allowed = ['success', 'warning', 'error'];\n return allowed.includes(status) ? status : fallback;\n}\n\nconst input = items[0]?.json || {};\nconst config = input.m8_config || {};\nconst defaults = config.defaults || {};\n\nconst rawEvent = input.event || input.m8_event_request?.event || input;\n\nconst trace = rawEvent.trace || input.trace || {};\nconst context = rawEvent.context || input.context || {};\nconst correlation = rawEvent.correlation || input.correlation || {};\nconst error = rawEvent.error || input.error || null;\n\nconst normalizedStatus = normalizeStatus(\n rawEvent.status,\n error ? 'error' : defaults.status || 'success'\n);\n\nconst normalizedLevel = normalizeLevel(\n rawEvent.level,\n normalizedStatus === 'error' ? 'ERROR' : defaults.level || 'INFO'\n);\n\nconst eventId =\n clean(rawEvent.event_id) ||\n clean(trace.event_id) ||\n makeEventId();\n\nconst normalizedEvent = {\n schema_version:\n   input.schema_version ||\n   config.contracts?.event_request_schema_version ||\n   'dalia.m8.event_request.v1',\n\n event_id: eventId,\n\n timestamp:\n   clean(rawEvent.timestamp) ||\n   new Date().toISOString(),\n\n business_id:\n   clean(context.business_id) ||\n   clean(rawEvent.business_id) ||\n   defaults.business_id ||\n   'business_demo',\n\n environment:\n   clean(context.environment) ||\n   clean(rawEvent.environment) ||\n   defaults.environment ||\n   'demo',\n\n module:\n   clean(rawEvent.module),\n\n event_type:\n   clean(rawEvent.event_type),\n\n event_name:\n   clean(rawEvent.event_name),\n\n status: normalizedStatus,\n level: normalizedLevel,\n\n trace: {\n   event_id: eventId,\n   conversation_id:\n     clean(trace.conversation_id) ||\n     clean(rawEvent.conversation_id),\n\n   session_id:\n     clean(trace.session_id) ||\n     clean(rawEvent.session_id),\n\n   parent_event_id:\n     clean(trace.parent_event_id) ||\n     clean(correlation.parent_event_id) ||\n     clean(rawEvent.parent_event_id)\n },\n\n context: {\n   business_id:\n     clean(context.business_id) ||\n     clean(rawEvent.business_id) ||\n     defaults.business_id ||\n     'business_demo',\n\n   environment:\n     clean(context.environment) ||\n     clean(rawEvent.environment) ||\n     defaults.environment ||\n     'demo',\n\n   channel:\n     clean(context.channel) ||\n     clean(rawEvent.channel),\n\n   user_id:\n     clean(context.user_id) ||\n     clean(rawEvent.user_id),\n\n   customer_id:\n     clean(context.customer_id) ||\n     clean(rawEvent.customer_id)\n },\n\n correlation: {\n   message_id:\n     clean(correlation.message_id) ||\n     clean(rawEvent.message_id),\n\n   transaction_id:\n     clean(correlation.transaction_id) ||\n     clean(rawEvent.transaction_id),\n\n   handoff_id:\n     clean(correlation.handoff_id) ||\n     clean(rawEvent.handoff_id),\n\n   correlation_id:\n     clean(correlation.correlation_id) ||\n     clean(rawEvent.correlation_id),\n\n   trace_id:\n     clean(correlation.trace_id) ||\n     clean(rawEvent.trace_id)\n },\n\n classification: {\n   route:\n     clean(rawEvent.route),\n\n   intent:\n     clean(rawEvent.intent),\n\n   commercial_stage:\n     clean(rawEvent.commercial_stage)\n },\n\n latency_ms:\n   safeNumber(rawEvent.latency_ms, defaults.latency_ms || 0),\n\n payload:\n   rawEvent.payload && typeof rawEvent.payload === 'object'\n     ? rawEvent.payload\n     : {},\n\n metadata:\n   rawEvent.metadata && typeof rawEvent.metadata === 'object'\n     ? rawEvent.metadata\n     : {},\n\n error: error\n   ? {\n       error_code:\n         clean(error.error_code) ||\n         clean(error.code),\n\n       error_message:\n         clean(error.error_message) ||\n         clean(error.message) ||\n         clean(error.errorMessage),\n\n       error_node:\n         clean(error.error_node) ||\n         clean(error.node) ||\n         clean(error.nodeName),\n\n       error_workflow:\n         clean(error.error_workflow) ||\n         clean(error.workflow) ||\n         clean(error.workflowName)\n     }\n   : null\n};\n\nreturn [\n {\n   json: {\n     ...input,\n     m8_event: normalizedEvent\n   }\n }\n];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        48,
+        -112
+      ],
+      "id": "7cf8a973-164b-4ba7-ad27-4a705a057ff4",
+      "name": "Normalize M8 Event Request"
+    },
+    {
+      "parameters": {
+        "jsCode": "function isEmpty(value) {\n return value === null || value === undefined || String(value).trim() === '';\n}\n\nconst input = items[0]?.json || {};\nconst event = input.m8_event || {};\nconst config = input.m8_config || {};\n\nconst errors = [];\nconst warnings = [];\n\nconst allowedStatuses = config.allowed_statuses || [\n 'success',\n 'warning',\n 'error'\n];\n\nconst allowedLevels = config.allowed_levels || [\n 'DEBUG',\n 'INFO',\n 'WARN',\n 'ERROR'\n];\n\nconst allowedEventTypes = config.allowed_event_types || [];\n\nif (isEmpty(event.event_id)) {\n errors.push('missing_event_id');\n}\n\nif (isEmpty(event.module)) {\n errors.push('missing_module');\n}\n\nif (isEmpty(event.event_type)) {\n errors.push('missing_event_type');\n}\n\nif (isEmpty(event.event_name)) {\n errors.push('missing_event_name');\n}\n\nif (!allowedStatuses.includes(event.status)) {\n errors.push('invalid_status');\n}\n\nif (!allowedLevels.includes(event.level)) {\n errors.push('invalid_level');\n}\n\nif (\n event.event_type &&\n allowedEventTypes.length > 0 &&\n !allowedEventTypes.includes(event.event_type)\n) {\n warnings.push('event_type_not_in_allowed_list');\n}\n\nif (isEmpty(event.trace?.conversation_id)) {\n warnings.push('missing_conversation_id');\n}\n\nif (isEmpty(event.trace?.session_id)) {\n warnings.push('missing_session_id');\n}\n\nif (isEmpty(event.context?.user_id)) {\n warnings.push('missing_user_id');\n}\n\nif (event.status === 'error' && !event.error?.error_message) {\n warnings.push('error_event_without_error_message');\n}\n\nreturn [\n {\n   json: {\n     ...input,\n     m8_validation: {\n       valid: errors.length === 0,\n       errors,\n       warnings\n     }\n   }\n }\n];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        256,
+        -112
+      ],
+      "id": "a1d03915-a0e8-4731-bed1-6ae1f30ad767",
+      "name": "Validate M8 Event Schema"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "bcc9846a-2ea2-4e81-8625-947471052947",
+              "leftValue": "={{ $json.m8_validation.valid }}",
+              "rightValue": "",
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        464,
+        -112
+      ],
+      "id": "8e536a86-926d-45a7-a0e7-01dbb42374d0",
+      "name": "IF Event Valid?"
+    },
+    {
+      "parameters": {
+        "jsCode": "const input = items[0]?.json || {};\nconst event = input.m8_event || {};\nconst validation = input.m8_validation || {};\n\nreturn [\n {\n   json: {\n     schema_version: 'dalia.m8.log_result.v1',\n     success: false,\n     result_type: 'invalid_event',\n\n     event: {\n       event_id: event.event_id || '',\n       event_name: event.event_name || '',\n       event_type: event.event_type || '',\n       module: event.module || '',\n       status: event.status || '',\n       level: event.level || ''\n     },\n\n     correlation: {\n       conversation_id: event.trace?.conversation_id || '',\n       session_id: event.trace?.session_id || '',\n       user_id: event.context?.user_id || '',\n       transaction_id: event.correlation?.transaction_id || '',\n       handoff_id: event.correlation?.handoff_id || ''\n     },\n\n     validation,\n\n     control: {\n       logged: false,\n       reason: validation.errors?.[0] || 'invalid_event'\n     }\n   }\n }\n];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        672,
+        -16
+      ],
+      "id": "cb42cff3-cd7a-4df4-a1ce-d358efa559ff",
+      "name": "Return M8 Invalid Event"
+    },
+    {
+      "parameters": {
+        "jsCode": "function clean(value) {\n if (value === null || value === undefined) return '';\n return String(value).trim();\n}\n\nfunction makeId(prefix) {\n const ts = Date.now();\n const rand = Math.random().toString(36).slice(2, 8);\n return `${prefix}_${ts}_${rand}`;\n}\n\nconst input = items[0]?.json || {};\nconst event = input.m8_event || {};\n\nconst eventId =\n clean(event.event_id) ||\n makeId('evt');\n\nconst conversationId = clean(event.trace?.conversation_id);\nconst sessionId = clean(event.trace?.session_id);\nconst userId = clean(event.context?.user_id);\n\nconst messageId = clean(event.correlation?.message_id);\nconst transactionId = clean(event.correlation?.transaction_id);\nconst handoffId = clean(event.correlation?.handoff_id);\n\nconst correlationId =\n clean(event.correlation?.correlation_id) ||\n conversationId ||\n sessionId ||\n eventId;\n\nconst traceId =\n clean(event.correlation?.trace_id) ||\n sessionId ||\n correlationId;\n\nconst parentEventId =\n clean(event.trace?.parent_event_id) ||\n clean(event.correlation?.parent_event_id);\n\nconst missing = [];\n\nif (!conversationId) missing.push('conversation_id');\nif (!sessionId) missing.push('session_id');\nif (!userId) missing.push('user_id');\n\nconst correlationQuality =\n missing.length === 0\n   ? 'complete'\n   : missing.length <= 1\n     ? 'partial'\n     : 'weak';\n\nconst correlationContext = {\n event_id: eventId,\n\n conversation_id: conversationId,\n session_id: sessionId,\n user_id: userId,\n customer_id: clean(event.context?.customer_id),\n\n message_id: messageId,\n transaction_id: transactionId,\n handoff_id: handoffId,\n\n correlation_id: correlationId,\n trace_id: traceId,\n parent_event_id: parentEventId,\n\n channel: clean(event.context?.channel),\n\n quality: correlationQuality,\n missing_keys: missing\n};\n\nreturn [\n {\n   json: {\n     ...input,\n     correlation_context: correlationContext\n   }\n }\n];\n"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        672,
+        -208
+      ],
+      "id": "c609e2d2-bb8d-4665-bd60-315323a4ea5f",
+      "name": "Build Correlation Context"
+    },
+    {
+      "parameters": {
+        "jsCode": "function clean(value) {\n if (value === null || value === undefined) return '';\n return String(value).trim();\n}\n\nfunction safeNumber(value, fallback = 0) {\n const n = Number(value);\n return Number.isFinite(n) ? Math.max(0, Math.floor(n)) : fallback;\n}\n\nconst input = items[0]?.json || {};\nconst event = input.m8_event || {};\nconst correlation = input.correlation_context || {};\n\nconst eventRow = {\n event_id: clean(event.event_id),\n\n timestamp: event.timestamp || new Date().toISOString(),\n business_id: clean(event.business_id || event.context?.business_id || 'business_demo'),\n environment: clean(event.environment || event.context?.environment || 'demo'),\n\n module: clean(event.module),\n event_type: clean(event.event_type),\n event_name: clean(event.event_name),\n\n status: clean(event.status || 'success'),\n level: clean(event.level || 'INFO'),\n\n conversation_id: clean(correlation.conversation_id),\n session_id: clean(correlation.session_id),\n user_id: clean(correlation.user_id),\n customer_id: clean(correlation.customer_id),\n message_id: clean(correlation.message_id),\n transaction_id: clean(correlation.transaction_id),\n handoff_id: clean(correlation.handoff_id),\n\n correlation_id: clean(correlation.correlation_id),\n trace_id: clean(correlation.trace_id),\n parent_event_id: clean(correlation.parent_event_id),\n\n channel: clean(correlation.channel),\n route: clean(event.classification?.route),\n intent: clean(event.classification?.intent),\n commercial_stage: clean(event.classification?.commercial_stage),\n\n latency_ms: safeNumber(event.latency_ms, 0),\n\n error_code: clean(event.error?.error_code),\n error_message: clean(event.error?.error_message),\n error_node: clean(event.error?.error_node),\n error_workflow: clean(event.error?.error_workflow),\n\n payload: event.payload || {},\nmetadata: {\n ...(event.metadata || {}),\n m8_validation: input.m8_validation || {},\n correlation_validation: input.correlation_validation || {},\n correlation_quality: input.correlation_context?.quality || '',\n correlation_missing_keys: input.correlation_context?.missing_keys || [],\n normalized_at: new Date().toISOString(),\n source_schema_version: event.schema_version || ''\n}\n\n};\n\nreturn [\n {\n   json: {\n     ...input,\n     observability_event_row: eventRow\n   }\n }\n];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1088,
+        -208
+      ],
+      "id": "8467c8b3-a38f-493f-809b-3989b9636076",
+      "name": "Build Observability Event Row"
+    },
+    {
+      "parameters": {
+        "tableId": "dalia_observability_events_lite",
+        "fieldsUi": {
+          "fieldValues": [
+            {
+              "fieldId": "event_id",
+              "fieldValue": "={{ $json.observability_event_row.event_id }}"
+            },
+            {
+              "fieldId": "timestamp",
+              "fieldValue": "={{ $json.observability_event_row.timestamp }}"
+            },
+            {
+              "fieldId": "business_id",
+              "fieldValue": "={{ $json.observability_event_row.business_id }}"
+            },
+            {
+              "fieldId": "environment",
+              "fieldValue": "={{ $json.observability_event_row.enviroment }}"
+            },
+            {
+              "fieldId": "module",
+              "fieldValue": "={{ $json.observability_event_row.module }}"
+            },
+            {
+              "fieldId": "event_type",
+              "fieldValue": "={{ $json.observability_event_row.event_type }}"
+            },
+            {
+              "fieldId": "event_name",
+              "fieldValue": "={{ $json.observability_event_row.event_name }}"
+            },
+            {
+              "fieldId": "status",
+              "fieldValue": "={{ $json.observability_event_row.status }}"
+            },
+            {
+              "fieldId": "level",
+              "fieldValue": "={{ $json.observability_event_row.level }}"
+            },
+            {
+              "fieldId": "conversation_id",
+              "fieldValue": "={{ $json.observability_event_row.conversation_id }}"
+            },
+            {
+              "fieldId": "session_id",
+              "fieldValue": "={{ $json.observability_event_row.session_id }}"
+            },
+            {
+              "fieldId": "user_id",
+              "fieldValue": "={{ $json.observability_event_row.user_id }}"
+            },
+            {
+              "fieldId": "customer_id",
+              "fieldValue": "={{ $json.observability_event_row.customer_id }}"
+            },
+            {
+              "fieldId": "message_id",
+              "fieldValue": "={{ $json.observability_event_row.message_id }}"
+            },
+            {
+              "fieldId": "transaction_id",
+              "fieldValue": "={{ $json.observability_event_row.transaction_id }}"
+            },
+            {
+              "fieldId": "handoff_id",
+              "fieldValue": "={{ $json.observability_event_row.handoff_id }}"
+            },
+            {
+              "fieldId": "correlation_id",
+              "fieldValue": "={{ $json.observability_event_row.correlation_id }}"
+            },
+            {
+              "fieldId": "trace_id",
+              "fieldValue": "={{ $json.observability_event_row.trace_id }}"
+            },
+            {
+              "fieldId": "parent_event_id",
+              "fieldValue": "={{ $json.observability_event_row.parent_event_id }}"
+            },
+            {
+              "fieldId": "channel",
+              "fieldValue": "={{ $json.observability_event_row.channel }}"
+            },
+            {
+              "fieldId": "route",
+              "fieldValue": "={{ $json.observability_event_row.route }}"
+            },
+            {
+              "fieldId": "intent",
+              "fieldValue": "={{ $json.observability_event_row.intent }}"
+            },
+            {
+              "fieldId": "commercial_stage",
+              "fieldValue": "={{ $json.observability_event_row.commercial_stage }}"
+            },
+            {
+              "fieldId": "latency_ms",
+              "fieldValue": "={{ $json.observability_event_row.latency_ms }}"
+            },
+            {
+              "fieldId": "error_code",
+              "fieldValue": "={{ $json.observability_event_row.error_code }}"
+            },
+            {
+              "fieldId": "error_message",
+              "fieldValue": "={{ $json.observability_event_row.error_message }}"
+            },
+            {
+              "fieldId": "error_node",
+              "fieldValue": "={{ $json.observability_event_row.error_node }}"
+            },
+            {
+              "fieldId": "error_workflow",
+              "fieldValue": "={{ $json.observability_event_row.error_workflow }}"
+            },
+            {
+              "fieldId": "payload",
+              "fieldValue": "={{ $json.observability_event_row.payload }}"
+            },
+            {
+              "fieldId": "metadata",
+              "fieldValue": "={{ $json.observability_event_row.metadata }}"
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.supabase",
+      "typeVersion": 1,
+      "position": [
+        1296,
+        -208
+      ],
+      "id": "c7122dc7-1486-4d8b-a0fb-05e73473f5c8",
+      "name": "Insert Observability Event",
+      "credentials": {
+        "supabaseApi": {
+          "id": "npkHU7XcpupfQTID",
+          "name": "Supabase account 2"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const input = $('Build Observability Event Row').first().json || {};\nconst row = input.observability_event_row || {};\n\nreturn [\n {\n   json: {\n     schema_version: 'dalia.m8.log_result.v1',\n     success: true,\n     result_type: 'event_logged',\n\n     event: {\n       event_id: row.event_id || '',\n       event_name: row.event_name || '',\n       event_type: row.event_type || '',\n       module: row.module || '',\n       status: row.status || '',\n       level: row.level || ''\n     },\n\n     correlation: {\n       conversation_id: row.conversation_id || '',\n       session_id: row.session_id || '',\n       user_id: row.user_id || '',\n       message_id: row.message_id || '',\n       transaction_id: row.transaction_id || '',\n       handoff_id: row.handoff_id || '',\n       correlation_id: row.correlation_id || '',\n       trace_id: row.trace_id || ''\n     },\n\n     control: {\n       logged: true,\n       datastore: 'supabase',\n       table: 'dalia_observability_events_lite'\n     }\n   }\n }\n];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1504,
+        -208
+      ],
+      "id": "62be8782-6969-4685-96d7-9b0b498c72be",
+      "name": "Return M8 Log Result"
+    },
+    {
+      "parameters": {
+        "jsCode": "const input = items[0]?.json || {};\nconst correlation = input.correlation_context || {};\nconst event = input.m8_event || {};\n\nconst warnings = [];\n\nif (!correlation.conversation_id) {\n  warnings.push('missing_conversation_id');\n}\nif (!correlation.session_id) {\n  warnings.push('missing_session_id');\n}\nif (!correlation.user_id) {\n  warnings.push('missing_user_id');\n}\nif (event.event_type === 'commerce' && !correlation.transaction_id) {\n  warnings.push('commerce_event_without_transaction_id');\n}\nif (event.event_type === 'handoff' && !correlation.handoff_id) {\n  warnings.push('handoff_event_without_handoff_id');\n}\n\n// --- nuevo ---\nconst memoryEvents = [\n  'customer_memory_stored',\n  'customer_memory_retrieved',\n  'customer_memory_skipped',\n  'customer_memory_error'\n];\nif (\n  event.event_type === 'memory' &&\n  memoryEvents.includes(event.event_name) &&\n  !correlation.user_id\n) {\n  warnings.push('memory_event_without_user_id');\n}\n\nreturn [\n  {\n    json: {\n      ...input,\n      correlation_validation: {\n        quality: correlation.quality || 'unknown',\n        complete: warnings.length === 0,\n        warnings\n      }\n    }\n  }\n];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        880,
+        -208
+      ],
+      "id": "1baf8035-8b51-4685-93f2-88eac61e51ad",
+      "name": "Validate Correlation Completeness"
+    },
+    {
+      "parameters": {
+        "jsCode": "function clean(value) {\n if (value === null || value === undefined) return '';\n return String(value).trim();\n}\n\nfunction pick(...values) {\n for (const value of values) {\n   const cleaned = clean(value);\n   if (cleaned) return cleaned;\n }\n return '';\n}\n\nfunction inferModule(workflowName) {\n const name = clean(workflowName).toUpperCase();\n\n if (name.includes('M1')) return 'M1';\n if (name.includes('M2')) return 'M2';\n if (name.includes('M3')) return 'M3';\n if (name.includes('M4')) return 'M4';\n if (name.includes('M5')) return 'M5';\n if (name.includes('M6')) return 'M6';\n if (name.includes('M7')) return 'M7';\n if (name.includes('M8')) return 'M8';\n\n return 'SYSTEM';\n}\n\nconst input = items[0]?.json || {};\n\nconst error = input.error || {};\nconst execution = input.execution || {};\nconst workflow = input.workflow || {};\nconst node = input.node || {};\n\nconst workflowName = pick(\n workflow.name,\n input.workflowName,\n error.workflow,\n error.workflowName\n);\n\nconst nodeName = pick(\n node.name,\n input.nodeName,\n error.node,\n error.nodeName,\n execution.lastNodeExecuted\n);\n\nconst errorMessage = pick(\n error.message,\n error.errorMessage,\n input.errorMessage,\n input.message\n);\n\nconst errorCode = pick(\n error.code,\n error.error_code,\n input.errorCode,\n 'system_unhandled_workflow_error'\n);\n\nconst executionId = pick(\n execution.id,\n input.executionId\n);\n\nconst module = inferModule(workflowName);\n\nreturn [\n {\n   json: {\n     global_workflow_error: {\n       module,\n       workflow_name: workflowName || 'unknown_workflow',\n       node_name: nodeName || 'unknown_node',\n       execution_id: executionId,\n       error_code: errorCode,\n       error_message: errorMessage || 'Unhandled workflow error',\n       raw_error: input,\n       detected_at: new Date().toISOString()\n     }\n   }\n }\n];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -160,
+        144
+      ],
+      "id": "5286ed04-6c51-4d7a-b97f-ea9c8677f80e",
+      "name": "Normalize Global Workflow Error"
+    },
+    {
+      "parameters": {
+        "jsCode": "function makeEventId(prefix = 'evt_error') {\n return `${prefix}_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;\n}\n\nconst input = items[0]?.json || {};\nconst err = input.global_workflow_error || {};\n\nconst event = {\n schema_version: 'dalia.m8.event_request.v1',\n event: {\n   event_id: makeEventId('evt_global_error'),\n   event_name: 'error',\n   event_type: 'error',\n   module: err.module || 'SYSTEM',\n   status: 'error',\n   level: 'ERROR',\n   timestamp: new Date().toISOString(),\n\n   trace: {\n     conversation_id: '',\n     session_id: '',\n     parent_event_id: ''\n   },\n\n   context: {\n     business_id: 'business_demo',\n     environment: 'demo',\n     channel: '',\n     user_id: ''\n   },\n\n   correlation: {\n     message_id: '',\n     transaction_id: '',\n     handoff_id: '',\n     correlation_id: err.execution_id || '',\n     trace_id: err.execution_id || ''\n   },\n\n   payload: {\n     error_source: 'global_error_trigger',\n     execution_id: err.execution_id || '',\n     workflow_name: err.workflow_name || '',\n     node_name: err.node_name || '',\n     recoverable: false\n   },\n\n   error: {\n     error_code: err.error_code || 'system_unhandled_workflow_error',\n     error_message: err.error_message || 'Unhandled workflow error',\n     error_node: err.node_name || '',\n     error_workflow: err.workflow_name || ''\n   },\n\n   metadata: {\n     raw_error_available: Boolean(err.raw_error),\n     detected_at: err.detected_at || new Date().toISOString()\n   }\n }\n};\n\nreturn [\n {\n   json: {\n     m8_event_request: event\n   }\n }\n];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        48,
+        144
+      ],
+      "id": "f4e99fac-a9f7-4015-8977-03be87f96a10",
+      "name": "Build M8 Event - Global Error"
+    },
+    {
+      "parameters": {
+        "workflowId": {
+          "__rl": true,
+          "value": "sGL1OJ3lklD6wBu0",
+          "mode": "list",
+          "cachedResultUrl": "/workflow/sGL1OJ3lklD6wBu0",
+          "cachedResultName": "Agente de Ventas - TEST — M8 Observability"
+        },
+        "workflowInputs": {
+          "mappingMode": "defineBelow",
+          "value": {},
+          "matchingColumns": [],
+          "schema": [],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": true
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.executeWorkflow",
+      "typeVersion": 1.3,
+      "position": [
+        256,
+        144
+      ],
+      "id": "92d902f9-80d6-441a-ba8c-841ecf431bc6",
+      "name": "Execute M8 Observability Service",
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "jsCode": "const input = items[0]?.json || {};\n\nreturn [\n {\n   json: {\n     schema_version: 'dalia.m8.error_logger_result.v1',\n     success: true,\n     result_type: 'global_error_processed',\n     m8_result: input,\n     processed_at: new Date().toISOString()\n   }\n }\n];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        464,
+        144
+      ],
+      "id": "b9e3cf8a-edb2-46ef-bf2c-38a1eca8c36e",
+      "name": "Return Error Logger Result"
+    },
+    {
+      "parameters": {},
+      "type": "n8n-nodes-base.errorTrigger",
+      "typeVersion": 1,
+      "position": [
+        -368,
+        144
+      ],
+      "id": "66b7ac4a-4b60-4f01-b6b3-605d87cbb5c5",
+      "name": "Error Trigger"
+    }
+  ],
+  "connections": {
+    "When Executed by Another Workflow": {
+      "main": [
+        [
+          {
+            "node": "Load M8 Observability Config",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Load M8 Observability Config": {
+      "main": [
+        [
+          {
+            "node": "Normalize M8 Event Request",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Normalize M8 Event Request": {
+      "main": [
+        [
+          {
+            "node": "Validate M8 Event Schema",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Validate M8 Event Schema": {
+      "main": [
+        [
+          {
+            "node": "IF Event Valid?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "IF Event Valid?": {
+      "main": [
+        [
+          {
+            "node": "Build Correlation Context",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Return M8 Invalid Event",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Build Correlation Context": {
+      "main": [
+        [
+          {
+            "node": "Validate Correlation Completeness",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Build Observability Event Row": {
+      "main": [
+        [
+          {
+            "node": "Insert Observability Event",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Insert Observability Event": {
+      "main": [
+        [
+          {
+            "node": "Return M8 Log Result",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Validate Correlation Completeness": {
+      "main": [
+        [
+          {
+            "node": "Build Observability Event Row",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Normalize Global Workflow Error": {
+      "main": [
+        [
+          {
+            "node": "Build M8 Event - Global Error",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Build M8 Event - Global Error": {
+      "main": [
+        [
+          {
+            "node": "Execute M8 Observability Service",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Execute M8 Observability Service": {
+      "main": [
+        [
+          {
+            "node": "Return Error Logger Result",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Error Trigger": {
+      "main": [
+        [
+          {
+            "node": "Normalize Global Workflow Error",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "nodeGroups": [],
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate",
+    "timeSavedMode": "fixed",
+    "errorWorkflow": "sGL1OJ3lklD6wBu0",
+    "callerPolicy": "workflowsFromSameOwner",
+    "availableInMCP": false
+  },
+  "staticData": null,
+  "pinData": {
+    "When Executed by Another Workflow": [
+      {
+        "json": {
+          "schema_version": "dalia.m2.routing_decision.v1",
+          "trace": {
+            "event_id": "evt_1780007415420",
+            "conversation_id": "conv_wa_1104496126080610_573192563967",
+            "session_id": "wa_demo_1104496126080610_573192563967"
+          },
+          "context": {
+            "environment": "demo",
+            "business_id": "business_demo",
+            "channel": "whatsapp",
+            "user_id": "wa_demo_1104496126080610_573192563967",
+            "display_name": "Em"
+          },
+          "input": {
+            "message_id": "wamid.HBgMNTczMTkyNTYzOTY3FQIAEhggQUMzMUYyNTA3ODQ1RTEzNDI4OUM2RUQ2MEVENUFFMTkA",
+            "type": "text",
+            "text": "Quisiera comprar 1",
+            "timestamp": "2026-05-28T22:30:08.000Z",
+            "processing_status": "ready"
+          },
+          "decision": {
+            "intent": "purchase_intent",
+            "destination": "m5_commerce_lite",
+            "confidence": 0.95,
+            "commercial_stage": "intent",
+            "reason": "El usuario expresa intención clara de comprar un producto en cantidad 1, con referencia al producto en enfoque actual KIT DE CUIDADO BUCAL ECO-LUJO YOECO.",
+            "handoff": {
+              "required": false,
+              "reason": null,
+              "priority": "low",
+              "triggered_by": null
+            }
+          },
+          "extracted": {
+            "category_candidate": null,
+            "product_candidate": "KIT DE CUIDADO BUCAL ECO-LUJO YOECO",
+            "quantity": 1,
+            "city": null,
+            "preference": null
+          },
+          "control": {
+            "needs_clarification": false,
+            "needs_memory_lookup": false,
+            "requires_handoff": false,
+            "fallback_reason": null
+          },
+          "session_memory": {},
+          "_main_payload_before_m8": {
+            "schema_version": "dalia.m2.routing_decision.v1",
+            "trace": {
+              "event_id": "evt_1780007415420",
+              "conversation_id": "conv_wa_1104496126080610_573192563967",
+              "session_id": "wa_demo_1104496126080610_573192563967"
+            },
+            "context": {
+              "environment": "demo",
+              "business_id": "business_demo",
+              "channel": "whatsapp",
+              "user_id": "wa_demo_1104496126080610_573192563967",
+              "display_name": "Em"
+            },
+            "input": {
+              "message_id": "wamid.HBgMNTczMTkyNTYzOTY3FQIAEhggQUMzMUYyNTA3ODQ1RTEzNDI4OUM2RUQ2MEVENUFFMTkA",
+              "type": "text",
+              "text": "Quisiera comprar 1",
+              "timestamp": "2026-05-28T22:30:08.000Z",
+              "processing_status": "ready"
+            },
+            "decision": {
+              "intent": "purchase_intent",
+              "destination": "m5_commerce_lite",
+              "confidence": 0.95,
+              "commercial_stage": "intent",
+              "reason": "El usuario expresa intención clara de comprar un producto en cantidad 1, con referencia al producto en enfoque actual KIT DE CUIDADO BUCAL ECO-LUJO YOECO.",
+              "handoff": {
+                "required": false,
+                "reason": null,
+                "priority": "low",
+                "triggered_by": null
+              }
+            },
+            "extracted": {
+              "category_candidate": null,
+              "product_candidate": "KIT DE CUIDADO BUCAL ECO-LUJO YOECO",
+              "quantity": 1,
+              "city": null,
+              "preference": null
+            },
+            "control": {
+              "needs_clarification": false,
+              "needs_memory_lookup": false,
+              "requires_handoff": false,
+              "fallback_reason": null
+            },
+            "session_memory": {}
+          },
+          "m8_event_request": {
+            "schema_version": "dalia.m8.event_request.v1",
+            "event": {
+              "event_id": "evt_m2_1780007415426_978td1",
+              "event_name": "intent_classified",
+              "event_type": "decision",
+              "module": "M2",
+              "status": "success",
+              "level": "INFO",
+              "timestamp": "2026-05-28T22:30:15.426Z",
+              "trace": {
+                "conversation_id": "conv_wa_1104496126080610_573192563967",
+                "session_id": "wa_demo_1104496126080610_573192563967"
+              },
+              "context": {
+                "business_id": "business_demo",
+                "environment": "demo",
+                "channel": "whatsapp",
+                "user_id": "wa_demo_1104496126080610_573192563967",
+                "display_name": "Em"
+              },
+              "correlation": {
+                "message_id": "wamid.HBgMNTczMTkyNTYzOTY3FQIAEhggQUMzMUYyNTA3ODQ1RTEzNDI4OUM2RUQ2MEVENUFFMTkA"
+              },
+              "route": "m5_commerce_lite",
+              "intent": "purchase_intent",
+              "commercial_stage": "intent",
+              "payload": {
+                "intent": "purchase_intent",
+                "route": "m5_commerce_lite",
+                "confidence": 0.95,
+                "commercial_stage": "intent",
+                "reason": "El usuario expresa intención clara de comprar un producto en cantidad 1, con referencia al producto en enfoque actual KIT DE CUIDADO BUCAL ECO-LUJO YOECO.",
+                "needs_clarification": false,
+                "requires_handoff": false,
+                "handoff_required": false,
+                "handoff_reason": "",
+                "extracted": {
+                  "category_candidate": "",
+                  "product_candidate": "KIT DE CUIDADO BUCAL ECO-LUJO YOECO",
+                  "city": "",
+                  "quantity": 1
+                }
+              }
+            }
+          }
+        },
+        "pairedItem": {
+          "item": 0
+        }
+      }
+    ]
+  },
+  "meta": {
+    "templateCredsSetupCompleted": true
+  },
+  "tags": [],
+  "shared": [
+    {
+      "role": "workflow:owner",
+      "workflowId": "sGL1OJ3lklD6wBu0",
+      "projectId": "tRHCC8ts4mkRGXGn",
+      "createdAt": "2026-05-12T19:40:50.202Z",
+      "updatedAt": "2026-05-12T19:40:50.202Z"
+    }
+  ],
+  "activeVersion": {
+    "versionId": "de49f0ad-ca18-443a-9d25-6690ce2ae82c",
+    "workflowId": "sGL1OJ3lklD6wBu0",
+    "nodes": [
+      {
+        "parameters": {
+          "inputSource": "passthrough"
+        },
+        "type": "n8n-nodes-base.executeWorkflowTrigger",
+        "typeVersion": 1.1,
+        "position": [
+          -368,
+          -112
+        ],
+        "id": "36cfd280-4e27-4e74-b7c7-d5b9c849c5da",
+        "name": "When Executed by Another Workflow"
+      },
+      {
+        "parameters": {
+          "jsCode": "const input = items[0]?.json || {};\n\nreturn [\n {\n   json: {\n     ...input,\n     m8_config: {\n       service_name: 'DALIA_M8_Observability_Service_Lite',\n       service_version: 'v1',\n\n       contracts: {\n         event_request_schema_version: 'dalia.m8.event_request.v1',\n         log_result_schema_version: 'dalia.m8.log_result.v1'\n       },\n\n       storage: {\n         provider: 'supabase',\n         events_table: 'dalia_observability_events_lite'\n       },\n\n       defaults: {\n         business_id: 'business_demo',\n         environment: 'demo',\n         status: 'success',\n         level: 'INFO',\n         latency_ms: 0\n       },\n\n       allowed_statuses: [\n         'success',\n         'warning',\n         'error'\n       ],\n\n       allowed_levels: [\n         'DEBUG',\n         'INFO',\n         'WARN',\n         'ERROR'\n       ],\n\n       allowed_event_types: [\n         'conversation',\n         'decision',\n         'advisor',\n         'catalog',\n         'commerce',\n         'handoff',\n         'messaging',\n         'memory',\n         'system',\n         'error'\n       ],\n\n       key_events: [\n         'message_received',\n         'message_normalized',\n         'intent_classified',\n         'response_generated',\n         'product_recommended',\n         'message_sent',\n         'image_sent',\n         'purchase_started',\n         'payment_pending',\n         'order_confirmed',\n         'shipment_created',\n         'handoff_triggered',\n         'handoff_human_notified',\n         'customer_memory_stored',\n         'customer_memory_retrieved',\n         'customer_memory_skipped',\n         'customer_memory_error',\n         'error'\n       ],\n\n       correlation_policy: {\n         require_event_id: true,\n         preserve_conversation_id: true,\n         preserve_session_id: true,\n         preserve_user_id: true,\n         preserve_transaction_id_when_available: true,\n         preserve_handoff_id_when_available: true\n       },\n\n       error_policy: {\n         never_block_main_flow: true,\n         log_invalid_events_as_warning: true,\n         default_error_event_name: 'error',\n         default_error_type: 'error'\n       }\n     }\n   }\n }\n];\n"
+        },
+        "type": "n8n-nodes-base.code",
+        "typeVersion": 2,
+        "position": [
+          -160,
+          -112
+        ],
+        "id": "34f1351c-324a-4349-8baa-01afb372a9b6",
+        "name": "Load M8 Observability Config"
+      },
+      {
+        "parameters": {
+          "jsCode": "function clean(value) {\n if (value === null || value === undefined) return '';\n return String(value).trim();\n}\n\nfunction safeNumber(value, fallback = 0) {\n const n = Number(value);\n return Number.isFinite(n) ? n : fallback;\n}\n\nfunction makeEventId() {\n const ts = Date.now();\n const rand = Math.random().toString(36).slice(2, 10);\n return `evt_${ts}_${rand}`;\n}\n\nfunction normalizeLevel(value, fallback = 'INFO') {\n const level = clean(value).toUpperCase();\n const allowed = ['DEBUG', 'INFO', 'WARN', 'ERROR'];\n return allowed.includes(level) ? level : fallback;\n}\n\nfunction normalizeStatus(value, fallback = 'success') {\n const status = clean(value).toLowerCase();\n const allowed = ['success', 'warning', 'error'];\n return allowed.includes(status) ? status : fallback;\n}\n\nconst input = items[0]?.json || {};\nconst config = input.m8_config || {};\nconst defaults = config.defaults || {};\n\nconst rawEvent = input.event || input.m8_event_request?.event || input;\n\nconst trace = rawEvent.trace || input.trace || {};\nconst context = rawEvent.context || input.context || {};\nconst correlation = rawEvent.correlation || input.correlation || {};\nconst error = rawEvent.error || input.error || null;\n\nconst normalizedStatus = normalizeStatus(\n rawEvent.status,\n error ? 'error' : defaults.status || 'success'\n);\n\nconst normalizedLevel = normalizeLevel(\n rawEvent.level,\n normalizedStatus === 'error' ? 'ERROR' : defaults.level || 'INFO'\n);\n\nconst eventId =\n clean(rawEvent.event_id) ||\n clean(trace.event_id) ||\n makeEventId();\n\nconst normalizedEvent = {\n schema_version:\n   input.schema_version ||\n   config.contracts?.event_request_schema_version ||\n   'dalia.m8.event_request.v1',\n\n event_id: eventId,\n\n timestamp:\n   clean(rawEvent.timestamp) ||\n   new Date().toISOString(),\n\n business_id:\n   clean(context.business_id) ||\n   clean(rawEvent.business_id) ||\n   defaults.business_id ||\n   'business_demo',\n\n environment:\n   clean(context.environment) ||\n   clean(rawEvent.environment) ||\n   defaults.environment ||\n   'demo',\n\n module:\n   clean(rawEvent.module),\n\n event_type:\n   clean(rawEvent.event_type),\n\n event_name:\n   clean(rawEvent.event_name),\n\n status: normalizedStatus,\n level: normalizedLevel,\n\n trace: {\n   event_id: eventId,\n   conversation_id:\n     clean(trace.conversation_id) ||\n     clean(rawEvent.conversation_id),\n\n   session_id:\n     clean(trace.session_id) ||\n     clean(rawEvent.session_id),\n\n   parent_event_id:\n     clean(trace.parent_event_id) ||\n     clean(correlation.parent_event_id) ||\n     clean(rawEvent.parent_event_id)\n },\n\n context: {\n   business_id:\n     clean(context.business_id) ||\n     clean(rawEvent.business_id) ||\n     defaults.business_id ||\n     'business_demo',\n\n   environment:\n     clean(context.environment) ||\n     clean(rawEvent.environment) ||\n     defaults.environment ||\n     'demo',\n\n   channel:\n     clean(context.channel) ||\n     clean(rawEvent.channel),\n\n   user_id:\n     clean(context.user_id) ||\n     clean(rawEvent.user_id),\n\n   customer_id:\n     clean(context.customer_id) ||\n     clean(rawEvent.customer_id)\n },\n\n correlation: {\n   message_id:\n     clean(correlation.message_id) ||\n     clean(rawEvent.message_id),\n\n   transaction_id:\n     clean(correlation.transaction_id) ||\n     clean(rawEvent.transaction_id),\n\n   handoff_id:\n     clean(correlation.handoff_id) ||\n     clean(rawEvent.handoff_id),\n\n   correlation_id:\n     clean(correlation.correlation_id) ||\n     clean(rawEvent.correlation_id),\n\n   trace_id:\n     clean(correlation.trace_id) ||\n     clean(rawEvent.trace_id)\n },\n\n classification: {\n   route:\n     clean(rawEvent.route),\n\n   intent:\n     clean(rawEvent.intent),\n\n   commercial_stage:\n     clean(rawEvent.commercial_stage)\n },\n\n latency_ms:\n   safeNumber(rawEvent.latency_ms, defaults.latency_ms || 0),\n\n payload:\n   rawEvent.payload && typeof rawEvent.payload === 'object'\n     ? rawEvent.payload\n     : {},\n\n metadata:\n   rawEvent.metadata && typeof rawEvent.metadata === 'object'\n     ? rawEvent.metadata\n     : {},\n\n error: error\n   ? {\n       error_code:\n         clean(error.error_code) ||\n         clean(error.code),\n\n       error_message:\n         clean(error.error_message) ||\n         clean(error.message) ||\n         clean(error.errorMessage),\n\n       error_node:\n         clean(error.error_node) ||\n         clean(error.node) ||\n         clean(error.nodeName),\n\n       error_workflow:\n         clean(error.error_workflow) ||\n         clean(error.workflow) ||\n         clean(error.workflowName)\n     }\n   : null\n};\n\nreturn [\n {\n   json: {\n     ...input,\n     m8_event: normalizedEvent\n   }\n }\n];"
+        },
+        "type": "n8n-nodes-base.code",
+        "typeVersion": 2,
+        "position": [
+          48,
+          -112
+        ],
+        "id": "7cf8a973-164b-4ba7-ad27-4a705a057ff4",
+        "name": "Normalize M8 Event Request"
+      },
+      {
+        "parameters": {
+          "jsCode": "function isEmpty(value) {\n return value === null || value === undefined || String(value).trim() === '';\n}\n\nconst input = items[0]?.json || {};\nconst event = input.m8_event || {};\nconst config = input.m8_config || {};\n\nconst errors = [];\nconst warnings = [];\n\nconst allowedStatuses = config.allowed_statuses || [\n 'success',\n 'warning',\n 'error'\n];\n\nconst allowedLevels = config.allowed_levels || [\n 'DEBUG',\n 'INFO',\n 'WARN',\n 'ERROR'\n];\n\nconst allowedEventTypes = config.allowed_event_types || [];\n\nif (isEmpty(event.event_id)) {\n errors.push('missing_event_id');\n}\n\nif (isEmpty(event.module)) {\n errors.push('missing_module');\n}\n\nif (isEmpty(event.event_type)) {\n errors.push('missing_event_type');\n}\n\nif (isEmpty(event.event_name)) {\n errors.push('missing_event_name');\n}\n\nif (!allowedStatuses.includes(event.status)) {\n errors.push('invalid_status');\n}\n\nif (!allowedLevels.includes(event.level)) {\n errors.push('invalid_level');\n}\n\nif (\n event.event_type &&\n allowedEventTypes.length > 0 &&\n !allowedEventTypes.includes(event.event_type)\n) {\n warnings.push('event_type_not_in_allowed_list');\n}\n\nif (isEmpty(event.trace?.conversation_id)) {\n warnings.push('missing_conversation_id');\n}\n\nif (isEmpty(event.trace?.session_id)) {\n warnings.push('missing_session_id');\n}\n\nif (isEmpty(event.context?.user_id)) {\n warnings.push('missing_user_id');\n}\n\nif (event.status === 'error' && !event.error?.error_message) {\n warnings.push('error_event_without_error_message');\n}\n\nreturn [\n {\n   json: {\n     ...input,\n     m8_validation: {\n       valid: errors.length === 0,\n       errors,\n       warnings\n     }\n   }\n }\n];"
+        },
+        "type": "n8n-nodes-base.code",
+        "typeVersion": 2,
+        "position": [
+          256,
+          -112
+        ],
+        "id": "a1d03915-a0e8-4731-bed1-6ae1f30ad767",
+        "name": "Validate M8 Event Schema"
+      },
+      {
+        "parameters": {
+          "conditions": {
+            "options": {
+              "caseSensitive": true,
+              "leftValue": "",
+              "typeValidation": "strict",
+              "version": 3
+            },
+            "conditions": [
+              {
+                "id": "bcc9846a-2ea2-4e81-8625-947471052947",
+                "leftValue": "={{ $json.m8_validation.valid }}",
+                "rightValue": "",
+                "operator": {
+                  "type": "boolean",
+                  "operation": "true",
+                  "singleValue": true
+                }
+              }
+            ],
+            "combinator": "and"
+          },
+          "options": {}
+        },
+        "type": "n8n-nodes-base.if",
+        "typeVersion": 2.3,
+        "position": [
+          464,
+          -112
+        ],
+        "id": "8e536a86-926d-45a7-a0e7-01dbb42374d0",
+        "name": "IF Event Valid?"
+      },
+      {
+        "parameters": {
+          "jsCode": "const input = items[0]?.json || {};\nconst event = input.m8_event || {};\nconst validation = input.m8_validation || {};\n\nreturn [\n {\n   json: {\n     schema_version: 'dalia.m8.log_result.v1',\n     success: false,\n     result_type: 'invalid_event',\n\n     event: {\n       event_id: event.event_id || '',\n       event_name: event.event_name || '',\n       event_type: event.event_type || '',\n       module: event.module || '',\n       status: event.status || '',\n       level: event.level || ''\n     },\n\n     correlation: {\n       conversation_id: event.trace?.conversation_id || '',\n       session_id: event.trace?.session_id || '',\n       user_id: event.context?.user_id || '',\n       transaction_id: event.correlation?.transaction_id || '',\n       handoff_id: event.correlation?.handoff_id || ''\n     },\n\n     validation,\n\n     control: {\n       logged: false,\n       reason: validation.errors?.[0] || 'invalid_event'\n     }\n   }\n }\n];"
+        },
+        "type": "n8n-nodes-base.code",
+        "typeVersion": 2,
+        "position": [
+          672,
+          -16
+        ],
+        "id": "cb42cff3-cd7a-4df4-a1ce-d358efa559ff",
+        "name": "Return M8 Invalid Event"
+      },
+      {
+        "parameters": {
+          "jsCode": "function clean(value) {\n if (value === null || value === undefined) return '';\n return String(value).trim();\n}\n\nfunction makeId(prefix) {\n const ts = Date.now();\n const rand = Math.random().toString(36).slice(2, 8);\n return `${prefix}_${ts}_${rand}`;\n}\n\nconst input = items[0]?.json || {};\nconst event = input.m8_event || {};\n\nconst eventId =\n clean(event.event_id) ||\n makeId('evt');\n\nconst conversationId = clean(event.trace?.conversation_id);\nconst sessionId = clean(event.trace?.session_id);\nconst userId = clean(event.context?.user_id);\n\nconst messageId = clean(event.correlation?.message_id);\nconst transactionId = clean(event.correlation?.transaction_id);\nconst handoffId = clean(event.correlation?.handoff_id);\n\nconst correlationId =\n clean(event.correlation?.correlation_id) ||\n conversationId ||\n sessionId ||\n eventId;\n\nconst traceId =\n clean(event.correlation?.trace_id) ||\n sessionId ||\n correlationId;\n\nconst parentEventId =\n clean(event.trace?.parent_event_id) ||\n clean(event.correlation?.parent_event_id);\n\nconst missing = [];\n\nif (!conversationId) missing.push('conversation_id');\nif (!sessionId) missing.push('session_id');\nif (!userId) missing.push('user_id');\n\nconst correlationQuality =\n missing.length === 0\n   ? 'complete'\n   : missing.length <= 1\n     ? 'partial'\n     : 'weak';\n\nconst correlationContext = {\n event_id: eventId,\n\n conversation_id: conversationId,\n session_id: sessionId,\n user_id: userId,\n customer_id: clean(event.context?.customer_id),\n\n message_id: messageId,\n transaction_id: transactionId,\n handoff_id: handoffId,\n\n correlation_id: correlationId,\n trace_id: traceId,\n parent_event_id: parentEventId,\n\n channel: clean(event.context?.channel),\n\n quality: correlationQuality,\n missing_keys: missing\n};\n\nreturn [\n {\n   json: {\n     ...input,\n     correlation_context: correlationContext\n   }\n }\n];\n"
+        },
+        "type": "n8n-nodes-base.code",
+        "typeVersion": 2,
+        "position": [
+          672,
+          -208
+        ],
+        "id": "c609e2d2-bb8d-4665-bd60-315323a4ea5f",
+        "name": "Build Correlation Context"
+      },
+      {
+        "parameters": {
+          "jsCode": "function clean(value) {\n if (value === null || value === undefined) return '';\n return String(value).trim();\n}\n\nfunction safeNumber(value, fallback = 0) {\n const n = Number(value);\n return Number.isFinite(n) ? Math.max(0, Math.floor(n)) : fallback;\n}\n\nconst input = items[0]?.json || {};\nconst event = input.m8_event || {};\nconst correlation = input.correlation_context || {};\n\nconst eventRow = {\n event_id: clean(event.event_id),\n\n timestamp: event.timestamp || new Date().toISOString(),\n business_id: clean(event.business_id || event.context?.business_id || 'business_demo'),\n environment: clean(event.environment || event.context?.environment || 'demo'),\n\n module: clean(event.module),\n event_type: clean(event.event_type),\n event_name: clean(event.event_name),\n\n status: clean(event.status || 'success'),\n level: clean(event.level || 'INFO'),\n\n conversation_id: clean(correlation.conversation_id),\n session_id: clean(correlation.session_id),\n user_id: clean(correlation.user_id),\n customer_id: clean(correlation.customer_id),\n message_id: clean(correlation.message_id),\n transaction_id: clean(correlation.transaction_id),\n handoff_id: clean(correlation.handoff_id),\n\n correlation_id: clean(correlation.correlation_id),\n trace_id: clean(correlation.trace_id),\n parent_event_id: clean(correlation.parent_event_id),\n\n channel: clean(correlation.channel),\n route: clean(event.classification?.route),\n intent: clean(event.classification?.intent),\n commercial_stage: clean(event.classification?.commercial_stage),\n\n latency_ms: safeNumber(event.latency_ms, 0),\n\n error_code: clean(event.error?.error_code),\n error_message: clean(event.error?.error_message),\n error_node: clean(event.error?.error_node),\n error_workflow: clean(event.error?.error_workflow),\n\n payload: event.payload || {},\nmetadata: {\n ...(event.metadata || {}),\n m8_validation: input.m8_validation || {},\n correlation_validation: input.correlation_validation || {},\n correlation_quality: input.correlation_context?.quality || '',\n correlation_missing_keys: input.correlation_context?.missing_keys || [],\n normalized_at: new Date().toISOString(),\n source_schema_version: event.schema_version || ''\n}\n\n};\n\nreturn [\n {\n   json: {\n     ...input,\n     observability_event_row: eventRow\n   }\n }\n];"
+        },
+        "type": "n8n-nodes-base.code",
+        "typeVersion": 2,
+        "position": [
+          1088,
+          -208
+        ],
+        "id": "8467c8b3-a38f-493f-809b-3989b9636076",
+        "name": "Build Observability Event Row"
+      },
+      {
+        "parameters": {
+          "tableId": "dalia_observability_events_lite",
+          "fieldsUi": {
+            "fieldValues": [
+              {
+                "fieldId": "event_id",
+                "fieldValue": "={{ $json.observability_event_row.event_id }}"
+              },
+              {
+                "fieldId": "timestamp",
+                "fieldValue": "={{ $json.observability_event_row.timestamp }}"
+              },
+              {
+                "fieldId": "business_id",
+                "fieldValue": "={{ $json.observability_event_row.business_id }}"
+              },
+              {
+                "fieldId": "environment",
+                "fieldValue": "={{ $json.observability_event_row.enviroment }}"
+              },
+              {
+                "fieldId": "module",
+                "fieldValue": "={{ $json.observability_event_row.module }}"
+              },
+              {
+                "fieldId": "event_type",
+                "fieldValue": "={{ $json.observability_event_row.event_type }}"
+              },
+              {
+                "fieldId": "event_name",
+                "fieldValue": "={{ $json.observability_event_row.event_name }}"
+              },
+              {
+                "fieldId": "status",
+                "fieldValue": "={{ $json.observability_event_row.status }}"
+              },
+              {
+                "fieldId": "level",
+                "fieldValue": "={{ $json.observability_event_row.level }}"
+              },
+              {
+                "fieldId": "conversation_id",
+                "fieldValue": "={{ $json.observability_event_row.conversation_id }}"
+              },
+              {
+                "fieldId": "session_id",
+                "fieldValue": "={{ $json.observability_event_row.session_id }}"
+              },
+              {
+                "fieldId": "user_id",
+                "fieldValue": "={{ $json.observability_event_row.user_id }}"
+              },
+              {
+                "fieldId": "customer_id",
+                "fieldValue": "={{ $json.observability_event_row.customer_id }}"
+              },
+              {
+                "fieldId": "message_id",
+                "fieldValue": "={{ $json.observability_event_row.message_id }}"
+              },
+              {
+                "fieldId": "transaction_id",
+                "fieldValue": "={{ $json.observability_event_row.transaction_id }}"
+              },
+              {
+                "fieldId": "handoff_id",
+                "fieldValue": "={{ $json.observability_event_row.handoff_id }}"
+              },
+              {
+                "fieldId": "correlation_id",
+                "fieldValue": "={{ $json.observability_event_row.correlation_id }}"
+              },
+              {
+                "fieldId": "trace_id",
+                "fieldValue": "={{ $json.observability_event_row.trace_id }}"
+              },
+              {
+                "fieldId": "parent_event_id",
+                "fieldValue": "={{ $json.observability_event_row.parent_event_id }}"
+              },
+              {
+                "fieldId": "channel",
+                "fieldValue": "={{ $json.observability_event_row.channel }}"
+              },
+              {
+                "fieldId": "route",
+                "fieldValue": "={{ $json.observability_event_row.route }}"
+              },
+              {
+                "fieldId": "intent",
+                "fieldValue": "={{ $json.observability_event_row.intent }}"
+              },
+              {
+                "fieldId": "commercial_stage",
+                "fieldValue": "={{ $json.observability_event_row.commercial_stage }}"
+              },
+              {
+                "fieldId": "latency_ms",
+                "fieldValue": "={{ $json.observability_event_row.latency_ms }}"
+              },
+              {
+                "fieldId": "error_code",
+                "fieldValue": "={{ $json.observability_event_row.error_code }}"
+              },
+              {
+                "fieldId": "error_message",
+                "fieldValue": "={{ $json.observability_event_row.error_message }}"
+              },
+              {
+                "fieldId": "error_node",
+                "fieldValue": "={{ $json.observability_event_row.error_node }}"
+              },
+              {
+                "fieldId": "error_workflow",
+                "fieldValue": "={{ $json.observability_event_row.error_workflow }}"
+              },
+              {
+                "fieldId": "payload",
+                "fieldValue": "={{ $json.observability_event_row.payload }}"
+              },
+              {
+                "fieldId": "metadata",
+                "fieldValue": "={{ $json.observability_event_row.metadata }}"
+              }
+            ]
+          }
+        },
+        "type": "n8n-nodes-base.supabase",
+        "typeVersion": 1,
+        "position": [
+          1296,
+          -208
+        ],
+        "id": "c7122dc7-1486-4d8b-a0fb-05e73473f5c8",
+        "name": "Insert Observability Event",
+        "credentials": {
+          "supabaseApi": {
+            "id": "npkHU7XcpupfQTID",
+            "name": "Supabase account 2"
+          }
+        }
+      },
+      {
+        "parameters": {
+          "jsCode": "const input = $('Build Observability Event Row').first().json || {};\nconst row = input.observability_event_row || {};\n\nreturn [\n {\n   json: {\n     schema_version: 'dalia.m8.log_result.v1',\n     success: true,\n     result_type: 'event_logged',\n\n     event: {\n       event_id: row.event_id || '',\n       event_name: row.event_name || '',\n       event_type: row.event_type || '',\n       module: row.module || '',\n       status: row.status || '',\n       level: row.level || ''\n     },\n\n     correlation: {\n       conversation_id: row.conversation_id || '',\n       session_id: row.session_id || '',\n       user_id: row.user_id || '',\n       message_id: row.message_id || '',\n       transaction_id: row.transaction_id || '',\n       handoff_id: row.handoff_id || '',\n       correlation_id: row.correlation_id || '',\n       trace_id: row.trace_id || ''\n     },\n\n     control: {\n       logged: true,\n       datastore: 'supabase',\n       table: 'dalia_observability_events_lite'\n     }\n   }\n }\n];"
+        },
+        "type": "n8n-nodes-base.code",
+        "typeVersion": 2,
+        "position": [
+          1504,
+          -208
+        ],
+        "id": "62be8782-6969-4685-96d7-9b0b498c72be",
+        "name": "Return M8 Log Result"
+      },
+      {
+        "parameters": {
+          "jsCode": "const input = items[0]?.json || {};\nconst correlation = input.correlation_context || {};\nconst event = input.m8_event || {};\n\nconst warnings = [];\n\nif (!correlation.conversation_id) {\n  warnings.push('missing_conversation_id');\n}\nif (!correlation.session_id) {\n  warnings.push('missing_session_id');\n}\nif (!correlation.user_id) {\n  warnings.push('missing_user_id');\n}\nif (event.event_type === 'commerce' && !correlation.transaction_id) {\n  warnings.push('commerce_event_without_transaction_id');\n}\nif (event.event_type === 'handoff' && !correlation.handoff_id) {\n  warnings.push('handoff_event_without_handoff_id');\n}\n\n// --- nuevo ---\nconst memoryEvents = [\n  'customer_memory_stored',\n  'customer_memory_retrieved',\n  'customer_memory_skipped',\n  'customer_memory_error'\n];\nif (\n  event.event_type === 'memory' &&\n  memoryEvents.includes(event.event_name) &&\n  !correlation.user_id\n) {\n  warnings.push('memory_event_without_user_id');\n}\n\nreturn [\n  {\n    json: {\n      ...input,\n      correlation_validation: {\n        quality: correlation.quality || 'unknown',\n        complete: warnings.length === 0,\n        warnings\n      }\n    }\n  }\n];"
+        },
+        "type": "n8n-nodes-base.code",
+        "typeVersion": 2,
+        "position": [
+          880,
+          -208
+        ],
+        "id": "1baf8035-8b51-4685-93f2-88eac61e51ad",
+        "name": "Validate Correlation Completeness"
+      },
+      {
+        "parameters": {
+          "jsCode": "function clean(value) {\n if (value === null || value === undefined) return '';\n return String(value).trim();\n}\n\nfunction pick(...values) {\n for (const value of values) {\n   const cleaned = clean(value);\n   if (cleaned) return cleaned;\n }\n return '';\n}\n\nfunction inferModule(workflowName) {\n const name = clean(workflowName).toUpperCase();\n\n if (name.includes('M1')) return 'M1';\n if (name.includes('M2')) return 'M2';\n if (name.includes('M3')) return 'M3';\n if (name.includes('M4')) return 'M4';\n if (name.includes('M5')) return 'M5';\n if (name.includes('M6')) return 'M6';\n if (name.includes('M7')) return 'M7';\n if (name.includes('M8')) return 'M8';\n\n return 'SYSTEM';\n}\n\nconst input = items[0]?.json || {};\n\nconst error = input.error || {};\nconst execution = input.execution || {};\nconst workflow = input.workflow || {};\nconst node = input.node || {};\n\nconst workflowName = pick(\n workflow.name,\n input.workflowName,\n error.workflow,\n error.workflowName\n);\n\nconst nodeName = pick(\n node.name,\n input.nodeName,\n error.node,\n error.nodeName,\n execution.lastNodeExecuted\n);\n\nconst errorMessage = pick(\n error.message,\n error.errorMessage,\n input.errorMessage,\n input.message\n);\n\nconst errorCode = pick(\n error.code,\n error.error_code,\n input.errorCode,\n 'system_unhandled_workflow_error'\n);\n\nconst executionId = pick(\n execution.id,\n input.executionId\n);\n\nconst module = inferModule(workflowName);\n\nreturn [\n {\n   json: {\n     global_workflow_error: {\n       module,\n       workflow_name: workflowName || 'unknown_workflow',\n       node_name: nodeName || 'unknown_node',\n       execution_id: executionId,\n       error_code: errorCode,\n       error_message: errorMessage || 'Unhandled workflow error',\n       raw_error: input,\n       detected_at: new Date().toISOString()\n     }\n   }\n }\n];"
+        },
+        "type": "n8n-nodes-base.code",
+        "typeVersion": 2,
+        "position": [
+          -160,
+          144
+        ],
+        "id": "5286ed04-6c51-4d7a-b97f-ea9c8677f80e",
+        "name": "Normalize Global Workflow Error"
+      },
+      {
+        "parameters": {
+          "jsCode": "function makeEventId(prefix = 'evt_error') {\n return `${prefix}_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;\n}\n\nconst input = items[0]?.json || {};\nconst err = input.global_workflow_error || {};\n\nconst event = {\n schema_version: 'dalia.m8.event_request.v1',\n event: {\n   event_id: makeEventId('evt_global_error'),\n   event_name: 'error',\n   event_type: 'error',\n   module: err.module || 'SYSTEM',\n   status: 'error',\n   level: 'ERROR',\n   timestamp: new Date().toISOString(),\n\n   trace: {\n     conversation_id: '',\n     session_id: '',\n     parent_event_id: ''\n   },\n\n   context: {\n     business_id: 'business_demo',\n     environment: 'demo',\n     channel: '',\n     user_id: ''\n   },\n\n   correlation: {\n     message_id: '',\n     transaction_id: '',\n     handoff_id: '',\n     correlation_id: err.execution_id || '',\n     trace_id: err.execution_id || ''\n   },\n\n   payload: {\n     error_source: 'global_error_trigger',\n     execution_id: err.execution_id || '',\n     workflow_name: err.workflow_name || '',\n     node_name: err.node_name || '',\n     recoverable: false\n   },\n\n   error: {\n     error_code: err.error_code || 'system_unhandled_workflow_error',\n     error_message: err.error_message || 'Unhandled workflow error',\n     error_node: err.node_name || '',\n     error_workflow: err.workflow_name || ''\n   },\n\n   metadata: {\n     raw_error_available: Boolean(err.raw_error),\n     detected_at: err.detected_at || new Date().toISOString()\n   }\n }\n};\n\nreturn [\n {\n   json: {\n     m8_event_request: event\n   }\n }\n];"
+        },
+        "type": "n8n-nodes-base.code",
+        "typeVersion": 2,
+        "position": [
+          48,
+          144
+        ],
+        "id": "f4e99fac-a9f7-4015-8977-03be87f96a10",
+        "name": "Build M8 Event - Global Error"
+      },
+      {
+        "parameters": {
+          "workflowId": {
+            "__rl": true,
+            "value": "sGL1OJ3lklD6wBu0",
+            "mode": "list",
+            "cachedResultUrl": "/workflow/sGL1OJ3lklD6wBu0",
+            "cachedResultName": "Agente de Ventas - TEST — M8 Observability"
+          },
+          "workflowInputs": {
+            "mappingMode": "defineBelow",
+            "value": {},
+            "matchingColumns": [],
+            "schema": [],
+            "attemptToConvertTypes": false,
+            "convertFieldsToString": true
+          },
+          "options": {}
+        },
+        "type": "n8n-nodes-base.executeWorkflow",
+        "typeVersion": 1.3,
+        "position": [
+          256,
+          144
+        ],
+        "id": "92d902f9-80d6-441a-ba8c-841ecf431bc6",
+        "name": "Execute M8 Observability Service",
+        "onError": "continueRegularOutput"
+      },
+      {
+        "parameters": {
+          "jsCode": "const input = items[0]?.json || {};\n\nreturn [\n {\n   json: {\n     schema_version: 'dalia.m8.error_logger_result.v1',\n     success: true,\n     result_type: 'global_error_processed',\n     m8_result: input,\n     processed_at: new Date().toISOString()\n   }\n }\n];"
+        },
+        "type": "n8n-nodes-base.code",
+        "typeVersion": 2,
+        "position": [
+          464,
+          144
+        ],
+        "id": "b9e3cf8a-edb2-46ef-bf2c-38a1eca8c36e",
+        "name": "Return Error Logger Result"
+      },
+      {
+        "parameters": {},
+        "type": "n8n-nodes-base.errorTrigger",
+        "typeVersion": 1,
+        "position": [
+          -368,
+          144
+        ],
+        "id": "66b7ac4a-4b60-4f01-b6b3-605d87cbb5c5",
+        "name": "Error Trigger"
+      }
+    ],
+    "connections": {
+      "When Executed by Another Workflow": {
+        "main": [
+          [
+            {
+              "node": "Load M8 Observability Config",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Load M8 Observability Config": {
+        "main": [
+          [
+            {
+              "node": "Normalize M8 Event Request",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Normalize M8 Event Request": {
+        "main": [
+          [
+            {
+              "node": "Validate M8 Event Schema",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Validate M8 Event Schema": {
+        "main": [
+          [
+            {
+              "node": "IF Event Valid?",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "IF Event Valid?": {
+        "main": [
+          [
+            {
+              "node": "Build Correlation Context",
+              "type": "main",
+              "index": 0
+            }
+          ],
+          [
+            {
+              "node": "Return M8 Invalid Event",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Build Correlation Context": {
+        "main": [
+          [
+            {
+              "node": "Validate Correlation Completeness",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Build Observability Event Row": {
+        "main": [
+          [
+            {
+              "node": "Insert Observability Event",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Insert Observability Event": {
+        "main": [
+          [
+            {
+              "node": "Return M8 Log Result",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Validate Correlation Completeness": {
+        "main": [
+          [
+            {
+              "node": "Build Observability Event Row",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Normalize Global Workflow Error": {
+        "main": [
+          [
+            {
+              "node": "Build M8 Event - Global Error",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Build M8 Event - Global Error": {
+        "main": [
+          [
+            {
+              "node": "Execute M8 Observability Service",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Execute M8 Observability Service": {
+        "main": [
+          [
+            {
+              "node": "Return Error Logger Result",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Error Trigger": {
+        "main": [
+          [
+            {
+              "node": "Normalize Global Workflow Error",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      }
+    },
+    "nodeGroups": [],
+    "authors": "Emmanuel Arevalo",
+    "name": "Version de49f0ad",
+    "description": "",
+    "autosaved": true,
+    "createdAt": "2026-06-22T21:04:39.106Z",
+    "updatedAt": "2026-06-22T21:53:16.000Z"
+  }
+}
