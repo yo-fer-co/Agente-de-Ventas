@@ -1,0 +1,604 @@
+{
+  "id": "gB70Hmu4mO77AEqy",
+  "name": "Facturacion programada",
+  "active": false,
+  "activeVersionId": null,
+  "createdAt": "2026-09-22T23:37:57.186Z",
+  "updatedAt": "2026-10-07T23:31:07.000Z",
+  "isArchived": true,
+  "versionId": "32a31e35-abce-487b-9a5c-aad28b2d67ad",
+  "triggerCount": 1,
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "triggerAtHour": 12
+            }
+          ]
+        }
+      },
+      "id": "1c9ff715-dbde-4da4-8996-dcd087be779a",
+      "name": "Schedule Trigger",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.4,
+      "position": [
+        -1264,
+        16
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "getAll",
+        "tableId": "babys_world_dev_event_factura",
+        "filters": {
+          "conditions": [
+            {
+              "keyName": "estado",
+              "condition": "eq",
+              "keyValue": "Pendiente"
+            }
+          ]
+        }
+      },
+      "id": "0c8f545d-397d-4faa-b8fe-3324aa2d1f8f",
+      "name": "Get many rows",
+      "type": "n8n-nodes-base.supabase",
+      "typeVersion": 1,
+      "position": [
+        -1088,
+        16
+      ],
+      "credentials": {
+        "supabaseApi": {
+          "id": "dtKFPWrXh0HZEyUt",
+          "name": "clients_database"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "url": "https://sandbox.wompi.co/v1/transactions",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpBearerAuth",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            {
+              "name": "from_date",
+              "value": "={{ $json.timestamp.slice(0,10) }}"
+            },
+            {
+              "name": "until_date",
+              "value": "={{ $json.timestamp.slice(0,10) }}"
+            },
+            {
+              "name": "page",
+              "value": "1"
+            },
+            {
+              "name": "page_size",
+              "value": "50"
+            },
+            {
+              "name": "customer_email",
+              "value": "={{ $json.email }}"
+            },
+            {
+              "name": "order_by",
+              "value": "created_at"
+            },
+            {
+              "name": "order",
+              "value": "DESC"
+            }
+          ]
+        },
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "accept",
+              "value": "*/*"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "47c6c995-7255-4196-bf43-5c65b583bde0",
+      "name": "Consultar Wompi",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.5,
+      "position": [
+        -672,
+        16
+      ],
+      "credentials": {
+        "httpBearerAuth": {
+          "id": "ewNflJjpW1m1NfR7",
+          "name": "Bearer Auth account 2"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "jsCode": "const wompiData = $('Consultar Wompi').first().json.data || [];\nconst body = $('Get many rows').first().json;\n\nconst orderTotalCents = Math.round(parseFloat( $('Get many rows').first().json.Precio || 0) * 100);\nconst orderDate = new Date(body.processed_at || body.created_at);\n\nconst candidatos = wompiData.filter(tx =>\n  tx.amount_in_cents === orderTotalCents &&\n  tx.status === \"APPROVED\"\n);\n\nconst match = candidatos.sort((a, b) =>\n  Math.abs(new Date(a.finalized_at) - orderDate) - Math.abs(new Date(b.finalized_at) - orderDate)\n)[0];\n\nconst idTypeMap = { CC: \"13\", NIT: \"31\", CE: \"22\", PP: \"41\" };\nconst legalId = match?.payment_method?.user_legal_id || \"\";\nconst legalIdType = match?.payment_method?.user_legal_id_type || \"CC\";\n\nconst identification = legalId || \"222222222222\";\nconst id_type = legalId ? (idTypeMap[legalIdType] || \"13\") : \"31\";\n\nreturn {\n  json: {\n    identification: identification,\n    id_type: id_type\n  }\n};"
+      },
+      "id": "d374350c-a73d-4f38-899c-e8ade4c5d0f7",
+      "name": "Code in JavaScript2",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -480,
+        16
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://private-anon-aa97ae1521-siigoapi.apiary-proxy.com/auth",
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "username",
+              "value": "sandbox@siigoapi.com"
+            },
+            {
+              "name": "access_key",
+              "value": "=NTNlNzY0ZmItZWZmZS00MzMzLThjOWEtYWJlOGI1NjFkZWVkOiMsMk9teTw0Nlg="
+            }
+          ]
+        },
+        "options": {
+          "response": {
+            "response": {
+              "fullResponse": true
+            }
+          }
+        }
+      },
+      "id": "a37753d8-4f23-40c0-a2d4-0c165b5bc917",
+      "name": "HTTP Request",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.5,
+      "position": [
+        -240,
+        16
+      ]
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "jsCode": "// Node: Mapear Items\nconst row = $('Get many rows').item.json;\nconst lineItems = JSON.parse(row.Productos || \"[]\");\n\nconst items = lineItems.map(li => ({\n  code: li.sku || String(li.variant_id || li.product_id || \"\"),\n  description: li.name || li.title || \"\",\n  quantity: li.quantity,\n  price: parseFloat(li.price),\n  discount: parseFloat(li.total_discount || 0)\n}));\n\nreturn { json: { items } };"
+      },
+      "id": "fbc7a611-5182-42b1-a4c8-3bd9c8282a3c",
+      "name": "ArrayItems",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -16,
+        16
+      ]
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "jsCode": "// Node: Mapear Documento (sin items)\nconst row = $('Get many rows').item.json;\n\nconst billing = JSON.parse(row.direccion || \"{}\");\nconst customer = JSON.parse(row.customer || \"{}\");\nconst contactEmail = row.email || \"\";\nconst phoneRaw = billing.phone || customer.phone || \"\";\nconst phoneDigits = phoneRaw.replace(/\\D/g, \"\");\n\n// Separar indicativo (asumiendo Colombia = 57) si el número ya lo incluye\nlet indicative = \"57\";\nlet phoneNumber = phoneDigits;\nif (phoneDigits.startsWith(\"57\") && phoneDigits.length > 10) {\n  phoneNumber = phoneDigits.slice(2);\n}\n\nconst firstName = billing.first_name || customer.first_name || \"\";\nconst lastName = billing.last_name || customer.last_name || \"\";\n\nconst payDate = (row.fecha_pago || row.timestamp || \"\").slice(0, 10);\nconst zip = billing.zip || \"\";\n\nconst result = {\n  resultado:{\n  document: {\n    id: 2372\n  },\n  date: payDate,\n  customer: {\n    person_type: \"Person\",\n    id_type: \"13\",\n    identification: $('Code in JavaScript2').item.json.identification,\n    branch_office: 0,\n    name: [firstName, lastName].filter(Boolean),\n    address: {\n      address: [billing.address1, billing.address2].filter(Boolean).join(\" \"),\n      city: {\n        country_code: billing.country_code || \"COL\",\n        country_name: billing.country || \"Colombia\",\n        state_code: zip.slice(0,2) || \"\",\n        state_name: \"Bogotá, D.C.\",\n        city_code: zip.slice(0,2)+\"001\",\n        city_name: billing.city || \"\"\n      },\n      postal_code: zip\n    },\n    phones: [\n      {\n        indicative: indicative,\n        number: phoneNumber,\n        extension: \"\"\n      }\n    ],\n    contacts: [\n      {\n        first_name: firstName,\n        last_name: lastName,\n        email: contactEmail,\n        phone: {\n          indicative: indicative,\n          number: phoneNumber,\n          extension: \"\"\n        }\n      }\n    ]\n  },\n  seller: 926,\n  stamp: {\n    send: false\n  },\n  mail: {\n    send: true\n  },\n  items:$input.item.json.items,\n  payments: [\n    {\n      id: 8147,\n      value: parseFloat(row.Precio || 0),\n      due_date: payDate\n    }\n  ]\n},\n};\n\nreturn { json: result };"
+      },
+      "id": "c54b729e-628c-492a-879c-5a12ce0f3e04",
+      "name": "Code in JavaScript",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        208,
+        -112
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://private-anon-aa97ae1521-siigoapi.apiary-proxy.com/v1/invoices",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "={{ $('HTTP Request').item.json.body.access_token }}"
+            },
+            {
+              "name": "Partner-Id",
+              "value": "ivan"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ $('Code in JavaScript').item.json.resultado.toJsonString() }}\n\n",
+        "options": {
+          "response": {
+            "response": {
+              "fullResponse": true
+            }
+          }
+        }
+      },
+      "id": "bad790a3-377a-4345-b5ed-229126c6034a",
+      "name": "HTTP Request2",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.5,
+      "position": [
+        432,
+        -112
+      ]
+    },
+    {
+      "parameters": {
+        "url": "=https://private-anon-aa97ae1521-siigoapi.apiary-proxy.com/v1/invoices/{{$json.body.id}}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "={{ $('HTTP Request').item.json.body.access_token }}"
+            },
+            {
+              "name": "Partner-Id",
+              "value": "ivan"
+            }
+          ]
+        },
+        "options": {
+          "response": {
+            "response": {
+              "fullResponse": true
+            }
+          }
+        }
+      },
+      "id": "692d022b-028a-44b8-87e3-ecc9801de91b",
+      "name": "HTTP Request3",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.5,
+      "position": [
+        656,
+        -112
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Array donde guardaremos los nuevos ítems de n8n\nconst result = [];\n\n// Recorremos cada ítem de entrada\nfor (const item of $input.all()) {\n  // Verificamos si existe la propiedad 'items' y si es un array\n  if (item.json.items && Array.isArray(item.json.items)) {\n    for (const producto of item.json.items) {\n      result.push({\n        json: producto\n      });\n    }\n  }\n}\n\nreturn result;"
+      },
+      "id": "f54162ee-dc29-4b49-97e5-107fda1250bc",
+      "name": "Code in JavaScript1",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        208,
+        112
+      ]
+    },
+    {
+      "parameters": {
+        "url": "https://private-anon-a92629d473-siigoapi.apiary-proxy.com/v1/products",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            {
+              "name": "page_size",
+              "value": "100"
+            },
+            {
+              "name": "code",
+              "value": "={{ $json.code }}"
+            }
+          ]
+        },
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "={{ $('HTTP Request').item.json.body.access_token }}"
+            },
+            {
+              "name": "Partner-Id",
+              "value": "ivan"
+            }
+          ]
+        },
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {}
+          ]
+        },
+        "options": {
+          "response": {
+            "response": {
+              "fullResponse": true
+            }
+          }
+        }
+      },
+      "id": "656a9352-7453-4a14-9ba6-aeec8faf043d",
+      "name": "ConsultarItems",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.5,
+      "position": [
+        656,
+        128
+      ]
+    },
+    {
+      "parameters": {
+        "method": "PUT",
+        "url": "=https://api.siigo.com/v1/products/{{ $json.body.results[0].id }}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "={{ $('HTTP Request').item.json.body.access_token }}"
+            },
+            {
+              "name": "Partner-Id",
+              "value": "ivan"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"code\": \"{{ $json.body.results[0].code }}\",\n  \"name\": \"{{ $json.body.results[0].name }}\",\n  \"account_group\": {{ $json.body.results[0].account_group.id }},\n  \"type\": \"Product\",\n  \"stock_control\": true,\n  \"active\": true,\n  \"tax_classification\": \"Taxed\",\n  \"tax_included\": false,\n  \"tax_consumption_value\": 0,\n  \"prices\": [\n    {\n      \"currency_code\": \"COP\",\n      \"price_list\": [\n        {\n          \"position\": {{ $json.body.results[0].prices[0].price_list[0].position }},\n          \"value\": {{ $json.body.results[0].prices[0].price_list[0].value }}\n        }\n      ]\n    }\n  ],\n  \"unit\": \"{{ $json.body.results[0].unit.code }}\",\n  \"unit_label\": \"{{ $json.body.results[0].unit_label }}\",\n  \"additional_fields\": {\n    \"barcode\": \"{{ $json.body.results[0].additional_fields.barcode }}\"\n  },\n  \"available_quantity\":{{ $json.body.results[0].available_quantity + $('Loop Over Items').item.json.quantity }}\n}",
+        "options": {
+          "response": {
+            "response": {
+              "fullResponse": true
+            }
+          }
+        }
+      },
+      "id": "3f4d40bb-59fb-4127-bd52-fce07c4e629e",
+      "name": "HTTP Request1",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.5,
+      "position": [
+        864,
+        128
+      ]
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "id": "d0612f95-d9e0-4ada-b052-e7c88f37a56a",
+      "name": "Loop Over Items",
+      "type": "n8n-nodes-base.splitInBatches",
+      "typeVersion": 3,
+      "position": [
+        432,
+        112
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "update",
+        "tableId": "babys_world_dev_event_factura",
+        "filters": {
+          "conditions": [
+            {
+              "keyName": "id",
+              "condition": "eq",
+              "keyValue": "={{ $json.id }}"
+            }
+          ]
+        },
+        "fieldsUi": {
+          "fieldValues": [
+            {
+              "fieldId": "estado",
+              "fieldValue": "Procesado"
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.supabase",
+      "typeVersion": 1,
+      "position": [
+        -864,
+        16
+      ],
+      "id": "a06ebe77-72ef-41de-9d7c-efdfb9cdc643",
+      "name": "Update a row",
+      "credentials": {
+        "supabaseApi": {
+          "id": "dtKFPWrXh0HZEyUt",
+          "name": "clients_database"
+        }
+      }
+    }
+  ],
+  "connections": {
+    "Schedule Trigger": {
+      "main": [
+        [
+          {
+            "node": "Get many rows",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get many rows": {
+      "main": [
+        [
+          {
+            "node": "Update a row",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Consultar Wompi": {
+      "main": [
+        [
+          {
+            "node": "Code in JavaScript2",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code in JavaScript2": {
+      "main": [
+        [
+          {
+            "node": "HTTP Request",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "HTTP Request": {
+      "main": [
+        [
+          {
+            "node": "ArrayItems",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "ArrayItems": {
+      "main": [
+        [
+          {
+            "node": "Code in JavaScript",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Code in JavaScript1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code in JavaScript": {
+      "main": [
+        [
+          {
+            "node": "HTTP Request2",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "HTTP Request2": {
+      "main": [
+        [
+          {
+            "node": "HTTP Request3",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code in JavaScript1": {
+      "main": [
+        [
+          {
+            "node": "Loop Over Items",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "ConsultarItems": {
+      "main": [
+        [
+          {
+            "node": "HTTP Request1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "HTTP Request1": {
+      "main": [
+        [
+          {
+            "node": "Loop Over Items",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Loop Over Items": {
+      "main": [
+        [],
+        [
+          {
+            "node": "ConsultarItems",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Update a row": {
+      "main": [
+        [
+          {
+            "node": "Consultar Wompi",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "nodeGroups": [],
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate"
+  },
+  "staticData": {
+    "node:Schedule Trigger": {
+      "recurrenceRules": [
+        null
+      ],
+      "recurrenceRuleSignatures": [
+        null
+      ]
+    }
+  },
+  "pinData": {},
+  "meta": {
+    "templateCredsSetupCompleted": true
+  },
+  "tags": [],
+  "shared": [
+    {
+      "role": "workflow:owner",
+      "workflowId": "gB70Hmu4mO77AEqy",
+      "projectId": "8h8pwWGcWlnGEym3",
+      "createdAt": "2026-09-22T23:37:57.188Z",
+      "updatedAt": "2026-09-22T23:37:57.188Z"
+    }
+  ],
+  "activeVersion": null
+}
