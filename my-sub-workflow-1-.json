@@ -1,0 +1,66 @@
+{
+  "id": "dg919pihaLWkq1C6",
+  "name": "My Sub-Workflow 1",
+  "active": false,
+  "activeVersionId": null,
+  "createdAt": "2026-01-21T00:54:16.195Z",
+  "updatedAt": "2026-01-21T03:01:24.000Z",
+  "isArchived": true,
+  "versionId": "330e7f0f-eb0d-476e-b8de-cfcf10fade15",
+  "triggerCount": 0,
+  "nodes": [
+    {
+      "id": "c055762a-8fe7-4141-a639-df2372f30060",
+      "typeVersion": 1.1,
+      "name": "When Executed by Another Workflow",
+      "type": "n8n-nodes-base.executeWorkflowTrigger",
+      "position": [
+        260,
+        340
+      ],
+      "parameters": {}
+    },
+    {
+      "id": "b5942df6-0160-4ef7-965d-57583acdc8aa",
+      "name": "Replace me with your logic",
+      "type": "n8n-nodes-base.noOp",
+      "position": [
+        520,
+        340
+      ],
+      "parameters": {}
+    }
+  ],
+  "connections": {
+    "When Executed by Another Workflow": {
+      "main": [
+        [
+          {
+            "node": "Replace me with your logic",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "nodeGroups": [],
+  "settings": {
+    "executionOrder": "v1",
+    "availableInMCP": false
+  },
+  "staticData": null,
+  "pinData": {},
+  "meta": null,
+  "tags": [],
+  "shared": [
+    {
+      "role": "workflow:owner",
+      "workflowId": "dg919pihaLWkq1C6",
+      "projectId": "8h8pwWGcWlnGEym3",
+      "createdAt": "2026-01-21T00:54:16.200Z",
+      "updatedAt": "2026-01-21T00:54:16.200Z"
+    }
+  ],
+  "activeVersion": null
+}
