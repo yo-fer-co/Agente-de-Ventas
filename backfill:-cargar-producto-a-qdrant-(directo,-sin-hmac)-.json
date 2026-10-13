@@ -1,0 +1,537 @@
+{
+  "id": "a99ylBtEIxemQmRF",
+  "name": "Backfill: Cargar Producto a Qdrant (Directo, sin HMAC)",
+  "active": true,
+  "activeVersionId": "a8822561-efbf-4f87-a039-25688f0e0733",
+  "createdAt": "2026-08-19T22:51:16.644Z",
+  "updatedAt": "2026-10-08T23:48:08.087Z",
+  "isArchived": false,
+  "versionId": "a8822561-efbf-4f87-a039-25688f0e0733",
+  "triggerCount": 1,
+  "nodes": [
+    {
+      "parameters": {
+        "content": "## Backfill: Cargar Producto a Qdrant (Directo, sin HMAC)\n\nWorkflow NUEVO y separado -- no modifica Product_Management ni EVT_Shopify_Product_Events, solo los invoca. Pensado para cargar productos YA EXISTENTES en Shopify (descargados antes con la API, ver descargar_productos_shopify.bat) sin pasar por el webhook publico real:\n\n- No hace verificacion HMAC (no tiene sentido para datos que uno mismo ya tiene en un archivo) -- en su lugar exige un header simple `X-Backfill-Key` que debe coincidir con la variable `$vars.SHOPIFY_WEBHOOK_SECRET` que ya existe en esta instancia n8n (mismo secreto que ya usan los otros flujos de catalogo/pagos). Esto evita dejar un endpoint totalmente abierto sin tener que crear una credencial n8n nueva.\n- No espera el formato que devuelve la API de Shopify (`{\"products\": [...]}`), sino UN producto por llamada: `{ \"topic\": \"products/update\", \"product\": { ...producto tal cual lo devuelve la API o el webhook... } }`. El script local (cargar_catalogo_a_qdrant.py) hace esa desenvoltura antes de mandar cada request.\n- Llama directo a `Product_Management` (Execute Workflow), el mismo workflow que ya usa el pipeline real -- mismas validaciones, mismo upsert, misma limpieza de huerfanos, misma coleccion Qdrant que este apunte en cada momento (hoy: BabysWorld_Catalogo_Test).\n\nIMPORTANTE: activar este workflow (boton Active) antes de correr el script local -- si esta inactivo, el webhook solo responde en la URL de test (Listen for test event), no en la URL real. Se puede desactivar de nuevo cuando termine la carga masiva, no hace falta dejarlo activo todo el tiempo.",
+        "height": 620,
+        "width": 620,
+        "color": 4
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        400,
+        -32
+      ],
+      "id": "5a40db43-84a7-4685-ab80-0d40011015c3",
+      "name": "Sticky_Backfill_Note"
+    },
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "catalogo/backfill-directo-dev",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2.1,
+      "position": [
+        832,
+        208
+      ],
+      "id": "87f46b50-fb6b-4071-9ebe-585e240a5b0c",
+      "name": "Webhook_Backfill",
+      "webhookId": "d1e2f3a4-back-4b1a-9c1a-1a2b3c4d5e02"
+    },
+    {
+      "parameters": {
+        "jsCode": "const item = $input.first().json ?? {};\nconst headers = item.headers ?? {};\nconst providedKey = headers['x-backfill-key'] ?? headers['X-Backfill-Key'] ?? null;\nconst expected = $vars.SHOPIFY_WEBHOOK_SECRET;\nconst valid = !!providedKey && !!expected && providedKey === expected;\n\nreturn [{\n  json: {\n    ...item,\n    backfill_key_valid: valid\n  }\n}];\n"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1088,
+        208
+      ],
+      "id": "07a60237-968c-4fc3-8924-12f9e1cc1d46",
+      "name": "Verify_Backfill_Key"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "d1e2f3a4-cond-4b1a-9c1a-1a2b3c4d5e04",
+              "leftValue": "={{ $json.backfill_key_valid }}",
+              "rightValue": true,
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        1344,
+        208
+      ],
+      "id": "61883030-01cf-44f2-9163-33495459d413",
+      "name": "Backfill_Key_Valid?"
+    },
+    {
+      "parameters": {
+        "jsCode": "const item = $input.first().json ?? {};\nconst body = item.body ?? {};\n\nconst SUPPORTED_TOPICS = ['products/create', 'products/update', 'products/delete'];\nconst topic = SUPPORTED_TOPICS.includes(body.topic) ? body.topic : 'products/update';\nconst product = body.product ?? {};\n\nreturn [{\n  json: {\n    topic,\n    product\n  }\n}];\n"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1600,
+        112
+      ],
+      "id": "7d1803ee-5a52-403a-a1fd-417b5ce68377",
+      "name": "Build_Product_Management_Input_Backfill"
+    },
+    {
+      "parameters": {
+        "workflowId": {
+          "__rl": true,
+          "value": "4DFeGggoJg94Ad8R",
+          "mode": "list",
+          "cachedResultUrl": "/workflow/4DFeGggoJg94Ad8R",
+          "cachedResultName": "Babys World — Product_Management"
+        },
+        "workflowInputs": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "topic": "={{ $json.topic }}",
+            "product": "={{ $json.product }}"
+          },
+          "matchingColumns": [
+            "topic",
+            "product"
+          ],
+          "schema": [
+            {
+              "id": "topic",
+              "displayName": "topic",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string",
+              "removed": false
+            },
+            {
+              "id": "product",
+              "displayName": "product",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "object",
+              "removed": false
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": true
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.executeWorkflow",
+      "typeVersion": 1.2,
+      "position": [
+        1856,
+        112
+      ],
+      "id": "d1e9ab0a-478f-448a-b23c-da69d26039d9",
+      "name": "Call_Product_Management"
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ $json }}",
+        "options": {
+          "responseCode": 200
+        }
+      },
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [
+        2112,
+        112
+      ],
+      "id": "b891bc8e-cc0f-47e0-84d4-d07b20545e9c",
+      "name": "Respond_Success"
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ { \"error\": \"invalid_backfill_key\" } }}",
+        "options": {
+          "responseCode": 401
+        }
+      },
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [
+        1600,
+        368
+      ],
+      "id": "fe08bb8d-3536-45bd-82f2-e342d0e9b3c3",
+      "name": "Respond_Unauthorized"
+    }
+  ],
+  "connections": {
+    "Webhook_Backfill": {
+      "main": [
+        [
+          {
+            "node": "Verify_Backfill_Key",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Verify_Backfill_Key": {
+      "main": [
+        [
+          {
+            "node": "Backfill_Key_Valid?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Backfill_Key_Valid?": {
+      "main": [
+        [
+          {
+            "node": "Build_Product_Management_Input_Backfill",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Respond_Unauthorized",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Build_Product_Management_Input_Backfill": {
+      "main": [
+        [
+          {
+            "node": "Call_Product_Management",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Call_Product_Management": {
+      "main": [
+        [
+          {
+            "node": "Respond_Success",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "nodeGroups": [],
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate",
+    "availableInMCP": false
+  },
+  "staticData": null,
+  "pinData": {},
+  "meta": null,
+  "tags": [],
+  "shared": [
+    {
+      "role": "workflow:owner",
+      "workflowId": "a99ylBtEIxemQmRF",
+      "projectId": "8h8pwWGcWlnGEym3",
+      "createdAt": "2026-08-19T22:51:16.645Z",
+      "updatedAt": "2026-08-19T22:51:16.645Z"
+    }
+  ],
+  "activeVersion": {
+    "versionId": "a8822561-efbf-4f87-a039-25688f0e0733",
+    "workflowId": "a99ylBtEIxemQmRF",
+    "nodes": [
+      {
+        "parameters": {
+          "content": "## Backfill: Cargar Producto a Qdrant (Directo, sin HMAC)\n\nWorkflow NUEVO y separado -- no modifica Product_Management ni EVT_Shopify_Product_Events, solo los invoca. Pensado para cargar productos YA EXISTENTES en Shopify (descargados antes con la API, ver descargar_productos_shopify.bat) sin pasar por el webhook publico real:\n\n- No hace verificacion HMAC (no tiene sentido para datos que uno mismo ya tiene en un archivo) -- en su lugar exige un header simple `X-Backfill-Key` que debe coincidir con la variable `$vars.SHOPIFY_WEBHOOK_SECRET` que ya existe en esta instancia n8n (mismo secreto que ya usan los otros flujos de catalogo/pagos). Esto evita dejar un endpoint totalmente abierto sin tener que crear una credencial n8n nueva.\n- No espera el formato que devuelve la API de Shopify (`{\"products\": [...]}`), sino UN producto por llamada: `{ \"topic\": \"products/update\", \"product\": { ...producto tal cual lo devuelve la API o el webhook... } }`. El script local (cargar_catalogo_a_qdrant.py) hace esa desenvoltura antes de mandar cada request.\n- Llama directo a `Product_Management` (Execute Workflow), el mismo workflow que ya usa el pipeline real -- mismas validaciones, mismo upsert, misma limpieza de huerfanos, misma coleccion Qdrant que este apunte en cada momento (hoy: BabysWorld_Catalogo_Test).\n\nIMPORTANTE: activar este workflow (boton Active) antes de correr el script local -- si esta inactivo, el webhook solo responde en la URL de test (Listen for test event), no en la URL real. Se puede desactivar de nuevo cuando termine la carga masiva, no hace falta dejarlo activo todo el tiempo.",
+          "height": 620,
+          "width": 620,
+          "color": 4
+        },
+        "type": "n8n-nodes-base.stickyNote",
+        "typeVersion": 1,
+        "position": [
+          400,
+          -32
+        ],
+        "id": "5a40db43-84a7-4685-ab80-0d40011015c3",
+        "name": "Sticky_Backfill_Note"
+      },
+      {
+        "parameters": {
+          "httpMethod": "POST",
+          "path": "catalogo/backfill-directo-dev",
+          "responseMode": "responseNode",
+          "options": {}
+        },
+        "type": "n8n-nodes-base.webhook",
+        "typeVersion": 2.1,
+        "position": [
+          832,
+          208
+        ],
+        "id": "87f46b50-fb6b-4071-9ebe-585e240a5b0c",
+        "name": "Webhook_Backfill",
+        "webhookId": "d1e2f3a4-back-4b1a-9c1a-1a2b3c4d5e02"
+      },
+      {
+        "parameters": {
+          "jsCode": "const item = $input.first().json ?? {};\nconst headers = item.headers ?? {};\nconst providedKey = headers['x-backfill-key'] ?? headers['X-Backfill-Key'] ?? null;\nconst expected = $vars.SHOPIFY_WEBHOOK_SECRET;\nconst valid = !!providedKey && !!expected && providedKey === expected;\n\nreturn [{\n  json: {\n    ...item,\n    backfill_key_valid: valid\n  }\n}];\n"
+        },
+        "type": "n8n-nodes-base.code",
+        "typeVersion": 2,
+        "position": [
+          1088,
+          208
+        ],
+        "id": "07a60237-968c-4fc3-8924-12f9e1cc1d46",
+        "name": "Verify_Backfill_Key"
+      },
+      {
+        "parameters": {
+          "conditions": {
+            "options": {
+              "caseSensitive": true,
+              "leftValue": "",
+              "typeValidation": "strict",
+              "version": 3
+            },
+            "conditions": [
+              {
+                "id": "d1e2f3a4-cond-4b1a-9c1a-1a2b3c4d5e04",
+                "leftValue": "={{ $json.backfill_key_valid }}",
+                "rightValue": true,
+                "operator": {
+                  "type": "boolean",
+                  "operation": "true",
+                  "singleValue": true
+                }
+              }
+            ],
+            "combinator": "and"
+          },
+          "options": {}
+        },
+        "type": "n8n-nodes-base.if",
+        "typeVersion": 2.3,
+        "position": [
+          1344,
+          208
+        ],
+        "id": "61883030-01cf-44f2-9163-33495459d413",
+        "name": "Backfill_Key_Valid?"
+      },
+      {
+        "parameters": {
+          "jsCode": "const item = $input.first().json ?? {};\nconst body = item.body ?? {};\n\nconst SUPPORTED_TOPICS = ['products/create', 'products/update', 'products/delete'];\nconst topic = SUPPORTED_TOPICS.includes(body.topic) ? body.topic : 'products/update';\nconst product = body.product ?? {};\n\nreturn [{\n  json: {\n    topic,\n    product\n  }\n}];\n"
+        },
+        "type": "n8n-nodes-base.code",
+        "typeVersion": 2,
+        "position": [
+          1600,
+          112
+        ],
+        "id": "7d1803ee-5a52-403a-a1fd-417b5ce68377",
+        "name": "Build_Product_Management_Input_Backfill"
+      },
+      {
+        "parameters": {
+          "workflowId": {
+            "__rl": true,
+            "value": "4DFeGggoJg94Ad8R",
+            "mode": "list",
+            "cachedResultUrl": "/workflow/4DFeGggoJg94Ad8R",
+            "cachedResultName": "Babys World — Product_Management"
+          },
+          "workflowInputs": {
+            "mappingMode": "defineBelow",
+            "value": {
+              "topic": "={{ $json.topic }}",
+              "product": "={{ $json.product }}"
+            },
+            "matchingColumns": [
+              "topic",
+              "product"
+            ],
+            "schema": [
+              {
+                "id": "topic",
+                "displayName": "topic",
+                "required": false,
+                "defaultMatch": false,
+                "display": true,
+                "canBeUsedToMatch": true,
+                "type": "string",
+                "removed": false
+              },
+              {
+                "id": "product",
+                "displayName": "product",
+                "required": false,
+                "defaultMatch": false,
+                "display": true,
+                "canBeUsedToMatch": true,
+                "type": "object",
+                "removed": false
+              }
+            ],
+            "attemptToConvertTypes": false,
+            "convertFieldsToString": true
+          },
+          "options": {}
+        },
+        "type": "n8n-nodes-base.executeWorkflow",
+        "typeVersion": 1.2,
+        "position": [
+          1856,
+          112
+        ],
+        "id": "d1e9ab0a-478f-448a-b23c-da69d26039d9",
+        "name": "Call_Product_Management"
+      },
+      {
+        "parameters": {
+          "respondWith": "json",
+          "responseBody": "={{ $json }}",
+          "options": {
+            "responseCode": 200
+          }
+        },
+        "type": "n8n-nodes-base.respondToWebhook",
+        "typeVersion": 1.1,
+        "position": [
+          2112,
+          112
+        ],
+        "id": "b891bc8e-cc0f-47e0-84d4-d07b20545e9c",
+        "name": "Respond_Success"
+      },
+      {
+        "parameters": {
+          "respondWith": "json",
+          "responseBody": "={{ { \"error\": \"invalid_backfill_key\" } }}",
+          "options": {
+            "responseCode": 401
+          }
+        },
+        "type": "n8n-nodes-base.respondToWebhook",
+        "typeVersion": 1.1,
+        "position": [
+          1600,
+          368
+        ],
+        "id": "fe08bb8d-3536-45bd-82f2-e342d0e9b3c3",
+        "name": "Respond_Unauthorized"
+      }
+    ],
+    "connections": {
+      "Webhook_Backfill": {
+        "main": [
+          [
+            {
+              "node": "Verify_Backfill_Key",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Verify_Backfill_Key": {
+        "main": [
+          [
+            {
+              "node": "Backfill_Key_Valid?",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Backfill_Key_Valid?": {
+        "main": [
+          [
+            {
+              "node": "Build_Product_Management_Input_Backfill",
+              "type": "main",
+              "index": 0
+            }
+          ],
+          [
+            {
+              "node": "Respond_Unauthorized",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Build_Product_Management_Input_Backfill": {
+        "main": [
+          [
+            {
+              "node": "Call_Product_Management",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Call_Product_Management": {
+        "main": [
+          [
+            {
+              "node": "Respond_Success",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      }
+    },
+    "nodeGroups": [],
+    "authors": "Michelo Vaca Cardozo",
+    "name": "Version a8822561",
+    "description": "",
+    "autosaved": true,
+    "createdAt": "2026-10-08T23:48:08.088Z",
+    "updatedAt": "2026-10-09T00:10:48.000Z"
+  }
+}
