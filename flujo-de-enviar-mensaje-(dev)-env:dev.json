@@ -1,0 +1,1468 @@
+{
+  "id": "moR2mUZuRnJIiNZq",
+  "name": "Flujo de enviar mensaje (DEV)",
+  "active": true,
+  "activeVersionId": "6ed6272f-81c4-4f01-8aac-e894a33e578c",
+  "createdAt": "2026-03-02T04:57:32.657Z",
+  "updatedAt": "2026-10-01T22:00:16.669Z",
+  "isArchived": false,
+  "versionId": "6ed6272f-81c4-4f01-8aac-e894a33e578c",
+  "triggerCount": 0,
+  "nodes": [
+    {
+      "parameters": {
+        "workflowInputs": {
+          "values": [
+            {
+              "name": "session_id"
+            },
+            {
+              "name": "text_body"
+            },
+            {
+              "name": "caption"
+            },
+            {
+              "name": "imagen no disponible"
+            },
+            {
+              "name": "environment"
+            },
+            {
+              "name": "channel"
+            },
+            {
+              "name": "mime_type"
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.executeWorkflowTrigger",
+      "typeVersion": 1.1,
+      "position": [
+        544,
+        608
+      ],
+      "id": "f7dd5fc8-19e4-494d-87da-ec43804e7e45",
+      "name": "When Executed by Another Workflow"
+    },
+    {
+      "parameters": {
+        "rules": {
+          "values": [
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 3
+                },
+                "conditions": [
+                  {
+                    "id": "3f9b7f50-d633-40e9-9f1c-52d70d5cff37",
+                    "leftValue": "={{ $json.caption }}",
+                    "rightValue": "image",
+                    "operator": {
+                      "type": "string",
+                      "operation": "notEmpty",
+                      "singleValue": true
+                    }
+                  },
+                  {
+                    "id": "imagen-not-uat",
+                    "leftValue": "={{ $json.environment }}",
+                    "rightValue": "uat",
+                    "operator": {
+                      "type": "string",
+                      "operation": "notEquals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "imagen"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 3
+                },
+                "conditions": [
+                  {
+                    "id": "421b1481-2e9d-41df-bce8-243948aba6e1",
+                    "leftValue": "={{ $json.text_body }}",
+                    "rightValue": "",
+                    "operator": {
+                      "type": "string",
+                      "operation": "notEmpty",
+                      "singleValue": true
+                    }
+                  },
+                  {
+                    "id": "Texto-not-uat",
+                    "leftValue": "={{ $json.environment }}",
+                    "rightValue": "uat",
+                    "operator": {
+                      "type": "string",
+                      "operation": "notEquals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "Texto"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 3
+                },
+                "conditions": [
+                  {
+                    "id": "c21d24fa-3558-4303-8993-38687d8c01ae",
+                    "leftValue": "={{ $json['imagen no disponible'] }}",
+                    "rightValue": "",
+                    "operator": {
+                      "type": "string",
+                      "operation": "notEmpty",
+                      "singleValue": true
+                    }
+                  },
+                  {
+                    "id": "Imagen no disponible-not-uat",
+                    "leftValue": "={{ $json.environment }}",
+                    "rightValue": "uat",
+                    "operator": {
+                      "type": "string",
+                      "operation": "notEquals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "Imagen no disponible"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 3
+                },
+                "conditions": [
+                  {
+                    "id": "d600a4c3-1af6-4a0e-b9f2-4ae9b06d1b66",
+                    "leftValue": "={{ $json.environment }}",
+                    "rightValue": "uat",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "testing"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 3
+                },
+                "conditions": [
+                  {
+                    "id": "7f4385a7-8c52-468f-b5d5-462fc208590c",
+                    "leftValue": "={{ $('When Executed by Another Workflow').item.json.mime_type }}",
+                    "rightValue": "image_telegram",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "Image Telegram"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 3.4,
+      "position": [
+        1168,
+        176
+      ],
+      "id": "01a49c94-bf15-494b-b6c7-d2a542743580",
+      "name": "Switch"
+    },
+    {
+      "parameters": {
+        "workflowId": {
+          "__rl": true,
+          "value": "yGjwaIUC-L7VOHskiDT9n",
+          "mode": "list",
+          "cachedResultUrl": "/workflow/yGjwaIUC-L7VOHskiDT9n",
+          "cachedResultName": "Babys World — Agente de Pruebas"
+        },
+        "workflowInputs": {
+          "mappingMode": "defineBelow",
+          "value": {},
+          "matchingColumns": [],
+          "schema": [],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": true
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.executeWorkflow",
+      "typeVersion": 1.3,
+      "position": [
+        1472,
+        240
+      ],
+      "id": "6e14e291-d880-423c-b87d-20a7fd688584",
+      "name": "Call 'Agente de Pruebas'"
+    },
+    {
+      "parameters": {
+        "operation": "send",
+        "phoneNumberId": "992551847276777",
+        "recipientPhoneNumber": "={{ $('When Executed by Another Workflow').item.json.session_id }}",
+        "messageType": "image",
+        "mediaPath": "useMedian8n",
+        "additionalFields": {
+          "mediaCaption": "={{ $('When Executed by Another Workflow').item.json.caption }}"
+        }
+      },
+      "type": "n8n-nodes-base.whatsApp",
+      "typeVersion": 1.1,
+      "position": [
+        1472,
+        -320
+      ],
+      "id": "0009bde3-7302-4912-9016-b873134658d7",
+      "name": "Send image",
+      "webhookId": "3c3fd4f6-75dd-4789-aee8-83e07f752647",
+      "credentials": {
+        "whatsAppApi": {
+          "id": "VkoCC1dvkFgJX0Kc",
+          "name": "Pruebas nuevo numero enviar mensaje"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "send",
+        "phoneNumberId": "992551847276777",
+        "recipientPhoneNumber": "={{ $('When Executed by Another Workflow').item.json.session_id.toString() }}",
+        "textBody": "={{ $('When Executed by Another Workflow').item.json.text_body }}",
+        "additionalFields": {}
+      },
+      "type": "n8n-nodes-base.whatsApp",
+      "typeVersion": 1.1,
+      "position": [
+        1472,
+        -160
+      ],
+      "id": "f7665aaa-a936-4be8-a494-2fe247914e73",
+      "name": "Send text",
+      "webhookId": "3c3fd4f6-75dd-4789-aee8-83e07f752647",
+      "credentials": {
+        "whatsAppApi": {
+          "id": "VkoCC1dvkFgJX0Kc",
+          "name": "Pruebas nuevo numero enviar mensaje"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "send",
+        "phoneNumberId": "992551847276777",
+        "recipientPhoneNumber": "={{ $('When Executed by Another Workflow').item.json.session_id }}",
+        "textBody": "={{ $('When Executed by Another Workflow').item.json['imagen no disponible'] }}",
+        "additionalFields": {}
+      },
+      "type": "n8n-nodes-base.whatsApp",
+      "typeVersion": 1.1,
+      "position": [
+        1472,
+        16
+      ],
+      "id": "0573b8f3-8b93-42cb-8eaf-44154838e0d5",
+      "name": "Send_text_image_not_avaliable",
+      "webhookId": "3c3fd4f6-75dd-4789-aee8-83e07f752647",
+      "credentials": {
+        "whatsAppApi": {
+          "id": "VkoCC1dvkFgJX0Kc",
+          "name": "Pruebas nuevo numero enviar mensaje"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "rules": {
+          "values": [
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 3
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $json.channel }}",
+                    "rightValue": "whatsapp",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    },
+                    "id": "8c0b7961-7d70-43bf-9786-0f7c97cb9c08"
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "whatsapp"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 3
+                },
+                "conditions": [
+                  {
+                    "id": "0b16f263-a183-4e0a-bb5c-1f49566fc255",
+                    "leftValue": "={{ $json.channel }}",
+                    "rightValue": "telegram",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "telegram"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 3.4,
+      "position": [
+        816,
+        608
+      ],
+      "id": "08d39939-4c3a-4ba7-84aa-c5091302bc0c",
+      "name": "channel_validation"
+    },
+    {
+      "parameters": {
+        "jsCode": "const chat_id = $json.session_id;\nconst body = $json.text_body;\nconst reply_markup = $json.reply_markup ? (typeof $json.reply_markup === 'string' ? JSON.parse($json.reply_markup) : $json.reply_markup) : null;\nconst media_url = $json.caption;\nconst mime_type = $json.mime_type;\n\nconst payload = {\n  chat_id: chat_id.toString(),\n  parse_mode: 'HTML'\n};\n\nswitch(mime_type){\n  case \"text\": payload.text = body;\n    break;\n  case \"image\": payload.photo = media_url;\n    break;\n}\n\nif (reply_markup) {\n  payload.reply_markup = reply_markup;\n}\n\nreturn { payload };"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1456,
+        848
+      ],
+      "id": "8d0e900d-06df-4d35-8d47-4e1cbed4eb8b",
+      "name": "build_telegram_payload"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.telegram.org/bot8658854172:AAFrcN6TIAVivpGTHSPi5rkk53SJKtD7jRg/sendMessage",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify($json.payload) }}",
+        "options": {
+          "response": {
+            "response": {
+              "fullResponse": true
+            }
+          }
+        }
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [
+        1680,
+        848
+      ],
+      "id": "428dfd7c-a6ee-4be3-8bce-f9e66442ad7f",
+      "name": "send_via_telegram_api"
+    },
+    {
+      "parameters": {
+        "url": "={{ $('When Executed by Another Workflow').item.json.caption }}",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "whatsAppApi",
+        "options": {
+          "response": {
+            "response": {
+              "responseFormat": "file"
+            }
+          }
+        }
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        1456,
+        1040
+      ],
+      "id": "85b2f6a6-7f4e-4cca-80bf-2a671f664344",
+      "name": "download_image",
+      "credentials": {
+        "whatsAppApi": {
+          "id": "VkoCC1dvkFgJX0Kc",
+          "name": "Pruebas nuevo numero enviar mensaje"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "rules": {
+          "values": [
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 3
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $('When Executed by Another Workflow').item.json.mime_type }}",
+                    "rightValue": "text",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    },
+                    "id": "82caefc5-3172-44c1-b5e5-16b70f9299a1"
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "text"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 3
+                },
+                "conditions": [
+                  {
+                    "id": "fdd1a99a-5804-4dd1-95ee-d658a4ba6c56",
+                    "leftValue": "={{ $('When Executed by Another Workflow').item.json.mime_type }}",
+                    "rightValue": "image",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals",
+                      "name": "filter.operator.equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "image"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 3.4,
+      "position": [
+        1216,
+        928
+      ],
+      "id": "652ea777-28ca-499d-abdb-86f6cee32746",
+      "name": "media_type_telegram"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.telegram.org/bot8658854172:AAFrcN6TIAVivpGTHSPi5rkk53SJKtD7jRg/sendPhoto",
+        "sendBody": true,
+        "contentType": "multipart-form-data",
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "chat_id",
+              "value": "={{ $('When Executed by Another Workflow').item.json.session_id }}"
+            },
+            {
+              "parameterType": "formBinaryData",
+              "name": "photo",
+              "inputDataFieldName": "data"
+            }
+          ]
+        },
+        "options": {
+          "response": {
+            "response": {
+              "fullResponse": true
+            }
+          }
+        }
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [
+        1680,
+        1040
+      ],
+      "id": "68e31176-88de-44c8-a557-9431e88a6a7a",
+      "name": "send_image_telegram_api"
+    },
+    {
+      "parameters": {
+        "resource": "file",
+        "fileId": "={{ $('When Executed by Another Workflow').item.json.caption }}",
+        "additionalFields": {}
+      },
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        1472,
+        448
+      ],
+      "id": "c356db94-a787-4dba-8277-8d193b80f897",
+      "name": "Get a file",
+      "webhookId": "da19880a-65b5-4bf5-8a7b-254b151ed278",
+      "credentials": {
+        "telegramApi": {
+          "id": "OzDcdqbFAOuxFC24",
+          "name": "Telegram_BW_Dev"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "send",
+        "phoneNumberId": "992551847276777",
+        "recipientPhoneNumber": "={{ $('When Executed by Another Workflow').item.json.session_id }}",
+        "messageType": "image",
+        "mediaPath": "useMedian8n",
+        "additionalFields": {}
+      },
+      "type": "n8n-nodes-base.whatsApp",
+      "typeVersion": 1.1,
+      "position": [
+        1696,
+        448
+      ],
+      "id": "0c7e235f-b7de-4165-ba85-99de32550156",
+      "name": "send_image_telegram",
+      "webhookId": "21caf454-0216-4053-8c64-64f4db54ce7c",
+      "credentials": {
+        "whatsAppApi": {
+          "id": "VkoCC1dvkFgJX0Kc",
+          "name": "Pruebas nuevo numero enviar mensaje"
+        }
+      }
+    }
+  ],
+  "connections": {
+    "When Executed by Another Workflow": {
+      "main": [
+        [
+          {
+            "node": "channel_validation",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Switch": {
+      "main": [
+        [
+          {
+            "node": "Send image",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Send text",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Send_text_image_not_avaliable",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Call 'Agente de Pruebas'",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Get a file",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "channel_validation": {
+      "main": [
+        [
+          {
+            "node": "Switch",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "media_type_telegram",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "build_telegram_payload": {
+      "main": [
+        [
+          {
+            "node": "send_via_telegram_api",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "download_image": {
+      "main": [
+        [
+          {
+            "node": "send_image_telegram_api",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "media_type_telegram": {
+      "main": [
+        [
+          {
+            "node": "build_telegram_payload",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "download_image",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get a file": {
+      "main": [
+        [
+          {
+            "node": "send_image_telegram",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "nodeGroups": [],
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate",
+    "availableInMCP": false
+  },
+  "staticData": null,
+  "pinData": {},
+  "meta": {
+    "templateCredsSetupCompleted": true
+  },
+  "tags": [
+    {
+      "id": "6e1haF3pXukz6KVf",
+      "name": "env:dev",
+      "createdAt": "2025-05-27T01:29:25.680Z",
+      "updatedAt": "2026-02-11T00:17:23.837Z"
+    }
+  ],
+  "shared": [
+    {
+      "role": "workflow:owner",
+      "workflowId": "moR2mUZuRnJIiNZq",
+      "projectId": "8h8pwWGcWlnGEym3",
+      "createdAt": "2026-03-02T04:57:32.660Z",
+      "updatedAt": "2026-03-02T04:57:32.660Z"
+    }
+  ],
+  "activeVersion": {
+    "versionId": "6ed6272f-81c4-4f01-8aac-e894a33e578c",
+    "workflowId": "moR2mUZuRnJIiNZq",
+    "nodes": [
+      {
+        "parameters": {
+          "workflowInputs": {
+            "values": [
+              {
+                "name": "session_id"
+              },
+              {
+                "name": "text_body"
+              },
+              {
+                "name": "caption"
+              },
+              {
+                "name": "imagen no disponible"
+              },
+              {
+                "name": "environment"
+              },
+              {
+                "name": "channel"
+              },
+              {
+                "name": "mime_type"
+              }
+            ]
+          }
+        },
+        "type": "n8n-nodes-base.executeWorkflowTrigger",
+        "typeVersion": 1.1,
+        "position": [
+          544,
+          608
+        ],
+        "id": "f7dd5fc8-19e4-494d-87da-ec43804e7e45",
+        "name": "When Executed by Another Workflow"
+      },
+      {
+        "parameters": {
+          "rules": {
+            "values": [
+              {
+                "conditions": {
+                  "options": {
+                    "caseSensitive": true,
+                    "leftValue": "",
+                    "typeValidation": "strict",
+                    "version": 3
+                  },
+                  "conditions": [
+                    {
+                      "id": "3f9b7f50-d633-40e9-9f1c-52d70d5cff37",
+                      "leftValue": "={{ $json.caption }}",
+                      "rightValue": "image",
+                      "operator": {
+                        "type": "string",
+                        "operation": "notEmpty",
+                        "singleValue": true
+                      }
+                    },
+                    {
+                      "id": "imagen-not-uat",
+                      "leftValue": "={{ $json.environment }}",
+                      "rightValue": "uat",
+                      "operator": {
+                        "type": "string",
+                        "operation": "notEquals"
+                      }
+                    }
+                  ],
+                  "combinator": "and"
+                },
+                "renameOutput": true,
+                "outputKey": "imagen"
+              },
+              {
+                "conditions": {
+                  "options": {
+                    "caseSensitive": true,
+                    "leftValue": "",
+                    "typeValidation": "strict",
+                    "version": 3
+                  },
+                  "conditions": [
+                    {
+                      "id": "421b1481-2e9d-41df-bce8-243948aba6e1",
+                      "leftValue": "={{ $json.text_body }}",
+                      "rightValue": "",
+                      "operator": {
+                        "type": "string",
+                        "operation": "notEmpty",
+                        "singleValue": true
+                      }
+                    },
+                    {
+                      "id": "Texto-not-uat",
+                      "leftValue": "={{ $json.environment }}",
+                      "rightValue": "uat",
+                      "operator": {
+                        "type": "string",
+                        "operation": "notEquals"
+                      }
+                    }
+                  ],
+                  "combinator": "and"
+                },
+                "renameOutput": true,
+                "outputKey": "Texto"
+              },
+              {
+                "conditions": {
+                  "options": {
+                    "caseSensitive": true,
+                    "leftValue": "",
+                    "typeValidation": "strict",
+                    "version": 3
+                  },
+                  "conditions": [
+                    {
+                      "id": "c21d24fa-3558-4303-8993-38687d8c01ae",
+                      "leftValue": "={{ $json['imagen no disponible'] }}",
+                      "rightValue": "",
+                      "operator": {
+                        "type": "string",
+                        "operation": "notEmpty",
+                        "singleValue": true
+                      }
+                    },
+                    {
+                      "id": "Imagen no disponible-not-uat",
+                      "leftValue": "={{ $json.environment }}",
+                      "rightValue": "uat",
+                      "operator": {
+                        "type": "string",
+                        "operation": "notEquals"
+                      }
+                    }
+                  ],
+                  "combinator": "and"
+                },
+                "renameOutput": true,
+                "outputKey": "Imagen no disponible"
+              },
+              {
+                "conditions": {
+                  "options": {
+                    "caseSensitive": true,
+                    "leftValue": "",
+                    "typeValidation": "strict",
+                    "version": 3
+                  },
+                  "conditions": [
+                    {
+                      "id": "d600a4c3-1af6-4a0e-b9f2-4ae9b06d1b66",
+                      "leftValue": "={{ $json.environment }}",
+                      "rightValue": "uat",
+                      "operator": {
+                        "type": "string",
+                        "operation": "equals"
+                      }
+                    }
+                  ],
+                  "combinator": "and"
+                },
+                "renameOutput": true,
+                "outputKey": "testing"
+              },
+              {
+                "conditions": {
+                  "options": {
+                    "caseSensitive": true,
+                    "leftValue": "",
+                    "typeValidation": "strict",
+                    "version": 3
+                  },
+                  "conditions": [
+                    {
+                      "id": "7f4385a7-8c52-468f-b5d5-462fc208590c",
+                      "leftValue": "={{ $('When Executed by Another Workflow').item.json.mime_type }}",
+                      "rightValue": "image_telegram",
+                      "operator": {
+                        "type": "string",
+                        "operation": "equals"
+                      }
+                    }
+                  ],
+                  "combinator": "and"
+                },
+                "renameOutput": true,
+                "outputKey": "Image Telegram"
+              }
+            ]
+          },
+          "options": {}
+        },
+        "type": "n8n-nodes-base.switch",
+        "typeVersion": 3.4,
+        "position": [
+          1168,
+          176
+        ],
+        "id": "01a49c94-bf15-494b-b6c7-d2a542743580",
+        "name": "Switch"
+      },
+      {
+        "parameters": {
+          "workflowId": {
+            "__rl": true,
+            "value": "yGjwaIUC-L7VOHskiDT9n",
+            "mode": "list",
+            "cachedResultUrl": "/workflow/yGjwaIUC-L7VOHskiDT9n",
+            "cachedResultName": "Babys World — Agente de Pruebas"
+          },
+          "workflowInputs": {
+            "mappingMode": "defineBelow",
+            "value": {},
+            "matchingColumns": [],
+            "schema": [],
+            "attemptToConvertTypes": false,
+            "convertFieldsToString": true
+          },
+          "options": {}
+        },
+        "type": "n8n-nodes-base.executeWorkflow",
+        "typeVersion": 1.3,
+        "position": [
+          1472,
+          240
+        ],
+        "id": "6e14e291-d880-423c-b87d-20a7fd688584",
+        "name": "Call 'Agente de Pruebas'"
+      },
+      {
+        "parameters": {
+          "operation": "send",
+          "phoneNumberId": "992551847276777",
+          "recipientPhoneNumber": "={{ $('When Executed by Another Workflow').item.json.session_id }}",
+          "messageType": "image",
+          "mediaPath": "useMedian8n",
+          "additionalFields": {
+            "mediaCaption": "={{ $('When Executed by Another Workflow').item.json.caption }}"
+          }
+        },
+        "type": "n8n-nodes-base.whatsApp",
+        "typeVersion": 1.1,
+        "position": [
+          1472,
+          -320
+        ],
+        "id": "0009bde3-7302-4912-9016-b873134658d7",
+        "name": "Send image",
+        "webhookId": "3c3fd4f6-75dd-4789-aee8-83e07f752647",
+        "credentials": {
+          "whatsAppApi": {
+            "id": "VkoCC1dvkFgJX0Kc",
+            "name": "Pruebas nuevo numero enviar mensaje"
+          }
+        }
+      },
+      {
+        "parameters": {
+          "operation": "send",
+          "phoneNumberId": "992551847276777",
+          "recipientPhoneNumber": "={{ $('When Executed by Another Workflow').item.json.session_id.toString() }}",
+          "textBody": "={{ $('When Executed by Another Workflow').item.json.text_body }}",
+          "additionalFields": {}
+        },
+        "type": "n8n-nodes-base.whatsApp",
+        "typeVersion": 1.1,
+        "position": [
+          1472,
+          -160
+        ],
+        "id": "f7665aaa-a936-4be8-a494-2fe247914e73",
+        "name": "Send text",
+        "webhookId": "3c3fd4f6-75dd-4789-aee8-83e07f752647",
+        "credentials": {
+          "whatsAppApi": {
+            "id": "VkoCC1dvkFgJX0Kc",
+            "name": "Pruebas nuevo numero enviar mensaje"
+          }
+        }
+      },
+      {
+        "parameters": {
+          "operation": "send",
+          "phoneNumberId": "992551847276777",
+          "recipientPhoneNumber": "={{ $('When Executed by Another Workflow').item.json.session_id }}",
+          "textBody": "={{ $('When Executed by Another Workflow').item.json['imagen no disponible'] }}",
+          "additionalFields": {}
+        },
+        "type": "n8n-nodes-base.whatsApp",
+        "typeVersion": 1.1,
+        "position": [
+          1472,
+          16
+        ],
+        "id": "0573b8f3-8b93-42cb-8eaf-44154838e0d5",
+        "name": "Send_text_image_not_avaliable",
+        "webhookId": "3c3fd4f6-75dd-4789-aee8-83e07f752647",
+        "credentials": {
+          "whatsAppApi": {
+            "id": "VkoCC1dvkFgJX0Kc",
+            "name": "Pruebas nuevo numero enviar mensaje"
+          }
+        }
+      },
+      {
+        "parameters": {
+          "rules": {
+            "values": [
+              {
+                "conditions": {
+                  "options": {
+                    "caseSensitive": true,
+                    "leftValue": "",
+                    "typeValidation": "strict",
+                    "version": 3
+                  },
+                  "conditions": [
+                    {
+                      "leftValue": "={{ $json.channel }}",
+                      "rightValue": "whatsapp",
+                      "operator": {
+                        "type": "string",
+                        "operation": "equals"
+                      },
+                      "id": "8c0b7961-7d70-43bf-9786-0f7c97cb9c08"
+                    }
+                  ],
+                  "combinator": "and"
+                },
+                "renameOutput": true,
+                "outputKey": "whatsapp"
+              },
+              {
+                "conditions": {
+                  "options": {
+                    "caseSensitive": true,
+                    "leftValue": "",
+                    "typeValidation": "strict",
+                    "version": 3
+                  },
+                  "conditions": [
+                    {
+                      "id": "0b16f263-a183-4e0a-bb5c-1f49566fc255",
+                      "leftValue": "={{ $json.channel }}",
+                      "rightValue": "telegram",
+                      "operator": {
+                        "type": "string",
+                        "operation": "equals"
+                      }
+                    }
+                  ],
+                  "combinator": "and"
+                },
+                "renameOutput": true,
+                "outputKey": "telegram"
+              }
+            ]
+          },
+          "options": {}
+        },
+        "type": "n8n-nodes-base.switch",
+        "typeVersion": 3.4,
+        "position": [
+          816,
+          608
+        ],
+        "id": "08d39939-4c3a-4ba7-84aa-c5091302bc0c",
+        "name": "channel_validation"
+      },
+      {
+        "parameters": {
+          "jsCode": "const chat_id = $json.session_id;\nconst body = $json.text_body;\nconst reply_markup = $json.reply_markup ? (typeof $json.reply_markup === 'string' ? JSON.parse($json.reply_markup) : $json.reply_markup) : null;\nconst media_url = $json.caption;\nconst mime_type = $json.mime_type;\n\nconst payload = {\n  chat_id: chat_id.toString(),\n  parse_mode: 'HTML'\n};\n\nswitch(mime_type){\n  case \"text\": payload.text = body;\n    break;\n  case \"image\": payload.photo = media_url;\n    break;\n}\n\nif (reply_markup) {\n  payload.reply_markup = reply_markup;\n}\n\nreturn { payload };"
+        },
+        "type": "n8n-nodes-base.code",
+        "typeVersion": 2,
+        "position": [
+          1456,
+          848
+        ],
+        "id": "8d0e900d-06df-4d35-8d47-4e1cbed4eb8b",
+        "name": "build_telegram_payload"
+      },
+      {
+        "parameters": {
+          "method": "POST",
+          "url": "https://api.telegram.org/bot8658854172:AAFrcN6TIAVivpGTHSPi5rkk53SJKtD7jRg/sendMessage",
+          "sendBody": true,
+          "specifyBody": "json",
+          "jsonBody": "={{ JSON.stringify($json.payload) }}",
+          "options": {
+            "response": {
+              "response": {
+                "fullResponse": true
+              }
+            }
+          }
+        },
+        "type": "n8n-nodes-base.httpRequest",
+        "typeVersion": 4.4,
+        "position": [
+          1680,
+          848
+        ],
+        "id": "428dfd7c-a6ee-4be3-8bce-f9e66442ad7f",
+        "name": "send_via_telegram_api"
+      },
+      {
+        "parameters": {
+          "url": "={{ $('When Executed by Another Workflow').item.json.caption }}",
+          "authentication": "predefinedCredentialType",
+          "nodeCredentialType": "whatsAppApi",
+          "options": {
+            "response": {
+              "response": {
+                "responseFormat": "file"
+              }
+            }
+          }
+        },
+        "type": "n8n-nodes-base.httpRequest",
+        "typeVersion": 4.2,
+        "position": [
+          1456,
+          1040
+        ],
+        "id": "85b2f6a6-7f4e-4cca-80bf-2a671f664344",
+        "name": "download_image",
+        "credentials": {
+          "whatsAppApi": {
+            "id": "VkoCC1dvkFgJX0Kc",
+            "name": "Pruebas nuevo numero enviar mensaje"
+          }
+        }
+      },
+      {
+        "parameters": {
+          "rules": {
+            "values": [
+              {
+                "conditions": {
+                  "options": {
+                    "caseSensitive": true,
+                    "leftValue": "",
+                    "typeValidation": "strict",
+                    "version": 3
+                  },
+                  "conditions": [
+                    {
+                      "leftValue": "={{ $('When Executed by Another Workflow').item.json.mime_type }}",
+                      "rightValue": "text",
+                      "operator": {
+                        "type": "string",
+                        "operation": "equals"
+                      },
+                      "id": "82caefc5-3172-44c1-b5e5-16b70f9299a1"
+                    }
+                  ],
+                  "combinator": "and"
+                },
+                "renameOutput": true,
+                "outputKey": "text"
+              },
+              {
+                "conditions": {
+                  "options": {
+                    "caseSensitive": true,
+                    "leftValue": "",
+                    "typeValidation": "strict",
+                    "version": 3
+                  },
+                  "conditions": [
+                    {
+                      "id": "fdd1a99a-5804-4dd1-95ee-d658a4ba6c56",
+                      "leftValue": "={{ $('When Executed by Another Workflow').item.json.mime_type }}",
+                      "rightValue": "image",
+                      "operator": {
+                        "type": "string",
+                        "operation": "equals",
+                        "name": "filter.operator.equals"
+                      }
+                    }
+                  ],
+                  "combinator": "and"
+                },
+                "renameOutput": true,
+                "outputKey": "image"
+              }
+            ]
+          },
+          "options": {}
+        },
+        "type": "n8n-nodes-base.switch",
+        "typeVersion": 3.4,
+        "position": [
+          1216,
+          928
+        ],
+        "id": "652ea777-28ca-499d-abdb-86f6cee32746",
+        "name": "media_type_telegram"
+      },
+      {
+        "parameters": {
+          "method": "POST",
+          "url": "https://api.telegram.org/bot8658854172:AAFrcN6TIAVivpGTHSPi5rkk53SJKtD7jRg/sendPhoto",
+          "sendBody": true,
+          "contentType": "multipart-form-data",
+          "bodyParameters": {
+            "parameters": [
+              {
+                "name": "chat_id",
+                "value": "={{ $('When Executed by Another Workflow').item.json.session_id }}"
+              },
+              {
+                "parameterType": "formBinaryData",
+                "name": "photo",
+                "inputDataFieldName": "data"
+              }
+            ]
+          },
+          "options": {
+            "response": {
+              "response": {
+                "fullResponse": true
+              }
+            }
+          }
+        },
+        "type": "n8n-nodes-base.httpRequest",
+        "typeVersion": 4.4,
+        "position": [
+          1680,
+          1040
+        ],
+        "id": "68e31176-88de-44c8-a557-9431e88a6a7a",
+        "name": "send_image_telegram_api"
+      },
+      {
+        "parameters": {
+          "resource": "file",
+          "fileId": "={{ $('When Executed by Another Workflow').item.json.caption }}",
+          "additionalFields": {}
+        },
+        "type": "n8n-nodes-base.telegram",
+        "typeVersion": 1.2,
+        "position": [
+          1472,
+          448
+        ],
+        "id": "c356db94-a787-4dba-8277-8d193b80f897",
+        "name": "Get a file",
+        "webhookId": "da19880a-65b5-4bf5-8a7b-254b151ed278",
+        "credentials": {
+          "telegramApi": {
+            "id": "OzDcdqbFAOuxFC24",
+            "name": "Telegram_BW_Dev"
+          }
+        }
+      },
+      {
+        "parameters": {
+          "operation": "send",
+          "phoneNumberId": "992551847276777",
+          "recipientPhoneNumber": "={{ $('When Executed by Another Workflow').item.json.session_id }}",
+          "messageType": "image",
+          "mediaPath": "useMedian8n",
+          "additionalFields": {}
+        },
+        "type": "n8n-nodes-base.whatsApp",
+        "typeVersion": 1.1,
+        "position": [
+          1696,
+          448
+        ],
+        "id": "0c7e235f-b7de-4165-ba85-99de32550156",
+        "name": "send_image_telegram",
+        "webhookId": "21caf454-0216-4053-8c64-64f4db54ce7c",
+        "credentials": {
+          "whatsAppApi": {
+            "id": "VkoCC1dvkFgJX0Kc",
+            "name": "Pruebas nuevo numero enviar mensaje"
+          }
+        }
+      }
+    ],
+    "connections": {
+      "When Executed by Another Workflow": {
+        "main": [
+          [
+            {
+              "node": "channel_validation",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Switch": {
+        "main": [
+          [
+            {
+              "node": "Send image",
+              "type": "main",
+              "index": 0
+            }
+          ],
+          [
+            {
+              "node": "Send text",
+              "type": "main",
+              "index": 0
+            }
+          ],
+          [
+            {
+              "node": "Send_text_image_not_avaliable",
+              "type": "main",
+              "index": 0
+            }
+          ],
+          [
+            {
+              "node": "Call 'Agente de Pruebas'",
+              "type": "main",
+              "index": 0
+            }
+          ],
+          [
+            {
+              "node": "Get a file",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "channel_validation": {
+        "main": [
+          [
+            {
+              "node": "Switch",
+              "type": "main",
+              "index": 0
+            }
+          ],
+          [
+            {
+              "node": "media_type_telegram",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "build_telegram_payload": {
+        "main": [
+          [
+            {
+              "node": "send_via_telegram_api",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "download_image": {
+        "main": [
+          [
+            {
+              "node": "send_image_telegram_api",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "media_type_telegram": {
+        "main": [
+          [
+            {
+              "node": "build_telegram_payload",
+              "type": "main",
+              "index": 0
+            }
+          ],
+          [
+            {
+              "node": "download_image",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Get a file": {
+        "main": [
+          [
+            {
+              "node": "send_image_telegram",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      }
+    },
+    "nodeGroups": [],
+    "authors": "Kmilo Guerrero",
+    "name": "Version 6ed6272f",
+    "description": "",
+    "autosaved": true,
+    "createdAt": "2026-10-01T22:00:16.679Z",
+    "updatedAt": "2026-10-01T22:00:19.000Z"
+  }
+}
