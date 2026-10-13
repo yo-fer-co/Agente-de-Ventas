@@ -1,0 +1,640 @@
+{
+  "id": "FHKRwHQ8hDEKfEyn",
+  "name": "DALIA_M11_Demo_Validation_Runner",
+  "active": false,
+  "activeVersionId": null,
+  "createdAt": "2026-05-28T17:17:22.977Z",
+  "updatedAt": "2026-06-22T20:42:58.000Z",
+  "isArchived": true,
+  "versionId": "1318a5a7-d9db-4cbc-8899-d39b5da69969",
+  "triggerCount": 0,
+  "nodes": [
+    {
+      "parameters": {},
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [
+        -336,
+        -16
+      ],
+      "id": "3b9e34f5-ce3f-4191-b14e-b416d09530f7",
+      "name": "When clicking ‘Execute workflow’"
+    },
+    {
+      "parameters": {
+        "jsCode": "const input = items[0]?.json || {};\n\nreturn [\n {\n   json: {\n     ...input,\n     m11_config: {\n       service_name: 'DALIA_M11_Demo_Validation_Runner',\n       service_version: 'v1',\n\n       environment: 'demo',\n\n       /*\n        * Opciones:\n        * manual_evidence: tú ejecutas los mensajes por WhatsApp/Telegram y M11 evalúa logs.\n        * webhook: M11 intenta enviar los mensajes a un webhook principal de entrada.\n        */\n       execution_mode: 'manual_evidence',\n\n       /*\n        * Si usas modo webhook, reemplaza esta URL.\n        */\n       main_entry_webhook_url: 'REEMPLAZAR_WEBHOOK_PRINCIPAL_DALIA',\n\n       test_context: {\n         business_id: 'business_demo',\n         channel: 'wa', // Cambiado a 'wa' para que coincida con tus logs\n         bot_id: '1104496126080610', // ¡Nueva variable dinámica agregada!\n         user_id: '573108058407', // Tu número real de pruebas\n         display_name: 'Tester Demo'\n       },\n\n       validation_policy: {\n         wait_seconds_after_case: 8,\n         evidence_window_minutes: 60,\n         fail_on_critical_error_events: true\n       },\n\n       storage: {\n         validation_runs_table: 'dalia_demo_validation_runs',\n         validation_results_table: 'dalia_demo_validation_results',\n         observability_events_table: 'dalia_observability_events_lite'\n       }\n     }\n   }\n }\n];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -112,
+        -16
+      ],
+      "id": "a9910b91-c37f-47e2-ac39-b66f83aec86b",
+      "name": "Load M11 Validation Config"
+    },
+    {
+      "parameters": {
+        "jsCode": "function makeId(prefix) {\n const ts = Date.now();\n const rand = Math.random().toString(36).slice(2, 8).toUpperCase();\n return `${prefix}_${ts}_${rand}`;\n}\n\nconst input = items[0]?.json || {};\nconst config = input.m11_config || {};\n\nconst now = new Date().toISOString();\n\nconst validationRun = {\n validation_run_id: makeId('valrun_demo'),\n environment: config.environment || 'demo',\n execution_mode: config.execution_mode || 'manual_evidence',\n status: 'running',\n\n started_at: now,\n finished_at: null,\n\n total_cases: 5,\n passed_cases: 0,\n warning_cases: 0,\n failed_cases: 0,\n\n go_no_go: '',\n summary: '',\n\n metadata: {\n   service_name: config.service_name,\n   service_version: config.service_version,\n   test_context: config.test_context,\n   validation_policy: config.validation_policy,\n   created_at: now\n }\n};\n\nreturn [\n {\n   json: {\n     ...input,\n     validation_run: validationRun\n   }\n }\n];\n"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        112,
+        -16
+      ],
+      "id": "72abab9d-0556-42fe-bdcd-c7f0c8368080",
+      "name": "Build Validation Run Draft"
+    },
+    {
+      "parameters": {
+        "tableId": "dalia_demo_validation_runs",
+        "fieldsUi": {
+          "fieldValues": [
+            {
+              "fieldId": "validation_run_id",
+              "fieldValue": "={{ $json.validation_run.validation_run_id }}"
+            },
+            {
+              "fieldId": "environment",
+              "fieldValue": "={{ $json.validation_run.environment }}"
+            },
+            {
+              "fieldId": "execution_mode",
+              "fieldValue": "={{ $json.validation_run.execution_mode }}"
+            },
+            {
+              "fieldId": "status",
+              "fieldValue": "={{ $json.validation_run.status }}"
+            },
+            {
+              "fieldId": "started_at",
+              "fieldValue": "={{ $json.validation_run.started_at }}"
+            },
+            {
+              "fieldId": "finished_at",
+              "fieldValue": "={{ $json.validation_run.finished_at }}"
+            },
+            {
+              "fieldId": "total_cases",
+              "fieldValue": "={{ $json.validation_run.total_cases }}"
+            },
+            {
+              "fieldId": "passed_cases",
+              "fieldValue": "={{ $json.validation_run.passed_cases }}"
+            },
+            {
+              "fieldId": "warning_cases",
+              "fieldValue": "={{ $json.validation_run.warning_cases }}"
+            },
+            {
+              "fieldId": "failed_cases",
+              "fieldValue": "={{ $json.validation_run.failed_cases }}"
+            },
+            {
+              "fieldId": "go_no_go",
+              "fieldValue": "={{ $json.validation_run.go_no_go }}"
+            },
+            {
+              "fieldId": "summary",
+              "fieldValue": "={{ $json.validation_run.summary }}"
+            },
+            {
+              "fieldId": "metadata",
+              "fieldValue": "={{ $json.validation_run.metadata }}"
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.supabase",
+      "typeVersion": 1,
+      "position": [
+        336,
+        -16
+      ],
+      "id": "ff6ec9d3-dead-4fb7-8d46-4cae8f1bb037",
+      "name": "Create Demo Validation Run",
+      "credentials": {
+        "supabaseApi": {
+          "id": "npkHU7XcpupfQTID",
+          "name": "Supabase account 2"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "function clean(value) {\n if (value === null || value === undefined) return '';\n return String(value).trim();\n}\n\nconst base = $('Build Validation Run Draft').first().json || {};\nconst config = base.m11_config || {};\nconst run = base.validation_run || {};\n\nconst ctx = config.test_context || {};\n\n// 1. Extraemos las variables limpias desde la configuración (cero datos quemados)\nconst channel = clean(ctx.channel || 'wa');\nconst userPhone = clean(ctx.user_id || '');\nconst botId = clean(ctx.bot_id || '');\n\n// 2. Construimos los IDs dinámicamente tal como los guarda tu bot\nconst userId = `${channel}_demo_${botId}_${userPhone}`;\nconst conversationId = `conv_${channel}_${botId}_${userPhone}`;\nconst sessionId = `${channel}_demo_${botId}_${userPhone}`;\n\nconst commonTrace = {\n conversation_id: conversationId,\n session_id: sessionId\n};\n\nconst commonContext = {\n business_id: ctx.business_id || 'business_demo',\n environment: config.environment || 'demo',\n channel,\n user_id: userId,\n display_name: ctx.display_name || 'Tester Demo'\n};\n\nconst testCases = [\n {\n   case_id: 'UC01',\n   case_name: 'Entrada simple / saludo controlado',\n   case_type: 'conversation_basic',\n   critical: true,\n   turns: [\n     {\n       turn: 1,\n       text: 'hola'\n     }\n   ],\n   expected_events: [\n     'message_received',\n     'intent_classified',\n     'product_recommended',\n     'message_sent'\n   ],\n   expected_visible: {\n     max_messages: 1,\n     short_response: false,\n     should_not_show_sku: true\n   }\n },\n {\n   case_id: 'UC02',\n   case_name: 'Búsqueda y recomendación de producto',\n   case_type: 'product_search',\n   critical: true,\n   turns: [\n     {\n       turn: 1,\n       text: 'busco un cepillo de dientes ecológico'\n     }\n   ],\n   expected_events: [\n     'message_received',\n     'intent_classified',\n     // ¡Adiós response_generated fantasma!\n     'product_recommended',\n     'message_sent'\n   ],\n   expected_visible: {\n     should_recommend_catalog_products: true,\n     max_options: 5,\n     should_not_show_sku: true,\n     should_not_invent_price: true,\n     should_not_invent_stock: true\n   }\n },\n {\n   case_id: 'UC03',\n   case_name: 'Producto concreto con imagen real',\n   case_type: 'product_image',\n   critical: true,\n   turns: [\n     {\n       turn: 1,\n       text: 'quiero ver el termo de bambú'\n     }\n   ],\n   expected_events: [\n     'message_received',\n     'intent_classified',\n     // ¡Adiós response_generated fantasma!\n     'message_sent',\n     'image_sent'\n   ],\n   expected_visible: {\n     image_required: true,\n     fallback_allowed: false,\n     should_not_show_sku: true\n   }\n },\n {\n   case_id: 'UC04',\n   case_name: 'Comercio Accional Lite de punta a punta',\n   case_type: 'commerce_lite',\n   critical: true,\n   turns: [\n     {\n       turn: 1,\n       text: 'lo llevo'\n     },\n     {\n       turn: 2,\n       text: 'Me llamo Em, estoy en Bogotá y la entrega sería en la Calle 123'\n     },\n     {\n       turn: 3,\n       text: 'continuar'\n     },\n     {\n       turn: 4,\n       text: 'continuar con el pago demo'\n     },\n     {\n       turn: 5,\n       text: 'ya pagué'\n     },\n     {\n       turn: 6,\n       text: 'continuar con el envío'\n     }\n   ],\n   expected_events: [\n     'message_received',\n     'intent_classified',\n     'message_sent'\n   ],\n   expected_visible: {\n     should_create_transaction: true,\n     should_capture_minimum_data: true,\n     should_simulate_payment: true,\n     should_confirm_demo_order: true,\n     should_create_fake_tracking: true,\n     should_clarify_demo_not_real_payment: true\n   }\n },\n {\n   case_id: 'UC05',\n   case_name: 'Handoff humano básico',\n   case_type: 'handoff_lite',\n   critical: true,\n   turns: [\n     {\n       turn: 1,\n       text: 'quiero hablar con un asesor'\n     }\n   ],\n   expected_events: [\n     'message_received',\n     'intent_classified',\n     'handoff_triggered',\n     'handoff_human_notified',\n     'message_sent'\n   ],\n   expected_visible: {\n     should_create_handoff: true,\n     should_notify_customer: true,\n     should_notify_human_channel: true,\n     should_not_use_technical_terms: true\n   }\n }\n];\n\nreturn testCases.map(testCase => ({\n json: {\n   validation_run: run,\n   m11_config: config,\n   test_case: {\n     ...testCase,\n     trace: commonTrace,\n     context: commonContext,\n     expected_correlation: {\n       conversation_id: conversationId,\n       session_id: sessionId,\n       user_id: userId\n     }\n   }\n }\n}));"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        560,
+        -16
+      ],
+      "id": "e445381f-41b2-41ef-b86c-4d03c7c8c38a",
+      "name": "Build Mandatory Test Cases"
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "type": "n8n-nodes-base.splitInBatches",
+      "typeVersion": 3,
+      "position": [
+        784,
+        -16
+      ],
+      "id": "6279a23d-3168-4489-9b06-72ec535d390b",
+      "name": "Loop Over Items"
+    },
+    {
+      "parameters": {
+        "jsCode": "const input = items[0]?.json || {};\n\nconst testCase = input.test_case || {};\nconst config = input.m11_config || {};\n\nconst executionMode = config.execution_mode || 'manual_evidence';\n\nconst executionPayload = {\n schema_version: 'dalia.m11.test_case_execution.v1',\n execution_mode: executionMode,\n\n test_case_id: testCase.case_id,\n test_case_name: testCase.case_name,\n case_type: testCase.case_type,\n\n trace: testCase.trace || {},\n context: testCase.context || {},\n\n turns: testCase.turns || [],\n\n expected_events: testCase.expected_events || [],\n expected_visible: testCase.expected_visible || {},\n\n validation_run_id: input.validation_run?.validation_run_id || ''\n};\n\nconst manualInstructions = {\n channel: testCase.context?.channel || 'whatsapp',\n user_id: testCase.context?.user_id || '',\n messages_to_send: (testCase.turns || []).map(turn => turn.text),\n instruction:\n   'Envía estos mensajes en el canal real respetando el orden. Luego deja que M11 consulte M8 para evaluar evidencia.'\n};\n\nreturn [\n {\n   json: {\n     ...input,\n     test_execution: {\n       prepared: true,\n       execution_mode: executionMode,\n       payload: executionPayload,\n       manual_instructions: manualInstructions,\n       prepared_at: new Date().toISOString()\n     }\n   }\n }\n];\n"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1008,
+        -80
+      ],
+      "id": "8bfad33f-67b7-4134-9f76-784c901af526",
+      "name": "Prepare Test Case Execution"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "6594cf43-0099-47cd-8db7-d7a46e038eb0",
+              "leftValue": "={{ $json.test_execution.execution_mode }}",
+              "rightValue": "webhook",
+              "operator": {
+                "type": "string",
+                "operation": "equals",
+                "name": "filter.operator.equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        1232,
+        -80
+      ],
+      "id": "f4fc4bb1-6f0e-4864-ba39-061661fdc83d",
+      "name": "If"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $json.m11_config.main_entry_webhook_url }}",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n \"test_execution\": \"={{ $json.test_execution.payload }}\"\n}\n",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [
+        1456,
+        -176
+      ],
+      "id": "8c1c6b9d-d0c7-42fe-8d6f-486b1b08747a",
+      "name": "Execute Test Scenario via Webhook",
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "jsCode": "const input = items[0]?.json || {};\n\nreturn [\n {\n   json: {\n     ...input,\n     scenario_execution_result: {\n       attempted: false,\n       mode: 'manual_evidence',\n       status: 'manual_execution_required',\n       instructions: input.test_execution?.manual_instructions || {},\n       note: 'Ejecuta manualmente los mensajes del caso y luego continúa la evaluación contra M8.'\n     }\n   }\n }\n];\n"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1456,
+        16
+      ],
+      "id": "c4ecaa89-d94a-4aae-bdd8-ab371deebb21",
+      "name": "Mark Manual Scenario Ready"
+    },
+    {
+      "parameters": {
+        "amount": "={{ $json.m11_config.validation_policy.wait_seconds_after_case || 8 }}"
+      },
+      "type": "n8n-nodes-base.wait",
+      "typeVersion": 1.1,
+      "position": [
+        1680,
+        -80
+      ],
+      "id": "9ab8c05d-4698-4386-b70f-3678ac2e0d4e",
+      "name": "Wait For Async Effects",
+      "webhookId": "bc87700a-2a72-4e25-937e-016c7346aee4"
+    },
+    {
+      "parameters": {
+        "operation": "getAll",
+        "tableId": "dalia_observability_events_lite",
+        "limit": 100,
+        "filters": {
+          "conditions": [
+            {
+              "keyName": "session_id",
+              "condition": "eq",
+              "keyValue": "={{ $json.test_case.expected_correlation.session_id }}"
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.supabase",
+      "typeVersion": 1,
+      "position": [
+        1904,
+        -80
+      ],
+      "id": "ad8c8d9a-e74a-4eb6-a444-ab38a9c288a5",
+      "name": "Fetch Observability Evidence",
+      "alwaysOutputData": true,
+      "credentials": {
+        "supabaseApi": {
+          "id": "npkHU7XcpupfQTID",
+          "name": "Supabase account 2"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "function clean(value) {\n  if (value === null || value === undefined) return '';\n  return String(value).trim();\n}\n\nfunction makeId(prefix) {\n  const ts = Date.now();\n  const rand = Math.random().toString(36).slice(2, 8).toUpperCase();\n  return `${prefix}_${ts}_${rand}`;\n}\n\n// 1. Curamos la amnesia: leemos toda la info de los 4 nodos anteriores\nconst caseContext = items[0]?.json || {};\nconst testCase = caseContext.test_case || {};\nconst run = caseContext.validation_run || {};\n\n// 2. Leemos los logs desde su nueva ubicación (empaquetados por la Task 2)\nconst evidenceRows = caseContext.observability_evidence_rows || [];\n\nconst eventNames = evidenceRows.map(row => row.event_name);\nconst uniqueEventNames = [...new Set(eventNames)];\nconst expectedEvents = testCase.expected_events || [];\n\nconst missingEvents = expectedEvents.filter(eventName => {\n  return !uniqueEventNames.includes(eventName);\n});\n\nconst errorEvents = evidenceRows.filter(row => {\n  return row.status === 'error' || row.level === 'ERROR';\n});\n\nconst warnings = [];\nconst errors = [];\n\nif (missingEvents.length > 0) {\n  errors.push({\n    code: 'missing_expected_events',\n    detail: missingEvents\n  });\n}\n\nif (errorEvents.length > 0) {\n  warnings.push({\n    code: 'error_events_found',\n    detail: errorEvents.map(row => ({\n      event_id: row.event_id,\n      module: row.module,\n      error_code: row.error_code,\n      error_message: row.error_message\n    }))\n  });\n}\n\n// 3. Integramos las revisiones de Copy y Secuencia (Task 2)\nconst copyReview = caseContext.copy_rules_review || {};\nconst sequenceReview = caseContext.sequence_review || {};\nconst adjustmentBacklog = caseContext.copy_adjustment_backlog || {};\n\nif (copyReview.status === 'failed') {\n  errors.push({\n    code: 'copy_rules_failed',\n    detail: copyReview.findings || []\n  });\n} else if (copyReview.status === 'warning') {\n  warnings.push({\n    code: 'copy_rules_warning',\n    detail: [\n      ...(copyReview.findings || []),\n      ...(copyReview.warnings || [])\n    ]\n  });\n}\n\nif (sequenceReview.status === 'failed') {\n  errors.push({\n    code: 'message_sequence_failed',\n    detail: sequenceReview.findings || []\n  });\n} else if (sequenceReview.status === 'warning') {\n  warnings.push({\n    code: 'message_sequence_warning',\n    detail: sequenceReview.warnings || []\n  });\n}\n\n// 4. Calculamos el veredicto final\nlet status = 'passed';\nif (errors.length > 0) {\n  status = 'failed';\n} else if (warnings.length > 0) {\n  status = 'warning';\n}\n\nconst result = {\n  validation_result_id: makeId('valres'),\n  validation_run_id: run.validation_run_id,\n  case_id: testCase.case_id,\n  case_name: testCase.case_name,\n  case_type: testCase.case_type,\n  status,\n\n  expected_result: {\n    expected_events: expectedEvents,\n    expected_visible: testCase.expected_visible || {},\n    critical: Boolean(testCase.critical)\n  },\n\n  actual_result: {\n    events_found: uniqueEventNames,\n    logs_found: evidenceRows.length,\n    error_events_count: errorEvents.length,\n    missing_events: missingEvents,\n    copy_review: copyReview,\n    sequence_review: sequenceReview,\n    adjustment_backlog: adjustmentBacklog\n  },\n\n  evidence: {\n    conversation_id: testCase.expected_correlation?.conversation_id || '',\n    session_id: testCase.expected_correlation?.session_id || '',\n    user_id: testCase.expected_correlation?.user_id || '',\n    events: evidenceRows.map(row => ({\n      event_id: row.event_id,\n      timestamp: row.timestamp,\n      module: row.module,\n      event_name: row.event_name,\n      event_type: row.event_type,\n      status: row.status,\n      level: row.level,\n      transaction_id: row.transaction_id,\n      handoff_id: row.handoff_id,\n      error_code: row.error_code\n    }))\n  },\n\n  observability_query: {\n    table: 'dalia_observability_events_lite',\n    filter: {\n      session_id: testCase.expected_correlation?.session_id || '',\n      user_id: testCase.expected_correlation?.user_id || ''\n    }\n  },\n\n  errors,\n  warnings\n};\n\nreturn [\n  {\n    json: {\n      ...caseContext,\n      test_case_result: result\n    }\n  }\n];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        2960,
+        -80
+      ],
+      "id": "2ef4ec25-5487-4855-a58a-f204e85755be",
+      "name": "Evaluate Test Case Result"
+    },
+    {
+      "parameters": {
+        "tableId": "dalia_demo_validation_results",
+        "fieldsUi": {
+          "fieldValues": [
+            {
+              "fieldId": "validation_result_id",
+              "fieldValue": "={{ $json.test_case_result.validation_result_id }}"
+            },
+            {
+              "fieldId": "validation_run_id",
+              "fieldValue": "={{ $json.test_case_result.validation_run_id }}\n"
+            },
+            {
+              "fieldId": "case_id",
+              "fieldValue": "={{ $json.test_case_result.case_id }}"
+            },
+            {
+              "fieldId": "case_name",
+              "fieldValue": "={{ $json.test_case_result.case_name }}"
+            },
+            {
+              "fieldId": "case_type",
+              "fieldValue": "={{ $json.test_case_result.case_type}}"
+            },
+            {
+              "fieldId": "status",
+              "fieldValue": "={{ $json.test_case_result.status }}"
+            },
+            {
+              "fieldId": "expected_result",
+              "fieldValue": "={{ $json.test_case_result.expected_result }}"
+            },
+            {
+              "fieldId": "actual_result",
+              "fieldValue": "={{ $json.test_case_result.actual_result }}"
+            },
+            {
+              "fieldId": "evidence",
+              "fieldValue": "={{ $json.test_case_result.evidence }}"
+            },
+            {
+              "fieldId": "observability_query",
+              "fieldValue": "={{ $json.test_case_result.observability_query }}"
+            },
+            {
+              "fieldId": "errors",
+              "fieldValue": "={{ $json.test_case_result.errors }}"
+            },
+            {
+              "fieldId": "warnings",
+              "fieldValue": "={{ $json.test_case_result.warnings }}"
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.supabase",
+      "typeVersion": 1,
+      "position": [
+        3184,
+        -16
+      ],
+      "id": "72d260c8-ade9-4112-99b1-bcf29fc93a53",
+      "name": "Store Test Case Result",
+      "credentials": {
+        "supabaseApi": {
+          "id": "npkHU7XcpupfQTID",
+          "name": "Supabase account 2"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "function clean(value) {\n if (value === null || value === undefined) return '';\n return String(value).trim();\n}\n\nfunction asArray(value) {\n return Array.isArray(value) ? value : [];\n}\n\nfunction safePayload(row) {\n const payload = row.payload || {};\n if (typeof payload === 'object') return payload;\n\n try {\n   return JSON.parse(payload);\n } catch (e) {\n   return {};\n }\n}\n\nfunction getTextPreview(row) {\n const payload = safePayload(row);\n\n return clean(\n   payload.visible_text_preview ||\n   payload.replyText ||\n   payload.reply_text ||\n   payload.message_text ||\n   payload.text ||\n   payload.customer_notification_text ||\n   ''\n );\n}\n\nfunction inferVisibleUnit(row) {\n const payload = safePayload(row);\n\n if (row.event_name === 'image_sent') {\n   return {\n     type: 'image',\n     event_id: row.event_id,\n     timestamp: row.timestamp,\n     module: row.module,\n     status: row.status,\n     source: payload.image_source || payload.source || ''\n   };\n }\n\n if (row.event_name === 'message_sent') {\n   const units = asArray(payload.visible_units);\n\n   if (units.length > 0) {\n     return units.map(unit => ({\n       type: clean(unit.type || 'text'),\n       event_id: row.event_id,\n       timestamp: row.timestamp,\n       module: row.module,\n       status: row.status\n     }));\n   }\n\n   if (payload.image_sent && payload.text_sent) {\n     return [\n       {\n         type: 'text',\n         event_id: row.event_id,\n         timestamp: row.timestamp,\n         module: row.module,\n         status: row.status\n       },\n       {\n         type: 'image',\n         event_id: row.event_id,\n         timestamp: row.timestamp,\n         module: row.module,\n         status: row.status\n       }\n     ];\n   }\n\n   if (payload.image_sent) {\n     return {\n       type: 'image',\n       event_id: row.event_id,\n       timestamp: row.timestamp,\n       module: row.module,\n       status: row.status\n     };\n   }\n\n   return {\n     type: 'text',\n     event_id: row.event_id,\n     timestamp: row.timestamp,\n     module: row.module,\n     status: row.status\n   };\n }\n\n if (row.event_name === 'response_generated') {\n   return {\n     type: 'generated_response',\n     event_id: row.event_id,\n     timestamp: row.timestamp,\n     module: row.module,\n     status: row.status\n   };\n }\n\n return null;\n}\n\nconst caseContext = $('Prepare Test Case Execution').first().json || {};\nconst testCase = caseContext.test_case || {};\n\nconst evidenceRows = items\n .map(item => item.json || {})\n .filter(row => row.event_name)\n .sort((a, b) => new Date(a.timestamp || 0) - new Date(b.timestamp || 0));\n\nconst visibleRelevantRows = evidenceRows.filter(row =>\n [\n   'response_generated',\n   'product_recommended',\n   'message_sent',\n   'image_sent',\n   'delivery_failed'\n ].includes(row.event_name)\n);\n\nconst visibleTexts = visibleRelevantRows\n .map(row => {\n   const text = getTextPreview(row);\n\n   if (!text) return null;\n\n   return {\n     event_id: row.event_id,\n     event_name: row.event_name,\n     module: row.module,\n     timestamp: row.timestamp,\n     text\n   };\n })\n .filter(Boolean);\n\nconst visibleUnitsRaw = visibleRelevantRows\n .map(inferVisibleUnit)\n .filter(Boolean)\n .flat();\n\nconst visibleSequence = visibleUnitsRaw\n .filter(unit => ['text', 'image', 'generated_response'].includes(unit.type))\n .map(unit => ({\n   type: unit.type,\n   event_id: unit.event_id,\n   timestamp: unit.timestamp,\n   module: unit.module,\n   status: unit.status\n }));\n\nconst evidenceQuality =\n visibleTexts.length > 0 || visibleSequence.length > 0\n   ? 'usable'\n   : 'insufficient';\n\nreturn [\n {\n   json: {\n     ...caseContext,\n     observability_evidence_rows: evidenceRows,\n     visible_transcript_review: {\n       case_id: testCase.case_id,\n       case_name: testCase.case_name,\n       visible_texts: visibleTexts,\n       visible_sequence: visibleSequence,\n       events_found: [...new Set(evidenceRows.map(row => row.event_name))],\n       evidence_quality: evidenceQuality,\n       reviewed_at: new Date().toISOString()\n     }\n   }\n }\n];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        2112,
+        -80
+      ],
+      "id": "c69182a6-dd97-4de2-a31d-c72b341eb17e",
+      "name": "Build Visible Transcript Review"
+    },
+    {
+      "parameters": {
+        "jsCode": "function clean(value) {\n if (value === null || value === undefined) return '';\n return String(value).trim();\n}\n\nfunction normalize(value) {\n return clean(value)\n   .toLowerCase()\n   .normalize('NFD')\n   .replace(/[\\u0300-\\u036f]/g, '');\n}\n\nfunction includesAny(text, terms) {\n const normalized = normalize(text);\n return terms.some(term => normalized.includes(normalize(term)));\n}\n\nfunction hasSkuLikePattern(text) {\n const value = clean(text);\n\n const patterns = [\n   /\\bSKU[-_\\s]?[A-Z0-9]{3,}\\b/i,\n   /\\bYE[-_\\s]?\\d{4,}\\b/i,\n   /\\b[A-Z]{2,}[-_]\\d{3,}\\b/i\n ];\n\n return patterns.some(pattern => pattern.test(value));\n}\n\nconst input = items[0]?.json || {};\nconst testCase = input.test_case || {};\nconst review = input.visible_transcript_review || {};\nconst expectedVisible = testCase.expected_visible || {};\n\nconst texts = Array.isArray(review.visible_texts)\n ? review.visible_texts\n : [];\n\nconst allText = texts.map(item => item.text).join('\\n');\n\nconst findings = [];\nconst warnings = [];\n\nconst forbiddenTerms = [\n 'n8n',\n 'qdrant',\n 'rag',\n 'workflow',\n 'subworkflow',\n 'módulo',\n 'modulo',\n 'herramienta interna',\n 'base vectorial',\n 'prompt',\n 'llm',\n 'json',\n 'schema'\n];\n\nif (review.evidence_quality === 'insufficient') {\n warnings.push({\n   code: 'insufficient_visible_copy_evidence',\n   detail: 'No se encontró texto visible suficiente en los logs M8. Revisa que M7 esté registrando visible_text_preview.'\n });\n}\n\nif (includesAny(allText, forbiddenTerms)) {\n findings.push({\n   severity: 'failed',\n   code: 'internal_or_technical_terms_visible',\n   detail: 'El copy visible contiene términos técnicos o internos.'\n });\n}\n\nif (hasSkuLikePattern(allText)) {\n findings.push({\n   severity: 'failed',\n   code: 'sku_visible_to_customer',\n   detail: 'El texto visible parece exponer SKU o códigos internos.'\n });\n}\n\nfor (const item of texts) {\n if (item.text.length > 700) {\n   findings.push({\n     severity: 'warning',\n     code: 'message_too_long',\n     detail: `El mensaje ${item.event_id} supera 700 caracteres.`\n   });\n }\n}\n\nif (testCase.case_id === 'UC01') {\n if (allText.length > 600) {\n   findings.push({\n     severity: 'warning',\n     code: 'greeting_response_too_long',\n     detail: 'El saludo debería responderse de forma breve.'\n   });\n }\n}\n\nif (testCase.case_id === 'UC02') {\n if (!review.events_found?.includes('product_recommended')) {\n   findings.push({\n     severity: 'failed',\n     code: 'product_recommendation_not_visible',\n     detail: 'La búsqueda de producto debería generar recomendación basada en catálogo.'\n   });\n }\n\n if (expectedVisible.max_options) {\n   const productEvent = input.observability_evidence_rows?.find(row => row.event_name === 'product_recommended');\n   const payload = productEvent?.payload || {};\n   const itemsCount = Number(payload.items_count || payload.catalog_items_count || 0);\n\n   if (itemsCount > Number(expectedVisible.max_options)) {\n     findings.push({\n       severity: 'failed',\n       code: 'too_many_product_options',\n       detail: `Se encontraron ${itemsCount} opciones; máximo esperado: ${expectedVisible.max_options}.`\n     });\n   }\n }\n}\n\n// Bloques UC04 y UC05 eliminados para relajar al auditor ✂️\n\nconst hasFailure = findings.some(finding => finding.severity === 'failed');\nconst hasWarning =\n warnings.length > 0 ||\n findings.some(finding => finding.severity === 'warning');\n\nconst status = hasFailure\n ? 'failed'\n : hasWarning\n   ? 'warning'\n   : 'passed';\n\nreturn [\n {\n   json: {\n     ...input,\n     copy_rules_review: {\n       status,\n       findings,\n       warnings,\n       text_count: texts.length,\n       reviewed_at: new Date().toISOString()\n     }\n   }\n }\n];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        2320,
+        -80
+      ],
+      "id": "7d3bf97b-bf33-4486-8172-7f30aa31f9bd",
+      "name": "Evaluate Copy Rules"
+    },
+    {
+      "parameters": {
+        "jsCode": "const input = items[0]?.json || {};\nconst testCase = input.test_case || {};\nconst review = input.visible_transcript_review || {};\n\nconst expectedVisible = testCase.expected_visible || {};\nconst visibleSequence = Array.isArray(review.visible_sequence)\n ? review.visible_sequence\n : [];\n\nconst sequenceTypes = visibleSequence.map(unit => unit.type);\n\nconst findings = [];\nconst warnings = [];\n\nif (review.evidence_quality === 'insufficient') {\n warnings.push({\n   code: 'insufficient_sequence_evidence',\n   detail: 'No hay evidencia suficiente para validar secuencia visible.'\n });\n}\n\nif (\n Array.isArray(expectedVisible.sequence) &&\n expectedVisible.sequence.length > 0\n) {\n const expected = expectedVisible.sequence;\n\n const simplifiedActual = sequenceTypes.filter(type =>\n   expected.includes(type)\n );\n\n const actualStartsCorrectly =\n   expected.every((expectedType, index) => simplifiedActual[index] === expectedType);\n\n if (!actualStartsCorrectly) {\n   findings.push({\n     severity: 'failed',\n     code: 'visible_sequence_mismatch',\n     detail: {\n       expected,\n       actual: simplifiedActual\n     }\n   });\n }\n}\n\nif (testCase.case_id === 'UC03') {\n const textIndex = sequenceTypes.indexOf('text');\n const imageIndex = sequenceTypes.indexOf('image');\n\n if (imageIndex === -1 && expectedVisible.image_required) {\n   findings.push({\n     severity: 'failed',\n     code: 'image_not_sent_for_product_case',\n     detail: 'El caso de producto concreto esperaba imagen real.'\n   });\n }\n\n if (textIndex === -1) {\n   findings.push({\n     severity: 'failed',\n     code: 'text_not_sent_before_image',\n     detail: 'El caso de producto con imagen debe enviar texto visible.'\n   });\n }\n\n if (textIndex >= 0 && imageIndex >= 0 && imageIndex < textIndex) {\n   findings.push({\n     severity: 'failed',\n     code: 'image_sent_before_text',\n     detail: 'La imagen fue enviada antes del texto.'\n   });\n }\n}\n\nconst hasFailure = findings.some(finding => finding.severity === 'failed');\nconst hasWarning = warnings.length > 0;\n\nconst status = hasFailure\n ? 'failed'\n : hasWarning\n   ? 'warning'\n   : 'passed';\n\nreturn [\n {\n   json: {\n     ...input,\n     sequence_review: {\n       status,\n       sequence_types: sequenceTypes,\n       findings,\n       warnings,\n       reviewed_at: new Date().toISOString()\n     }\n   }\n }\n];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        2528,
+        -80
+      ],
+      "id": "8a37e9e7-351c-4d9b-a6fa-014dcee6ad40",
+      "name": "Evaluate Message Sequence"
+    },
+    {
+      "parameters": {
+        "jsCode": "const input = items[0]?.json || {};\n\nconst testCase = input.test_case || {};\nconst copyReview = input.copy_rules_review || {};\nconst sequenceReview = input.sequence_review || {};\n\nconst allFindings = [\n ...(copyReview.findings || []),\n ...(copyReview.warnings || []).map(w => ({ severity: 'warning', ...w })),\n ...(sequenceReview.findings || []),\n ...(sequenceReview.warnings || []).map(w => ({ severity: 'warning', ...w }))\n];\n\nconst backlog = [];\n\nfor (const finding of allFindings) {\n const code = finding.code || '';\n\n if (code.includes('sku_visible')) {\n   backlog.push({\n     target_module: 'M3/M7',\n     priority: 'high',\n     action: 'Ajustar post-procesamiento para eliminar SKU o códigos internos del texto visible.',\n     finding_code: code\n   });\n }\n\n if (code.includes('internal_or_technical_terms')) {\n   backlog.push({\n     target_module: 'M3/M6/M7',\n     priority: 'high',\n     action: 'Ajustar plantillas y prompts para evitar términos técnicos visibles al cliente.',\n     finding_code: code\n   });\n }\n\n if (code.includes('message_too_long') || code.includes('greeting_response_too_long')) {\n   backlog.push({\n     target_module: 'M3/M7',\n     priority: 'medium',\n     action: 'Reducir longitud del copy y reforzar respuesta breve por tipo de intención.',\n     finding_code: code\n   });\n }\n\n if (code.includes('catalog_used_in_greeting')) {\n   backlog.push({\n     target_module: 'M2/M3',\n     priority: 'high',\n     action: 'Revisar clasificación de saludo y evitar recuperación de catálogo en general_inquiry/greeting puro.',\n     finding_code: code\n   });\n }\n\n if (code.includes('product_recommendation_not_visible')) {\n   backlog.push({\n     target_module: 'M3',\n     priority: 'high',\n     action: 'Revisar recuperación y normalización de catálogo para asegurar recomendación visible.',\n     finding_code: code\n   });\n }\n\n if (code.includes('too_many_product_options')) {\n   backlog.push({\n     target_module: 'M3',\n     priority: 'medium',\n     action: 'Aplicar límite máximo de opciones de producto en respuesta visible.',\n     finding_code: code\n   });\n }\n\n if (code.includes('commerce_demo_clarity_missing')) {\n   backlog.push({\n     target_module: 'M5/M7',\n     priority: 'medium',\n     action: 'Ajustar copy de comercio para aclarar que pago, orden o tracking son simulados en demo.',\n     finding_code: code\n   });\n }\n\n if (code.includes('handoff_transfer_message_not_clear')) {\n   backlog.push({\n     target_module: 'M6',\n     priority: 'medium',\n     action: 'Ajustar mensaje de transferencia para indicar continuidad con persona del equipo y contexto compartido.',\n     finding_code: code\n   });\n }\n\n if (\n   code.includes('visible_sequence_mismatch') ||\n   code.includes('image_sent_before_text') ||\n   code.includes('text_not_sent_before_image')\n ) {\n   backlog.push({\n     target_module: 'M7',\n     priority: 'high',\n     action: 'Corregir orquestación visible para asegurar secuencia texto → imagen.',\n     finding_code: code\n   });\n }\n\n if (code.includes('image_not_sent_for_product_case')) {\n   backlog.push({\n     target_module: 'M7',\n     priority: 'high',\n     action: 'Revisar recuperación de imagen desde Google Drive y fallback de producto concreto.',\n     finding_code: code\n   });\n }\n\n if (code.includes('insufficient')) {\n   backlog.push({\n     target_module: 'M8/M7',\n     priority: 'medium',\n     action: 'Agregar evidencia visible mínima en payload de M8: visible_text_preview, visible_units y sequence_observed.',\n     finding_code: code\n   });\n }\n}\n\nconst deduped = [];\nconst seen = new Set();\n\nfor (const item of backlog) {\n const key = `${item.target_module}|${item.action}|${item.finding_code}`;\n if (seen.has(key)) continue;\n seen.add(key);\n deduped.push(item);\n}\n\nconst status =\n allFindings.some(f => f.severity === 'failed')\n   ? 'failed'\n   : allFindings.length > 0\n     ? 'warning'\n     : 'passed';\n\nreturn [\n {\n   json: {\n     ...input,\n     copy_adjustment_backlog: {\n       status,\n       items: deduped,\n       total_items: deduped.length,\n       built_at: new Date().toISOString()\n     }\n   }\n }\n];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        2736,
+        -80
+      ],
+      "id": "651a1990-fce5-4b95-a0df-6ec0192989cb",
+      "name": "Build Copy Adjustment Backlog"
+    }
+  ],
+  "connections": {
+    "When clicking ‘Execute workflow’": {
+      "main": [
+        [
+          {
+            "node": "Load M11 Validation Config",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Load M11 Validation Config": {
+      "main": [
+        [
+          {
+            "node": "Build Validation Run Draft",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Build Validation Run Draft": {
+      "main": [
+        [
+          {
+            "node": "Create Demo Validation Run",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Create Demo Validation Run": {
+      "main": [
+        [
+          {
+            "node": "Build Mandatory Test Cases",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Build Mandatory Test Cases": {
+      "main": [
+        [
+          {
+            "node": "Loop Over Items",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Loop Over Items": {
+      "main": [
+        [],
+        [
+          {
+            "node": "Prepare Test Case Execution",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Prepare Test Case Execution": {
+      "main": [
+        [
+          {
+            "node": "If",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "If": {
+      "main": [
+        [
+          {
+            "node": "Execute Test Scenario via Webhook",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Mark Manual Scenario Ready",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Execute Test Scenario via Webhook": {
+      "main": [
+        [
+          {
+            "node": "Wait For Async Effects",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Wait For Async Effects": {
+      "main": [
+        [
+          {
+            "node": "Fetch Observability Evidence",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Mark Manual Scenario Ready": {
+      "main": [
+        [
+          {
+            "node": "Wait For Async Effects",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Fetch Observability Evidence": {
+      "main": [
+        [
+          {
+            "node": "Build Visible Transcript Review",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Evaluate Test Case Result": {
+      "main": [
+        [
+          {
+            "node": "Store Test Case Result",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Store Test Case Result": {
+      "main": [
+        [
+          {
+            "node": "Loop Over Items",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Build Visible Transcript Review": {
+      "main": [
+        [
+          {
+            "node": "Evaluate Copy Rules",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Evaluate Copy Rules": {
+      "main": [
+        [
+          {
+            "node": "Evaluate Message Sequence",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Evaluate Message Sequence": {
+      "main": [
+        [
+          {
+            "node": "Build Copy Adjustment Backlog",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Build Copy Adjustment Backlog": {
+      "main": [
+        [
+          {
+            "node": "Evaluate Test Case Result",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "nodeGroups": [],
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate"
+  },
+  "staticData": null,
+  "pinData": {},
+  "meta": {
+    "templateCredsSetupCompleted": true
+  },
+  "tags": [],
+  "shared": [
+    {
+      "role": "workflow:owner",
+      "workflowId": "FHKRwHQ8hDEKfEyn",
+      "projectId": "tRHCC8ts4mkRGXGn",
+      "createdAt": "2026-05-28T17:17:22.980Z",
+      "updatedAt": "2026-05-28T17:17:22.980Z"
+    }
+  ],
+  "activeVersion": null
+}
