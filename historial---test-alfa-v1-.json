@@ -1,0 +1,577 @@
+{
+  "id": "VYZXaDaFKEb7QQDm",
+  "name": "Historial - TEST Alfa V1",
+  "active": true,
+  "activeVersionId": "7da0a08c-3bbc-4884-a17d-d2ff2aa89a88",
+  "createdAt": "2025-07-09T02:00:58.321Z",
+  "updatedAt": "2025-07-09T03:11:16.000Z",
+  "isArchived": false,
+  "versionId": "7da0a08c-3bbc-4884-a17d-d2ff2aa89a88",
+  "triggerCount": 0,
+  "nodes": [
+    {
+      "parameters": {
+        "content": "## Historial - TEST Alfa V1\n\n1. Guarda historial de cliente en QDrant. Instancia \"YoEco_Clientes - TEST\"",
+        "height": 140,
+        "width": 600,
+        "color": 6
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [
+        -460,
+        -360
+      ],
+      "typeVersion": 1,
+      "id": "7bfcda4e-38fb-4492-8264-6be26a279212",
+      "name": "Sticky Note"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Loop over input items and add a new field called 'myNewField' to the JSON of each one\nconst input = $input.first().json;\nconst historial = input.historial_sesion || [];\n\n// Recorre cada turno (array interno)\nconst textoConsolidado = historial.map(turno => {\n  const mensajeHumano = turno.human ? `Usuario: ${turno.human}` : \"\";\n  const mensajeAI = turno.ai ? `Agente: ${turno.ai}` : \"\";\n  return `${mensajeHumano}\\n${mensajeAI}`;\n}).join(\"\\n---\\n\");\n\nreturn [{\n  json: {\n    user_id: input.user_id,\n    texto_consolidado: textoConsolidado\n  }\n}];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        200,
+        0
+      ],
+      "id": "a9ad8e50-d357-4b89-a020-31d485021881",
+      "name": "Consolidar historial"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.openai.com/v1/embeddings",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "openAiApi",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"input\": \"{{ $json.response.text }}\",\n  \"model\": \"text-embedding-ada-002\"\n}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        800,
+        0
+      ],
+      "id": "1ee928a8-8554-42da-a447-bd2997314aa8",
+      "name": "Generar Embedding OpenAI",
+      "credentials": {
+        "openAiApi": {
+          "id": "CxN1M3GiHPXWR4gx",
+          "name": "OpenAi TEST"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "a4700d32-ab9c-4590-8b6e-d81fc3096970",
+              "name": "user_id",
+              "value": "={{ $('Consolidar historial').item.json.user_id }}",
+              "type": "string"
+            },
+            {
+              "id": "9d357839-2123-4501-b7fe-99615f3370d4",
+              "name": "texto_consolidado",
+              "value": "={{ $('Summarization Chain').item.json.response.text }}",
+              "type": "string"
+            },
+            {
+              "id": "c15f510c-4369-4f8c-b266-8958bf14ad66",
+              "name": "data",
+              "value": "={{$json[\"data\"][0][\"embedding\"]}}",
+              "type": "array"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        1020,
+        0
+      ],
+      "id": "daf81d11-b470-45f9-a301-765e7ba296d5",
+      "name": "Edit Fields1"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Loop over input items and add a new field called 'myNewField' to the JSON of each one\nfunction generateUUID() {\n  // genera UUID manualmente\n  return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) {\n    const r = Math.random() * 16 | 0;\n    const v = c === 'x' ? r : (r & 0x3 | 0x8);\n    return v.toString(16);\n  });\n}\n\nreturn [{\n  json: {\n    id: generateUUID(),\n    vector: $input.first().json.data,\n    user_id: $input.first().json.user_id,\n    texto_consolidado: $input.first().json.texto_consolidado,\n    timestamp: $now\n  }\n}];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1240,
+        0
+      ],
+      "id": "f6c17b3e-6f58-4022-ab9b-dd42b451a603",
+      "name": "Preparar para Qdrant"
+    },
+    {
+      "parameters": {
+        "method": "PUT",
+        "url": "https://1537c683-48da-4631-ab76-ad698b6b9881.us-east-1-0.aws.cloud.qdrant.io/collections/YoEco_Clientes_TEST/points",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "qdrantApi",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"points\": [\n    {\n      \"id\": {{ JSON.stringify($json.id) }},\n      \"vector\": {{ JSON.stringify($json.vector) }},\n      \"payload\": {\n        \"user_id\": {{ JSON.stringify($json.user_id) }},\n        \"text\": {{ JSON.stringify($json.texto_consolidado) }},\n        \"timestamp\": \"{{ $json.timestamp }}\"\n      }\n    }\n  ]\n}\n",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        1460,
+        0
+      ],
+      "id": "7ceceef6-fa39-4778-9062-b2285bac6c8a",
+      "name": "Guardar en Qdrant",
+      "credentials": {
+        "qdrantApi": {
+          "id": "9oUogOvtDqsTDKBQ",
+          "name": "QdrantApi TEST"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "inputSource": "passthrough"
+      },
+      "type": "n8n-nodes-base.executeWorkflowTrigger",
+      "typeVersion": 1.1,
+      "position": [
+        0,
+        0
+      ],
+      "id": "04944784-6c24-4bf4-b3c0-1b7696ab5e10",
+      "name": "When Executed by Another Workflow"
+    },
+    {
+      "parameters": {
+        "chunkingMode": "advanced",
+        "options": {
+          "summarizationMethodAndPrompts": {
+            "values": {
+              "summarizationMethod": "stuff",
+              "prompt": "=#instrucciones\n\nEres un asistente experto en redacción y análisis de conversaciones. Recibirás como entrada el contenido textual de una conversación entre un agente de inteligencia artificial (denominado \"Agente\") y un ser humano (denominado \"usuario\"). A partir de este contenido, debes generar un resumen consolidado y puntual, en tono formal y amigable, que narre lo ocurrido como parte de una historia coherente.\n\nInstrucciones específicas:\nConsidera que esto es un fragmento de una historia más amplia, por lo que el resumen debe tener un estilo narrativo coherente y fluido.\n\nSi el nombre del usuario se menciona durante la conversación, úsalo en el resumen.\n\nEnfatiza detalles importantes y personales mencionados durante la conversación, tales como:\n\nConocimiento compartido por el usuario.\n\nGustos, preferencias y valores personales.\n\nForma de querer ser tratado o cómo prefiere comunicarse.\n\nLugares, momentos del día, horas específicas, nombres propios.\n\nObjetos, cantidades, temas sensibles.\n\nReacciones emocionales o sentimentales del usuario frente a respuestas del agente.\n\nAsegúrate de respetar el estilo del usuario y no modificar el contexto o el tono de sus expresiones.\n\nNo incluyas explicaciones técnicas sobre el funcionamiento del agente o el resumen, solo entrega el texto final como si fuera una parte fluida y humana de una historia conversacional.\n\nFormato de salida:\nUn párrafo narrativo de 100 a 200 palabras.\n\nRedacción clara, coherente, con lenguaje formal y cercano.\n\nNo repitas frases innecesarias, evita clichés o fórmulas vacías.\n\nNo utilices etiquetas como \"Usuario:\" o \"Agente:\", solo integra los hechos y datos en una narrativa natural.\n\nTexto a resumir: {{ $json.texto_consolidado }}"
+            }
+          }
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.chainSummarization",
+      "typeVersion": 2,
+      "position": [
+        460,
+        0
+      ],
+      "id": "1e884900-d849-4896-a47e-7ad7fb460d36",
+      "name": "Summarization Chain"
+    },
+    {
+      "parameters": {
+        "model": {
+          "__rl": true,
+          "mode": "list",
+          "value": "gpt-4o-mini"
+        },
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatOpenAi",
+      "typeVersion": 1.2,
+      "position": [
+        480,
+        260
+      ],
+      "id": "4836be6d-a6ae-49f0-8860-82485307dd90",
+      "name": "OpenAI Chat Model",
+      "credentials": {
+        "openAiApi": {
+          "id": "CxN1M3GiHPXWR4gx",
+          "name": "OpenAi TEST"
+        }
+      }
+    }
+  ],
+  "connections": {
+    "Consolidar historial": {
+      "main": [
+        [
+          {
+            "node": "Summarization Chain",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Generar Embedding OpenAI": {
+      "main": [
+        [
+          {
+            "node": "Edit Fields1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Edit Fields1": {
+      "main": [
+        [
+          {
+            "node": "Preparar para Qdrant",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Preparar para Qdrant": {
+      "main": [
+        [
+          {
+            "node": "Guardar en Qdrant",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "When Executed by Another Workflow": {
+      "main": [
+        [
+          {
+            "node": "Consolidar historial",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Summarization Chain": {
+      "main": [
+        [
+          {
+            "node": "Generar Embedding OpenAI",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "OpenAI Chat Model": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "Summarization Chain",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "nodeGroups": [],
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "staticData": null,
+  "pinData": {},
+  "meta": {
+    "templateCredsSetupCompleted": true
+  },
+  "tags": [],
+  "shared": [
+    {
+      "role": "workflow:owner",
+      "workflowId": "VYZXaDaFKEb7QQDm",
+      "projectId": "tRHCC8ts4mkRGXGn",
+      "createdAt": "2025-07-09T02:00:58.324Z",
+      "updatedAt": "2025-07-09T02:00:58.324Z"
+    }
+  ],
+  "activeVersion": {
+    "versionId": "7da0a08c-3bbc-4884-a17d-d2ff2aa89a88",
+    "workflowId": "VYZXaDaFKEb7QQDm",
+    "nodes": [
+      {
+        "parameters": {
+          "content": "## Historial - TEST Alfa V1\n\n1. Guarda historial de cliente en QDrant. Instancia \"YoEco_Clientes - TEST\"",
+          "height": 140,
+          "width": 600,
+          "color": 6
+        },
+        "type": "n8n-nodes-base.stickyNote",
+        "position": [
+          -460,
+          -360
+        ],
+        "typeVersion": 1,
+        "id": "7bfcda4e-38fb-4492-8264-6be26a279212",
+        "name": "Sticky Note"
+      },
+      {
+        "parameters": {
+          "jsCode": "// Loop over input items and add a new field called 'myNewField' to the JSON of each one\nconst input = $input.first().json;\nconst historial = input.historial_sesion || [];\n\n// Recorre cada turno (array interno)\nconst textoConsolidado = historial.map(turno => {\n  const mensajeHumano = turno.human ? `Usuario: ${turno.human}` : \"\";\n  const mensajeAI = turno.ai ? `Agente: ${turno.ai}` : \"\";\n  return `${mensajeHumano}\\n${mensajeAI}`;\n}).join(\"\\n---\\n\");\n\nreturn [{\n  json: {\n    user_id: input.user_id,\n    texto_consolidado: textoConsolidado\n  }\n}];"
+        },
+        "type": "n8n-nodes-base.code",
+        "typeVersion": 2,
+        "position": [
+          200,
+          0
+        ],
+        "id": "a9ad8e50-d357-4b89-a020-31d485021881",
+        "name": "Consolidar historial"
+      },
+      {
+        "parameters": {
+          "method": "POST",
+          "url": "https://api.openai.com/v1/embeddings",
+          "authentication": "predefinedCredentialType",
+          "nodeCredentialType": "openAiApi",
+          "sendBody": true,
+          "specifyBody": "json",
+          "jsonBody": "={\n  \"input\": \"{{ $json.response.text }}\",\n  \"model\": \"text-embedding-ada-002\"\n}",
+          "options": {}
+        },
+        "type": "n8n-nodes-base.httpRequest",
+        "typeVersion": 4.2,
+        "position": [
+          800,
+          0
+        ],
+        "id": "1ee928a8-8554-42da-a447-bd2997314aa8",
+        "name": "Generar Embedding OpenAI",
+        "credentials": {
+          "openAiApi": {
+            "id": "CxN1M3GiHPXWR4gx",
+            "name": "OpenAi TEST"
+          }
+        }
+      },
+      {
+        "parameters": {
+          "assignments": {
+            "assignments": [
+              {
+                "id": "a4700d32-ab9c-4590-8b6e-d81fc3096970",
+                "name": "user_id",
+                "value": "={{ $('Consolidar historial').item.json.user_id }}",
+                "type": "string"
+              },
+              {
+                "id": "9d357839-2123-4501-b7fe-99615f3370d4",
+                "name": "texto_consolidado",
+                "value": "={{ $('Summarization Chain').item.json.response.text }}",
+                "type": "string"
+              },
+              {
+                "id": "c15f510c-4369-4f8c-b266-8958bf14ad66",
+                "name": "data",
+                "value": "={{$json[\"data\"][0][\"embedding\"]}}",
+                "type": "array"
+              }
+            ]
+          },
+          "options": {}
+        },
+        "type": "n8n-nodes-base.set",
+        "typeVersion": 3.4,
+        "position": [
+          1020,
+          0
+        ],
+        "id": "daf81d11-b470-45f9-a301-765e7ba296d5",
+        "name": "Edit Fields1"
+      },
+      {
+        "parameters": {
+          "jsCode": "// Loop over input items and add a new field called 'myNewField' to the JSON of each one\nfunction generateUUID() {\n  // genera UUID manualmente\n  return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) {\n    const r = Math.random() * 16 | 0;\n    const v = c === 'x' ? r : (r & 0x3 | 0x8);\n    return v.toString(16);\n  });\n}\n\nreturn [{\n  json: {\n    id: generateUUID(),\n    vector: $input.first().json.data,\n    user_id: $input.first().json.user_id,\n    texto_consolidado: $input.first().json.texto_consolidado,\n    timestamp: $now\n  }\n}];"
+        },
+        "type": "n8n-nodes-base.code",
+        "typeVersion": 2,
+        "position": [
+          1240,
+          0
+        ],
+        "id": "f6c17b3e-6f58-4022-ab9b-dd42b451a603",
+        "name": "Preparar para Qdrant"
+      },
+      {
+        "parameters": {
+          "method": "PUT",
+          "url": "https://1537c683-48da-4631-ab76-ad698b6b9881.us-east-1-0.aws.cloud.qdrant.io/collections/YoEco_Clientes_TEST/points",
+          "authentication": "predefinedCredentialType",
+          "nodeCredentialType": "qdrantApi",
+          "sendBody": true,
+          "specifyBody": "json",
+          "jsonBody": "={\n  \"points\": [\n    {\n      \"id\": {{ JSON.stringify($json.id) }},\n      \"vector\": {{ JSON.stringify($json.vector) }},\n      \"payload\": {\n        \"user_id\": {{ JSON.stringify($json.user_id) }},\n        \"text\": {{ JSON.stringify($json.texto_consolidado) }},\n        \"timestamp\": \"{{ $json.timestamp }}\"\n      }\n    }\n  ]\n}\n",
+          "options": {}
+        },
+        "type": "n8n-nodes-base.httpRequest",
+        "typeVersion": 4.2,
+        "position": [
+          1460,
+          0
+        ],
+        "id": "7ceceef6-fa39-4778-9062-b2285bac6c8a",
+        "name": "Guardar en Qdrant",
+        "credentials": {
+          "qdrantApi": {
+            "id": "9oUogOvtDqsTDKBQ",
+            "name": "QdrantApi TEST"
+          }
+        }
+      },
+      {
+        "parameters": {
+          "inputSource": "passthrough"
+        },
+        "type": "n8n-nodes-base.executeWorkflowTrigger",
+        "typeVersion": 1.1,
+        "position": [
+          0,
+          0
+        ],
+        "id": "04944784-6c24-4bf4-b3c0-1b7696ab5e10",
+        "name": "When Executed by Another Workflow"
+      },
+      {
+        "parameters": {
+          "chunkingMode": "advanced",
+          "options": {
+            "summarizationMethodAndPrompts": {
+              "values": {
+                "summarizationMethod": "stuff",
+                "prompt": "=#instrucciones\n\nEres un asistente experto en redacción y análisis de conversaciones. Recibirás como entrada el contenido textual de una conversación entre un agente de inteligencia artificial (denominado \"Agente\") y un ser humano (denominado \"usuario\"). A partir de este contenido, debes generar un resumen consolidado y puntual, en tono formal y amigable, que narre lo ocurrido como parte de una historia coherente.\n\nInstrucciones específicas:\nConsidera que esto es un fragmento de una historia más amplia, por lo que el resumen debe tener un estilo narrativo coherente y fluido.\n\nSi el nombre del usuario se menciona durante la conversación, úsalo en el resumen.\n\nEnfatiza detalles importantes y personales mencionados durante la conversación, tales como:\n\nConocimiento compartido por el usuario.\n\nGustos, preferencias y valores personales.\n\nForma de querer ser tratado o cómo prefiere comunicarse.\n\nLugares, momentos del día, horas específicas, nombres propios.\n\nObjetos, cantidades, temas sensibles.\n\nReacciones emocionales o sentimentales del usuario frente a respuestas del agente.\n\nAsegúrate de respetar el estilo del usuario y no modificar el contexto o el tono de sus expresiones.\n\nNo incluyas explicaciones técnicas sobre el funcionamiento del agente o el resumen, solo entrega el texto final como si fuera una parte fluida y humana de una historia conversacional.\n\nFormato de salida:\nUn párrafo narrativo de 100 a 200 palabras.\n\nRedacción clara, coherente, con lenguaje formal y cercano.\n\nNo repitas frases innecesarias, evita clichés o fórmulas vacías.\n\nNo utilices etiquetas como \"Usuario:\" o \"Agente:\", solo integra los hechos y datos en una narrativa natural.\n\nTexto a resumir: {{ $json.texto_consolidado }}"
+              }
+            }
+          }
+        },
+        "type": "@n8n/n8n-nodes-langchain.chainSummarization",
+        "typeVersion": 2,
+        "position": [
+          460,
+          0
+        ],
+        "id": "1e884900-d849-4896-a47e-7ad7fb460d36",
+        "name": "Summarization Chain"
+      },
+      {
+        "parameters": {
+          "model": {
+            "__rl": true,
+            "mode": "list",
+            "value": "gpt-4o-mini"
+          },
+          "options": {}
+        },
+        "type": "@n8n/n8n-nodes-langchain.lmChatOpenAi",
+        "typeVersion": 1.2,
+        "position": [
+          480,
+          260
+        ],
+        "id": "4836be6d-a6ae-49f0-8860-82485307dd90",
+        "name": "OpenAI Chat Model",
+        "credentials": {
+          "openAiApi": {
+            "id": "CxN1M3GiHPXWR4gx",
+            "name": "OpenAi TEST"
+          }
+        }
+      }
+    ],
+    "connections": {
+      "Consolidar historial": {
+        "main": [
+          [
+            {
+              "node": "Summarization Chain",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Generar Embedding OpenAI": {
+        "main": [
+          [
+            {
+              "node": "Edit Fields1",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Edit Fields1": {
+        "main": [
+          [
+            {
+              "node": "Preparar para Qdrant",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Preparar para Qdrant": {
+        "main": [
+          [
+            {
+              "node": "Guardar en Qdrant",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "When Executed by Another Workflow": {
+        "main": [
+          [
+            {
+              "node": "Consolidar historial",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Summarization Chain": {
+        "main": [
+          [
+            {
+              "node": "Generar Embedding OpenAI",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "OpenAI Chat Model": {
+        "ai_languageModel": [
+          [
+            {
+              "node": "Summarization Chain",
+              "type": "ai_languageModel",
+              "index": 0
+            }
+          ]
+        ]
+      }
+    },
+    "nodeGroups": [],
+    "authors": "system migration",
+    "name": null,
+    "description": null,
+    "autosaved": false,
+    "createdAt": "2025-12-16T23:48:57.308Z",
+    "updatedAt": "2025-12-16T23:48:57.308Z"
+  }
+}
