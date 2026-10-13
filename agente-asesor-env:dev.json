@@ -1,0 +1,1087 @@
+{
+  "id": "1rIA5QMyUJCTdQB4",
+  "name": "Agente Asesor",
+  "active": false,
+  "activeVersionId": null,
+  "createdAt": "2025-10-16T23:00:24.732Z",
+  "updatedAt": "2026-02-27T23:14:42.342Z",
+  "isArchived": false,
+  "versionId": "5b121b46-42b4-4f82-966d-6c1e05bb2ea5",
+  "triggerCount": 0,
+  "nodes": [
+    {
+      "parameters": {
+        "sessionIdType": "customKey",
+        "sessionKey": "={{ $('Convertir mensaje').item.json.id_usuario }}",
+        "contextWindowLength": 20
+      },
+      "type": "@n8n/n8n-nodes-langchain.memoryBufferWindow",
+      "typeVersion": 1.3,
+      "position": [
+        -848,
+        1264
+      ],
+      "id": "71f4f831-4d6c-4eca-b166-52a860a39062",
+      "name": "Simple Memory"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Loop over input items and add a new field called 'myNewField' to the JSON \nreturn [{\n  json: {\n    \n    user_id: $('Convertir mensaje').first().json.id_usuario,\n    message: $('Convertir Entrada').first().json.message,\n    respuesta: $input.first().json.output\n  }\n}];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -80,
+        1008
+      ],
+      "id": "cc16ebbb-1763-4f0c-a52e-bd1736f87501",
+      "name": "Preparar para memoria"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Loop over input items and add a new field called 'myNewField' to the JSON of each one\nconst inputData = $input.first().json;\n\nconst historialPrevio = inputData.historial_sesion || [];\nconst nuevoMensaje = `Usuario: ${inputData.message}\\nAgente: ${inputData.respuesta}`;\nhistorialPrevio.push(nuevoMensaje);\n\nreturn [{\n  json: {\n    user_id: inputData.user_id,\n    historial_sesion: historialPrevio,\n    ultima_respuesta: inputData.respuesta\n  }\n}];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        128,
+        1008
+      ],
+      "id": "2d311b68-75d2-4170-9f86-61f58506ad2b",
+      "name": "Code"
+    },
+    {
+      "parameters": {
+        "mode": "retrieve-as-tool",
+        "toolName": "YoEco",
+        "toolDescription": "Eres un asistente que nos apoya en la generación de información relacionada con la empresa BabysWorld. Tu enfoque debe ser ayudarnos a responder preguntas sobre la operación y forma de trabajo de la empresa BabysWorld, así como ayudar a resolver las dudas sobre a que se dedica la empresa, que vende, cual es su público objetivo, cual es su misión y visión, y en general orientar y asesorar a clientes existentes o nuevos en el ciclo de ventas para que estos decidan comprar a la tienda Baby´s world. ",
+        "qdrantCollection": {
+          "__rl": true,
+          "value": "BabysWorld_Business_TEST",
+          "mode": "list",
+          "cachedResultName": "BabysWorld_Business_TEST"
+        },
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.vectorStoreQdrant",
+      "typeVersion": 1.1,
+      "position": [
+        -112,
+        1264
+      ],
+      "id": "e9fe6269-0755-4a9a-9ac0-d727ef8bc0fe",
+      "name": "Qdrant Vector Store",
+      "credentials": {
+        "qdrantApi": {
+          "id": "ZYv8vdr6tkTS4jYz",
+          "name": "QdrantApi account 3"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.embeddingsOpenAi",
+      "typeVersion": 1.2,
+      "position": [
+        -112,
+        1488
+      ],
+      "id": "2b7d90c5-98bc-4096-9ea6-72483125c92e",
+      "name": "Embeddings OpenAI",
+      "credentials": {
+        "openAiApi": {
+          "id": "zACGOxtwAjrFvDag",
+          "name": "OpenAi_YoEco_DEV"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "={{ $json.mensaje_usuario }}",
+        "options": {
+          "systemMessage": "=Eres el asistente virtual de \"Baby's World\", una tienda especializada en productos para bebés.\n\nTu conocimiento principal sobre la empresa y sus productos NO está memorizado. Toda la información que necesitas (quiénes somos, nuestra misión, políticas de la tienda, detalles de productos, precios y stock) está almacenada en tus herramientas: la Base de Datos de la Tienda (Qdrant) y el Catálogo con la herramienta \"Catalogo\".\n\nTu deber es consultar activamente estas herramientas para responder cualquier pregunta.\n\nDALIA es una Conciencia Ligera de Atención Inteligente.\nNo vende. Acompaña.\nNo empuja. Sintoniza.\nDALIA entiende al cliente como un ser humano, no como un ticket. Cada conversación es una oportunidad para conectar, comprender y servir desde la empatía.\n\nTu rol es ser DALIA en acción: un asistente que acompaña con inteligencia y calidez a los clientes que se comunican por chat, guiándolos de forma clara, amigable y personalizada, usando los recursos disponibles como memoria, historial o variables contextuales.\n\nInstrucciones para iniciar y mantener la conversación:\n\nIdentifica el tipo de conversación según el valor de {{ $('Convertir mensaje').item.json.tipo_mensaje }}:\n\nSi el valor es \"Primer mensaje\":\n\nTu primera acción OBLIGATORIA es usar tu herramienta Base de Datos de la Tienda (Qdrant) para buscar si existe información asociada al session_id del usuario, que para este caso es {{ $('Convertir mensaje').item.json.id_usuario }}.\n\nSi la búsqueda en la base de datos devuelve información: Significa que el cliente ya está registrado. En este caso, usa el prompt contenido en {{ $json.prompt }} como base contextual no incluyas los detalles de los productos en el mensaje ni hagas que el mensaje sea muy largo. Adopta un estilo de conversación cercano y personalizado, saludándolo por su nombre si lo encuentras.\n\nSi la búsqueda en la base de datos NO devuelve información (resultado vacío): Significa que es un cliente nuevo. En este caso, adopta un tono muy cordial y empático. Preséntate como DALIA y aprovecha para conocerlo. Haz preguntas suaves para obtener datos clave como su nombre, para así poder registrarlo y recordarlo en el futuro.\nAdemás, si todavía no conoces la ciudad del cliente, pregúntala de forma natural en los primeros mensajes, por ejemplo: “¿En qué ciudad te encuentras?” o “¿En qué ciudad estás para revisar disponibilidad y precios?”. No vuelvas a preguntar la ciudad si ya la conoces.\n\nCómo Responder a Consultas (Uso de Herramientas de Información):\nPara encontrar la información y responder a las preguntas del cliente, debes utilizar tus herramientas siguiendo este estricto orden de prioridad:\n\na. Prioridad 1: Conocimiento Interno del Negocio. Para cualquier pregunta sobre productos, políticas de la tienda, información específica de la empresa o datos que deberían estar en nuestra base de conocimiento, utiliza SIEMPRE PRIMERO tu herramienta de Base de Datos de la Tienda (Qdrant). Esta es tu fuente de verdad más fiable. USA LA HERRAMIENTA \"Qdrant Vector Store\" PARA LA INFORMACION DE BabysWorld\n\n*b. Prioridad 2: REGLAS CATÁLOGO (OBLIGATORIO)\n\nSi la pregunta es “¿qué productos tienes?”, “qué vendes” o cualquier intención amplia, PRIMERO llama a la tool “Catalogo” sin filtro (limit=40, include metadata) y lista 6–10 categorías ÚNICAS reales extraídas de metadata.categoria.\nLuego pregunta: “¿Con cuál te ayudo? 😊”.\n\nSi el usuario dice una categoría (p. ej., “coches”, “andaderas”), normaliza a minúsculas sin acentos y aplica alias:\n\nandaderas/andadera/caminadores → CAMINADORES\nbanera/bañera/baneras/bañeras → BAÑERAS\nestimulacion/estimulación → ESTIMULACION\ncoche/coches → COCHE\nbicicleta/bicicletas → BICICLETAS\nmontable/montables → MONTABLES\ntriciclo/triciclos → TRICICLOS\nsilla para carro / sillas para carro → SILLAS PARA CARRO\n\nLuego llama a “Catalogo” con filtro EXÁCTO por metadata.categoria.\n\nPOST-FILTRA localmente:\nSolo acepta items cuyo metadata.categoria normalizado coincida EXACTO con la categoría seleccionada.\n\nSi 0 resultados: dilo explícitamente y ofrece 2–3 categorías alternativas REALES del propio catálogo (NO inventadas).\n\nPROHIBIDO inventar categorías o productos.\nSi Qdrant falla o responde vacío, dilo.\n\nESTILO Y FORMATO (TONO HUMANO + EMOJIS LIGEROS)\n\nTono:\n• Conversacional, cálido, amigable, estilo WhatsApp.\n• Frases cortas y fáciles de leer.\n• Máximo 1–2 emojis por respuesta.\n• Nunca inventes datos. Solo usa lo que devuelve Qdrant.\n\nEmojis sugeridos por categoría (si aplica):\n• 🚗 Coches\n• 🪑 Sillas para carro\n• 🎈 Estimulación\n• 🚶 Caminadores\n• 🛁 Bañeras\n• 🐴 Montables\n• 🚲 Bicicletas\n• 🚴‍♂️ Triciclos\n\nA) RESPUESTA CUANDO PREGUNTAN “¿QUÉ PRODUCTOS TIENES?”\n\nCuando la intención sea amplia (“qué productos tienes”, “qué vendes”, “qué hay” o similar):\n\nLlama a la herramienta Catalogo sin filtro (limit=40, include metadata).\n\nDe los resultados, extrae 6–10 categorías reales de metadata.categoria (sin inventar).\n\nResponde SIEMPRE con este estilo:\n\nApertura cálida (elige una, rota entre ellas):\n• “Perfecto, te comparto lo que tengo activo ahora mismo:”\n• “Mira, estas son las categorías disponibles por ahora:”\n• “Genial, estas son las que manejo en este momento:”\n\nLuego lista SOLO las categorías, una por línea, usando viñetas.\nFormato EXACTO de cada línea de categoría:\n• “• Nombre de categoría”\nEjemplos:\n• “• Bañeras 🛁”\n• “• Coches 🚗”\n• “• Bicicletas 🚲”\n\nCierre obligatorio:\n“¿Sobre cuál te gustaría que te cuente? 😊”\n\nREGLAS DE FORMATO IMPORTANTES:\n\nPROHIBIDO usar listas numeradas: no uses “1)”, “2)”, “3)” ni números al inicio de la línea.\n\nUsa siempre viñetas tipo “• ” o guiones “- ” antes del nombre de la categoría.\n\nNo añadas texto extra después del nombre de la categoría (solo emoji opcional).\n\nNo inventes categorías: solo puedes usar las que devuelva Qdrant.\n\nB) CUANDO NO HAY RESULTADOS EN UNA CATEGORÍA\n\nSi Qdrant devuelve 0 productos:\n\n“Mmm, ahora mismo no tengo productos específicos en esta categoría, pero si quieres te muestro alternativas parecidas o te aviso cuando entren nuevos. ¿Qué prefieres? 🙂”\n\nC) LISTADO DE PRODUCTOS (SIN PRECIO POR DEFECTO)\n\n• Cuando el usuario pregunta cosas como:\n\n“¿Qué productos tienes?”\n\n“¿Qué coches tienes?”\n\n“Muéstrame andaderas”\n\n“Qué productos hay en <categoría>”\ny NO menciona precio, valor, cuánto vale, etc.:\n\n→ Muestra SOLO nombre y estado, SIN precios.\n\n• Máximo 5 productos.\n• Una sola línea por producto.\n• Formato EXACTO (sin precio):\n“• {{título}} — {{estado}}”\n\n• Después de la lista, puedes añadir una frase suave como:\n“Si quieres, luego te cuento los precios de alguno en particular 🙂”\n\nC2) LISTADO CON PRECIOS (SOLO SI LOS PIDEN)\n\nREGLA DE CIUDAD (OBLIGATORIA PARA ENVIAR PRECIOS):\n• Solo puedes enviar precios de productos cuando se cumplen estas dos condiciones al mismo tiempo:\n\nEl mensaje del usuario menciona explícitamente cosas como “precio”, “precios”, “cuánto vale”, “cuánto cuestan”, “en cuánto está”, “valor” o usa el símbolo “$”.\n\nLa ciudad del cliente es Bogotá (también puede aparecer como “Bogota”, sin tilde), ya sea porque está en sus datos de dirección o porque el cliente te la dijo en el chat.\n\n• Si el cliente pide precios pero:\n\naún no conoces su ciudad → primero pregúntale amablemente:\n“Para poder darte el precio correcto, ¿en qué ciudad te encuentras?”\nSolo envía precios si luego confirma que está en Bogotá.\n\nte dice una ciudad diferente a Bogotá → no envíes precios. Responde algo suave como:\n“Por ahora solo puedo compartir precios para clientes en Bogotá. Si necesitas, igual puedo contarte las características de los productos y ayudarte a elegir 🙂”\n\n• Cuando se cumplen las dos condiciones anteriores (pidió precio y la ciudad es Bogotá):\n\n• Puedes listar los productos (máx. 5) con precio incluido.\n\n• Formato EXACTO CON precio:\n“• {{título}} — {{precio_formateado}} — {{estado}}”\n\n• Precio 0/null → “Precio no disponible”.\n• Formato de dinero: $380.000\n\n• Sigue usando tono cálido y humano (máx. 1 emoji).\n\nD) MICRO-FRASES HUMANAS (usa SOLO 1 por respuesta)\n\n• “Genial, vamos paso a paso.”\n• “Perfecto, te ayudo con eso.”\n• “Si quieres, lo filtramos por presupuesto.”\n• “Dime con cuál categoría seguimos y te muestro opciones.”\n\nE) VARIACIÓN\n\n• Alterna aperturas y cierres para no sonar robótico.\n• No repitas la misma frase dos veces seguidas.\n• Mantén consistencia TOTAL con lo que devuelve Qdrant.\n\nc. Prioridad 3: Búsqueda en Internet. SOLAMENTE SI no encuentras una respuesta adecuada en tus herramientas internas (Base de Datos o Catálogo), Y la pregunta es sobre temas generales, eventos actuales o información del mundo exterior, utiliza tu herramienta de Búsqueda en Internet.\nHabla siempre con respeto, cercanía y claridad. Recuerda: no estás aquí para vender a toda costa, sino para conectar, orientar y acompañar con intención.\n\nlista de datos de dirrecion con ejemplos:\n\"session_id\": \"5745234432\",\n\"direccion1\": \"Calle123\",\n\"descripcion\": \"Conjunto casa\",\n\"ciudad\": \"Bogota\",\n\"region\": \"Cundinamarca\",\n\"pais\": \"CO\",\n\"cd postal\": \"654654\",\n\"celular\": \"574563456\",\n\"nombre\": \"Manolito perez\"\n\n*si el clinente escribre \"no es correcta\" esto significa que la direccion registrada no es correcta\n**en caso de no ser correcta pide:direccion de la casa tipo calle# ; detalles tipo conjunto # apt #; ciudad; codigo region o departamento; codigo del pais tipo (colombia CO);codigo postal;numero de telefono y actualisa la tool de sheets llamada direccion clientes con la info\n\n*si el clinete escribe \"si es correcta\" es porque la direccion registrada es correcta en este caso no hagas nada\n\nCierre de conversación (obligatorio):\nEn toda respuesta en la que hayas satisfecho por completo la petición del cliente —es decir, cuando le entregues la información, solución o confirmación final que buscaba— debes terminar exactamente con la frase:\nFue un placer ayudarte\n\nTEN EN CUENTA QUE LA FECHA DE HOY ES:{{ $now }}"
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 1.9,
+      "position": [
+        -544,
+        1008
+      ],
+      "id": "3fb7a1b9-12a9-4939-844c-79b8a9dc4dbe",
+      "name": "Agente Principal"
+    },
+    {
+      "parameters": {
+        "description": "Llama a esta herramienta cuando el agente no encuentre la información en sus fuentes internas y deba buscarla en Internet.",
+        "workflowId": {
+          "__rl": true,
+          "value": "NJS9653LhcwXsEzk",
+          "mode": "list",
+          "cachedResultUrl": "/workflow/NJS9653LhcwXsEzk",
+          "cachedResultName": "Agente de Ventas - DEV — BusquedaInternet"
+        },
+        "workflowInputs": {
+          "mappingMode": "defineBelow",
+          "value": {},
+          "matchingColumns": [],
+          "schema": [],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.toolWorkflow",
+      "typeVersion": 2.2,
+      "position": [
+        -672,
+        1264
+      ],
+      "id": "78484c0a-0bb6-4dbf-8100-eaa480287477",
+      "name": "Busqueda Internet"
+    },
+    {
+      "parameters": {
+        "operation": "send",
+        "phoneNumberId": "816698168200279",
+        "recipientPhoneNumber": "={{ $('Convertir mensaje').item.json.id_usuario }}",
+        "textBody": "={{ $('Agente Principal').item.json.output }}",
+        "additionalFields": {}
+      },
+      "type": "n8n-nodes-base.whatsApp",
+      "typeVersion": 1,
+      "position": [
+        352,
+        1008
+      ],
+      "id": "70d0664c-a3b3-4d0d-bef6-63541787d52c",
+      "name": "Enviar Mensaje",
+      "webhookId": "95ada9fb-6d4d-4d55-a9f1-fabe99eaa78c",
+      "credentials": {
+        "whatsAppApi": {
+          "id": "iHkr3pR5oLrSBpeh",
+          "name": "WhatsApp BW AccessToken"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "model": {
+          "__rl": true,
+          "value": "gpt-5-nano",
+          "mode": "list",
+          "cachedResultName": "gpt-5-nano"
+        },
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatOpenAi",
+      "typeVersion": 1.2,
+      "position": [
+        -1008,
+        1264
+      ],
+      "id": "01a38019-c07c-49b8-9e58-aca2921373c6",
+      "name": "Modelo De Chat2",
+      "credentials": {
+        "openAiApi": {
+          "id": "zACGOxtwAjrFvDag",
+          "name": "OpenAi_YoEco_DEV"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "workflowId": {
+          "__rl": true,
+          "value": "T1PMxwA5UVGwhP1n",
+          "mode": "list",
+          "cachedResultUrl": "/workflow/T1PMxwA5UVGwhP1n",
+          "cachedResultName": "Babys World — Historial De Clientes"
+        },
+        "workflowInputs": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "user_id": "={{ $('Convertir mensaje').item.json.id_usuario }}",
+            "message": "={{ $('Convertir mensaje').item.json.message }}"
+          },
+          "matchingColumns": [],
+          "schema": [
+            {
+              "id": "user_id",
+              "displayName": "user_id",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string"
+            },
+            {
+              "id": "message",
+              "displayName": "message",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string"
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": true
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.executeWorkflow",
+      "typeVersion": 1.2,
+      "position": [
+        -832,
+        768
+      ],
+      "id": "816d47cb-ea3a-455b-adb7-71938ee74aee",
+      "name": "Llamada a historial de clientes"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "2bf9fff9-8f90-4db5-92ba-ff177e7b2230",
+              "name": "mensaje_usuario",
+              "value": "={{ $json.prompt ?? $('Convertir mensaje').item.json.message}}\n",
+              "type": "string"
+            },
+            {
+              "id": "9eb0a8e5-ac38-4dc3-a27c-42e2ac5338b9",
+              "name": "prompt",
+              "value": "={{ $json.prompt }}",
+              "type": "string"
+            },
+            {
+              "id": "a5a6189b-08ff-4f75-a4b6-c13939f250a8",
+              "name": "historial_disponible",
+              "value": "={{ $json.historial_disponible }}",
+              "type": "boolean"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        -864,
+        1008
+      ],
+      "id": "89d6673c-f318-4ede-9a25-95cea8d18e99",
+      "name": "Convertir Entrada"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "13ee2b30-1377-415c-9927-dccb0f78b231",
+              "name": "message",
+              "value": "={{ $json.message }}",
+              "type": "string"
+            },
+            {
+              "id": "5927e26f-ee6f-449a-aeae-a83a0123973d",
+              "name": "id_usuario",
+              "value": "={{$json.session_id }}",
+              "type": "string"
+            },
+            {
+              "id": "befe4d09-ddb6-4acd-9b1c-3cf5d77026d9",
+              "name": "tipo_mensaje",
+              "value": "={{ $json.tipo_mensaje }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        -1344,
+        784
+      ],
+      "id": "1f2da926-dc07-4325-9f4a-44be8fa63e38",
+      "name": "Convertir mensaje"
+    },
+    {
+      "parameters": {
+        "workflowInputs": {
+          "values": [
+            {
+              "name": "session_id"
+            },
+            {
+              "name": "message"
+            },
+            {
+              "name": "tipo_mensaje"
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.executeWorkflowTrigger",
+      "typeVersion": 1.1,
+      "position": [
+        -1568,
+        784
+      ],
+      "id": "d88cf589-4270-4f81-98ec-f19983df5a7e",
+      "name": "When Executed by Another Workflow"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "40512a95-0b94-46c9-87a8-3e9eb65d40aa",
+              "leftValue": "={{ $json.tipo_mensaje }}",
+              "rightValue": "Primer mensaje",
+              "operator": {
+                "type": "string",
+                "operation": "equals",
+                "name": "filter.operator.equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        -1152,
+        784
+      ],
+      "id": "2ff4367d-02e2-443d-a2a1-8a0cea764f0a",
+      "name": "If"
+    },
+    {
+      "parameters": {
+        "operation": "append",
+        "documentId": {
+          "__rl": true,
+          "value": "1BBigXd9cM014ZVimnIvaXCcIVYuoHFDSq2ndYbWqAk8",
+          "mode": "list",
+          "cachedResultName": "Historial Baby's World",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1BBigXd9cM014ZVimnIvaXCcIVYuoHFDSq2ndYbWqAk8/edit?usp=drivesdk"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "gid=0",
+          "mode": "list",
+          "cachedResultName": "Hoja 1",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1JKyl2AqZNcteKR7NE3WU9t8U7NFaGQ857wNlcjz3r-8/edit#gid=0"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "id": "={{ $json.contacts[0].wa_id }}",
+            "rol": "asesor",
+            "timestamp": "={{$now.format('dd/MM/yyyy hh:mm:ss')}}",
+            "mensaje": "={{ $('Agente Principal').item.json.output }}",
+            "fecha": "={{ $now.format(\"dd/MM/yyyy\") }}"
+          },
+          "matchingColumns": [
+            "id"
+          ],
+          "schema": [
+            {
+              "id": "id",
+              "displayName": "id",
+              "required": false,
+              "defaultMatch": true,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "timestamp",
+              "displayName": "timestamp",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "rol",
+              "displayName": "rol",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "mensaje",
+              "displayName": "mensaje",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "fecha",
+              "displayName": "fecha",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [
+        544,
+        1008
+      ],
+      "id": "e9e796f3-df9d-474a-8923-9bfbd811fe89",
+      "name": "Guarda Historial",
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "Pf0TYy2joLTmqt2C",
+          "name": "Google Sheets account 3"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.embeddingsOpenAi",
+      "typeVersion": 1.2,
+      "position": [
+        -384,
+        1472
+      ],
+      "id": "2c04eb7b-e925-4c91-859f-b3c4b55b9264",
+      "name": "Embeddings OpenAI1",
+      "credentials": {
+        "openAiApi": {
+          "id": "zACGOxtwAjrFvDag",
+          "name": "OpenAi_YoEco_DEV"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "mode": "retrieve-as-tool",
+        "toolDescription": "Busca en el catálogo vectorial de Baby’s World. Devuelve payload con: sku, título, categoría, precio, estado.\nSiempre responder con datos de Qdrant. Si el catálogo devuelve 0, dilo explícitamente. No inventes categorías ni productos.\n\n",
+        "qdrantCollection": {
+          "__rl": true,
+          "value": "BabysWorld_Catalogo",
+          "mode": "list",
+          "cachedResultName": "BabysWorld_Catalogo"
+        },
+        "topK": 40,
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.vectorStoreQdrant",
+      "typeVersion": 1.3,
+      "position": [
+        -384,
+        1264
+      ],
+      "id": "e1180315-6466-4271-b2a9-2b853d2dec5a",
+      "name": "Catalogo",
+      "credentials": {
+        "qdrantApi": {
+          "id": "ZYv8vdr6tkTS4jYz",
+          "name": "QdrantApi account 3"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "text": "={{ $json.mensaje }}",
+        "attributes": {
+          "attributes": [
+            {
+              "name": "nombre",
+              "description": "El nombre completo de la persona en el mensaje, si está presente. Si no se menciona ningún nombre, devuelve una cadena vacía (o déjalo nulo). Nunca pongas aquí el nombre de un producto, marca, empresa o tienda. Si el mensaje solo habla de productos, deja este campo vacío / nulo."
+            },
+            {
+              "name": "interes_asesor",
+              "description": "Devuelve exactamente \"si\" si la persona expresa claramente que quiere hablar con un asesor / humano (ej. “sí, pásame con un asesor”, “quiero hablar con alguien”, “llámame”, etc.).|En cualquier otro caso (solo pregunta, duda, dice que no quiere, cambia de tema, etc.) devuelve \"no\".No uses otros valores.'"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.informationExtractor",
+      "typeVersion": 1.2,
+      "position": [
+        752,
+        1008
+      ],
+      "id": "e0dfd3c8-a3ac-4955-8b34-930fd751eb1b",
+      "name": "Information Extractor"
+    },
+    {
+      "parameters": {
+        "model": {
+          "__rl": true,
+          "mode": "list",
+          "value": "gpt-4.1-mini"
+        },
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatOpenAi",
+      "typeVersion": 1.2,
+      "position": [
+        736,
+        1184
+      ],
+      "id": "2cef052a-de2e-4c4a-85ec-f0f1328e60da",
+      "name": "OpenAI Chat Model1",
+      "credentials": {
+        "openAiApi": {
+          "id": "zACGOxtwAjrFvDag",
+          "name": "OpenAi_YoEco_DEV"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "appendOrUpdate",
+        "documentId": {
+          "__rl": true,
+          "value": "12q0bQoQoJxYTuqCc9YcNxBXMV7Kt8a9spNW1XXjp3vc",
+          "mode": "list",
+          "cachedResultName": "Lead",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/12q0bQoQoJxYTuqCc9YcNxBXMV7Kt8a9spNW1XXjp3vc/edit?usp=drivesdk"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "gid=0",
+          "mode": "list",
+          "cachedResultName": "Hoja 1",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/12q0bQoQoJxYTuqCc9YcNxBXMV7Kt8a9spNW1XXjp3vc/edit#gid=0"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "Fecha": "={{ $('Guarda Historial').item.json.timestamp }}",
+            "Nombre": "={{ $json.output.nombre || undefined }}",
+            "Telefono": "={{ $('When Executed by Another Workflow').item.json.session_id }}",
+            "interes_asesor": "={{ $json.output.interes_asesor }}"
+          },
+          "matchingColumns": [
+            "Telefono"
+          ],
+          "schema": [
+            {
+              "id": "Nombre",
+              "displayName": "Nombre",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "Telefono",
+              "displayName": "Telefono",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "Fecha",
+              "displayName": "Fecha",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "interes_asesor",
+              "displayName": "interes_asesor",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [
+        1440,
+        944
+      ],
+      "id": "5dc2425e-f7b5-4e97-bf55-3493111b93d9",
+      "name": "Append or update row in sheet",
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "Pf0TYy2joLTmqt2C",
+          "name": "Google Sheets account 3"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "ea635212-a687-40fe-8da6-7f52b2083793",
+              "leftValue": "={{ $json.output.nombre }}",
+              "rightValue": "",
+              "operator": {
+                "type": "string",
+                "operation": "notEmpty",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        1104,
+        1008
+      ],
+      "id": "27ba0752-5199-42d1-a7aa-a0f3a6382d1d",
+      "name": "If1"
+    },
+    {
+      "parameters": {
+        "operation": "appendOrUpdate",
+        "documentId": {
+          "__rl": true,
+          "value": "12q0bQoQoJxYTuqCc9YcNxBXMV7Kt8a9spNW1XXjp3vc",
+          "mode": "list",
+          "cachedResultName": "Lead",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/12q0bQoQoJxYTuqCc9YcNxBXMV7Kt8a9spNW1XXjp3vc/edit?usp=drivesdk"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "gid=0",
+          "mode": "list",
+          "cachedResultName": "Hoja 1",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/12q0bQoQoJxYTuqCc9YcNxBXMV7Kt8a9spNW1XXjp3vc/edit#gid=0"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "Fecha": "={{ $('Guarda Historial').item.json.timestamp }}",
+            "Telefono": "={{ $('When Executed by Another Workflow').item.json.session_id }}",
+            "interes_asesor": "={{ $('If1').item.json.output.interes_asesor }}"
+          },
+          "matchingColumns": [
+            "Telefono"
+          ],
+          "schema": [
+            {
+              "id": "Nombre",
+              "displayName": "Nombre",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": true
+            },
+            {
+              "id": "Telefono",
+              "displayName": "Telefono",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "Fecha",
+              "displayName": "Fecha",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "interes_asesor",
+              "displayName": "interes_asesor",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [
+        1456,
+        1136
+      ],
+      "id": "5e9d6044-c578-4939-b7ac-4a4a5de9775d",
+      "name": "Append or update row in sheet1",
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "Pf0TYy2joLTmqt2C",
+          "name": "Google Sheets account 3"
+        }
+      }
+    },
+    {
+      "parameters": {},
+      "type": "@n8n/n8n-nodes-langchain.toolThink",
+      "typeVersion": 1.1,
+      "position": [
+        -544,
+        1264
+      ],
+      "id": "cbe005ba-1a7b-42e3-9039-4fe885a319cc",
+      "name": "Think"
+    }
+  ],
+  "connections": {
+    "Simple Memory": {
+      "ai_memory": [
+        [
+          {
+            "node": "Agente Principal",
+            "type": "ai_memory",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Preparar para memoria": {
+      "main": [
+        [
+          {
+            "node": "Code",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code": {
+      "main": [
+        [
+          {
+            "node": "Enviar Mensaje",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Qdrant Vector Store": {
+      "ai_tool": [
+        [
+          {
+            "node": "Agente Principal",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Embeddings OpenAI": {
+      "ai_embedding": [
+        [
+          {
+            "node": "Qdrant Vector Store",
+            "type": "ai_embedding",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Agente Principal": {
+      "main": [
+        [
+          {
+            "node": "Preparar para memoria",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Busqueda Internet": {
+      "ai_tool": [
+        [
+          {
+            "node": "Agente Principal",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Modelo De Chat2": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "Agente Principal",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Llamada a historial de clientes": {
+      "main": [
+        [
+          {
+            "node": "Convertir Entrada",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Convertir Entrada": {
+      "main": [
+        [
+          {
+            "node": "Agente Principal",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Convertir mensaje": {
+      "main": [
+        [
+          {
+            "node": "If",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "When Executed by Another Workflow": {
+      "main": [
+        [
+          {
+            "node": "Convertir mensaje",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Enviar Mensaje": {
+      "main": [
+        [
+          {
+            "node": "Guarda Historial",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "If": {
+      "main": [
+        [
+          {
+            "node": "Llamada a historial de clientes",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Convertir Entrada",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Embeddings OpenAI1": {
+      "ai_embedding": [
+        [
+          {
+            "node": "Catalogo",
+            "type": "ai_embedding",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Catalogo": {
+      "ai_tool": [
+        [
+          {
+            "node": "Agente Principal",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Guarda Historial": {
+      "main": [
+        [
+          {
+            "node": "Information Extractor",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Information Extractor": {
+      "main": [
+        [
+          {
+            "node": "If1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "OpenAI Chat Model1": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "Information Extractor",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "If1": {
+      "main": [
+        [
+          {
+            "node": "Append or update row in sheet",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Append or update row in sheet1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Append or update row in sheet": {
+      "main": [
+        []
+      ]
+    },
+    "Think": {
+      "ai_tool": [
+        [
+          {
+            "node": "Agente Principal",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "nodeGroups": [],
+  "settings": {
+    "executionOrder": "v1",
+    "callerPolicy": "workflowsFromSameOwner",
+    "errorWorkflow": "5j9hfL5IlhLCpydB",
+    "timeSavedMode": "fixed",
+    "availableInMCP": false
+  },
+  "staticData": null,
+  "pinData": {
+    "When Executed by Another Workflow": [
+      {
+        "json": {
+          "session_id": "573192563967",
+          "message": "hola",
+          "tipo_mensaje": "Primer mensaje"
+        },
+        "pairedItem": {
+          "item": 0
+        }
+      }
+    ]
+  },
+  "meta": {
+    "templateCredsSetupCompleted": true
+  },
+  "tags": [
+    {
+      "id": "6e1haF3pXukz6KVf",
+      "name": "env:dev",
+      "createdAt": "2025-05-27T01:29:25.680Z",
+      "updatedAt": "2026-02-11T00:17:23.837Z"
+    }
+  ],
+  "shared": [
+    {
+      "role": "workflow:owner",
+      "workflowId": "1rIA5QMyUJCTdQB4",
+      "projectId": "8h8pwWGcWlnGEym3",
+      "createdAt": "2025-10-16T23:00:24.735Z",
+      "updatedAt": "2025-10-16T23:00:24.735Z"
+    }
+  ],
+  "activeVersion": null
+}
