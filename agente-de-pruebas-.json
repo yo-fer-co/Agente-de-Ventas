@@ -1,0 +1,1643 @@
+{
+  "id": "yGjwaIUC-L7VOHskiDT9n",
+  "name": "Agente de Pruebas",
+  "active": true,
+  "activeVersionId": "6fb6e30e-ebf3-4a64-8099-464ac26695c6",
+  "createdAt": "2026-02-12T00:16:28.501Z",
+  "updatedAt": "2026-06-25T23:04:51.310Z",
+  "isArchived": false,
+  "versionId": "6fb6e30e-ebf3-4a64-8099-464ac26695c6",
+  "triggerCount": 0,
+  "nodes": [
+    {
+      "parameters": {
+        "documentId": {
+          "__rl": true,
+          "value": "105PK4YXs02WqrFSC8VbTvehlgV_KDfU7Bf9liR9674Q",
+          "mode": "list",
+          "cachedResultName": "parametros pruebas agente",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/105PK4YXs02WqrFSC8VbTvehlgV_KDfU7Bf9liR9674Q/edit?usp=drivesdk"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "gid=0",
+          "mode": "list",
+          "cachedResultName": "Configuracion_Pruebas",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/105PK4YXs02WqrFSC8VbTvehlgV_KDfU7Bf9liR9674Q/edit#gid=0"
+        },
+        "options": {
+          "returnFirstMatch": true
+        }
+      },
+      "id": "28ba36c8-6a39-4739-aab2-44238b395674",
+      "name": "Get Test Configuration",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [
+        -2432,
+        1488
+      ],
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "Pf0TYy2joLTmqt2C",
+          "name": "Google Sheets account 3"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "append",
+        "documentId": {
+          "__rl": true,
+          "value": "1HYEmkf9lJbiSFwc3nLGP5pdOMWnSdMPWj5DEkLTSE3o",
+          "mode": "list",
+          "cachedResultName": "pruebas agente",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1HYEmkf9lJbiSFwc3nLGP5pdOMWnSdMPWj5DEkLTSE3o/edit?usp=drivesdk"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "gid=0",
+          "mode": "list",
+          "cachedResultName": "Logs_Conversacion",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1HYEmkf9lJbiSFwc3nLGP5pdOMWnSdMPWj5DEkLTSE3o/edit#gid=0"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "agente": "ASESOR",
+            "tiempo": "={{ $now.format('yyyy-MM-dd HH:mm:ss') }}",
+            "mensaje": "={{ $('Execute Workflow Trigger').item.json.text_body }}",
+            "ID Caso": "={{ $json['ID Caso'] }}"
+          },
+          "matchingColumns": [],
+          "schema": [
+            {
+              "id": "agente",
+              "displayName": "agente",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "mensaje",
+              "displayName": "mensaje",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "tiempo",
+              "displayName": "tiempo",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "ID Caso",
+              "displayName": "ID Caso",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "id": "5d89602e-169d-4af7-a10a-8649892e9211",
+      "name": "Log Incoming Message",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [
+        -1984,
+        1488
+      ],
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "Pf0TYy2joLTmqt2C",
+          "name": "Google Sheets account 3"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "={{ $('Execute Workflow Trigger').item.json.text_body }}",
+        "options": {
+          "systemMessage": "=Eres un cliente real de WhatsApp realizando una prueba de QA para una tienda de artículos de bebé. Tu comportamiento debe ser humano, fluido y consistente con tu configuración técnica.\n🛠 Tu Configuración\n\n    Personalidad: {{ $('Get Test Configuration').first().json.Personalidad }}\n\n    Objetivo de Compra: {{ $('Filter').first().json['Objetivo de Compra'] }}\n\n    Nivel de Paciencia: {{ $('Filter').first().json['Nivel de Paciencia'] }}\n\n    Datos Técnicos a Preguntar: {{ $('Filter').first().json['Datos Técnicos a Preguntar'] }}\n\n📋 Instrucciones de Interacción\n\n    Actúa con realismo: Escribe de forma concisa, con lenguaje natural (puedes tener errores de dedo o usar emojis según tu personalidad) y coherente. No uses listas numeradas ni lenguaje de asistente.\n\n    Ciclo de compra: * Empieza con una consulta general.\n\n        Introduce los \"Datos Técnicos\" de forma orgánica en la charla.\n\n        Selección Crítica: Si el sistema te ofrece varias opciones de productos, compara mentalmente cuál se ajusta más a tu \"Objetivo\" y a los \"Datos Técnicos\" que pediste. Debes elegir uno específicamente para avanzar a la compra.\n\n    Gestión de Paciencia: Si el sistema es repetitivo, lento o no resuelve tus dudas, reacciona según tu nivel de paciencia. Si es bajo, muestra frustración o exige un humano.\n\n    Cierre y Pago: Una vez que hayas elegido el producto, pide explícitamente el link de pago o los datos de transferencia. No te vayas sin intentar concretar el objetivo.\n\n    Consistencia: Mantén el contexto. Si ya te dijeron un precio, no lo preguntes de nuevo.\n\n🎯 Regla de Oro: La Decisión\n\n    No seas pasivo. Si el bot de la tienda te da un catálogo o varias opciones, analiza cuál te convence más según tu personalidad. Debes decir algo como: \"Me gusta más el modelo [Nombre], me lo llevo si tienes stock\" o \"Ese que mencionaste primero me sirve más por lo que te conté\".\n\n🛑 Regla de Cierre: Cuando sientas que tu objetivo de compra se ha cumplido, hayas decidido qué hacer y te despidas formalmente del asesor, DEBES finalizar tu mensaje OBLIGATORIAMENTE escribiendo la palabra [FIN_TEST]. No sigas respondiendo después de usar esta palabra."
+        }
+      },
+      "id": "8d3acdad-c282-4806-ad32-c5657f48bcad",
+      "name": "AI Customer Agent",
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 3.1,
+      "position": [
+        -1760,
+        1376
+      ]
+    },
+    {
+      "parameters": {
+        "model": {
+          "__rl": true,
+          "mode": "id",
+          "value": "gpt-4o"
+        },
+        "builtInTools": {},
+        "options": {
+          "temperature": 0.8
+        }
+      },
+      "id": "72376956-d0e8-4330-accb-09a470bafee7",
+      "name": "OpenAI GPT-4o",
+      "type": "@n8n/n8n-nodes-langchain.lmChatOpenAi",
+      "typeVersion": 1.3,
+      "position": [
+        -1760,
+        1600
+      ],
+      "credentials": {
+        "openAiApi": {
+          "id": "zACGOxtwAjrFvDag",
+          "name": "OpenAi_YoEco_DEV"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "sessionIdType": "customKey",
+        "sessionKey": "572222222222",
+        "contextWindowLength": 15
+      },
+      "id": "1d121435-f389-4226-9442-97d91f7aa3d1",
+      "name": "Conversation Memory",
+      "type": "@n8n/n8n-nodes-langchain.memoryBufferWindow",
+      "typeVersion": 1.3,
+      "position": [
+        -1632,
+        1600
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "append",
+        "documentId": {
+          "__rl": true,
+          "value": "1HYEmkf9lJbiSFwc3nLGP5pdOMWnSdMPWj5DEkLTSE3o",
+          "mode": "list",
+          "cachedResultName": "pruebas agente",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1HYEmkf9lJbiSFwc3nLGP5pdOMWnSdMPWj5DEkLTSE3o/edit?usp=drivesdk"
+        },
+        "sheetName": {
+          "__rl": true,
+          "mode": "name",
+          "value": "Logs_Conversacion"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "mensaje": "={{ $json.output }}",
+            "agente": "CLIENTE_IA",
+            "tiempo": "={{ $now.format('yyyy-MM-dd HH:mm:ss') }}",
+            "ID Caso": "={{ $('Get Test Configuration').item.json['ID Caso'] }}"
+          },
+          "matchingColumns": [],
+          "schema": [
+            {
+              "id": "agente",
+              "displayName": "agente",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "mensaje",
+              "displayName": "mensaje",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "tiempo",
+              "displayName": "tiempo",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "ID Caso",
+              "displayName": "ID Caso",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "id": "ec8bdba8-83bf-477a-9bb9-97e92ff4925a",
+      "name": "Log AI Response",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [
+        -1440,
+        1376
+      ],
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "Pf0TYy2joLTmqt2C",
+          "name": "Google Sheets account 3"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "inputSource": "passthrough"
+      },
+      "id": "163d3570-f8c2-48c5-b43a-0a9edbe79116",
+      "name": "Execute Workflow Trigger",
+      "type": "n8n-nodes-base.executeWorkflowTrigger",
+      "typeVersion": 1.1,
+      "position": [
+        -2656,
+        1488
+      ]
+    },
+    {
+      "parameters": {
+        "workflowId": {
+          "__rl": true,
+          "value": "CcOQYxNOyPeOYkoP",
+          "mode": "list",
+          "cachedResultUrl": "/workflow/CcOQYxNOyPeOYkoP",
+          "cachedResultName": "Babys World — Coordinador 2.0 (DEV)"
+        },
+        "workflowInputs": {
+          "mappingMode": "defineBelow",
+          "value": {},
+          "matchingColumns": [],
+          "schema": [],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": true
+        },
+        "options": {}
+      },
+      "id": "1a5f0fba-a49b-4b27-ac27-685790ee4f07",
+      "name": "Call Coordinator Workflow",
+      "type": "n8n-nodes-base.executeWorkflow",
+      "typeVersion": 1.3,
+      "position": [
+        -592,
+        1616
+      ]
+    },
+    {
+      "parameters": {},
+      "id": "422d9f31-c5f6-4427-9c26-5f9f018e395d",
+      "name": "Start Test Conversation",
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [
+        -1696,
+        1776
+      ]
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "id-1",
+              "name": "messaging_product",
+              "value": "=whatsapp",
+              "type": "string"
+            },
+            {
+              "id": "f6d5172e-74ae-4466-ba0f-750a72bc9442",
+              "name": "metadata",
+              "value": "={{ { \"display_phone_number\": \"573337062951\", \"phone_number_id\": \"900258723180080\" } }}",
+              "type": "object"
+            },
+            {
+              "id": "b9a36825-d2a3-457d-8ca5-c6ca86e7fa95",
+              "name": "contacts",
+              "value": "={{ [{ \"profile\": { \"name\": \"AI Test Client\" }, \"wa_id\": \"572222222228\", \"user_id\": \"\" }] }}",
+              "type": "array"
+            },
+            {
+              "id": "edb2fe86-1b7b-45f4-9f43-92862761453a",
+              "name": "messages",
+              "value": "={{ [{ \"from\": \"572222222228\", \"from_user_id\": \"\", \"id\": $now.toMillis().toString() + '_' + Math.random().toString(36).substring(7), \"timestamp\": Math.floor($now.toMillis() / 1000).toString(), \"type\": \"text\", \"text\": { \"body\": $json.mensaje } }] }}",
+              "type": "array"
+            },
+            {
+              "id": "0ae018a8-1dd3-4eb9-bc5f-73cee2aaa411",
+              "name": "field",
+              "value": "messages",
+              "type": "string"
+            },
+            {
+              "id": "3994bb2e-16cd-4a1e-b3c1-d39145ffb648",
+              "name": "environment",
+              "value": "uat",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "69855221-c882-460a-a7c6-c74b33316a57",
+      "name": "Format AI Response Message",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        -896,
+        1408
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "645dade3-64be-4a2d-9e1d-f411ab4941fc",
+              "leftValue": "={{ $json['ID Caso'] }}",
+              "rightValue": "TEST-04",
+              "operator": {
+                "type": "string",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.filter",
+      "typeVersion": 2.3,
+      "position": [
+        -2208,
+        1488
+      ],
+      "id": "cfec1c8f-8b64-4b2d-9307-062d6409208c",
+      "name": "Filter"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "id-1",
+              "name": "incoming_message",
+              "value": "Hola buenas tardes",
+              "type": "string"
+            },
+            {
+              "id": "id-2",
+              "name": "session_id",
+              "value": "573609840505",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "55822121-9ff2-48b0-b63d-f975dd106bbe",
+      "name": "Initial Message Setup",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        -1504,
+        1776
+      ]
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "id-1",
+              "name": "messaging_product",
+              "value": "whatsapp",
+              "type": "string"
+            },
+            {
+              "id": "5813a985-a1df-47d2-a324-2f7a55a7c290",
+              "name": "metadata",
+              "value": "={{ { \"display_phone_number\": \"573337062951\", \"phone_number_id\": \"900258723180080\" } }}",
+              "type": "string"
+            },
+            {
+              "id": "5ca6329f-b65a-4747-82c0-f4fd30613dce",
+              "name": "contacts",
+              "value": "={{ [{ \"profile\": { \"name\": \"AI Test Client\" }, \"wa_id\": $('Initial Message Setup').item.json.session_id, \"user_id\": \"\" }] }}",
+              "type": "array"
+            },
+            {
+              "id": "86e4b60a-9a40-40ef-a4ea-fffde13b1668",
+              "name": "messages",
+              "value": "={{ [{ \"from\": $('Initial Message Setup').item.json.session_id, \"from_user_id\": \"\", \"id\": $now.toMillis().toString() + '_' + Math.random().toString(36).substring(7), \"timestamp\": Math.floor($now.toMillis() / 1000).toString(), \"type\": \"text\", \"text\": { \"body\": $('Initial Message Setup').item.json.incoming_message } }] }}",
+              "type": "array"
+            },
+            {
+              "id": "ba48bbe8-3f35-48c0-8a59-c6ea66370f77",
+              "name": "field",
+              "value": "messages",
+              "type": "string"
+            },
+            {
+              "id": "de72f54f-d37b-45be-960e-c2db06ce83b0",
+              "name": "environment",
+              "value": "uat",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "b776777b-d136-4e55-9651-9b3447e95396",
+      "name": "Format Initial WhatsApp Message",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        -1184,
+        1776
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "append",
+        "documentId": {
+          "__rl": true,
+          "value": "1HYEmkf9lJbiSFwc3nLGP5pdOMWnSdMPWj5DEkLTSE3o",
+          "mode": "list",
+          "cachedResultName": "pruebas agente",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1HYEmkf9lJbiSFwc3nLGP5pdOMWnSdMPWj5DEkLTSE3o/edit?usp=drivesdk"
+        },
+        "sheetName": {
+          "__rl": true,
+          "mode": "name",
+          "value": "Logs_Conversacion"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "mensaje": "={{ $json.incoming_message }}",
+            "agente": "CLIENTE_IA",
+            "tiempo": "={{ $now.format('yyyy-MM-dd HH:mm:ss') }}"
+          },
+          "matchingColumns": [],
+          "schema": [
+            {
+              "id": "agente",
+              "displayName": "agente",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "mensaje",
+              "displayName": "mensaje",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "tiempo",
+              "displayName": "tiempo",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "ID Caso",
+              "displayName": "ID Caso",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "id": "60936b9f-9f47-4cb8-8ef1-c96172b9b1db",
+      "name": "Log AI Response1",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [
+        -1344,
+        1776
+      ],
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "Pf0TYy2joLTmqt2C",
+          "name": "Google Sheets account 3"
+        }
+      }
+    },
+    {
+      "parameters": {},
+      "type": "n8n-nodes-base.wait",
+      "typeVersion": 1.1,
+      "position": [
+        -848,
+        1616
+      ],
+      "id": "bc7dc749-ec53-49c5-abde-59960962ac9b",
+      "name": "Wait",
+      "webhookId": "50a4e5ae-d68d-4269-9666-20b204dbbcec"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "96424475-4828-4257-9539-4695c6666a2c",
+              "leftValue": "={{ $('AI Customer Agent').item.json.output }}",
+              "rightValue": "[FIN_TEST]",
+              "operator": {
+                "type": "string",
+                "operation": "contains"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        -1216,
+        1376
+      ],
+      "id": "9dd9cad9-68ae-4c04-a947-b55b330894f6",
+      "name": "If"
+    }
+  ],
+  "connections": {
+    "Get Test Configuration": {
+      "main": [
+        [
+          {
+            "node": "Filter",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Log Incoming Message": {
+      "main": [
+        [
+          {
+            "node": "AI Customer Agent",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "OpenAI GPT-4o": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "AI Customer Agent",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Conversation Memory": {
+      "ai_memory": [
+        [
+          {
+            "node": "AI Customer Agent",
+            "type": "ai_memory",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "AI Customer Agent": {
+      "main": [
+        [
+          {
+            "node": "Log AI Response",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Execute Workflow Trigger": {
+      "main": [
+        [
+          {
+            "node": "Get Test Configuration",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Start Test Conversation": {
+      "main": [
+        [
+          {
+            "node": "Initial Message Setup",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Format Initial WhatsApp Message": {
+      "main": [
+        [
+          {
+            "node": "Wait",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Log AI Response": {
+      "main": [
+        [
+          {
+            "node": "If",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Format AI Response Message": {
+      "main": [
+        [
+          {
+            "node": "Wait",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Filter": {
+      "main": [
+        [
+          {
+            "node": "Log Incoming Message",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Initial Message Setup": {
+      "main": [
+        [
+          {
+            "node": "Log AI Response1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Log AI Response1": {
+      "main": [
+        [
+          {
+            "node": "Format Initial WhatsApp Message",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Wait": {
+      "main": [
+        [
+          {
+            "node": "Call Coordinator Workflow",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Call Coordinator Workflow": {
+      "main": [
+        []
+      ]
+    },
+    "If": {
+      "main": [
+        [],
+        [
+          {
+            "node": "Format AI Response Message",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "nodeGroups": [],
+  "settings": {
+    "executionOrder": "v1",
+    "availableInMCP": false,
+    "binaryMode": "separate"
+  },
+  "staticData": null,
+  "pinData": {
+    "Start Test Conversation": [
+      {
+        "json": {},
+        "pairedItem": {
+          "item": 0
+        }
+      }
+    ],
+    "Execute Workflow Trigger": [
+      {
+        "json": {
+          "session_id": "572222222222",
+          "text_body": "¡Hola! 😊 Cuéntame, ¿en qué te puedo ayudar hoy con tu bebé o lo que estás buscando?",
+          "caption": null,
+          "imagen no disponible": null,
+          "environment": "uat"
+        }
+      }
+    ]
+  },
+  "meta": null,
+  "tags": [],
+  "shared": [
+    {
+      "role": "workflow:owner",
+      "workflowId": "yGjwaIUC-L7VOHskiDT9n",
+      "projectId": "8h8pwWGcWlnGEym3",
+      "createdAt": "2026-02-12T00:16:28.504Z",
+      "updatedAt": "2026-02-12T00:16:28.504Z"
+    }
+  ],
+  "activeVersion": {
+    "versionId": "6fb6e30e-ebf3-4a64-8099-464ac26695c6",
+    "workflowId": "yGjwaIUC-L7VOHskiDT9n",
+    "nodes": [
+      {
+        "parameters": {
+          "documentId": {
+            "__rl": true,
+            "value": "105PK4YXs02WqrFSC8VbTvehlgV_KDfU7Bf9liR9674Q",
+            "mode": "list",
+            "cachedResultName": "parametros pruebas agente",
+            "cachedResultUrl": "https://docs.google.com/spreadsheets/d/105PK4YXs02WqrFSC8VbTvehlgV_KDfU7Bf9liR9674Q/edit?usp=drivesdk"
+          },
+          "sheetName": {
+            "__rl": true,
+            "value": "gid=0",
+            "mode": "list",
+            "cachedResultName": "Configuracion_Pruebas",
+            "cachedResultUrl": "https://docs.google.com/spreadsheets/d/105PK4YXs02WqrFSC8VbTvehlgV_KDfU7Bf9liR9674Q/edit#gid=0"
+          },
+          "options": {
+            "returnFirstMatch": true
+          }
+        },
+        "id": "28ba36c8-6a39-4739-aab2-44238b395674",
+        "name": "Get Test Configuration",
+        "type": "n8n-nodes-base.googleSheets",
+        "typeVersion": 4.7,
+        "position": [
+          -2432,
+          1488
+        ],
+        "credentials": {
+          "googleSheetsOAuth2Api": {
+            "id": "Pf0TYy2joLTmqt2C",
+            "name": "Google Sheets account 3"
+          }
+        }
+      },
+      {
+        "parameters": {
+          "operation": "append",
+          "documentId": {
+            "__rl": true,
+            "value": "1HYEmkf9lJbiSFwc3nLGP5pdOMWnSdMPWj5DEkLTSE3o",
+            "mode": "list",
+            "cachedResultName": "pruebas agente",
+            "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1HYEmkf9lJbiSFwc3nLGP5pdOMWnSdMPWj5DEkLTSE3o/edit?usp=drivesdk"
+          },
+          "sheetName": {
+            "__rl": true,
+            "value": "gid=0",
+            "mode": "list",
+            "cachedResultName": "Logs_Conversacion",
+            "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1HYEmkf9lJbiSFwc3nLGP5pdOMWnSdMPWj5DEkLTSE3o/edit#gid=0"
+          },
+          "columns": {
+            "mappingMode": "defineBelow",
+            "value": {
+              "agente": "ASESOR",
+              "tiempo": "={{ $now.format('yyyy-MM-dd HH:mm:ss') }}",
+              "mensaje": "={{ $('Execute Workflow Trigger').item.json.text_body }}",
+              "ID Caso": "={{ $json['ID Caso'] }}"
+            },
+            "matchingColumns": [],
+            "schema": [
+              {
+                "id": "agente",
+                "displayName": "agente",
+                "required": false,
+                "defaultMatch": false,
+                "display": true,
+                "type": "string",
+                "canBeUsedToMatch": true,
+                "removed": false
+              },
+              {
+                "id": "mensaje",
+                "displayName": "mensaje",
+                "required": false,
+                "defaultMatch": false,
+                "display": true,
+                "type": "string",
+                "canBeUsedToMatch": true,
+                "removed": false
+              },
+              {
+                "id": "tiempo",
+                "displayName": "tiempo",
+                "required": false,
+                "defaultMatch": false,
+                "display": true,
+                "type": "string",
+                "canBeUsedToMatch": true,
+                "removed": false
+              },
+              {
+                "id": "ID Caso",
+                "displayName": "ID Caso",
+                "required": false,
+                "defaultMatch": false,
+                "display": true,
+                "type": "string",
+                "canBeUsedToMatch": true,
+                "removed": false
+              }
+            ],
+            "attemptToConvertTypes": false,
+            "convertFieldsToString": false
+          },
+          "options": {}
+        },
+        "id": "5d89602e-169d-4af7-a10a-8649892e9211",
+        "name": "Log Incoming Message",
+        "type": "n8n-nodes-base.googleSheets",
+        "typeVersion": 4.7,
+        "position": [
+          -1984,
+          1488
+        ],
+        "credentials": {
+          "googleSheetsOAuth2Api": {
+            "id": "Pf0TYy2joLTmqt2C",
+            "name": "Google Sheets account 3"
+          }
+        }
+      },
+      {
+        "parameters": {
+          "promptType": "define",
+          "text": "={{ $('Execute Workflow Trigger').item.json.text_body }}",
+          "options": {
+            "systemMessage": "=Eres un cliente real de WhatsApp realizando una prueba de QA para una tienda de artículos de bebé. Tu comportamiento debe ser humano, fluido y consistente con tu configuración técnica.\n🛠 Tu Configuración\n\n    Personalidad: {{ $('Get Test Configuration').first().json.Personalidad }}\n\n    Objetivo de Compra: {{ $('Filter').first().json['Objetivo de Compra'] }}\n\n    Nivel de Paciencia: {{ $('Filter').first().json['Nivel de Paciencia'] }}\n\n    Datos Técnicos a Preguntar: {{ $('Filter').first().json['Datos Técnicos a Preguntar'] }}\n\n📋 Instrucciones de Interacción\n\n    Actúa con realismo: Escribe de forma concisa, con lenguaje natural (puedes tener errores de dedo o usar emojis según tu personalidad) y coherente. No uses listas numeradas ni lenguaje de asistente.\n\n    Ciclo de compra: * Empieza con una consulta general.\n\n        Introduce los \"Datos Técnicos\" de forma orgánica en la charla.\n\n        Selección Crítica: Si el sistema te ofrece varias opciones de productos, compara mentalmente cuál se ajusta más a tu \"Objetivo\" y a los \"Datos Técnicos\" que pediste. Debes elegir uno específicamente para avanzar a la compra.\n\n    Gestión de Paciencia: Si el sistema es repetitivo, lento o no resuelve tus dudas, reacciona según tu nivel de paciencia. Si es bajo, muestra frustración o exige un humano.\n\n    Cierre y Pago: Una vez que hayas elegido el producto, pide explícitamente el link de pago o los datos de transferencia. No te vayas sin intentar concretar el objetivo.\n\n    Consistencia: Mantén el contexto. Si ya te dijeron un precio, no lo preguntes de nuevo.\n\n🎯 Regla de Oro: La Decisión\n\n    No seas pasivo. Si el bot de la tienda te da un catálogo o varias opciones, analiza cuál te convence más según tu personalidad. Debes decir algo como: \"Me gusta más el modelo [Nombre], me lo llevo si tienes stock\" o \"Ese que mencionaste primero me sirve más por lo que te conté\".\n\n🛑 Regla de Cierre: Cuando sientas que tu objetivo de compra se ha cumplido, hayas decidido qué hacer y te despidas formalmente del asesor, DEBES finalizar tu mensaje OBLIGATORIAMENTE escribiendo la palabra [FIN_TEST]. No sigas respondiendo después de usar esta palabra."
+          }
+        },
+        "id": "8d3acdad-c282-4806-ad32-c5657f48bcad",
+        "name": "AI Customer Agent",
+        "type": "@n8n/n8n-nodes-langchain.agent",
+        "typeVersion": 3.1,
+        "position": [
+          -1760,
+          1376
+        ]
+      },
+      {
+        "parameters": {
+          "model": {
+            "__rl": true,
+            "mode": "id",
+            "value": "gpt-4o"
+          },
+          "builtInTools": {},
+          "options": {
+            "temperature": 0.8
+          }
+        },
+        "id": "72376956-d0e8-4330-accb-09a470bafee7",
+        "name": "OpenAI GPT-4o",
+        "type": "@n8n/n8n-nodes-langchain.lmChatOpenAi",
+        "typeVersion": 1.3,
+        "position": [
+          -1760,
+          1600
+        ],
+        "credentials": {
+          "openAiApi": {
+            "id": "zACGOxtwAjrFvDag",
+            "name": "OpenAi_YoEco_DEV"
+          }
+        }
+      },
+      {
+        "parameters": {
+          "sessionIdType": "customKey",
+          "sessionKey": "572222222222",
+          "contextWindowLength": 15
+        },
+        "id": "1d121435-f389-4226-9442-97d91f7aa3d1",
+        "name": "Conversation Memory",
+        "type": "@n8n/n8n-nodes-langchain.memoryBufferWindow",
+        "typeVersion": 1.3,
+        "position": [
+          -1632,
+          1600
+        ]
+      },
+      {
+        "parameters": {
+          "operation": "append",
+          "documentId": {
+            "__rl": true,
+            "value": "1HYEmkf9lJbiSFwc3nLGP5pdOMWnSdMPWj5DEkLTSE3o",
+            "mode": "list",
+            "cachedResultName": "pruebas agente",
+            "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1HYEmkf9lJbiSFwc3nLGP5pdOMWnSdMPWj5DEkLTSE3o/edit?usp=drivesdk"
+          },
+          "sheetName": {
+            "__rl": true,
+            "mode": "name",
+            "value": "Logs_Conversacion"
+          },
+          "columns": {
+            "mappingMode": "defineBelow",
+            "value": {
+              "mensaje": "={{ $json.output }}",
+              "agente": "CLIENTE_IA",
+              "tiempo": "={{ $now.format('yyyy-MM-dd HH:mm:ss') }}",
+              "ID Caso": "={{ $('Get Test Configuration').item.json['ID Caso'] }}"
+            },
+            "matchingColumns": [],
+            "schema": [
+              {
+                "id": "agente",
+                "displayName": "agente",
+                "required": false,
+                "defaultMatch": false,
+                "display": true,
+                "type": "string",
+                "canBeUsedToMatch": true,
+                "removed": false
+              },
+              {
+                "id": "mensaje",
+                "displayName": "mensaje",
+                "required": false,
+                "defaultMatch": false,
+                "display": true,
+                "type": "string",
+                "canBeUsedToMatch": true
+              },
+              {
+                "id": "tiempo",
+                "displayName": "tiempo",
+                "required": false,
+                "defaultMatch": false,
+                "display": true,
+                "type": "string",
+                "canBeUsedToMatch": true,
+                "removed": false
+              },
+              {
+                "id": "ID Caso",
+                "displayName": "ID Caso",
+                "required": false,
+                "defaultMatch": false,
+                "display": true,
+                "type": "string",
+                "canBeUsedToMatch": true,
+                "removed": false
+              }
+            ],
+            "attemptToConvertTypes": false,
+            "convertFieldsToString": false
+          },
+          "options": {}
+        },
+        "id": "ec8bdba8-83bf-477a-9bb9-97e92ff4925a",
+        "name": "Log AI Response",
+        "type": "n8n-nodes-base.googleSheets",
+        "typeVersion": 4.7,
+        "position": [
+          -1440,
+          1376
+        ],
+        "credentials": {
+          "googleSheetsOAuth2Api": {
+            "id": "Pf0TYy2joLTmqt2C",
+            "name": "Google Sheets account 3"
+          }
+        }
+      },
+      {
+        "parameters": {
+          "inputSource": "passthrough"
+        },
+        "id": "163d3570-f8c2-48c5-b43a-0a9edbe79116",
+        "name": "Execute Workflow Trigger",
+        "type": "n8n-nodes-base.executeWorkflowTrigger",
+        "typeVersion": 1.1,
+        "position": [
+          -2656,
+          1488
+        ]
+      },
+      {
+        "parameters": {
+          "workflowId": {
+            "__rl": true,
+            "value": "CcOQYxNOyPeOYkoP",
+            "mode": "list",
+            "cachedResultUrl": "/workflow/CcOQYxNOyPeOYkoP",
+            "cachedResultName": "Babys World — Coordinador 2.0 (DEV)"
+          },
+          "workflowInputs": {
+            "mappingMode": "defineBelow",
+            "value": {},
+            "matchingColumns": [],
+            "schema": [],
+            "attemptToConvertTypes": false,
+            "convertFieldsToString": true
+          },
+          "options": {}
+        },
+        "id": "1a5f0fba-a49b-4b27-ac27-685790ee4f07",
+        "name": "Call Coordinator Workflow",
+        "type": "n8n-nodes-base.executeWorkflow",
+        "typeVersion": 1.3,
+        "position": [
+          -592,
+          1616
+        ]
+      },
+      {
+        "parameters": {},
+        "id": "422d9f31-c5f6-4427-9c26-5f9f018e395d",
+        "name": "Start Test Conversation",
+        "type": "n8n-nodes-base.manualTrigger",
+        "typeVersion": 1,
+        "position": [
+          -1696,
+          1776
+        ]
+      },
+      {
+        "parameters": {
+          "assignments": {
+            "assignments": [
+              {
+                "id": "id-1",
+                "name": "messaging_product",
+                "value": "=whatsapp",
+                "type": "string"
+              },
+              {
+                "id": "f6d5172e-74ae-4466-ba0f-750a72bc9442",
+                "name": "metadata",
+                "value": "={{ { \"display_phone_number\": \"573337062951\", \"phone_number_id\": \"900258723180080\" } }}",
+                "type": "object"
+              },
+              {
+                "id": "b9a36825-d2a3-457d-8ca5-c6ca86e7fa95",
+                "name": "contacts",
+                "value": "={{ [{ \"profile\": { \"name\": \"AI Test Client\" }, \"wa_id\": \"572222222228\", \"user_id\": \"\" }] }}",
+                "type": "array"
+              },
+              {
+                "id": "edb2fe86-1b7b-45f4-9f43-92862761453a",
+                "name": "messages",
+                "value": "={{ [{ \"from\": \"572222222228\", \"from_user_id\": \"\", \"id\": $now.toMillis().toString() + '_' + Math.random().toString(36).substring(7), \"timestamp\": Math.floor($now.toMillis() / 1000).toString(), \"type\": \"text\", \"text\": { \"body\": $json.mensaje } }] }}",
+                "type": "array"
+              },
+              {
+                "id": "0ae018a8-1dd3-4eb9-bc5f-73cee2aaa411",
+                "name": "field",
+                "value": "messages",
+                "type": "string"
+              },
+              {
+                "id": "3994bb2e-16cd-4a1e-b3c1-d39145ffb648",
+                "name": "environment",
+                "value": "uat",
+                "type": "string"
+              }
+            ]
+          },
+          "options": {}
+        },
+        "id": "69855221-c882-460a-a7c6-c74b33316a57",
+        "name": "Format AI Response Message",
+        "type": "n8n-nodes-base.set",
+        "typeVersion": 3.4,
+        "position": [
+          -896,
+          1408
+        ]
+      },
+      {
+        "parameters": {
+          "conditions": {
+            "options": {
+              "caseSensitive": true,
+              "leftValue": "",
+              "typeValidation": "strict",
+              "version": 3
+            },
+            "conditions": [
+              {
+                "id": "645dade3-64be-4a2d-9e1d-f411ab4941fc",
+                "leftValue": "={{ $json['ID Caso'] }}",
+                "rightValue": "TEST-04",
+                "operator": {
+                  "type": "string",
+                  "operation": "equals"
+                }
+              }
+            ],
+            "combinator": "and"
+          },
+          "options": {}
+        },
+        "type": "n8n-nodes-base.filter",
+        "typeVersion": 2.3,
+        "position": [
+          -2208,
+          1488
+        ],
+        "id": "cfec1c8f-8b64-4b2d-9307-062d6409208c",
+        "name": "Filter"
+      },
+      {
+        "parameters": {
+          "assignments": {
+            "assignments": [
+              {
+                "id": "id-1",
+                "name": "incoming_message",
+                "value": "Hola buenas tardes",
+                "type": "string"
+              },
+              {
+                "id": "id-2",
+                "name": "session_id",
+                "value": "573609840505",
+                "type": "string"
+              }
+            ]
+          },
+          "options": {}
+        },
+        "id": "55822121-9ff2-48b0-b63d-f975dd106bbe",
+        "name": "Initial Message Setup",
+        "type": "n8n-nodes-base.set",
+        "typeVersion": 3.4,
+        "position": [
+          -1504,
+          1776
+        ]
+      },
+      {
+        "parameters": {
+          "assignments": {
+            "assignments": [
+              {
+                "id": "id-1",
+                "name": "messaging_product",
+                "value": "whatsapp",
+                "type": "string"
+              },
+              {
+                "id": "5813a985-a1df-47d2-a324-2f7a55a7c290",
+                "name": "metadata",
+                "value": "={{ { \"display_phone_number\": \"573337062951\", \"phone_number_id\": \"900258723180080\" } }}",
+                "type": "string"
+              },
+              {
+                "id": "5ca6329f-b65a-4747-82c0-f4fd30613dce",
+                "name": "contacts",
+                "value": "={{ [{ \"profile\": { \"name\": \"AI Test Client\" }, \"wa_id\": $('Initial Message Setup').item.json.session_id, \"user_id\": \"\" }] }}",
+                "type": "array"
+              },
+              {
+                "id": "86e4b60a-9a40-40ef-a4ea-fffde13b1668",
+                "name": "messages",
+                "value": "={{ [{ \"from\": $('Initial Message Setup').item.json.session_id, \"from_user_id\": \"\", \"id\": $now.toMillis().toString() + '_' + Math.random().toString(36).substring(7), \"timestamp\": Math.floor($now.toMillis() / 1000).toString(), \"type\": \"text\", \"text\": { \"body\": $('Initial Message Setup').item.json.incoming_message } }] }}",
+                "type": "array"
+              },
+              {
+                "id": "ba48bbe8-3f35-48c0-8a59-c6ea66370f77",
+                "name": "field",
+                "value": "messages",
+                "type": "string"
+              },
+              {
+                "id": "de72f54f-d37b-45be-960e-c2db06ce83b0",
+                "name": "environment",
+                "value": "uat",
+                "type": "string"
+              }
+            ]
+          },
+          "options": {}
+        },
+        "id": "b776777b-d136-4e55-9651-9b3447e95396",
+        "name": "Format Initial WhatsApp Message",
+        "type": "n8n-nodes-base.set",
+        "typeVersion": 3.4,
+        "position": [
+          -1184,
+          1776
+        ]
+      },
+      {
+        "parameters": {
+          "operation": "append",
+          "documentId": {
+            "__rl": true,
+            "value": "1HYEmkf9lJbiSFwc3nLGP5pdOMWnSdMPWj5DEkLTSE3o",
+            "mode": "list",
+            "cachedResultName": "pruebas agente",
+            "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1HYEmkf9lJbiSFwc3nLGP5pdOMWnSdMPWj5DEkLTSE3o/edit?usp=drivesdk"
+          },
+          "sheetName": {
+            "__rl": true,
+            "mode": "name",
+            "value": "Logs_Conversacion"
+          },
+          "columns": {
+            "mappingMode": "defineBelow",
+            "value": {
+              "mensaje": "={{ $json.incoming_message }}",
+              "agente": "CLIENTE_IA",
+              "tiempo": "={{ $now.format('yyyy-MM-dd HH:mm:ss') }}"
+            },
+            "matchingColumns": [],
+            "schema": [
+              {
+                "id": "agente",
+                "displayName": "agente",
+                "required": false,
+                "defaultMatch": false,
+                "display": true,
+                "type": "string",
+                "canBeUsedToMatch": true,
+                "removed": false
+              },
+              {
+                "id": "mensaje",
+                "displayName": "mensaje",
+                "required": false,
+                "defaultMatch": false,
+                "display": true,
+                "type": "string",
+                "canBeUsedToMatch": true
+              },
+              {
+                "id": "tiempo",
+                "displayName": "tiempo",
+                "required": false,
+                "defaultMatch": false,
+                "display": true,
+                "type": "string",
+                "canBeUsedToMatch": true,
+                "removed": false
+              },
+              {
+                "id": "ID Caso",
+                "displayName": "ID Caso",
+                "required": false,
+                "defaultMatch": false,
+                "display": true,
+                "type": "string",
+                "canBeUsedToMatch": true,
+                "removed": false
+              }
+            ],
+            "attemptToConvertTypes": false,
+            "convertFieldsToString": false
+          },
+          "options": {}
+        },
+        "id": "60936b9f-9f47-4cb8-8ef1-c96172b9b1db",
+        "name": "Log AI Response1",
+        "type": "n8n-nodes-base.googleSheets",
+        "typeVersion": 4.7,
+        "position": [
+          -1344,
+          1776
+        ],
+        "credentials": {
+          "googleSheetsOAuth2Api": {
+            "id": "Pf0TYy2joLTmqt2C",
+            "name": "Google Sheets account 3"
+          }
+        }
+      },
+      {
+        "parameters": {},
+        "type": "n8n-nodes-base.wait",
+        "typeVersion": 1.1,
+        "position": [
+          -848,
+          1616
+        ],
+        "id": "bc7dc749-ec53-49c5-abde-59960962ac9b",
+        "name": "Wait",
+        "webhookId": "50a4e5ae-d68d-4269-9666-20b204dbbcec"
+      },
+      {
+        "parameters": {
+          "conditions": {
+            "options": {
+              "caseSensitive": true,
+              "leftValue": "",
+              "typeValidation": "strict",
+              "version": 3
+            },
+            "conditions": [
+              {
+                "id": "96424475-4828-4257-9539-4695c6666a2c",
+                "leftValue": "={{ $('AI Customer Agent').item.json.output }}",
+                "rightValue": "[FIN_TEST]",
+                "operator": {
+                  "type": "string",
+                  "operation": "contains"
+                }
+              }
+            ],
+            "combinator": "and"
+          },
+          "options": {}
+        },
+        "type": "n8n-nodes-base.if",
+        "typeVersion": 2.3,
+        "position": [
+          -1216,
+          1376
+        ],
+        "id": "9dd9cad9-68ae-4c04-a947-b55b330894f6",
+        "name": "If"
+      }
+    ],
+    "connections": {
+      "Get Test Configuration": {
+        "main": [
+          [
+            {
+              "node": "Filter",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Log Incoming Message": {
+        "main": [
+          [
+            {
+              "node": "AI Customer Agent",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "OpenAI GPT-4o": {
+        "ai_languageModel": [
+          [
+            {
+              "node": "AI Customer Agent",
+              "type": "ai_languageModel",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Conversation Memory": {
+        "ai_memory": [
+          [
+            {
+              "node": "AI Customer Agent",
+              "type": "ai_memory",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "AI Customer Agent": {
+        "main": [
+          [
+            {
+              "node": "Log AI Response",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Execute Workflow Trigger": {
+        "main": [
+          [
+            {
+              "node": "Get Test Configuration",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Start Test Conversation": {
+        "main": [
+          [
+            {
+              "node": "Initial Message Setup",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Format Initial WhatsApp Message": {
+        "main": [
+          [
+            {
+              "node": "Wait",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Log AI Response": {
+        "main": [
+          [
+            {
+              "node": "If",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Format AI Response Message": {
+        "main": [
+          [
+            {
+              "node": "Wait",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Filter": {
+        "main": [
+          [
+            {
+              "node": "Log Incoming Message",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Initial Message Setup": {
+        "main": [
+          [
+            {
+              "node": "Log AI Response1",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Log AI Response1": {
+        "main": [
+          [
+            {
+              "node": "Format Initial WhatsApp Message",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Wait": {
+        "main": [
+          [
+            {
+              "node": "Call Coordinator Workflow",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Call Coordinator Workflow": {
+        "main": [
+          []
+        ]
+      },
+      "If": {
+        "main": [
+          [],
+          [
+            {
+              "node": "Format AI Response Message",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      }
+    },
+    "nodeGroups": [],
+    "authors": "Juan Zabala",
+    "name": "Version 6fb6e30e",
+    "description": "",
+    "autosaved": true,
+    "createdAt": "2026-06-25T23:04:51.311Z",
+    "updatedAt": "2026-06-25T23:04:57.000Z"
+  }
+}
