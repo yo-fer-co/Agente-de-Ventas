@@ -1,0 +1,149 @@
+{
+  "id": "Hp5S4Gn9QPMhXAnt",
+  "name": "DALIA_TEST.03_Probar_puerto",
+  "active": true,
+  "activeVersionId": "361c8669-d699-4d28-8bfb-9759bb4dded2",
+  "createdAt": "2026-10-03T02:18:49.080Z",
+  "updatedAt": "2026-10-03T16:46:53.419Z",
+  "isArchived": false,
+  "versionId": "361c8669-d699-4d28-8bfb-9759bb4dded2",
+  "triggerCount": 0,
+  "nodes": [
+    {
+      "id": "cc2f61d3-515e-497f-a931-0990417b121d",
+      "name": "Solicitud de prueba",
+      "type": "n8n-nodes-base.executeWorkflowTrigger",
+      "typeVersion": 1.2,
+      "position": [
+        0,
+        0
+      ],
+      "parameters": {
+        "inputSource": "passthrough"
+      }
+    },
+    {
+      "id": "34cacb29-ba05-4c76-8147-6714e4bb9c5b",
+      "name": "Invocar INT.port",
+      "type": "n8n-nodes-base.executeWorkflow",
+      "typeVersion": 1.3,
+      "position": [
+        224,
+        0
+      ],
+      "parameters": {
+        "mode": "each",
+        "source": "database",
+        "workflowId": {
+          "__rl": true,
+          "mode": "id",
+          "value": "5gbpWhv0zIA8bZ0w"
+        },
+        "options": {
+          "waitForSubWorkflow": true
+        }
+      }
+    }
+  ],
+  "connections": {
+    "Solicitud de prueba": {
+      "main": [
+        [
+          {
+            "node": "Invocar INT.port",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "nodeGroups": [],
+  "settings": {
+    "executionOrder": "v1",
+    "availableInMCP": true,
+    "errorWorkflow": "cjjQno2MxMTT3Icc",
+    "timezone": "America/Bogota",
+    "saveManualExecutions": true,
+    "saveDataErrorExecution": "all",
+    "saveDataSuccessExecution": "all",
+    "callerPolicy": "workflowsFromSameOwner"
+  },
+  "staticData": null,
+  "pinData": null,
+  "meta": {
+    "aiBuilderAssisted": true,
+    "builderVariant": "mcp"
+  },
+  "tags": [],
+  "shared": [
+    {
+      "role": "workflow:owner",
+      "workflowId": "Hp5S4Gn9QPMhXAnt",
+      "projectId": "tRHCC8ts4mkRGXGn",
+      "createdAt": "2026-10-09T21:09:17.760Z",
+      "updatedAt": "2026-10-09T21:09:17.760Z"
+    }
+  ],
+  "activeVersion": {
+    "versionId": "361c8669-d699-4d28-8bfb-9759bb4dded2",
+    "workflowId": "Hp5S4Gn9QPMhXAnt",
+    "nodes": [
+      {
+        "id": "cc2f61d3-515e-497f-a931-0990417b121d",
+        "name": "Solicitud de prueba",
+        "type": "n8n-nodes-base.executeWorkflowTrigger",
+        "typeVersion": 1.2,
+        "position": [
+          0,
+          0
+        ],
+        "parameters": {
+          "inputSource": "passthrough"
+        }
+      },
+      {
+        "id": "34cacb29-ba05-4c76-8147-6714e4bb9c5b",
+        "name": "Invocar INT.port",
+        "type": "n8n-nodes-base.executeWorkflow",
+        "typeVersion": 1.3,
+        "position": [
+          224,
+          0
+        ],
+        "parameters": {
+          "mode": "each",
+          "source": "database",
+          "workflowId": {
+            "__rl": true,
+            "mode": "id",
+            "value": "5gbpWhv0zIA8bZ0w"
+          },
+          "options": {
+            "waitForSubWorkflow": true
+          }
+        }
+      }
+    ],
+    "connections": {
+      "Solicitud de prueba": {
+        "main": [
+          [
+            {
+              "node": "Invocar INT.port",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      }
+    },
+    "nodeGroups": [],
+    "authors": "Fabian Bocanegra (via MCP)",
+    "name": "DALIA v1.0 lote 2 · instalación DEV",
+    "description": "Created with 2 nodes: Solicitud de prueba, Invocar INT.port",
+    "autosaved": false,
+    "createdAt": "2026-10-03T02:18:49.083Z",
+    "updatedAt": "2026-10-03T02:18:49.083Z"
+  }
+}
