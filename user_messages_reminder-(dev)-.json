@@ -1,0 +1,451 @@
+{
+  "id": "OMJsPfookUdnZvuN",
+  "name": "user_messages_reminder (DEV)",
+  "active": false,
+  "activeVersionId": null,
+  "createdAt": "2026-03-05T04:06:49.424Z",
+  "updatedAt": "2026-10-01T22:18:42.661Z",
+  "isArchived": false,
+  "versionId": "7158778b-410e-4b8f-82d7-233c5144faf8",
+  "triggerCount": 1,
+  "nodes": [
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "8a41993e-62ea-44ac-bb9a-959ccf1db0dc",
+              "leftValue": "={{ $json.seller_assigned }}",
+              "rightValue": "",
+              "operator": {
+                "type": "string",
+                "operation": "notEmpty",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        704,
+        -80
+      ],
+      "id": "5772c0f2-3397-4e8c-9420-cb0b8ec2d82b",
+      "name": "seller_assigned"
+    },
+    {
+      "parameters": {
+        "operation": "get",
+        "dataTableId": {
+          "__rl": true,
+          "value": "WdF7VyLHdaxhNGJw",
+          "mode": "list",
+          "cachedResultName": "sellers_dev",
+          "cachedResultUrl": "/projects/8h8pwWGcWlnGEym3/datatables/WdF7VyLHdaxhNGJw"
+        },
+        "filters": {
+          "conditions": [
+            {
+              "keyName": "nombre",
+              "keyValue": "={{ $('get_user_by_session_id').item.json.seller_assigned }}"
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.dataTable",
+      "typeVersion": 1.1,
+      "position": [
+        896,
+        -176
+      ],
+      "id": "b71d52bf-baba-4b19-8b02-17f939646f4b",
+      "name": "get_seller_assigned"
+    },
+    {
+      "parameters": {
+        "workflowId": {
+          "__rl": true,
+          "value": "moR2mUZuRnJIiNZq",
+          "mode": "list",
+          "cachedResultUrl": "/workflow/moR2mUZuRnJIiNZq",
+          "cachedResultName": "Babys World — Flujo de enviar mensaje (DEV)"
+        },
+        "workflowInputs": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "session_id": "={{ $json.whatsapp_id }}",
+            "text_body": "=⚠️ *PENDIENTE POR RESPONDER* ⚠️  \nHola, tienes un chat que requiere tu atención inmediata. \nEl cliente sigue esperando una respuesta:  \n👤 *CLIENTE:* {{ $('get_user_by_session_id').item.json.session_id }} ⏳ *ESTADO:* Pendiente (+5 minutos)  \n📥 *ACCIÓN REQUERIDA:* Por favor, retoma la conversación para evitar que el usuario pierda el interés en la compra.  \nEste es un recordatorio automático de tu Asistente de Ventas._ 🚀",
+            "mime_type": "text",
+            "environment": "dev",
+            "channel": "={{ $json.canal }}"
+          },
+          "matchingColumns": [],
+          "schema": [
+            {
+              "id": "session_id",
+              "displayName": "session_id",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string",
+              "removed": false
+            },
+            {
+              "id": "text_body",
+              "displayName": "text_body",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string",
+              "removed": false
+            },
+            {
+              "id": "caption",
+              "displayName": "caption",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string",
+              "removed": false
+            },
+            {
+              "id": "imagen no disponible",
+              "displayName": "imagen no disponible",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string",
+              "removed": false
+            },
+            {
+              "id": "environment",
+              "displayName": "environment",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string",
+              "removed": false
+            },
+            {
+              "id": "channel",
+              "displayName": "channel",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string",
+              "removed": false
+            },
+            {
+              "id": "mime_type",
+              "displayName": "mime_type",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string",
+              "removed": false
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": true
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.executeWorkflow",
+      "typeVersion": 1.3,
+      "position": [
+        1184,
+        -80
+      ],
+      "id": "b47f5c2e-b80e-4be2-a8b1-0489fd2bec48",
+      "name": "send_message_to_seller"
+    },
+    {
+      "parameters": {
+        "operation": "get",
+        "dataTableId": {
+          "__rl": true,
+          "value": "WdF7VyLHdaxhNGJw",
+          "mode": "list",
+          "cachedResultName": "sellers_dev",
+          "cachedResultUrl": "/projects/8h8pwWGcWlnGEym3/datatables/WdF7VyLHdaxhNGJw"
+        },
+        "filters": {
+          "conditions": [
+            {
+              "keyName": "orden",
+              "keyValue": "1"
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.dataTable",
+      "typeVersion": 1.1,
+      "position": [
+        896,
+        16
+      ],
+      "id": "a7b89061-e107-46da-85d0-50f450313c9c",
+      "name": "get_first_sellers"
+    },
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "8bfb32d4-6e91-4836-9bf7-8b1455deca79",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2.1,
+      "position": [
+        0,
+        -80
+      ],
+      "id": "f0507fa9-0a39-4392-bdad-5390a0fc9894",
+      "name": "Webhook",
+      "webhookId": "8bfb32d4-6e91-4836-9bf7-8b1455deca79"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "796313b8-6c39-4a99-944d-e132ebc2081c",
+              "name": "body.data",
+              "value": "={{ $json.body.data }}",
+              "type": "array"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        176,
+        -80
+      ],
+      "id": "43b4112b-d8cb-499b-a15e-75179addac70",
+      "name": "set_data_field"
+    },
+    {
+      "parameters": {
+        "jsCode": "const items = $input.first().json.body.data\n\nconst result = Object.values(items);\n\nreturn result.map((item) => ({ json: item }));"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        352,
+        -80
+      ],
+      "id": "6c0f6a14-2952-465f-b1aa-4e1388eec727",
+      "name": "sanetize_data"
+    },
+    {
+      "parameters": {
+        "operation": "get",
+        "tableId": "babys_world_dev_session_chat",
+        "filters": {
+          "conditions": [
+            {
+              "keyName": "session_id",
+              "keyValue": "={{ $json.session_id }}"
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.supabase",
+      "typeVersion": 1,
+      "position": [
+        528,
+        -80
+      ],
+      "id": "2b81bf57-b155-4ee3-97e2-b0d07f8a4468",
+      "name": "get_user_by_session_id",
+      "credentials": {
+        "supabaseApi": {
+          "id": "dtKFPWrXh0HZEyUt",
+          "name": "clients_database"
+        }
+      },
+      "onError": "continueRegularOutput"
+    }
+  ],
+  "connections": {
+    "seller_assigned": {
+      "main": [
+        [
+          {
+            "node": "get_seller_assigned",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "get_first_sellers",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "get_seller_assigned": {
+      "main": [
+        [
+          {
+            "node": "send_message_to_seller",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "get_first_sellers": {
+      "main": [
+        [
+          {
+            "node": "send_message_to_seller",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Webhook": {
+      "main": [
+        [
+          {
+            "node": "set_data_field",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "set_data_field": {
+      "main": [
+        [
+          {
+            "node": "sanetize_data",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "sanetize_data": {
+      "main": [
+        [
+          {
+            "node": "get_user_by_session_id",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "get_user_by_session_id": {
+      "main": [
+        [
+          {
+            "node": "seller_assigned",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "nodeGroups": [],
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate",
+    "availableInMCP": false
+  },
+  "staticData": {
+    "node:Schedule Trigger": {
+      "recurrenceRules": []
+    }
+  },
+  "pinData": {
+    "Webhook": [
+      {
+        "json": {
+          "headers": {
+            "host": "yoeco.app.n8n.cloud",
+            "user-agent": "Deno/2.1.4 (variant; SupabaseEdgeRuntime/1.71.1)",
+            "content-length": "240",
+            "accept": "*/*",
+            "accept-encoding": "gzip, br",
+            "accept-language": "*",
+            "cdn-loop": "cloudflare; loops=1; subreqs=1",
+            "cf-connecting-ip": "2600:1f18:5427:6508:b039:e79:51e4:53f7",
+            "cf-ew-via": "15",
+            "cf-ipcountry": "US",
+            "cf-ray": "9de8081fca70874c-IAD",
+            "cf-visitor": "{\"scheme\":\"https\"}",
+            "cf-worker": "n8n.cloud",
+            "content-type": "application/json",
+            "traceparent": "00-802ff9d61e3c88505e7ca635164341a6-f49e5ef8d480d9a7-01",
+            "x-forwarded-for": "2600:1f18:5427:6508:b039:e79:51e4:53f7, 172.70.38.26",
+            "x-forwarded-host": "yoeco.app.n8n.cloud",
+            "x-forwarded-port": "443",
+            "x-forwarded-proto": "https",
+            "x-forwarded-server": "traefik-prod-users-gwc-101-5b654465c-gfcd2",
+            "x-is-trusted": "yes",
+            "x-real-ip": "2600:1f18:5427:6508:b039:e79:51e4:53f7"
+          },
+          "params": {},
+          "query": {},
+          "body": {
+            "origin": "supabase_edge_function",
+            "environment": "dev",
+            "timestamp": "2026-03-18T23:31:34.938Z",
+            "pending_count": 1,
+            "data": [
+              {
+                "id": 2,
+                "session_id": "573183779152",
+                "created_date": "2026-03-17",
+                "created_time": "21:36:35",
+                "last_message_pending": true
+              }
+            ]
+          },
+          "webhookUrl": "https://yoeco.app.n8n.cloud/webhook/8bfb32d4-6e91-4836-9bf7-8b1455deca79",
+          "executionMode": "production"
+        }
+      }
+    ]
+  },
+  "meta": {
+    "templateCredsSetupCompleted": true
+  },
+  "tags": [],
+  "shared": [
+    {
+      "role": "workflow:owner",
+      "workflowId": "OMJsPfookUdnZvuN",
+      "projectId": "8h8pwWGcWlnGEym3",
+      "createdAt": "2026-03-05T04:06:49.427Z",
+      "updatedAt": "2026-03-05T04:06:49.427Z"
+    }
+  ],
+  "activeVersion": null
+}
