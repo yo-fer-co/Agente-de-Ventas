@@ -1,0 +1,58 @@
+{
+  "id": "byvovaZAkzPCUPE1",
+  "name": "DALIA_M5_05_Fulfillment",
+  "active": false,
+  "activeVersionId": null,
+  "createdAt": "2026-08-21T03:41:43.540Z",
+  "updatedAt": "2026-08-21T03:44:39.153Z",
+  "isArchived": false,
+  "versionId": "c32c177c-a7ff-413e-9a19-01344642181d",
+  "triggerCount": 0,
+  "nodes": [
+    {
+      "parameters": {},
+      "id": "2d0aab9b-37fa-4a06-adb0-c9afc32f1104",
+      "name": "M5_05_Input",
+      "type": "n8n-nodes-base.subworkflowTrigger",
+      "typeVersion": 1,
+      "position": [
+        0,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const payload = $input.first().json;\nconst transaction = payload.transaction || {};\nconst fulfillment_config = payload.configuration?.fulfillment || {};\nconst mode = fulfillment_config.mode || 'not_applicable';\nconst customer = payload.customer || {};\nconst idempotency_key = `shipment_${transaction.id}_${transaction.created_at}`;\n\nlet result_success = true;\nlet result_outcome = 'action_completed';\nlet new_status = 'fulfillment_pending';\nlet new_sub_status = null;\nlet next_action = null;\nlet fulfillment_data = null;\nlet error = null;\n\nfunction validateFulfillmentConfiguration(mode) {\n  const missingFields = [];\n  \n  if (mode === 'store_pickup') {\n    if (!fulfillment_config.store_id) missingFields.push('store_id');\n  } else if (mode === 'home_delivery') {\n    if (!customer.address) missingFields.push('customer.address');\n    if (!customer.city) missingFields.push('customer.city');\n    if (!customer.phone) missingFields.push('customer.phone');\n  } else if (mode === 'digital_delivery') {\n    if (!customer.email) missingFields.push('customer.email');\n  }\n  \n  return {\n    valid: missingFields.length === 0,\n    missing: missingFields\n  };\n}\n\nfunction buildFulfillmentPayload(mode) {\n  const base = {\n    fulfillment_id: null,\n    idempotency_key: idempotency_key,\n    mode: mode,\n    status: 'pending',\n    created_at: new Date().toISOString(),\n    reference_transaction_id: transaction.id\n  };\n  \n  if (mode === 'store_pickup') {\n    return {\n      ...base,\n      store: {\n        store_id: fulfillment_config.store_id,\n        store_name: fulfillment_config.store_name || null,\n        location: fulfillment_config.store_location || null,\n        hours: fulfillment_config.store_hours || null\n      },\n      customer: {\n        name: customer.name,\n        phone: customer.phone,\n        email: customer.email\n      },\n      ready_for_pickup_at: null,\n      picked_up_at: null,\n      pickup_confirmation_code: null\n    };\n  } else if (mode === 'home_delivery') {\n    return {\n      ...base,\n      shipping_address: {\n        street: customer.address,\n        city: customer.city,\n        postal_code: customer.postal_code || null,\n        phone: customer.phone,\n        instructions: fulfillment_config.delivery_instructions || null\n      },\n      carrier: fulfillment_config.carrier || null,\n      tracking_number: null,\n      estimated_delivery_date: null,\n      delivered_at: null,\n      delivery_signature_required: fulfillment_config.requires_signature || false\n    };\n  } else if (mode === 'digital_delivery') {\n    return {\n      ...base,\n      delivery_channel: fulfillment_config.channel || 'email',\n      recipient_email: customer.email,\n      download_link: null,\n      accessed_at: null,\n      access_count: 0\n    };\n  }\n  \n  return base;\n}\n\nif (mode === 'not_applicable') {\n  fulfillment_data = {\n    mode: 'not_applicable',\n    status: 'skipped',\n    note: 'No fulfillment required for this transaction'\n  };\n  new_status = transaction.status || 'payment_confirmed';\n  next_action = 'complete_transaction';\n} else {\n  const validation = validateFulfillmentConfiguration(mode);\n  \n  if (!validation.valid) {\n    result_success = false;\n    result_outcome = 'missing_data';\n    new_status = 'fulfillment_failed';\n    new_sub_status = 'missing_fulfillment_data';\n    next_action = 'handle_error';\n    error = {\n      code: 'FULFILLMENT_CONFIGURATION_INCOMPLETE',\n      category: 'configuration',\n      message: `Required fulfillment data missing for mode: ${mode}`,\n      retryable: false,\n      details: { missing_fields: validation.missing }\n    };\n  } else {\n    fulfillment_data = buildFulfillmentPayload(mode);\n    \n    if (mode === 'store_pickup') {\n      new_status = 'ready_for_pickup';\n      new_sub_status = 'awaiting_store_confirmation';\n      next_action = 'wait_pickup_confirmation';\n      result_outcome = 'action_pending';\n    } else if (mode === 'home_delivery') {\n      new_status = 'awaiting_shipment';\n      new_sub_status = 'shipment_scheduled';\n      next_action = 'wait_shipment_update';\n      result_outcome = 'action_pending';\n    } else if (mode === 'digital_delivery') {\n      new_status = 'digital_delivery_ready';\n      new_sub_status = null;\n      next_action = 'complete_transaction';\n      result_outcome = 'action_completed';\n    }\n  }\n}\n\nreturn [{\n  json: {\n    result: {\n      success: result_success,\n      outcome: result_outcome\n    },\n    transaction: {\n      transaction_id: transaction.id,\n      previous_status: transaction.status,\n      current_status: new_status,\n      sub_status: new_sub_status,\n      next_action: next_action\n    },\n    route: {\n      selected_flow: 'DALIA_M5_Commerce_Orchestrator',\n      effective_action: 'resolve_fulfillment_route',\n      reason: mode === 'not_applicable' ? 'no_fulfillment_required' : `fulfillment_mode_${mode}`\n    },\n    response: {\n      message_required: false,\n      message_type: null,\n      reply_text: null,\n      requested_fields: []\n    },\n    data: {\n      fulfillment: fulfillment_data || {}\n    },\n    error: error,\n    trace: {\n      trace_id: payload.trace?.trace_id || null,\n      request_id: payload.trace?.request_id || null,\n      workflow: 'DALIA_M5_05_Fulfillment',\n      stage: 'fulfillment_processed',\n      processed_at: new Date().toISOString()\n    }\n  }\n}];"
+      },
+      "id": "89181b2b-5a3b-4ecc-9ec7-d3294fc5e757",
+      "name": "01_Process_Fulfillment",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        0,
+        224
+      ]
+    }
+  ],
+  "connections": {},
+  "nodeGroups": [],
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate",
+    "availableInMCP": false
+  },
+  "staticData": null,
+  "pinData": {},
+  "meta": null,
+  "tags": [],
+  "shared": [
+    {
+      "role": "workflow:owner",
+      "workflowId": "byvovaZAkzPCUPE1",
+      "projectId": "8h8pwWGcWlnGEym3",
+      "createdAt": "2026-08-21T03:41:43.542Z",
+      "updatedAt": "2026-08-21T03:41:43.542Z"
+    }
+  ],
+  "activeVersion": null
+}
