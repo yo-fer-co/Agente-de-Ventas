@@ -1,0 +1,1194 @@
+{
+  "id": "AhNCjJCrr4FgnWj1",
+  "name": "M1: Gateway Conversacional",
+  "active": false,
+  "activeVersionId": null,
+  "createdAt": "2026-04-27T17:16:36.773Z",
+  "updatedAt": "2026-06-24T21:33:52.458Z",
+  "isArchived": false,
+  "versionId": "6ae18f5d-1f99-48fa-9a6e-44ea0f2be872",
+  "triggerCount": 1,
+  "nodes": [
+    {
+      "parameters": {
+        "resource": "audio",
+        "operation": "transcribe",
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.openAi",
+      "typeVersion": 1.8,
+      "position": [
+        1984,
+        144
+      ],
+      "id": "fa2f380a-5944-4ca0-9700-c2356261b311",
+      "name": "Transcribir Audios",
+      "credentials": {
+        "openAiApi": {
+          "id": "4YeSn6Yr4kCkAQYP",
+          "name": "OpenAI: dev"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "url": "={{ $json.url }}",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "whatsAppApi",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        1824,
+        144
+      ],
+      "id": "9e3e3354-01ff-4f3e-a5f6-8eb8ccf385bd",
+      "name": "Descarga de audios",
+      "credentials": {
+        "whatsAppApi": {
+          "id": "3lZ90gsbMgk8fR6e",
+          "name": "WhatsApp account 4"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "mode": "raw",
+        "jsonOutput": "={\n   \"content_text\": \"{{ $json.message.text.body }}\",\n   \"message_type\": \"text\",\n   \"media_type\": null,\n   \"media_id\": null,\n   \"caption\": null,\n   \"processing_status\": \"ready\",\n   \"technical_issue\": null\n }",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        1984,
+        16
+      ],
+      "id": "4ea2baed-7ef7-4086-99d4-a9c4b31af7a9",
+      "name": "Recibir Texto"
+    },
+    {
+      "parameters": {
+        "resource": "media",
+        "operation": "mediaUrlGet",
+        "mediaGetId": "={{ $json.message.image.id }}"
+      },
+      "type": "n8n-nodes-base.whatsApp",
+      "typeVersion": 1,
+      "position": [
+        1664,
+        288
+      ],
+      "id": "168a35cc-20e4-4bd5-81aa-5ac6e8967b19",
+      "name": "Recibir imagen",
+      "webhookId": "52952872-7972-41b2-b4b4-f99421a36e93",
+      "credentials": {
+        "whatsAppApi": {
+          "id": "3lZ90gsbMgk8fR6e",
+          "name": "WhatsApp account 4"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "url": "={{ $('Switch1').item.json.message.image.url }}",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "whatsAppApi",
+        "options": {
+          "response": {
+            "response": {
+              "responseFormat": "file"
+            }
+          }
+        }
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        1824,
+        288
+      ],
+      "id": "390dd8a1-6a5c-41a8-856a-ce43a0777342",
+      "name": "Descarga de imagen",
+      "credentials": {
+        "whatsAppApi": {
+          "id": "3lZ90gsbMgk8fR6e",
+          "name": "WhatsApp account 4"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "Aqui tienes una imagen enviada por el usuario. Describe la imagen y Transcribe cualquier texto visible",
+        "messages": {
+          "messageValues": [
+            {
+              "type": "HumanMessagePromptTemplate",
+              "messageType": "imageBinary"
+            }
+          ]
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.chainLlm",
+      "typeVersion": 1.6,
+      "position": [
+        1968,
+        288
+      ],
+      "id": "be88a266-c937-4e7c-951f-7ad9223d5afb",
+      "name": "Leer y transcribir la imagen"
+    },
+    {
+      "parameters": {
+        "rules": {
+          "values": [
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 2
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $json.message.text.body }}",
+                    "rightValue": "",
+                    "operator": {
+                      "type": "string",
+                      "operation": "exists",
+                      "singleValue": true
+                    },
+                    "id": "24072bd2-0de7-4d7e-90bf-99c91c2a2756"
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "texto  "
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 2
+                },
+                "conditions": [
+                  {
+                    "id": "d8afee67-2bff-466b-b25d-3a702de759e7",
+                    "leftValue": "={{ $json.message.type == 'audio' && Boolean($json.message.audio) }}",
+                    "rightValue": "",
+                    "operator": {
+                      "type": "boolean",
+                      "operation": "true",
+                      "singleValue": true
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "Voz"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 2
+                },
+                "conditions": [
+                  {
+                    "id": "95458589-f1ca-44cb-b397-f6ef6a6c2b28",
+                    "leftValue": "={{ $json.message.type == 'image' && Boolean($json.message.image) }}",
+                    "rightValue": "",
+                    "operator": {
+                      "type": "boolean",
+                      "operation": "true",
+                      "singleValue": true
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "Imagen"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 2
+                },
+                "conditions": [
+                  {
+                    "id": "ce4f8aed-7a79-45a3-ae55-9ea506e34ae9",
+                    "leftValue": "={{ $json.message.type == 'video' && Boolean($json.message.video) }}",
+                    "rightValue": "true",
+                    "operator": {
+                      "type": "boolean",
+                      "operation": "true",
+                      "singleValue": true
+                    }
+                  }
+                ],
+                "combinator": "and"
+              }
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 3.2,
+      "position": [
+        1552,
+        32
+      ],
+      "id": "d05fba1f-d1f3-4dd7-9f5f-2d86dc41f05a",
+      "name": "Switch1"
+    },
+    {
+      "parameters": {
+        "model": {
+          "__rl": true,
+          "value": "gpt-4o-mini",
+          "mode": "list",
+          "cachedResultName": "gpt-4o-mini"
+        },
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatOpenAi",
+      "typeVersion": 1.2,
+      "position": [
+        1968,
+        416
+      ],
+      "id": "40e759d8-4af7-435d-8559-5f804609999e",
+      "name": "Modelo De Chat1",
+      "credentials": {
+        "openAiApi": {
+          "id": "4YeSn6Yr4kCkAQYP",
+          "name": "OpenAI: dev"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "35fd5cbb-a799-435f-89cf-3d0465432fbc",
+              "leftValue": "={{ $json.message }}",
+              "rightValue": "",
+              "operator": {
+                "type": "object",
+                "operation": "notEmpty",
+                "singleValue": true
+              }
+            },
+            {
+              "id": "89e4c6be-fbbe-4e86-b5cf-d5414c5cf1ec",
+              "leftValue": "={{ $json.contact }}",
+              "rightValue": "",
+              "operator": {
+                "type": "object",
+                "operation": "notEmpty",
+                "singleValue": true
+              }
+            },
+            {
+              "id": "c8dd1ef9-0e02-4055-aefe-1c3b05facac3",
+              "leftValue": "={{ $json.metadata }}",
+              "rightValue": "",
+              "operator": {
+                "type": "object",
+                "operation": "notEmpty",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        1360,
+        80
+      ],
+      "id": "5f42e732-f001-47ec-94ac-76dd0fd30424",
+      "name": "Validacion de mensaje"
+    },
+    {
+      "parameters": {},
+      "type": "n8n-nodes-base.noOp",
+      "typeVersion": 1,
+      "position": [
+        1472,
+        240
+      ],
+      "id": "47de0e13-5056-431d-8ab1-258e4ff7e7d1",
+      "name": "No Operation, do nothing1"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "8c482fe8-7b1d-488d-80cc-9b908b977713",
+              "name": "message",
+              "value": "={{ $json.messages[0] }}",
+              "type": "object"
+            },
+            {
+              "id": "b5ed225b-ca80-4991-b2e2-c76e3c62e621",
+              "name": "contact",
+              "value": "={{ $json.contacts[0] }}",
+              "type": "object"
+            },
+            {
+              "id": "e2c24649-df67-4f4e-a79f-cabc956f17ab",
+              "name": "metadata",
+              "value": "={{ $json.metadata }}",
+              "type": "object"
+            },
+            {
+              "id": "b0e7d9cb-7ef1-4b68-b462-e4c65c54c537",
+              "name": "context_id",
+              "value": "={{ $json.messages[0].id }}",
+              "type": "string"
+            },
+            {
+              "id": "c5ffb120-678a-4867-8678-86ecf258f726",
+              "name": "environment",
+              "value": "demo",
+              "type": "string"
+            },
+            {
+              "id": "e9a66e67-2aec-46bf-968e-462c0ba83a1d",
+              "name": "business_id",
+              "value": "={{ $json.metadata.display_phone_number }}",
+              "type": "string"
+            },
+            {
+              "id": "63938898-207a-4303-9786-b81ff4db0ab2",
+              "name": "received_at",
+              "value": "={{ $json.messages[0].timestamp }}",
+              "type": "string"
+            },
+            {
+              "id": "9cea655c-5d9f-41d9-ad79-fefb8399402f",
+              "name": "",
+              "value": "",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        1184,
+        80
+      ],
+      "id": "f72fd1cc-3d9d-4be4-90ee-d3769168df18",
+      "name": "set Fields"
+    },
+    {
+      "parameters": {
+        "updates": [
+          "messages"
+        ],
+        "options": {}
+      },
+      "type": "n8n-nodes-base.whatsAppTrigger",
+      "typeVersion": 1,
+      "position": [
+        1008,
+        80
+      ],
+      "id": "409a1704-6146-4ade-98e9-7871b9717d6a",
+      "name": "WhatsApp Trigger",
+      "webhookId": "7397421d-a177-47bf-8de3-674af75bdabc",
+      "credentials": {
+        "whatsAppTriggerApi": {
+          "id": "O0CiWNC9tWRXfJGf",
+          "name": "WhatsApp OAuth account 8"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "resource": "media",
+        "operation": "mediaUrlGet",
+        "mediaGetId": "={{ $json.message.audio.id }}"
+      },
+      "type": "n8n-nodes-base.whatsApp",
+      "typeVersion": 1.1,
+      "position": [
+        1664,
+        144
+      ],
+      "id": "8c9cf26e-f0a9-4083-8a4a-eaa418974908",
+      "name": "Download media",
+      "webhookId": "e4952e8c-7592-44f8-9f81-1dd3827bf548",
+      "credentials": {
+        "whatsAppApi": {
+          "id": "3lZ90gsbMgk8fR6e",
+          "name": "WhatsApp account 4"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "mode": "raw",
+        "jsonOutput": "={\n   \"content_text\": \"{{ $json.text }}\",\n   \"message_type\": \"image\",\n   \"media_type\": image,\n   \"media_id\": {{ $('Validacion de mensaje').item.json.message.image.id }},\n   \"caption\": {{ $('Validacion de mensaje').item.json.message.image.caption || null }},\n   \"processing_status\": \"{{ $json.text ? 'ready' : 'error' }}\",\n   \"technical_issue\": {{ $json.text ? null : 'image_analysis_failed' }}\n }",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        2240,
+        288
+      ],
+      "id": "33490fa2-5cc9-41d5-b9a3-2e9ef8749cb7",
+      "name": "Edit Fields"
+    },
+    {
+      "parameters": {
+        "resource": "media",
+        "operation": "mediaUrlGet",
+        "mediaGetId": "={{ $json.message.video.id }}"
+      },
+      "type": "n8n-nodes-base.whatsApp",
+      "typeVersion": 1.1,
+      "position": [
+        1664,
+        448
+      ],
+      "id": "d6fa69ed-d0ac-48c6-ad0b-24a885dbefa1",
+      "name": "Recibir Video",
+      "webhookId": "5556e3fd-a466-4cea-9cce-a14a4b61644c",
+      "credentials": {
+        "whatsAppApi": {
+          "id": "3lZ90gsbMgk8fR6e",
+          "name": "WhatsApp account 4"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "mode": "raw",
+        "jsonOutput": "={\n   \"content_text\": \"{{$json.content.parts[0].text  || '' }}\",\n   \"message_type\": \"video\",\n   \"media_type\": video,\n   \"media_id\": {{ $('Validacion de mensaje').item.json.message.video.id }},\n   \"caption\":{{ $('Validacion de mensaje').item.json.message.video.caption || null }} ,\n   \"processing_status\": \"ready\",\n   \"technical_issue\": {{ $json.content.parts[0].text ? null : 'video_processing_failed' }}\n }\n",
+        "options": {}
+      },
+      "id": "8c00d7fb-e4ba-4683-b207-34164ec3b01b",
+      "name": "Procesar Video",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        2240,
+        448
+      ]
+    },
+    {
+      "parameters": {
+        "url": "={{ $json.url }}",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "whatsAppApi",
+        "options": {
+          "response": {
+            "response": {
+              "responseFormat": "file"
+            }
+          }
+        }
+      },
+      "id": "d80eb8df-d6a7-47e0-8ca3-3a8c2eef8b0c",
+      "name": "Descargar Video",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        1824,
+        448
+      ],
+      "credentials": {
+        "whatsAppApi": {
+          "id": "3lZ90gsbMgk8fR6e",
+          "name": "WhatsApp account 4"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "mode": "raw",
+        "jsonOutput": "={\n   \"content_text\": \"{{ $json.text }}\",\n   \"message_type\": \"audio\",\n     \"media_type\": audio,\n   \"media_id\": {{ $('Validacion de mensaje').item.json.message.id }},\n   \"caption\": null,\n   \"processing_status\": \"null\",\n   \"technical_issue\": null\n } ",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        2240,
+        144
+      ],
+      "id": "5a4ed8a5-a3fb-438a-9f96-e1552960e240",
+      "name": "Edit Fields1"
+    },
+    {
+      "parameters": {
+        "resource": "video",
+        "operation": "analyze",
+        "modelId": {
+          "__rl": true,
+          "value": "models/gemini-2.5-flash",
+          "mode": "list",
+          "cachedResultName": "models/gemini-2.5-flash"
+        },
+        "inputType": "binary",
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.googleGemini",
+      "typeVersion": 1.1,
+      "position": [
+        2080,
+        448
+      ],
+      "id": "357e6abe-0f32-4954-8061-b65bd7014c0e",
+      "name": "Analyze video",
+      "credentials": {
+        "googlePalmApi": {
+          "id": "KWAEyJGt2I7NZP1e",
+          "name": "Google Gemini(PaLM) Api account 3"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const input = $json;\n\n const base = $('Validacion de mensaje').item.json;\n const message = base.message || {};\n const contact = base.contact || {};\n const metadata = base.metadata || {};\n\n const environment = base.environment || 'demo';\n const businessId = base.business_id || 'business_demo';\n\n const externalMessageId = message.id || null;\n const timestampUnix = message.timestamp ? Number(message.timestamp) : null;\n const timestampIso = timestampUnix\n   ? new Date(timestampUnix * 1000).toISOString()\n   : new Date().toISOString();\n\n const phoneNumberId = metadata.phone_number_id || null;\n const userPhone = contact.wa_id || message.from || null;\n const channelUserId = contact.user_id || message.from_user_id || null;\n\n const messageType = input.message_type || input.type || message.type || 'unsupported';\n const caption = input.caption || message?.image?.caption || message?.video?.caption || null;\n const contentText = (input.content_text || input.texto || input.text || '').trim();\n\n const normalizedParts = [];\n if (contentText) normalizedParts.push(contentText);\n if (caption && !contentText.includes(caption)) normalizedParts.push(`caption: ${caption}`);\n const normalizedText = normalizedParts.join('\\n').trim();\n\n const mediaType = input.media_type || (\n   ['audio', 'image', 'video'].includes(messageType) ? messageType : null\n );\n\n const mediaId = input.media_id || message?.audio?.id || message?.image?.id || message?.video?.id || null;\n\n const cleanId = (externalMessageId || String(Date.now())).replace(/[^a-zA-Z0-9]/g, '').slice(0, 48);\n const eventId = `evt_${cleanId}`;\n const rawRef = `raw_${cleanId}`;\n\n const sessionId = `wa_${environment}_${phoneNumberId || 'unknown'}_${userPhone || 'unknown'}`;\n const conversationId = `conv_wa_${phoneNumberId || 'unknown'}_${userPhone || 'unknown'}`;\n\n return [\n   {\n \tjson: {\n   \tschema_version: 'dalia.m1_to_m2.v1',\n   \ttrace: {\n     \tevent_id: eventId,\n     \traw_ref: rawRef,\n     \treceived_at: timestampIso\n   \t},\n   \tsource: {\n     \tenvironment,\n     \tbusiness_id: businessId,\n     \tchannel: 'whatsapp',\n     \tprovider: 'whatsapp_cloud_api',\n     \tbusiness_phone_id: phoneNumberId\n   \t},\n   \tuser: {\n     \tuser_id: userPhone,\n     \tchannel_user_id: channelUserId,\n     \tdisplay_name: contact?.profile?.name || null,\n     \tphone: userPhone\n   \t},\n   \tsession: {\n     \tsession_id: sessionId,\n     \tconversation_id: conversationId\n   \t},\n   \tmessage: {\n     \tmessage_id: externalMessageId,\n         external_message_id: externalMessageId,\n     \tcontext_id: base.context_id || null,\n     \ttype: messageType,\n     \ttext: normalizedText,\n     \tnormalized_text: normalizedText,\n     \ttimestamp: timestampIso\n   \t},\n   \tinput_context: {\n     \thas_media: Boolean(mediaType),\n     \tmedia_type: mediaType,\n     \tmedia_id: mediaId,\n     \tcaption,\n     \tprocessing_status: input.processing_status || (normalizedText ? 'ready' : 'error'),\n     \ttechnical_issue: input.technical_issue || (normalizedText ? null : 'empty_content')\n   \t}\n \t}\n   }\n ];\n"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        2352,
+        16
+      ],
+      "id": "82b7290f-45cf-45ed-a5bf-5b772d6f610b",
+      "name": "Code in JavaScript"
+    },
+    {
+      "parameters": {
+        "workflowId": {
+          "__rl": true,
+          "value": "zaYVHuck1GyXCjng",
+          "mode": "list",
+          "cachedResultUrl": "/workflow/zaYVHuck1GyXCjng",
+          "cachedResultName": "Agente de Ventas - TEST — M2: Coordinacion Comercial Lite"
+        },
+        "workflowInputs": {
+          "mappingMode": "defineBelow",
+          "value": {},
+          "matchingColumns": [],
+          "schema": [],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": true
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.executeWorkflow",
+      "typeVersion": 1.3,
+      "position": [
+        4048,
+        16
+      ],
+      "id": "d0403a4b-8a47-442e-815a-294acffdfb7e",
+      "name": "Call 'M2 Coordinacion Comercial Lite'"
+    },
+    {
+      "parameters": {
+        "jsCode": "function clean(value) {\n  if (value === null || value === undefined) return '';\n  return String(value).trim();\n}\n\nconst input = items[0]?.json || {};\n\nconst session = input.session || {};\nconst user = input.user || {};\nconst source = input.source || {};\nconst message = input.message || input.input || {};\n\nreturn [\n  {\n    json: {\n      schema_version: 'dalia.m4.memory_request.v1',\n      operation: 'get_turn_context',\n      lookup: {\n        session_id: clean(session.session_id || input.session_id),\n        conversation_id: clean(session.conversation_id || input.conversation_id),\n        user_id: clean(user.user_id || input.user_id),\n        channel: clean(source.channel || input.channel)\n      },\n      context: {\n        business_id: clean(input.business_id) || 'business_demo',\n        user_id: clean(user.user_id || input.user_id),\n        conversation_id: clean(session.conversation_id || input.conversation_id),\n        session_id: clean(session.session_id || input.session_id),\n        channel: clean(source.channel || input.channel)\n      },\n      current_turn: {\n        message_id: clean(message.message_id || message.id),\n        type: clean(message.type),\n        text: clean(message.text || message.normalized_text),\n        timestamp: clean(message.timestamp)\n      },\n      passthrough: input\n    }\n  }\n];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        3376,
+        16
+      ],
+      "id": "54ba3e30-1c18-4f29-80c6-e6d9d69a6f70",
+      "name": "Prepare Memory Lookup Request"
+    },
+    {
+      "parameters": {
+        "workflowId": {
+          "__rl": true,
+          "value": "ObLQHM6kjUVBXeBx",
+          "mode": "list",
+          "cachedResultUrl": "/workflow/ObLQHM6kjUVBXeBx",
+          "cachedResultName": "Agente de Ventas - TEST — M4: Memoria Comercial Lite"
+        },
+        "workflowInputs": {
+          "mappingMode": "defineBelow",
+          "value": {},
+          "matchingColumns": [],
+          "schema": [],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": true
+        },
+        "options": {
+          "waitForSubWorkflow": true
+        }
+      },
+      "type": "n8n-nodes-base.executeWorkflow",
+      "typeVersion": 1.3,
+      "position": [
+        3600,
+        16
+      ],
+      "id": "700e66c6-9196-4df8-a15e-bab016c3d370",
+      "name": "Call M4 Memory Service"
+    },
+    {
+      "parameters": {
+        "jsCode": "const lookupResult = items[0]?.json || {};\nconst originalPayload = lookupResult.passthrough || {};\n\nconst sessionMemory = lookupResult.session_memory || {\n  found: false,\n  usable: false,\n  reason: 'memory_not_found'\n};\n\nconst softCustomerContext = lookupResult.soft_customer_context || {\n  has_relevant_memory: false,\n  memory_confidence: 'none',\n  safe_summary: null,\n  conversation_cues: [],\n  do_not_say: []\n};\n\nreturn [\n  {\n    json: {\n      ...originalPayload,\n      session_memory: sessionMemory,\n      soft_customer_context: softCustomerContext,\n      memory_lookup: {\n        performed: true,\n        found: Boolean(sessionMemory.found),\n        usable: Boolean(sessionMemory.usable),\n        reason: sessionMemory.reason || 'memory_not_found',\n        vector_memory_available: Boolean(softCustomerContext.has_relevant_memory)\n      }\n    }\n  }\n];\n"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        3824,
+        16
+      ],
+      "id": "0a5585b4-d967-41e5-8907-9ff149f40a70",
+      "name": "Attach Session Memory To Turn"
+    },
+    {
+      "parameters": {
+        "jsCode": "function clean(value) {\n if (value === null || value === undefined) return '';\n return String(value).trim();\n}\n\nfunction makeEventId(prefix = 'evt') {\n return `${prefix}_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;\n}\n\nconst input = items[0]?.json || {};\n\nconst trace = input.trace || {};\nconst context = input.context || {};\nconst messageInput = input.input || input.message || {};\n\nconst text = clean(messageInput.text);\n\nconst event = {\n schema_version: 'dalia.m8.event_request.v1',\n event: {\n   event_id: makeEventId('evt_m1'),\n   event_name: 'message_received',\n   event_type: 'conversation',\n   module: 'M1',\n   status: 'success',\n   level: 'INFO',\n   timestamp: new Date().toISOString(),\n\n   trace: {\n     conversation_id: clean(trace.conversation_id),\n     session_id: clean(trace.session_id)\n   },\n\n   context: {\n     business_id: clean(context.business_id || 'business_demo'),\n     environment: clean(context.environment || 'demo'),\n     channel: clean(context.channel || messageInput.channel || 'whatsapp'),\n     user_id: clean(context.user_id || messageInput.from || messageInput.user_id),\n     display_name: clean(context.display_name)\n   },\n\n   correlation: {\n     message_id: clean(messageInput.message_id || messageInput.id)\n   },\n\n   payload: {\n     message_type: clean(messageInput.type || 'text'),\n     text_length: text.length,\n     processing_status: clean(messageInput.processing_status || 'ready'),\n     has_text: Boolean(text)\n   }\n }\n};\n\nreturn [\n {\n   json: {\n     ...input,\n     _main_payload_before_m8: input,\n     m8_event_request: event\n   }\n }\n];\n\n"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        2704,
+        16
+      ],
+      "id": "71a8c43a-c10f-4e22-a68c-258ea4084979",
+      "name": "Build M8 Event - Message Received"
+    },
+    {
+      "parameters": {
+        "workflowId": {
+          "__rl": true,
+          "value": "sGL1OJ3lklD6wBu0",
+          "mode": "list",
+          "cachedResultUrl": "/workflow/sGL1OJ3lklD6wBu0",
+          "cachedResultName": "Agente de Ventas - TEST — M8 Observability"
+        },
+        "workflowInputs": {
+          "mappingMode": "defineBelow",
+          "value": {},
+          "matchingColumns": [],
+          "schema": [],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": true
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.executeWorkflow",
+      "typeVersion": 1.3,
+      "position": [
+        2928,
+        16
+      ],
+      "id": "18e7bd8d-2bea-457f-9c88-7dc81b36a331",
+      "name": "Execute M8 Observability Service",
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "jsCode": "function clean(value) {\n  if (value === null || value === undefined) return '';\n  return String(value).trim();\n}\n\nfunction makeId(prefix) {\n  const ts = Date.now();\n  const rand = Math.random().toString(36).slice(2, 8);\n  return `${prefix}_${ts}_${rand}`;\n}\n\nconst input = items[0]?.json || {};\nconst rawInput = input.input || input.message || input.body || {};\n\nconst channel =\n  clean(input.context?.channel) ||\n  clean(rawInput.channel) ||\n  clean(input.channel) ||\n  'whatsapp';\n\n// 👇 Corrección 1: Buscamos el ID en la sesión y no le borramos las letras\nconst userId =\n  clean(input.session?.session_id) ||\n  clean(input.context?.user_id) ||\n  clean(input.user?.user_id);\n\nconst messageId =\n  clean(rawInput.message_id) ||\n  clean(rawInput.id) ||\n  clean(input.message_id) ||\n  makeId('msg');\n\nconst conversationId =\n  clean(input.session?.conversation_id) ||\n  clean(input.trace?.conversation_id) ||\n  `conv_${channel}_${userId}`;\n\nconst sessionId =\n  clean(input.session?.session_id) ||\n  clean(input.trace?.session_id) ||\n  `session_${channel}_${userId}`;\n\nconst rootEventId =\n  clean(input.trace?.event_id) ||\n  makeId('evt_root');\n\nconst correlationId =\n  clean(input.correlation?.correlation_id) ||\n  conversationId ||\n  sessionId ||\n  rootEventId;\n\nconst traceId =\n  clean(input.correlation?.trace_id) ||\n  sessionId ||\n  correlationId;\n\nreturn [\n  {\n    json: {\n      ...input,\n\n      trace: {\n        event_id: rootEventId,\n        conversation_id: conversationId,\n        session_id: sessionId,\n        parent_event_id: clean(input.trace?.parent_event_id)\n      },\n\n      context: {\n        business_id: clean(input.context?.business_id || input.source?.business_id || 'business_demo'),\n        environment: clean(input.context?.environment || input.source?.environment || 'demo'),\n        channel,\n        user_id: userId, // Ya bajará perfecto\n        // 👇 Corrección 2: Aseguramos que también pase tu nombre\n        display_name: clean(input.context?.display_name || input.user?.display_name || rawInput.display_name)\n      },\n\n      correlation: {\n        message_id: messageId,\n        transaction_id: clean(input.correlation?.transaction_id),\n        handoff_id: clean(input.correlation?.handoff_id),\n        correlation_id: correlationId,\n        trace_id: traceId\n      },\n\n      input: {\n        ...rawInput,\n        message_id: messageId,\n        type: clean(rawInput.type || 'text'),\n        text: clean(rawInput.text || rawInput.normalized_text),\n        timestamp: clean(rawInput.timestamp || new Date().toISOString()),\n        processing_status: clean(rawInput.processing_status || 'ready')\n      }\n    }\n  }\n];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        2528,
+        16
+      ],
+      "id": "bf3de92d-33be-407f-aa92-a166b91a95c7",
+      "name": "Build Canonical Trace Context"
+    },
+    {
+      "parameters": {
+        "jsCode": "const original =\n  $('Build M8 Event - Message Received').first().json._main_payload_before_m8 ||\n {};\n\nconst m8Result = items[0]?.json || {};\n\nreturn [\n {\n   json: {\n     ...original,\n     m8_last_result: m8Result\n   }\n } \n];\n"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        3152,
+        16
+      ],
+      "id": "73b44fc5-77cd-4f96-8e28-551d0ea89712",
+      "name": "Restore Main Payload After M8"
+    },
+    {
+      "parameters": {
+        "jsCode": "const input = items[0]?.json || {};\n// Extraemos la salida destinada a M7 si viene del M5, o pasamos el input completo\nconst m7Data = input.m7_output || input; \n\nreturn [{ json: m7Data }];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        4272,
+        16
+      ],
+      "id": "55972b63-fd35-42aa-a32c-80a2e2869ee1",
+      "name": "Prepare to M7"
+    },
+    {
+      "parameters": {
+        "workflowId": {
+          "__rl": true,
+          "value": "uUkm8XfKgUgR9AIf",
+          "mode": "list",
+          "cachedResultUrl": "/workflow/uUkm8XfKgUgR9AIf",
+          "cachedResultName": "Agente de Ventas - TEST — M7: Messaging_Service_Lite"
+        },
+        "workflowInputs": {
+          "mappingMode": "defineBelow",
+          "value": {},
+          "matchingColumns": [],
+          "schema": [],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": true
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.executeWorkflow",
+      "typeVersion": 1.3,
+      "position": [
+        4496,
+        16
+      ],
+      "id": "b9977e27-8ef8-430f-a854-7c14cba0c032",
+      "name": "Call 'DALIA_M7_Messaging_Service_Lite'"
+    }
+  ],
+  "connections": {
+    "Transcribir Audios": {
+      "main": [
+        [
+          {
+            "node": "Edit Fields1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Descarga de audios": {
+      "main": [
+        [
+          {
+            "node": "Transcribir Audios",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Recibir Texto": {
+      "main": [
+        [
+          {
+            "node": "Code in JavaScript",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Recibir imagen": {
+      "main": [
+        [
+          {
+            "node": "Descarga de imagen",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Descarga de imagen": {
+      "main": [
+        [
+          {
+            "node": "Leer y transcribir la imagen",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Leer y transcribir la imagen": {
+      "main": [
+        [
+          {
+            "node": "Edit Fields",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Switch1": {
+      "main": [
+        [
+          {
+            "node": "Recibir Texto",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Download media",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Recibir imagen",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Recibir Video",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Modelo De Chat1": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "Leer y transcribir la imagen",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Validacion de mensaje": {
+      "main": [
+        [
+          {
+            "node": "Switch1",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "No Operation, do nothing1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "set Fields": {
+      "main": [
+        [
+          {
+            "node": "Validacion de mensaje",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "WhatsApp Trigger": {
+      "main": [
+        [
+          {
+            "node": "set Fields",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Download media": {
+      "main": [
+        [
+          {
+            "node": "Descarga de audios",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Edit Fields": {
+      "main": [
+        [
+          {
+            "node": "Code in JavaScript",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Recibir Video": {
+      "main": [
+        [
+          {
+            "node": "Descargar Video",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Procesar Video": {
+      "main": [
+        [
+          {
+            "node": "Code in JavaScript",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Descargar Video": {
+      "main": [
+        [
+          {
+            "node": "Analyze video",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Edit Fields1": {
+      "main": [
+        [
+          {
+            "node": "Code in JavaScript",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Analyze video": {
+      "main": [
+        [
+          {
+            "node": "Procesar Video",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code in JavaScript": {
+      "main": [
+        [
+          {
+            "node": "Build Canonical Trace Context",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Prepare Memory Lookup Request": {
+      "main": [
+        [
+          {
+            "node": "Call M4 Memory Service",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Call 'M2 Coordinacion Comercial Lite'": {
+      "main": [
+        [
+          {
+            "node": "Prepare to M7",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Call M4 Memory Service": {
+      "main": [
+        [
+          {
+            "node": "Attach Session Memory To Turn",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Attach Session Memory To Turn": {
+      "main": [
+        [
+          {
+            "node": "Call 'M2 Coordinacion Comercial Lite'",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Build M8 Event - Message Received": {
+      "main": [
+        [
+          {
+            "node": "Execute M8 Observability Service",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Execute M8 Observability Service": {
+      "main": [
+        [
+          {
+            "node": "Restore Main Payload After M8",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Build Canonical Trace Context": {
+      "main": [
+        [
+          {
+            "node": "Build M8 Event - Message Received",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Restore Main Payload After M8": {
+      "main": [
+        [
+          {
+            "node": "Prepare Memory Lookup Request",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Prepare to M7": {
+      "main": [
+        [
+          {
+            "node": "Call 'DALIA_M7_Messaging_Service_Lite'",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "nodeGroups": [],
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate",
+    "timeSavedMode": "fixed",
+    "errorWorkflow": "sGL1OJ3lklD6wBu0",
+    "callerPolicy": "workflowsFromSameOwner",
+    "availableInMCP": false
+  },
+  "staticData": null,
+  "pinData": {
+    "WhatsApp Trigger": [
+      {
+        "json": {
+          "messaging_product": "whatsapp",
+          "metadata": {
+            "display_phone_number": "573218432847",
+            "phone_number_id": "1104496126080610"
+          },
+          "contacts": [
+            {
+              "wa_id": "573192563967",
+              "user_id": "CO.2171242940303505"
+            }
+          ],
+          "statuses": [
+            {
+              "id": "wamid.HBgMNTczMTkyNTYzOTY3FQIAERgSMDc3RTdEQTg5RjBEMEMzMUYyAA==",
+              "status": "sent",
+              "timestamp": "1782336550",
+              "recipient_id": "573192563967",
+              "recipient_user_id": "CO.2171242940303505",
+              "pricing": {
+                "billable": false,
+                "pricing_model": "PMP",
+                "category": "service",
+                "type": "free_customer_service"
+              }
+            }
+          ],
+          "field": "messages"
+        },
+        "pairedItem": {
+          "item": 0
+        }
+      }
+    ]
+  },
+  "meta": {
+    "templateCredsSetupCompleted": true
+  },
+  "tags": [
+    {
+      "id": "6e1haF3pXukz6KVf",
+      "name": "env:dev",
+      "createdAt": "2025-05-27T01:29:25.680Z",
+      "updatedAt": "2026-02-11T00:17:23.837Z"
+    }
+  ],
+  "shared": [
+    {
+      "role": "workflow:owner",
+      "workflowId": "AhNCjJCrr4FgnWj1",
+      "projectId": "tRHCC8ts4mkRGXGn",
+      "createdAt": "2026-05-05T02:07:55.351Z",
+      "updatedAt": "2026-05-05T02:07:55.351Z"
+    }
+  ],
+  "activeVersion": null
+}
