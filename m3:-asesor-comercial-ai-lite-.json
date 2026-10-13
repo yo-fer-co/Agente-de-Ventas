@@ -1,0 +1,583 @@
+{
+  "id": "7c1v0D0D8kUXg2MX",
+  "name": "M3: Asesor Comercial AI Lite",
+  "active": false,
+  "activeVersionId": null,
+  "createdAt": "2026-05-06T19:36:00.344Z",
+  "updatedAt": "2026-05-27T18:28:26.000Z",
+  "isArchived": true,
+  "versionId": "05bf73d3-2f02-4971-be85-5095b7f9ffb4",
+  "triggerCount": 0,
+  "nodes": [
+    {
+      "parameters": {
+        "inputSource": "passthrough"
+      },
+      "type": "n8n-nodes-base.executeWorkflowTrigger",
+      "typeVersion": 1.1,
+      "position": [
+        -304,
+        64
+      ],
+      "id": "5d5c0e80-f4cc-421a-9208-d5d634372e5e",
+      "name": "When Executed by Another Workflow"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "3caeb288-3f84-4a28-bed3-c263026b4d95",
+              "leftValue": "={{ $json.decision.destination }}",
+              "rightValue": "m3_advisor",
+              "operator": {
+                "type": "string",
+                "operation": "equals"
+              }
+            },
+            {
+              "id": "aef1629a-eabf-42a8-bfb3-98c8e4b9150a",
+              "leftValue": "={{ [\"general_inquiry\", \"product_search\", \"product_specific\"].includes($json.decision.intent) }}",
+              "rightValue": true,
+              "operator": {
+                "type": "boolean",
+                "operation": "true"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        -80,
+        64
+      ],
+      "id": "856d0842-1558-4064-a68a-ac14a2bbc4ad",
+      "name": "If"
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "={{ $json.imput__text }}",
+        "options": {
+          "systemMessage": "# ROLE\nEres DALIA, asesora comercial AI en versión Lite Demo. Tu objetivo es ayudar al usuario a explorar el catálogo, entender sus necesidades y recomendar productos.\n\n# CONTEXTO OPERATIVO\n- No eres el coordinador (M2 ya hizo el routing).\n- No ejecutas la compra ni generas órdenes (eso es M5).\n- Tu salida será procesada por M7 para mensajería.\n\n# REGLAS DE ORO (GUARDRAILS)\n1. FUENTE DE VERDAD: Solo usa el \"catalog_context\" y \"knowledge_context\" proporcionado.\n2. NO INVENTAR: Si un producto, precio o stock no está en el contexto, NO EXISTE.\n3. PRIVACIDAD TÉCNICA: Nunca menciones SKUs, IDs internos, \"workflows\", \"RAG\" o \"memoria\".\n4. TONO: Natural, cálido y comercial. Máximo 6 oraciones. Una sola pregunta al final.\n\n# COMPORTAMIENTO POR INTENCIÓN\n- general_inquiry: Orienta hacia categorías. No listes todo, invita a descubrir.\n- product_search: Recomienda hasta 3 productos. Explica brevemente por qué encajan.\n- product_specific: Detalla atributos del producto hallado. Prepara para mostrar imagen.\n\n# FORMATO DE SALIDA (ESTRICTO JSON)\nDevuelve únicamente un JSON válido:\n\n{\n  \"schema_version\": \"dalia.m3.advisor_response.v1\",\n  \"response\": {\n    \"replyText\": \"Texto natural para el cliente\",\n    \"response_type\": \"discovery|recommendation|product_detail|clarification|out_of_scope\",\n    \"next_step\": \"ask_clarification|show_options|show_product|invite_purchase|none\"\n  },\n  \"catalog\": {\n    \"used_catalog\": true,\n    \"matched\": true/false,\n    \"match_type\": \"category|product|none\",\n    \"items\": [{\"product_name\": \"\", \"category\": \"\", \"image_ref\": \"\"}]\n  },\n  \"memory_update\": {\n    \"product_consulted\": \"Nombre o null\",\n    \"preference_detected\": \"Preferencia o null\",\n    \"city_detected\": \"Ciudad o null\"\n  },\n  \"control\": {\n    \"can_continue\": true,\n    \"handoff_suggested\": false,\n    \"purchase_signal_detected\": false\n  }\n}"
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 3.1,
+      "position": [
+        864,
+        -32
+      ],
+      "id": "5d956c80-5183-4984-86f8-2af055a0d786",
+      "name": "AI Agent"
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        1264,
+        -32
+      ],
+      "id": "ae5b2d9b-6811-4d59-abb7-d1fb91d9b00b",
+      "name": "Edit Fields1"
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "type": "n8n-nodes-base.executeWorkflow",
+      "typeVersion": 1.3,
+      "position": [
+        1488,
+        -32
+      ],
+      "id": "95e84fbc-54ea-4c09-a6ba-0f04cb7b6d71",
+      "name": "Execute Workflow",
+      "disabled": true
+    },
+    {
+      "parameters": {},
+      "type": "n8n-nodes-base.noOp",
+      "typeVersion": 1,
+      "position": [
+        144,
+        160
+      ],
+      "id": "5c64ea05-b54a-45cd-8cb1-b66d024ceca6",
+      "name": "No Operation, do nothing"
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "type": "n8n-nodes-base.executeWorkflow",
+      "typeVersion": 1.3,
+      "position": [
+        1712,
+        -32
+      ],
+      "id": "c50a34f1-95b4-4853-a6cc-7dfe2ae349ba",
+      "name": "Execute Workflow1",
+      "disabled": true
+    },
+    {
+      "parameters": {
+        "model": {
+          "__rl": true,
+          "mode": "list",
+          "value": "gpt-5-mini"
+        },
+        "builtInTools": {},
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatOpenAi",
+      "typeVersion": 1.3,
+      "position": [
+        656,
+        192
+      ],
+      "id": "9b54e137-f1d7-4532-b383-fa6cd14d57b6",
+      "name": "OpenAI Chat Model",
+      "credentials": {
+        "openAiApi": {
+          "id": "CxN1M3GiHPXWR4gx",
+          "name": "OpenAi TEST"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "sessionIdType": "customKey",
+        "sessionKey": "={{ $('When Executed by Another Workflow').first().json.context.user_id }}"
+      },
+      "type": "@n8n/n8n-nodes-langchain.memoryBufferWindow",
+      "typeVersion": 1.3,
+      "position": [
+        800,
+        192
+      ],
+      "id": "649ca710-0355-452c-9007-0bfc39caa44b",
+      "name": "Simple Memory"
+    },
+    {
+      "parameters": {
+        "mode": "raw",
+        "jsonOutput": "{\n  \"advisor_name\": \"DALIA\",\n  \"mode\": \"demo_lite\",\n  \"tone\": {\n    \"style\": \"natural, cálido, claro y comercial\",\n    \"principles\": [\n      \"acompañar antes que vender\",\n      \"responder de forma breve\",\n      \"guiar con una pregunta útil\",\n      \"usar lenguaje sencillo\"\n    ],\n    \"avoid\": [\"presionar\", \"respuestas largas\", \"jerga técnica\", \"mencionar el sistema\"]\n  },\n  \"response_limits\": {\n    \"max_products_to_show\": 3,\n    \"max_sentences\": 6,\n    \"ask_one_question_at_end\": true\n  },\n  \"catalog_guardrails\": {\n    \"strict_catalog_mode\": true,\n    \"do_not_show_sku\": true,\n    \"fallback_message\": \"Lo siento, ese producto no está en nuestro catálogo de demostración actual. ¿Te gustaría ver las opciones disponibles?\"\n  }\n}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        144,
+        -32
+      ],
+      "id": "4c4b0c4f-4f11-4b31-863c-94ae12e9ff6b",
+      "name": "Advisor Policies"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "0745f5a6-7b0b-4216-adcf-cb7b02b89304",
+              "name": "imput__text",
+              "value": "={{ $('If').item.json.input.text }}",
+              "type": "string"
+            },
+            {
+              "id": "a3caa027-ee05-4359-8446-9132452ffa47",
+              "name": "decision_intent",
+              "value": "={{ $('If').item.json.decision.intent }}",
+              "type": "string"
+            },
+            {
+              "id": "902a7392-bf09-4f93-b590-a1171f509390",
+              "name": "catalog_results",
+              "value": "={{ $json.ID }};{{ $json['Nombre del Producto'] }};{{ $json['Categoría'] }};{{ $json['Precio (USD)'] }};{{ $json['Descripción Breve'] }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        560,
+        -32
+      ],
+      "id": "fa0c1021-f7ea-4937-8ce9-bceef3445158",
+      "name": "Build Advisor Context"
+    },
+    {
+      "parameters": {
+        "documentId": {
+          "__rl": true,
+          "value": "1ja0r07ajpYzoSAm5L3bupAuQ_aoqxZ8cDDMqNESlySg",
+          "mode": "list",
+          "cachedResultName": "catalogo demo",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1ja0r07ajpYzoSAm5L3bupAuQ_aoqxZ8cDDMqNESlySg/edit?usp=drivesdk"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": 1884700776,
+          "mode": "list",
+          "cachedResultName": "catalogodemo",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1ja0r07ajpYzoSAm5L3bupAuQ_aoqxZ8cDDMqNESlySg/edit#gid=1884700776"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [
+        352,
+        -32
+      ],
+      "id": "83095b84-8617-412d-9029-1eda7fcf7fb0",
+      "name": "Get row(s) in sheet",
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "WFnLF38LKngtpQ0D",
+          "name": "Google Sheets account 2"
+        }
+      },
+      "disabled": true
+    },
+    {
+      "parameters": {
+        "mode": "retrieve-as-tool",
+        "toolDescription": "Eres un asistente que nos apoya en la generación de información relacionada con la empresa YoEco. Tu enfoque debe ser ayudarnos a responder preguntas sobre la operación y forma de trabajo de la empresa YoEco, así como ayudar a resolver las dudas sobre a que se dedica la empresa, que vende, cual es su público objetivo, cual es su misión y visión, y en general orientar y asesorar a clientes existentes o nuevos en el ciclo de ventas para que estos decidan comprar a la tienda YoEco. ",
+        "qdrantCollection": {
+          "__rl": true,
+          "value": "YoEco_Business_DEMO",
+          "mode": "list",
+          "cachedResultName": "YoEco_Business_DEMO"
+        },
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.vectorStoreQdrant",
+      "typeVersion": 1.3,
+      "position": [
+        896,
+        176
+      ],
+      "id": "40e6adbe-7f3f-4dee-8b5d-29a56836d494",
+      "name": "Qdrant Vector Store",
+      "credentials": {
+        "qdrantApi": {
+          "id": "9oUogOvtDqsTDKBQ",
+          "name": "QdrantApi TEST"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.embeddingsOpenAi",
+      "typeVersion": 1.2,
+      "position": [
+        880,
+        352
+      ],
+      "id": "b73790db-9629-49bc-b56e-b022da39d458",
+      "name": "Embeddings OpenAI",
+      "credentials": {
+        "openAiApi": {
+          "id": "CxN1M3GiHPXWR4gx",
+          "name": "OpenAi TEST"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "mode": "retrieve-as-tool",
+        "toolDescription": "Eres un asistente que nos ayuda a tomar los productos del catalogo y enseñarlos a los clientes que los pidan",
+        "qdrantCollection": {
+          "__rl": true,
+          "value": "YoEco_Catalogo_DEMO",
+          "mode": "list",
+          "cachedResultName": "YoEco_Catalogo_DEMO"
+        },
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.vectorStoreQdrant",
+      "typeVersion": 1.3,
+      "position": [
+        1152,
+        192
+      ],
+      "id": "90003926-4ae0-4f30-838f-924d9f99d4b2",
+      "name": "Qdrant Vector Store1",
+      "credentials": {
+        "qdrantApi": {
+          "id": "9oUogOvtDqsTDKBQ",
+          "name": "QdrantApi TEST"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.embeddingsOpenAi",
+      "typeVersion": 1.2,
+      "position": [
+        1152,
+        352
+      ],
+      "id": "b017cad7-25c6-4362-a7e7-6aa8418cab09",
+      "name": "Embeddings OpenAI1",
+      "credentials": {
+        "openAiApi": {
+          "id": "CxN1M3GiHPXWR4gx",
+          "name": "OpenAi TEST"
+        }
+      }
+    }
+  ],
+  "connections": {
+    "When Executed by Another Workflow": {
+      "main": [
+        [
+          {
+            "node": "If",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "If": {
+      "main": [
+        [
+          {
+            "node": "Advisor Policies",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "No Operation, do nothing",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "AI Agent": {
+      "main": [
+        [
+          {
+            "node": "Edit Fields1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Edit Fields1": {
+      "main": [
+        [
+          {
+            "node": "Execute Workflow",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Execute Workflow": {
+      "main": [
+        [
+          {
+            "node": "Execute Workflow1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "OpenAI Chat Model": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Simple Memory": {
+      "ai_memory": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_memory",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Advisor Policies": {
+      "main": [
+        [
+          {
+            "node": "Get row(s) in sheet",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Build Advisor Context": {
+      "main": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get row(s) in sheet": {
+      "main": [
+        [
+          {
+            "node": "Build Advisor Context",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Qdrant Vector Store": {
+      "ai_tool": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Embeddings OpenAI": {
+      "ai_embedding": [
+        [
+          {
+            "node": "Qdrant Vector Store",
+            "type": "ai_embedding",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Qdrant Vector Store1": {
+      "ai_tool": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Embeddings OpenAI1": {
+      "ai_embedding": [
+        [
+          {
+            "node": "Qdrant Vector Store1",
+            "type": "ai_embedding",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "nodeGroups": [],
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate"
+  },
+  "staticData": null,
+  "pinData": {
+    "When Executed by Another Workflow": [
+      {
+        "json": {
+          "schema_version": "dalia.m2.routing_decision.v1",
+          "trace": {
+            "event_id": "evt_1778181044219",
+            "conversation_id": "conv_wa_1104496126080610_573192563967",
+            "session_id": "wa_demo_1104496126080610_573192563967"
+          },
+          "context": {
+            "environment": "demo",
+            "business_id": "business_demo",
+            "channel": "whatsapp",
+            "user_id": "573192563967",
+            "display_name": "Em"
+          },
+          "input": {
+            "message_id": "wamid.HBgMNTczMTkyNTYzOTY3FQIAEhgWM0VCMDYzNjAyNjc5RjI3NEY5RTdGMAA=",
+            "type": "text",
+            "text": "tienes cepillos?",
+            "timestamp": "2026-05-07T19:10:39.000Z",
+            "processing_status": "ready"
+          },
+          "decision": {
+            "intent": "product_search",
+            "destination": "m3_advisor",
+            "confidence": 0.9,
+            "commercial_stage": "consideration",
+            "reason": "Búsqueda por categoría de productos (cepillos)"
+          },
+          "extracted": {
+            "category_candidate": "cepillos",
+            "product_candidate": null,
+            "quantity": null,
+            "city": null,
+            "preference": null
+          },
+          "control": {
+            "needs_clarification": false,
+            "needs_memory_lookup": false,
+            "requires_handoff": false,
+            "fallback_reason": null
+          }
+        }
+      }
+    ]
+  },
+  "meta": {
+    "templateCredsSetupCompleted": true
+  },
+  "tags": [],
+  "shared": [
+    {
+      "role": "workflow:owner",
+      "workflowId": "7c1v0D0D8kUXg2MX",
+      "projectId": "tRHCC8ts4mkRGXGn",
+      "createdAt": "2026-05-06T19:36:00.347Z",
+      "updatedAt": "2026-05-06T19:36:00.347Z"
+    }
+  ],
+  "activeVersion": null
+}
