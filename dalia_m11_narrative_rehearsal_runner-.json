@@ -1,0 +1,427 @@
+{
+  "id": "lLIvIN99ocVRtxhp",
+  "name": "DALIA_M11_Narrative_Rehearsal_Runner",
+  "active": false,
+  "activeVersionId": null,
+  "createdAt": "2026-05-28T20:59:13.993Z",
+  "updatedAt": "2026-06-09T16:22:39.000Z",
+  "isArchived": true,
+  "versionId": "e39baa30-f531-4122-a783-b12a95359695",
+  "triggerCount": 0,
+  "nodes": [
+    {
+      "parameters": {
+        "inputSource": "passthrough"
+      },
+      "type": "n8n-nodes-base.executeWorkflowTrigger",
+      "typeVersion": 1.1,
+      "position": [
+        0,
+        0
+      ],
+      "id": "8aad5acf-2ed3-4d7b-8221-e0fc0f9d27d7",
+      "name": "Narrative Rehearsal Trigger"
+    },
+    {
+      "parameters": {
+        "jsCode": "const input = items[0]?.json || {};\n\nreturn [\n {\n   json: {\n     ...input,\n     narrative_config: {\n       service_name: 'DALIA_M11_Narrative_Rehearsal_Runner',\n       service_version: 'v1',\n       environment: 'demo',\n\n       demo: {\n         title: 'DALIA Demo Lite — Vertical Slice de Ventas Conversacionales',\n         target_audience: 'cliente, decisor de negocio, equipo comercial o equipo interno YoEco',\n         narrative_goal: 'Demostrar que DALIA puede atender, asesorar, mostrar productos, simular compra, transferir a humano y dejar trazabilidad mínima de punta a punta.'\n       },\n\n       positioning: {\n         core_message: 'DALIA no es solo un chatbot; es un sistema modular de ventas conversacionales con IA.',\n         value_promises: [\n           'Reducir tiempos de respuesta',\n           'Acompañar al cliente durante la exploración',\n           'Recomendar productos reales desde catálogo',\n           'Simular un cierre comercial completo',\n           'Transferir a humano sin pérdida de contexto',\n           'Dejar trazabilidad para soporte y mejora continua'\n         ],\n         avoid_positioning: [\n           'prometer automatización completa en esta demo Lite',\n           'presentar pagos o envíos como reales',\n           'hablar demasiado de nodos o herramientas internas',\n           'mostrar la demo como una colección técnica de flujos'\n         ]\n       },\n\n       rehearsal_policy: {\n         max_demo_minutes: 12,\n         max_intro_minutes: 2,\n         max_case_minutes: 2,\n         show_observability_evidence: true,\n         require_fallback_plan: true,\n         require_go_no_go: true\n       },\n\n       storage: {\n         narrative_rehearsals_table: 'dalia_demo_narrative_rehearsals'\n       }\n     }\n   }\n }\n];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        176,
+        0
+      ],
+      "id": "8256ed08-0e03-4af8-9be1-02e14353d600",
+      "name": "Load Narrative Rehearsal Config"
+    },
+    {
+      "parameters": {
+        "jsCode": "function makeId(prefix) {\n const ts = Date.now();\n const rand = Math.random().toString(36).slice(2, 8).toUpperCase();\n return `${prefix}_${ts}_${rand}`;\n}\n\nconst input = items[0]?.json || {};\nconst config = input.narrative_config || {};\nconst demo = config.demo || {};\n\nconst rehearsalDraft = {\n narrative_rehearsal_id: makeId('narr_demo'),\n validation_run_id: input.validation_run?.validation_run_id || '',\n environment: config.environment || 'demo',\n\n status: 'draft',\n go_no_go: '',\n\n demo_title: demo.title || 'DALIA Demo Lite',\n target_audience: demo.target_audience || '',\n narrative_goal: demo.narrative_goal || '',\n\n demo_script: {},\n demo_scenes: [],\n evaluation_criteria: {},\n\n rehearsal_notes: [],\n findings: [],\n adjustment_backlog: [],\n\n presenter_checklist: [],\n fallback_plan: []\n};\n\nreturn [\n {\n   json: {\n     ...input,\n     narrative_rehearsal: rehearsalDraft\n   }\n }\n];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        384,
+        0
+      ],
+      "id": "1e347bc7-81c4-40af-a048-1ba21b8b347d",
+      "name": "Build Narrative Rehearsal Draft"
+    },
+    {
+      "parameters": {
+        "jsCode": "const input = items[0]?.json || {};\nconst config = input.narrative_config || {};\nconst positioning = config.positioning || {};\nconst policy = config.rehearsal_policy || {};\n\nconst script = {\n opening: {\n   title: 'Apertura',\n   duration_minutes: policy.max_intro_minutes || 2,\n   talk_track: [\n     'Hoy vamos a ver una demo vertical de DALIA en modo Lite.',\n     positioning.core_message || 'DALIA es un sistema de ventas conversacionales con IA.',\n     'La idea no es mostrar una automatización perfecta de todo el negocio, sino un recorrido completo y creíble: atención, recomendación, producto, compra demo, handoff humano y trazabilidad.'\n   ],\n   presenter_notes: [\n     'No iniciar hablando de n8n, Qdrant o nodos.',\n     'Empezar por el problema de negocio: atención lenta, pérdida de oportunidades y dependencia operativa.',\n     'Reforzar que es un vertical slice demostrable.'\n   ]\n },\n\n business_context: {\n   title: 'Contexto de valor',\n   talk_track: [\n     'El punto central es convertir conversaciones en resultados de negocio.',\n     'DALIA atiende, entiende intención, recomienda desde catálogo, ejecuta acciones comerciales demo y escala a humano cuando corresponde.',\n     'La demo también muestra control: memoria, trazabilidad y logs para soporte.'\n   ],\n   value_promises: positioning.value_promises || []\n },\n\n transition_to_demo: {\n   title: 'Transición a demostración',\n   talk_track: [\n     'Vamos a recorrer cinco casos obligatorios.',\n     'Cada caso prueba una parte del vertical slice y al final mostraremos evidencia de trazabilidad.',\n     'Cuando algo sea simulado, como pago u orden, se dirá explícitamente.'\n   ]\n },\n\n closing: {\n   title: 'Cierre',\n   talk_track: [\n     'La conclusión no es que DALIA reemplaza al equipo comercial.',\n     'La conclusión es que DALIA puede potenciarlo: atiende más rápido, estandariza respuestas, conserva contexto, ejecuta pasos repetibles y escala a humano cuando se necesita.',\n     'La siguiente evolución sería pasar de demo Lite a integración real con stack transaccional del cliente.'\n   ]\n }\n};\n\nreturn [\n {\n   json: {\n     ...input,\n     demo_narrative_script: script\n   }\n }\n];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        592,
+        0
+      ],
+      "id": "2d80c42c-55d5-404b-ae31-11f51a8e1b37",
+      "name": "Build Demo Narrative Script"
+    },
+    {
+      "parameters": {
+        "jsCode": "const input = items[0]?.json || {};\n\nconst scenes = [\n {\n   scene_id: 'SC01',\n   linked_case_id: 'UC01',\n   title: 'Entrada simple y primera interacción',\n   business_value: 'Mostrar que DALIA inicia la conversación de forma natural y sin sobrecargar al cliente.',\n   user_prompt: 'hola',\n   presenter_talk_track: [\n     'Este primer caso valida entrada, coordinación y respuesta controlada.',\n     'Un saludo no debe disparar catálogo ni una respuesta larga.',\n     'Aquí buscamos naturalidad y bajo ruido.'\n   ],\n   expected_visible_behavior: [\n     'Respuesta breve',\n     'Una sola pregunta útil',\n     'Sin productos sugeridos todavía',\n     'Sin lenguaje técnico'\n   ],\n   expected_evidence: [\n     'message_received',\n     'intent_classified',\n     'message_sent'\n   ],\n   risk: 'Que el agente responda demasiado largo o recomiende productos sin intención clara.',\n   fallback_talk_track: 'Si el saludo activa catálogo, se explica como hallazgo de ajuste de intención y se pasa al caso siguiente.'\n },\n {\n   scene_id: 'SC02',\n   linked_case_id: 'UC02',\n   title: 'Búsqueda y recomendación de producto',\n   business_value: 'Mostrar que DALIA entiende una necesidad y recomienda productos reales desde catálogo.',\n   user_prompt: 'busco un cepillo de dientes ecológico',\n   presenter_talk_track: [\n     'Ahora el cliente ya expresa una necesidad.',\n     'DALIA debe consultar el catálogo y recomendar opciones reales.',\n     'Aquí se demuestra asesoría comercial sin inventar productos, precios o stock.'\n   ],\n   expected_visible_behavior: [\n     'Recomendación clara',\n     'Máximo 3 a 5 opciones',\n     'Sin mostrar SKU',\n     'Pregunta de avance comercial'\n   ],\n   expected_evidence: [\n     'intent_classified',\n     'response_generated',\n     'product_recommended',\n     'message_sent'\n   ],\n   risk: 'Que recomiende productos irrelevantes o que no muestre recomendación visible.',\n   fallback_talk_track: 'Si la recomendación no aparece, se muestra evidencia en M8 y se explica que el ajuste está en recuperación o normalización de catálogo.'\n },\n {\n   scene_id: 'SC03',\n   linked_case_id: 'UC03',\n   title: 'Producto concreto con imagen real',\n   business_value: 'Hacer tangible el producto con imagen real y secuencia visible controlada.',\n   user_prompt: 'quiero ver el termo de bambú',\n   presenter_talk_track: [\n     'Aquí el cliente ya pregunta por un producto concreto.',\n     'DALIA debe responder con texto corto y luego enviar la imagen real desde el repositorio.',\n     'Esta escena muestra que la experiencia no es solo texto: también hay presentación visual.'\n   ],\n   expected_visible_behavior: [\n     'Primero texto',\n     'Luego imagen',\n     'Imagen correcta del producto',\n     'Fallback natural si falta imagen'\n   ],\n   expected_evidence: [\n     'response_generated',\n     'message_sent',\n     'image_sent'\n   ],\n   risk: 'Imagen no disponible, imagen incorrecta o secuencia invertida.',\n   fallback_talk_track: 'Si falta imagen, se muestra que existe fallback controlado y se explica que la causa estaría en repositorio o mapeo Drive.'\n },\n {\n   scene_id: 'SC04',\n   linked_case_id: 'UC04',\n   title: 'Comercio Accional Lite',\n   business_value: 'Mostrar que DALIA puede pasar de intención a una simulación de compra verificable.',\n   user_prompt: 'lo llevo',\n   presenter_talk_track: [\n     'En esta escena pasamos de asesoría a acción comercial.',\n     'La demo no procesa pagos reales ni crea órdenes reales.',\n     'Lo que se demuestra es la lógica de estado: intención, datos mínimos, pago demo, orden demo y tracking ficticio.'\n   ],\n   expected_visible_behavior: [\n     'Solicita datos mínimos si faltan',\n     'Genera pago demo',\n     'Confirma orden demo',\n     'Genera tracking ficticio',\n     'Aclara que es simulación'\n   ],\n   expected_evidence: [\n     'purchase_started',\n     'payment_pending',\n     'order_confirmed',\n     'shipment_created'\n   ],\n   risk: 'Que la secuencia transaccional pierda estado o no avance correctamente.',\n   fallback_talk_track: 'Si falla, se explica como validación de estado transaccional y se muestra el punto exacto en logs M8.'\n },\n {\n   scene_id: 'SC05',\n   linked_case_id: 'UC05',\n   title: 'Handoff humano básico',\n   business_value: 'Mostrar continuidad IA-humano sin ruptura de contexto.',\n   user_prompt: 'quiero hablar con un asesor',\n   presenter_talk_track: [\n     'No todo debe resolverlo la IA.',\n     'Cuando el cliente pide una persona, DALIA debe transferir con contexto.',\n     'La clave es que el humano reciba un resumen útil y el cliente no tenga que repetir todo.'\n   ],\n   expected_visible_behavior: [\n     'Mensaje natural de transferencia',\n     'Resumen enviado al canal humano',\n     'Estado handoff registrado',\n     'Sin términos técnicos visibles'\n   ],\n   expected_evidence: [\n     'handoff_triggered',\n     'handoff_human_notified',\n     'message_sent'\n   ],\n   risk: 'Que no llegue resumen al humano o que el mensaje al cliente suene técnico.',\n   fallback_talk_track: 'Si falla un canal humano, se muestra que el estado queda failed o warning y que el sistema conserva trazabilidad para soporte.'\n },\n {\n   scene_id: 'SC06',\n   linked_case_id: 'M8',\n   title: 'Evidencia de trazabilidad',\n   business_value: 'Mostrar que la demo es soportable y medible, no solo conversacional.',\n   user_prompt: '',\n   presenter_talk_track: [\n     'Cerramos mostrando observabilidad.',\n     'Podemos reconstruir qué pasó por conversación, sesión, producto, compra o handoff.',\n     'Esto permite soporte, mejora continua y gobierno del producto.'\n   ],\n   expected_visible_behavior: [\n     'Consulta de logs por session_id o conversation_id',\n     'Eventos ordenados',\n     'Errores visibles si existieron',\n     'Correlación con transaction_id o handoff_id cuando aplique'\n   ],\n   expected_evidence: [\n     'message_received',\n     'intent_classified',\n     'response_generated',\n     'message_sent',\n     'error si aplica'\n   ],\n   risk: 'Logs incompletos o correlación débil.',\n   fallback_talk_track: 'Si faltan logs, se explica que M8 permite detectar justamente esa brecha de instrumentación.'\n }\n];\n\nreturn [\n {\n   json: {\n     ...input,\n     demo_commercial_scenes: scenes\n   }\n }\n];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        800,
+        0
+      ],
+      "id": "95d84abb-4e9d-45de-b4e6-529e861b1d41",
+      "name": "Build Demo Commercial Scenes"
+    },
+    {
+      "parameters": {
+        "jsCode": "const input = items[0]?.json || {};\n\nconst criteria = {\n scoring_scale: {\n   1: 'deficiente',\n   2: 'débil',\n   3: 'aceptable',\n   4: 'bueno',\n   5: 'listo para demo'\n },\n\n dimensions: [\n   {\n     dimension_id: 'clarity',\n     name: 'Claridad',\n     description: 'La audiencia entiende qué problema resuelve DALIA y qué se está demostrando.',\n     minimum_score: 4\n   },\n   {\n     dimension_id: 'business_value',\n     name: 'Valor de negocio',\n     description: 'La demo conecta conversación, asesoría, venta, handoff y trazabilidad con impacto comercial.',\n     minimum_score: 4\n   },\n   {\n     dimension_id: 'flow_continuity',\n     name: 'Continuidad del recorrido',\n     description: 'Los casos se sienten como una historia y no como pruebas aisladas.',\n     minimum_score: 4\n   },\n   {\n     dimension_id: 'visible_experience',\n     name: 'Experiencia visible',\n     description: 'El copy, la secuencia y el tono son naturales y adecuados.',\n     minimum_score: 4\n   },\n   {\n     dimension_id: 'technical_confidence',\n     name: 'Confianza técnica',\n     description: 'El presentador puede explicar qué está ocurriendo sin entrar en exceso técnico.',\n     minimum_score: 3\n   },\n   {\n     dimension_id: 'fallback_readiness',\n     name: 'Preparación ante fallos',\n     description: 'Existe una forma clara de continuar la demo si algo falla.',\n     minimum_score: 4\n   },\n   {\n     dimension_id: 'closing_strength',\n     name: 'Cierre comercial',\n     description: 'El cierre deja claro el valor, límites de la demo y próximos pasos.',\n     minimum_score: 4\n   }\n ],\n\n go_no_go_rules: {\n   narrative_ready: [\n     'todas las dimensiones críticas con score >= mínimo',\n     'sin hallazgos críticos abiertos',\n     'fallback plan definido',\n     'guion de apertura y cierre listo'\n   ],\n   narrative_not_ready: [\n     'claridad menor a 4',\n     'valor de negocio menor a 4',\n     'fallback no definido',\n     'demo parece una revisión técnica de nodos'\n   ]\n }\n};\n\nreturn [\n {\n   json: {\n     ...input,\n     narrative_evaluation_criteria: criteria\n   }\n }\n];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1008,
+        0
+      ],
+      "id": "cfa978bc-4cb9-4938-ba7f-d058768d7f39",
+      "name": "Build Narrative Evaluation Criteria"
+    },
+    {
+      "parameters": {
+        "jsCode": "const input = items[0]?.json || {};\n\nconst checklist = [\n {\n   item_id: 'PREP01',\n   category: 'preparación',\n   text: 'Tener abiertos WhatsApp o Telegram de prueba.',\n   required: true\n },\n {\n   item_id: 'PREP02',\n   category: 'preparación',\n   text: 'Tener Supabase abierto con consulta de M8 por session_id.',\n   required: true\n },\n {\n   item_id: 'PREP03',\n   category: 'preparación',\n   text: 'Tener identificados los 5 mensajes de prueba.',\n   required: true\n },\n {\n   item_id: 'PREP04',\n   category: 'narrativa',\n   text: 'Iniciar por el problema de negocio, no por la arquitectura.',\n   required: true\n },\n {\n   item_id: 'PREP05',\n   category: 'narrativa',\n   text: 'Explicar que comercio, pago, orden y tracking son demo/simulados.',\n   required: true\n },\n {\n   item_id: 'PREP06',\n   category: 'narrativa',\n   text: 'No mencionar n8n, Qdrant, RAG, nodos o workflows salvo que la audiencia sea técnica y lo pida.',\n   required: true\n },\n {\n   item_id: 'PREP07',\n   category: 'evidencia',\n   text: 'Mostrar al menos una traza M8 con eventos ordenados.',\n   required: true\n },\n {\n   item_id: 'PREP08',\n   category: 'cierre',\n   text: 'Cerrar con valor: velocidad, estandarización, continuidad IA-humano y trazabilidad.',\n   required: true\n }\n];\n\nreturn [\n {\n   json: {\n     ...input,\n     presenter_checklist: checklist\n   }\n }\n];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1216,
+        0
+      ],
+      "id": "72e51215-d465-4c29-8653-ee873ace738e",
+      "name": "Build Presenter Checklist"
+    },
+    {
+      "parameters": {
+        "jsCode": "const input = items[0]?.json || {};\n\nconst fallbackPlan = [\n {\n   failure_scenario: 'El canal WhatsApp no responde',\n   severity: 'high',\n   fallback_action: 'Cambiar a Telegram o mostrar ejecución previa registrada en M8.',\n   talk_track: 'El canal externo puede fallar; lo importante es que la arquitectura deja trazabilidad y permite degradar el canal.'\n },\n {\n   failure_scenario: 'No aparece imagen del producto',\n   severity: 'medium',\n   fallback_action: 'Usar el mensaje fallback de imagen y mostrar que M7 registró el evento o error.',\n   talk_track: 'El sistema no inventa imágenes; si no hay repositorio disponible, responde de forma controlada.'\n },\n {\n   failure_scenario: 'La recomendación no encuentra producto',\n   severity: 'high',\n   fallback_action: 'Mostrar fallback de catálogo y explicar que el catálogo es fuente de verdad.',\n   talk_track: 'DALIA prefiere decir que no tiene información antes que inventar productos.'\n },\n {\n   failure_scenario: 'Falla comercio demo',\n   severity: 'high',\n   fallback_action: 'Mostrar transaction_id hasta el estado alcanzado y revisar logs M8.',\n   talk_track: 'La cadena transaccional es verificable por estado; si falla, se diagnostica por paso.'\n },\n {\n   failure_scenario: 'Falla handoff humano',\n   severity: 'high',\n   fallback_action: 'Mostrar handoff_id, estado failed/human_notified y error_reason.',\n   talk_track: 'El valor del handoff es conservar contexto y saber si el humano fue notificado.'\n },\n {\n   failure_scenario: 'Faltan logs de M8',\n   severity: 'high',\n   fallback_action: 'No continuar con demo como si nada; marcar hallazgo de observabilidad.',\n   talk_track: 'Sin observabilidad no hay soporte confiable. Esta demo justamente valida que todo sea trazable.'\n }\n];\n\nreturn [\n {\n   json: {\n     ...input,\n     demo_fallback_plan: fallbackPlan\n   }\n }\n];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1424,
+        0
+      ],
+      "id": "72dda418-c217-4516-bc56-3070088323ec",
+      "name": "Build Demo Fallback Plan"
+    },
+    {
+      "parameters": {
+        "tableId": "dalia_demo_narrative_rehearsals",
+        "fieldsUi": {
+          "fieldValues": [
+            {
+              "fieldId": "narrative_rehearsal_id",
+              "fieldValue": "={{ $json.narrative_rehearsal.narrative_rehearsal_id }}"
+            },
+            {
+              "fieldId": "validation_run_id",
+              "fieldValue": "={{ $json.narrative_rehearsal.validation_run_id }}"
+            },
+            {
+              "fieldId": "environment",
+              "fieldValue": "={{ $json.narrative_rehearsal.environment }}"
+            },
+            {
+              "fieldId": "status",
+              "fieldValue": "ready_for_rehearsal"
+            },
+            {
+              "fieldId": "go_no_go",
+              "fieldValue": "={{ $json.narrative_rehearsal.go_no_go }}"
+            },
+            {
+              "fieldId": "demo_title",
+              "fieldValue": "={{ $json.narrative_rehearsal.demo_title }}"
+            },
+            {
+              "fieldId": "target_audience",
+              "fieldValue": "={{ $json.narrative_rehearsal.target_audience }}"
+            },
+            {
+              "fieldId": "narrative_goal",
+              "fieldValue": "={{ $json.narrative_rehearsal.narrative_goal }}"
+            },
+            {
+              "fieldId": "demo_script",
+              "fieldValue": "={{ $json.demo_narrative_script }}"
+            },
+            {
+              "fieldId": "demo_scenes",
+              "fieldValue": "={{ $json.demo_commercial_scenes }}"
+            },
+            {
+              "fieldId": "evaluation_criteria",
+              "fieldValue": "={{ $json.narrative_evaluation_criteria }}"
+            },
+            {
+              "fieldId": "presenter_checklist",
+              "fieldValue": "={{ $json.presenter_checklist }}"
+            },
+            {
+              "fieldId": "fallback_plan",
+              "fieldValue": "={{ $json.demo_fallback_plan }}"
+            },
+            {
+              "fieldId": "rehearsal_notes",
+              "fieldValue": "={{ [] }}"
+            },
+            {
+              "fieldId": "findings",
+              "fieldValue": "={{ [] }}"
+            },
+            {
+              "fieldId": "adjustment_backlog",
+              "fieldValue": "={{ [] }}"
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.supabase",
+      "typeVersion": 1,
+      "position": [
+        1632,
+        0
+      ],
+      "id": "d266f9d8-fba5-4011-8fa5-9158ac8a655a",
+      "name": "Create Narrative Rehearsal Record",
+      "credentials": {
+        "supabaseApi": {
+          "id": "npkHU7XcpupfQTID",
+          "name": "Supabase account 2"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const input = items[0]?.json || {};\n\nconst script = input.demo_script || input.demo_narrative_script || {};\nconst scenes = input.demo_scenes || input.demo_commercial_scenes || [];\nconst criteria = input.evaluation_criteria || input.narrative_evaluation_criteria || {};\nconst checklist = input.presenter_checklist || [];\nconst fallbackPlan = input.fallback_plan || input.demo_fallback_plan || [];\n\nconst findings = [];\nconst warnings = [];\n\nif (!script.opening || !script.closing) {\n findings.push({\n   severity: 'failed',\n   code: 'missing_opening_or_closing_script',\n   detail: 'El guion debe tener apertura y cierre.'\n });\n}\n\nif (!Array.isArray(scenes) || scenes.length < 5) {\n findings.push({\n   severity: 'failed',\n   code: 'missing_demo_scenes',\n   detail: 'Debe haber al menos 5 escenas alineadas a los casos obligatorios.'\n });\n}\n\nconst requiredCases = ['UC01', 'UC02', 'UC03', 'UC04', 'UC05'];\nconst linkedCases = scenes.map(scene => scene.linked_case_id);\n\nconst missingCases = requiredCases.filter(caseId => !linkedCases.includes(caseId));\n\nif (missingCases.length > 0) {\n findings.push({\n   severity: 'failed',\n   code: 'missing_required_case_scene',\n   detail: missingCases\n });\n}\n\nif (!criteria.dimensions || criteria.dimensions.length === 0) {\n findings.push({\n   severity: 'failed',\n   code: 'missing_narrative_evaluation_criteria',\n   detail: 'No hay criterios de evaluación narrativa.'\n });\n}\n\nif (!Array.isArray(checklist) || checklist.length === 0) {\n warnings.push({\n   code: 'missing_presenter_checklist',\n   detail: 'No hay checklist del presentador.'\n });\n}\n\nif (!Array.isArray(fallbackPlan) || fallbackPlan.length === 0) {\n findings.push({\n   severity: 'failed',\n   code: 'missing_fallback_plan',\n   detail: 'No hay plan de fallback para la demo.'\n });\n}\n\nconst hasFailure = findings.some(f => f.severity === 'failed');\nconst status = hasFailure\n ? 'narrative_not_ready'\n : warnings.length > 0\n   ? 'rehearsed'\n   : 'narrative_ready';\n\nconst goNoGo = status === 'narrative_ready'\n ? 'GO_NARRATIVE'\n : status === 'rehearsed'\n   ? 'GO_NARRATIVE_WITH_WARNINGS'\n   : 'NO_GO_NARRATIVE';\n\nconst adjustmentBacklog = [\n ...findings.map(finding => ({\n   target: 'narrative_script',\n   priority: 'high',\n   action: `Corregir hallazgo narrativo: ${finding.code}`,\n   detail: finding.detail\n })),\n ...warnings.map(warning => ({\n   target: 'narrative_script',\n   priority: 'medium',\n   action: `Revisar advertencia narrativa: ${warning.code}`,\n   detail: warning.detail\n }))\n];\n\nreturn [\n {\n   json: {\n     ...input,\n     narrative_readiness: {\n       status,\n       go_no_go: goNoGo,\n       findings,\n       warnings,\n       adjustment_backlog: adjustmentBacklog,\n       evaluated_at: new Date().toISOString()\n     }\n   }\n }\n];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1840,
+        0
+      ],
+      "id": "41ac2a2a-bfd0-4d16-9eda-f4ae2fb5a4fd",
+      "name": "Evaluate Narrative Readiness"
+    },
+    {
+      "parameters": {
+        "operation": "update",
+        "tableId": "dalia_demo_narrative_rehearsals",
+        "filters": {
+          "conditions": [
+            {
+              "keyName": "narrative_rehearsal_id",
+              "condition": "eq",
+              "keyValue": "={{ $json.narrative_rehearsal_id }}"
+            }
+          ]
+        },
+        "fieldsUi": {
+          "fieldValues": [
+            {
+              "fieldId": "status",
+              "fieldValue": "={{ $json.narrative_readiness.status }}"
+            },
+            {
+              "fieldId": "go_no_go",
+              "fieldValue": "={{ $json.narrative_readiness.go_no_go }}"
+            },
+            {
+              "fieldId": "findings",
+              "fieldValue": "={{ $json.narrative_readiness.findings }}"
+            },
+            {
+              "fieldId": "adjustment_backlog",
+              "fieldValue": "={{ $json.narrative_readiness.adjustment_backlog }}"
+            },
+            {
+              "fieldId": "updated_at",
+              "fieldValue": "={{ new Date().toISOString() }}"
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.supabase",
+      "typeVersion": 1,
+      "position": [
+        2048,
+        0
+      ],
+      "id": "a72b43a8-c1f2-445a-a49f-119a393f35cb",
+      "name": "Update Narrative Rehearsal Status",
+      "credentials": {
+        "supabaseApi": {
+          "id": "npkHU7XcpupfQTID",
+          "name": "Supabase account 2"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const input = $('Evaluate Narrative Readiness').first().json || {};\n\nreturn [\n {\n   json: {\n     schema_version: 'dalia.m11.narrative_rehearsal_result.v1',\n     success: input.narrative_readiness?.go_no_go !== 'NO_GO_NARRATIVE',\n     result_type: 'narrative_rehearsal_package_ready',\n\n     narrative_rehearsal: {\n       narrative_rehearsal_id: input.narrative_rehearsal?.narrative_rehearsal_id || '',\n       demo_title: input.narrative_rehearsal?.demo_title || '',\n       target_audience: input.narrative_rehearsal?.target_audience || '',\n       narrative_goal: input.narrative_rehearsal?.narrative_goal || '',\n       status: input.narrative_readiness?.status || '',\n       go_no_go: input.narrative_readiness?.go_no_go || ''\n     },\n\n     package: {\n       demo_script: input.demo_narrative_script || {},\n       demo_scenes: input.demo_commercial_scenes || [],\n       evaluation_criteria: input.narrative_evaluation_criteria || {},\n       presenter_checklist: input.presenter_checklist || [],\n       fallback_plan: input.demo_fallback_plan || []\n     },\n\n     findings: input.narrative_readiness?.findings || [],\n     warnings: input.narrative_readiness?.warnings || [],\n     adjustment_backlog: input.narrative_readiness?.adjustment_backlog || [],\n\n     completed_at: new Date().toISOString()\n   }\n }\n];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        2256,
+        0
+      ],
+      "id": "755f34ce-d3cb-4593-936b-d2a4e953ea0b",
+      "name": "Return Narrative Rehearsal Package"
+    }
+  ],
+  "connections": {
+    "Narrative Rehearsal Trigger": {
+      "main": [
+        [
+          {
+            "node": "Load Narrative Rehearsal Config",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Load Narrative Rehearsal Config": {
+      "main": [
+        [
+          {
+            "node": "Build Narrative Rehearsal Draft",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Build Narrative Rehearsal Draft": {
+      "main": [
+        [
+          {
+            "node": "Build Demo Narrative Script",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Build Demo Narrative Script": {
+      "main": [
+        [
+          {
+            "node": "Build Demo Commercial Scenes",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Build Demo Commercial Scenes": {
+      "main": [
+        [
+          {
+            "node": "Build Narrative Evaluation Criteria",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Build Narrative Evaluation Criteria": {
+      "main": [
+        [
+          {
+            "node": "Build Presenter Checklist",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Build Presenter Checklist": {
+      "main": [
+        [
+          {
+            "node": "Build Demo Fallback Plan",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Build Demo Fallback Plan": {
+      "main": [
+        [
+          {
+            "node": "Create Narrative Rehearsal Record",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Create Narrative Rehearsal Record": {
+      "main": [
+        [
+          {
+            "node": "Evaluate Narrative Readiness",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Evaluate Narrative Readiness": {
+      "main": [
+        [
+          {
+            "node": "Update Narrative Rehearsal Status",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Update Narrative Rehearsal Status": {
+      "main": [
+        [
+          {
+            "node": "Return Narrative Rehearsal Package",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "nodeGroups": [],
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate"
+  },
+  "staticData": null,
+  "pinData": {},
+  "meta": {
+    "templateCredsSetupCompleted": true
+  },
+  "tags": [],
+  "shared": [
+    {
+      "role": "workflow:owner",
+      "workflowId": "lLIvIN99ocVRtxhp",
+      "projectId": "tRHCC8ts4mkRGXGn",
+      "createdAt": "2026-05-28T20:59:13.995Z",
+      "updatedAt": "2026-05-28T20:59:13.995Z"
+    }
+  ],
+  "activeVersion": null
+}
