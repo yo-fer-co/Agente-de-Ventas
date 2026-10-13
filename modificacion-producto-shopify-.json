@@ -1,0 +1,146 @@
+{
+  "id": "tILOvkkOKG7ZHcTpVfklQ",
+  "name": "Modificacion producto shopify",
+  "active": false,
+  "activeVersionId": null,
+  "createdAt": "2026-01-20T22:43:29.821Z",
+  "updatedAt": "2026-01-21T03:19:12.000Z",
+  "isArchived": true,
+  "versionId": "ae0941e4-c665-41a6-bc25-6bd190f859b7",
+  "triggerCount": 0,
+  "nodes": [
+    {
+      "parameters": {
+        "inputSource": "jsonExample",
+        "jsonExample": "{\n  \"producto\": \"Z PRODUCTO DE PRUEBA\",\n  \"sku\": \"BW-12345678\",\n  \"estado\": \"actualizado\"\n}"
+      },
+      "type": "n8n-nodes-base.executeWorkflowTrigger",
+      "typeVersion": 1.1,
+      "position": [
+        0,
+        0
+      ],
+      "id": "192555bf-ef9e-4181-8a4c-3602731459fd",
+      "name": "When Executed by Another Workflow"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "5461d01b-cd3a-46a4-beae-1b438271830a",
+              "name": "producto",
+              "value": "={{ $json.producto }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        208,
+        0
+      ],
+      "id": "f561d1d0-8d5e-41d5-a596-62ddac2a5665",
+      "name": "Obtiene datos producto"
+    },
+    {
+      "parameters": {
+        "documentId": {
+          "__rl": true,
+          "value": "1z3iO_NUqb9Se5x2q_7TxobJccftx3iRKD_AukhQdQrU",
+          "mode": "list",
+          "cachedResultName": "Levantamiento de atributos_Catálogo",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1z3iO_NUqb9Se5x2q_7TxobJccftx3iRKD_AukhQdQrU/edit?usp=drivesdk"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": 635472354,
+          "mode": "list",
+          "cachedResultName": "Hoja 7",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1z3iO_NUqb9Se5x2q_7TxobJccftx3iRKD_AukhQdQrU/edit#gid=635472354"
+        },
+        "filtersUI": {
+          "values": [
+            {
+              "lookupColumn": "Titulo*",
+              "lookupValue": "={{ $json.producto }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [
+        416,
+        0
+      ],
+      "id": "34ba9169-4f64-4bde-b626-f8c4a58ef833",
+      "name": "Obtiene producto",
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "Pf0TYy2joLTmqt2C",
+          "name": "Google Sheets account 3"
+        }
+      }
+    }
+  ],
+  "connections": {
+    "When Executed by Another Workflow": {
+      "main": [
+        [
+          {
+            "node": "Obtiene datos producto",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Obtiene datos producto": {
+      "main": [
+        [
+          {
+            "node": "Obtiene producto",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "nodeGroups": [],
+  "settings": {
+    "executionOrder": "v1",
+    "availableInMCP": false
+  },
+  "staticData": null,
+  "pinData": {
+    "When Executed by Another Workflow": [
+      {
+        "json": {
+          "producto": "Z PRODUCTO DE PRUEBA",
+          "sku": "BW-12345678",
+          "estado": "actualizado"
+        }
+      }
+    ]
+  },
+  "meta": {
+    "templateCredsSetupCompleted": true
+  },
+  "tags": [],
+  "shared": [
+    {
+      "role": "workflow:owner",
+      "workflowId": "tILOvkkOKG7ZHcTpVfklQ",
+      "projectId": "8h8pwWGcWlnGEym3",
+      "createdAt": "2026-01-20T22:43:29.825Z",
+      "updatedAt": "2026-01-20T22:43:29.825Z"
+    }
+  ],
+  "activeVersion": null
+}
