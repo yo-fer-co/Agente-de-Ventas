@@ -1,0 +1,257 @@
+{
+  "id": "2h895QCeDJvj3xzx",
+  "name": "DALIA_TEST.14_Lote_de_prueba",
+  "active": false,
+  "activeVersionId": null,
+  "createdAt": "2026-10-07T02:18:01.212Z",
+  "updatedAt": "2026-10-07T02:18:04.570Z",
+  "isArchived": false,
+  "versionId": "ba2418ef-2267-4a91-a2c9-9ba07cce4631",
+  "triggerCount": 0,
+  "nodes": [
+    {
+      "id": "71485db4-affd-4a4e-b482-cdb2efee75a0",
+      "name": "Enviar lote de prueba",
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [
+        0,
+        80
+      ],
+      "parameters": {}
+    },
+    {
+      "id": "9b4849c3-2cc1-4fcf-be09-60f9b9ee7164",
+      "name": "Datos de prueba",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        224,
+        80
+      ],
+      "parameters": {
+        "mode": "manual",
+        "includeOtherFields": false,
+        "assignments": {
+          "assignments": [
+            {
+              "id": "d1",
+              "name": "numero",
+              "value": "573000000000",
+              "type": "string"
+            },
+            {
+              "id": "d2",
+              "name": "nombre",
+              "value": "Prueba compuertas",
+              "type": "string"
+            },
+            {
+              "id": "d3",
+              "name": "pausa_segundos",
+              "value": 25,
+              "type": "number"
+            },
+            {
+              "id": "d4",
+              "name": "mensajes",
+              "value": "={{ [\"Hola, ¿qué productos tienen?\", \"¿Cuál es la política de devoluciones?\"] }}",
+              "type": "array"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "234549ed-1906-4cf7-aeca-bb23538c2b7f",
+      "name": "Un item por mensaje",
+      "type": "n8n-nodes-base.splitOut",
+      "typeVersion": 1,
+      "position": [
+        448,
+        80
+      ],
+      "parameters": {
+        "fieldToSplitOut": "mensajes",
+        "include": "selectedOtherFields",
+        "fieldsToInclude": "numero, nombre, pausa_segundos",
+        "options": {
+          "destinationFieldName": "texto"
+        }
+      }
+    },
+    {
+      "id": "517bfdce-2dc5-4882-a520-f2a62c6124c2",
+      "name": "Mensaje de prueba",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        896,
+        0
+      ],
+      "parameters": {
+        "mode": "raw",
+        "jsonOutput": "={{ JSON.stringify({ contract: \"dalia.channel.inbound_message/1.0\", channel: \"whatsapp\", channel_account_ref: \"test14\", channel_message_id: \"test14-\" + $now.toMillis() + \"-\" + $runIndex, channel_thread_id: $json.numero, from: { channel_user_id: $json.numero, display_name: $json.nombre }, sent_at: $now.toISO(), received_at: $now.toISO(), family: \"content\", content_type: \"text\", text: $json.texto, raw: { simulated: true, test: \"TEST.14\" } }) }}",
+        "options": {}
+      }
+    },
+    {
+      "id": "234ebbbb-1cd9-4347-92c4-0b65caa5a217",
+      "name": "Llamar M1.01",
+      "type": "n8n-nodes-base.executeWorkflow",
+      "typeVersion": 1.3,
+      "position": [
+        1120,
+        0
+      ],
+      "parameters": {
+        "mode": "each",
+        "source": "database",
+        "workflowId": {
+          "__rl": true,
+          "mode": "id",
+          "value": "BabIah2N7LEXNLCs"
+        },
+        "options": {
+          "waitForSubWorkflow": true
+        }
+      }
+    },
+    {
+      "id": "190f335a-3439-4b61-a3dc-efb6505274ee",
+      "name": "Pausa entre mensajes",
+      "type": "n8n-nodes-base.wait",
+      "typeVersion": 1.1,
+      "position": [
+        1344,
+        80
+      ],
+      "parameters": {
+        "resume": "timeInterval",
+        "amount": "={{ $(\"Uno a la vez\").item.json.pausa_segundos ?? 25 }}",
+        "unit": "seconds"
+      },
+      "webhookId": "3fbb07ad-6c67-4c6f-86db-54e80667a867"
+    },
+    {
+      "id": "f63ffe82-820e-4c41-83e5-6d49ee18c83d",
+      "name": "Uno a la vez",
+      "type": "n8n-nodes-base.splitInBatches",
+      "typeVersion": 3,
+      "position": [
+        672,
+        80
+      ],
+      "parameters": {
+        "batchSize": 1,
+        "options": {}
+      }
+    }
+  ],
+  "connections": {
+    "Enviar lote de prueba": {
+      "main": [
+        [
+          {
+            "node": "Datos de prueba",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Datos de prueba": {
+      "main": [
+        [
+          {
+            "node": "Un item por mensaje",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Un item por mensaje": {
+      "main": [
+        [
+          {
+            "node": "Uno a la vez",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Mensaje de prueba": {
+      "main": [
+        [
+          {
+            "node": "Llamar M1.01",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Llamar M1.01": {
+      "main": [
+        [
+          {
+            "node": "Pausa entre mensajes",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Pausa entre mensajes": {
+      "main": [
+        [
+          {
+            "node": "Uno a la vez",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Uno a la vez": {
+      "main": [
+        [],
+        [
+          {
+            "node": "Mensaje de prueba",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "nodeGroups": [],
+  "settings": {
+    "executionOrder": "v1",
+    "availableInMCP": true,
+    "timezone": "America/Bogota",
+    "saveManualExecutions": true,
+    "saveDataErrorExecution": "all",
+    "callerPolicy": "workflowsFromSameOwner"
+  },
+  "staticData": null,
+  "pinData": null,
+  "meta": {
+    "aiBuilderAssisted": true,
+    "builderVariant": "mcp"
+  },
+  "tags": [],
+  "shared": [
+    {
+      "role": "workflow:owner",
+      "workflowId": "2h895QCeDJvj3xzx",
+      "projectId": "tRHCC8ts4mkRGXGn",
+      "createdAt": "2026-10-09T21:09:17.866Z",
+      "updatedAt": "2026-10-09T21:09:17.866Z"
+    }
+  ],
+  "activeVersion": null
+}
