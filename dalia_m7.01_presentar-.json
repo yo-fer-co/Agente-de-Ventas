@@ -1,0 +1,1129 @@
+{
+  "id": "1nllxN28kc96xP8x",
+  "name": "DALIA_M7.01_Presentar",
+  "active": true,
+  "activeVersionId": "d0237d8d-377b-4816-a77e-e52c7a0bd0c1",
+  "createdAt": "2026-10-05T18:52:01.208Z",
+  "updatedAt": "2026-10-05T19:31:33.275Z",
+  "isArchived": false,
+  "versionId": "d0237d8d-377b-4816-a77e-e52c7a0bd0c1",
+  "triggerCount": 0,
+  "nodes": [
+    {
+      "id": "993a3a46-b00d-40cb-bc34-fad255e03130",
+      "name": "Entrada",
+      "type": "n8n-nodes-base.executeWorkflowTrigger",
+      "typeVersion": 1.2,
+      "position": [
+        0,
+        192
+      ],
+      "parameters": {
+        "inputSource": "passthrough"
+      }
+    },
+    {
+      "id": "9df2112e-dd66-43df-9492-5dd54a8f394e",
+      "name": "Solicitud",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        224,
+        192
+      ],
+      "parameters": {
+        "mode": "raw",
+        "jsonOutput": "={{ JSON.stringify($json.job_id ? $json.payload : $json) }}",
+        "options": {}
+      }
+    },
+    {
+      "id": "0da51077-aa76-414a-822e-e5621e0febd3",
+      "name": "Presentar",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.7,
+      "position": [
+        448,
+        192
+      ],
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "select dalia.m7_present($1::jsonb, null) as r;",
+        "options": {
+          "queryReplacement": "={{ [ JSON.stringify($json) ] }}"
+        }
+      },
+      "credentials": {
+        "postgres": {
+          "id": "HfCgVAjUygK1vrkU",
+          "name": "DALIA dev Supabase"
+        }
+      },
+      "onError": "continueErrorOutput"
+    },
+    {
+      "id": "b950609f-64c6-4db4-99bc-acb365b046a1",
+      "name": "Necesita contexto",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        672,
+        96
+      ],
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose"
+          },
+          "conditions": [
+            {
+              "leftValue": "={{ $json.r.status === \"needs_context\" }}",
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        }
+      }
+    },
+    {
+      "id": "4c5075eb-33dd-4191-8696-87af8804481f",
+      "name": "Solicitud de contexto a M4",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        896,
+        32
+      ],
+      "parameters": {
+        "mode": "raw",
+        "jsonOutput": "={{ JSON.stringify($json.r.m4_request) }}",
+        "options": {}
+      }
+    },
+    {
+      "id": "8907bbc1-502e-4216-93aa-367f9d0d3352",
+      "name": "Contexto del destinatario (M4.01)",
+      "type": "n8n-nodes-base.executeWorkflow",
+      "typeVersion": 1.3,
+      "position": [
+        1120,
+        32
+      ],
+      "parameters": {
+        "mode": "each",
+        "source": "database",
+        "workflowId": {
+          "__rl": true,
+          "mode": "id",
+          "value": "Ys1IC6QH1dER3mJN"
+        },
+        "options": {
+          "waitForSubWorkflow": true
+        }
+      },
+      "onError": "continueRegularOutput"
+    },
+    {
+      "id": "41b5f549-e572-4606-a07f-6fda1679fd04",
+      "name": "Presentar con contexto",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.7,
+      "position": [
+        1344,
+        32
+      ],
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "select dalia.m7_present($1::jsonb, $2::jsonb) as r;",
+        "options": {
+          "queryReplacement": "={{ [ JSON.stringify($(\"Solicitud\").first().json), JSON.stringify($json.result ?? { status: \"unavailable\" }) ] }}"
+        }
+      },
+      "credentials": {
+        "postgres": {
+          "id": "HfCgVAjUygK1vrkU",
+          "name": "DALIA dev Supabase"
+        }
+      },
+      "onError": "continueErrorOutput"
+    },
+    {
+      "id": "39e46483-14e2-42aa-8753-8f325bd8ec2a",
+      "name": "Aceptado",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        1568,
+        96
+      ],
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose"
+          },
+          "conditions": [
+            {
+              "leftValue": "={{ $json.r.status === \"accepted\" && $json.r.dispatch === true }}",
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        }
+      }
+    },
+    {
+      "id": "0b941346-bb4b-40ae-854e-dccbaaaf583f",
+      "name": "Pedido de despacho",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        1792,
+        0
+      ],
+      "parameters": {
+        "mode": "raw",
+        "jsonOutput": "={{ JSON.stringify({ bundle_id: $json.r.bundle_id }) }}",
+        "options": {}
+      }
+    },
+    {
+      "id": "5d9789df-8426-4b2c-9ea0-9b57465832b6",
+      "name": "Despachar (M7.02)",
+      "type": "n8n-nodes-base.executeWorkflow",
+      "typeVersion": 1.3,
+      "position": [
+        2016,
+        0
+      ],
+      "parameters": {
+        "mode": "each",
+        "source": "database",
+        "workflowId": {
+          "__rl": true,
+          "mode": "id",
+          "value": "AJ6tTbeMVg3s5Yzo"
+        },
+        "options": {
+          "waitForSubWorkflow": true
+        }
+      }
+    },
+    {
+      "id": "df9af909-b49d-4161-86d0-37e943b5c9d8",
+      "name": "Resultado del despacho",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        2240,
+        0
+      ],
+      "parameters": {
+        "mode": "manual",
+        "includeOtherFields": false,
+        "assignments": {
+          "assignments": [
+            {
+              "id": "r1",
+              "name": "result",
+              "value": "={{ $json.result }}",
+              "type": "object"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "fa245e04-fc71-40ce-9989-4f396d9c0991",
+      "name": "Es job",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        2464,
+        192
+      ],
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose"
+          },
+          "conditions": [
+            {
+              "leftValue": "={{ !!$(\"Entrada\").first().json.job_id }}",
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        }
+      }
+    },
+    {
+      "id": "298529db-aa9d-4100-9655-bb896020f181",
+      "name": "Resultado sin envio",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        2240,
+        192
+      ],
+      "parameters": {
+        "mode": "manual",
+        "includeOtherFields": false,
+        "assignments": {
+          "assignments": [
+            {
+              "id": "r1",
+              "name": "result",
+              "value": "={{ $json.r }}",
+              "type": "object"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "e7b02b11-386c-4f7c-bbeb-edb95079670f",
+      "name": "Completar job",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.7,
+      "position": [
+        2688,
+        192
+      ],
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "select dalia.sys_complete_job($1::uuid, $2::jsonb) as job_status;",
+        "options": {
+          "queryReplacement": "={{ [ $(\"Entrada\").first().json.job_id, JSON.stringify($json.result ?? {}) ] }}"
+        }
+      },
+      "credentials": {
+        "postgres": {
+          "id": "HfCgVAjUygK1vrkU",
+          "name": "DALIA dev Supabase"
+        }
+      }
+    },
+    {
+      "id": "6bf3107f-7f3c-443f-8ff5-2364915aa003",
+      "name": "Solicitud invalida",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        1568,
+        368
+      ],
+      "parameters": {
+        "mode": "manual",
+        "includeOtherFields": false,
+        "assignments": {
+          "assignments": [
+            {
+              "id": "r1",
+              "name": "result",
+              "value": "={{ { status: \"invalid\", final: true, error: $json.error?.message ?? $json.error ?? \"solicitud inválida\" } }}",
+              "type": "object"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "b0b0ec10-90ca-43f1-8401-83d6ae61c343",
+      "name": "Salida",
+      "type": "n8n-nodes-base.noOp",
+      "typeVersion": 1,
+      "position": [
+        2200,
+        200
+      ],
+      "parameters": {},
+      "notes": "H-L9-02: devuelve el resultado por la salida 0 cuando no es job (llamada directa desde M2 o TEST.10)"
+    }
+  ],
+  "connections": {
+    "Entrada": {
+      "main": [
+        [
+          {
+            "node": "Solicitud",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Solicitud": {
+      "main": [
+        [
+          {
+            "node": "Presentar",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Presentar": {
+      "main": [
+        [
+          {
+            "node": "Necesita contexto",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Solicitud invalida",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Necesita contexto": {
+      "main": [
+        [
+          {
+            "node": "Solicitud de contexto a M4",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Aceptado",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Solicitud de contexto a M4": {
+      "main": [
+        [
+          {
+            "node": "Contexto del destinatario (M4.01)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Contexto del destinatario (M4.01)": {
+      "main": [
+        [
+          {
+            "node": "Presentar con contexto",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Presentar con contexto": {
+      "main": [
+        [
+          {
+            "node": "Aceptado",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Solicitud invalida",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Aceptado": {
+      "main": [
+        [
+          {
+            "node": "Pedido de despacho",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Resultado sin envio",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Pedido de despacho": {
+      "main": [
+        [
+          {
+            "node": "Despachar (M7.02)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Despachar (M7.02)": {
+      "main": [
+        [
+          {
+            "node": "Resultado del despacho",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Resultado del despacho": {
+      "main": [
+        [
+          {
+            "node": "Es job",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Es job": {
+      "main": [
+        [
+          {
+            "node": "Completar job",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Salida",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Resultado sin envio": {
+      "main": [
+        [
+          {
+            "node": "Es job",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Solicitud invalida": {
+      "main": [
+        [
+          {
+            "node": "Es job",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "nodeGroups": [],
+  "settings": {
+    "executionOrder": "v1",
+    "availableInMCP": true,
+    "errorWorkflow": "cjjQno2MxMTT3Icc",
+    "timezone": "America/Bogota",
+    "saveDataSuccessExecution": "none",
+    "callerPolicy": "workflowsFromSameOwner"
+  },
+  "staticData": null,
+  "pinData": null,
+  "meta": {
+    "aiBuilderAssisted": true,
+    "builderVariant": "mcp"
+  },
+  "tags": [],
+  "shared": [
+    {
+      "role": "workflow:owner",
+      "workflowId": "1nllxN28kc96xP8x",
+      "projectId": "tRHCC8ts4mkRGXGn",
+      "createdAt": "2026-10-09T21:09:17.826Z",
+      "updatedAt": "2026-10-09T21:09:17.826Z"
+    }
+  ],
+  "activeVersion": {
+    "versionId": "d0237d8d-377b-4816-a77e-e52c7a0bd0c1",
+    "workflowId": "1nllxN28kc96xP8x",
+    "nodes": [
+      {
+        "id": "993a3a46-b00d-40cb-bc34-fad255e03130",
+        "name": "Entrada",
+        "type": "n8n-nodes-base.executeWorkflowTrigger",
+        "typeVersion": 1.2,
+        "position": [
+          0,
+          192
+        ],
+        "parameters": {
+          "inputSource": "passthrough"
+        }
+      },
+      {
+        "id": "9df2112e-dd66-43df-9492-5dd54a8f394e",
+        "name": "Solicitud",
+        "type": "n8n-nodes-base.set",
+        "typeVersion": 3.4,
+        "position": [
+          224,
+          192
+        ],
+        "parameters": {
+          "mode": "raw",
+          "jsonOutput": "={{ JSON.stringify($json.job_id ? $json.payload : $json) }}",
+          "options": {}
+        }
+      },
+      {
+        "id": "0da51077-aa76-414a-822e-e5621e0febd3",
+        "name": "Presentar",
+        "type": "n8n-nodes-base.postgres",
+        "typeVersion": 2.7,
+        "position": [
+          448,
+          192
+        ],
+        "parameters": {
+          "operation": "executeQuery",
+          "query": "select dalia.m7_present($1::jsonb, null) as r;",
+          "options": {
+            "queryReplacement": "={{ [ JSON.stringify($json) ] }}"
+          }
+        },
+        "credentials": {
+          "postgres": {
+            "id": "HfCgVAjUygK1vrkU",
+            "name": "DALIA dev Supabase"
+          }
+        },
+        "onError": "continueErrorOutput"
+      },
+      {
+        "id": "b950609f-64c6-4db4-99bc-acb365b046a1",
+        "name": "Necesita contexto",
+        "type": "n8n-nodes-base.if",
+        "typeVersion": 2.2,
+        "position": [
+          672,
+          96
+        ],
+        "parameters": {
+          "conditions": {
+            "options": {
+              "caseSensitive": true,
+              "leftValue": "",
+              "typeValidation": "loose"
+            },
+            "conditions": [
+              {
+                "leftValue": "={{ $json.r.status === \"needs_context\" }}",
+                "operator": {
+                  "type": "boolean",
+                  "operation": "true",
+                  "singleValue": true
+                }
+              }
+            ],
+            "combinator": "and"
+          }
+        }
+      },
+      {
+        "id": "4c5075eb-33dd-4191-8696-87af8804481f",
+        "name": "Solicitud de contexto a M4",
+        "type": "n8n-nodes-base.set",
+        "typeVersion": 3.4,
+        "position": [
+          896,
+          32
+        ],
+        "parameters": {
+          "mode": "raw",
+          "jsonOutput": "={{ JSON.stringify($json.r.m4_request) }}",
+          "options": {}
+        }
+      },
+      {
+        "id": "8907bbc1-502e-4216-93aa-367f9d0d3352",
+        "name": "Contexto del destinatario (M4.01)",
+        "type": "n8n-nodes-base.executeWorkflow",
+        "typeVersion": 1.3,
+        "position": [
+          1120,
+          32
+        ],
+        "parameters": {
+          "mode": "each",
+          "source": "database",
+          "workflowId": {
+            "__rl": true,
+            "mode": "id",
+            "value": "Ys1IC6QH1dER3mJN"
+          },
+          "options": {
+            "waitForSubWorkflow": true
+          }
+        },
+        "onError": "continueRegularOutput"
+      },
+      {
+        "id": "41b5f549-e572-4606-a07f-6fda1679fd04",
+        "name": "Presentar con contexto",
+        "type": "n8n-nodes-base.postgres",
+        "typeVersion": 2.7,
+        "position": [
+          1344,
+          32
+        ],
+        "parameters": {
+          "operation": "executeQuery",
+          "query": "select dalia.m7_present($1::jsonb, $2::jsonb) as r;",
+          "options": {
+            "queryReplacement": "={{ [ JSON.stringify($(\"Solicitud\").first().json), JSON.stringify($json.result ?? { status: \"unavailable\" }) ] }}"
+          }
+        },
+        "credentials": {
+          "postgres": {
+            "id": "HfCgVAjUygK1vrkU",
+            "name": "DALIA dev Supabase"
+          }
+        },
+        "onError": "continueErrorOutput"
+      },
+      {
+        "id": "39e46483-14e2-42aa-8753-8f325bd8ec2a",
+        "name": "Aceptado",
+        "type": "n8n-nodes-base.if",
+        "typeVersion": 2.2,
+        "position": [
+          1568,
+          96
+        ],
+        "parameters": {
+          "conditions": {
+            "options": {
+              "caseSensitive": true,
+              "leftValue": "",
+              "typeValidation": "loose"
+            },
+            "conditions": [
+              {
+                "leftValue": "={{ $json.r.status === \"accepted\" && $json.r.dispatch === true }}",
+                "operator": {
+                  "type": "boolean",
+                  "operation": "true",
+                  "singleValue": true
+                }
+              }
+            ],
+            "combinator": "and"
+          }
+        }
+      },
+      {
+        "id": "0b941346-bb4b-40ae-854e-dccbaaaf583f",
+        "name": "Pedido de despacho",
+        "type": "n8n-nodes-base.set",
+        "typeVersion": 3.4,
+        "position": [
+          1792,
+          0
+        ],
+        "parameters": {
+          "mode": "raw",
+          "jsonOutput": "={{ JSON.stringify({ bundle_id: $json.r.bundle_id }) }}",
+          "options": {}
+        }
+      },
+      {
+        "id": "5d9789df-8426-4b2c-9ea0-9b57465832b6",
+        "name": "Despachar (M7.02)",
+        "type": "n8n-nodes-base.executeWorkflow",
+        "typeVersion": 1.3,
+        "position": [
+          2016,
+          0
+        ],
+        "parameters": {
+          "mode": "each",
+          "source": "database",
+          "workflowId": {
+            "__rl": true,
+            "mode": "id",
+            "value": "AJ6tTbeMVg3s5Yzo"
+          },
+          "options": {
+            "waitForSubWorkflow": true
+          }
+        }
+      },
+      {
+        "id": "df9af909-b49d-4161-86d0-37e943b5c9d8",
+        "name": "Resultado del despacho",
+        "type": "n8n-nodes-base.set",
+        "typeVersion": 3.4,
+        "position": [
+          2240,
+          0
+        ],
+        "parameters": {
+          "mode": "manual",
+          "includeOtherFields": false,
+          "assignments": {
+            "assignments": [
+              {
+                "id": "r1",
+                "name": "result",
+                "value": "={{ $json.result }}",
+                "type": "object"
+              }
+            ]
+          }
+        }
+      },
+      {
+        "id": "fa245e04-fc71-40ce-9989-4f396d9c0991",
+        "name": "Es job",
+        "type": "n8n-nodes-base.if",
+        "typeVersion": 2.2,
+        "position": [
+          2464,
+          192
+        ],
+        "parameters": {
+          "conditions": {
+            "options": {
+              "caseSensitive": true,
+              "leftValue": "",
+              "typeValidation": "loose"
+            },
+            "conditions": [
+              {
+                "leftValue": "={{ !!$(\"Entrada\").first().json.job_id }}",
+                "operator": {
+                  "type": "boolean",
+                  "operation": "true",
+                  "singleValue": true
+                }
+              }
+            ],
+            "combinator": "and"
+          }
+        }
+      },
+      {
+        "id": "298529db-aa9d-4100-9655-bb896020f181",
+        "name": "Resultado sin envio",
+        "type": "n8n-nodes-base.set",
+        "typeVersion": 3.4,
+        "position": [
+          2240,
+          192
+        ],
+        "parameters": {
+          "mode": "manual",
+          "includeOtherFields": false,
+          "assignments": {
+            "assignments": [
+              {
+                "id": "r1",
+                "name": "result",
+                "value": "={{ $json.r }}",
+                "type": "object"
+              }
+            ]
+          }
+        }
+      },
+      {
+        "id": "e7b02b11-386c-4f7c-bbeb-edb95079670f",
+        "name": "Completar job",
+        "type": "n8n-nodes-base.postgres",
+        "typeVersion": 2.7,
+        "position": [
+          2688,
+          192
+        ],
+        "parameters": {
+          "operation": "executeQuery",
+          "query": "select dalia.sys_complete_job($1::uuid, $2::jsonb) as job_status;",
+          "options": {
+            "queryReplacement": "={{ [ $(\"Entrada\").first().json.job_id, JSON.stringify($json.result ?? {}) ] }}"
+          }
+        },
+        "credentials": {
+          "postgres": {
+            "id": "HfCgVAjUygK1vrkU",
+            "name": "DALIA dev Supabase"
+          }
+        }
+      },
+      {
+        "id": "6bf3107f-7f3c-443f-8ff5-2364915aa003",
+        "name": "Solicitud invalida",
+        "type": "n8n-nodes-base.set",
+        "typeVersion": 3.4,
+        "position": [
+          1568,
+          368
+        ],
+        "parameters": {
+          "mode": "manual",
+          "includeOtherFields": false,
+          "assignments": {
+            "assignments": [
+              {
+                "id": "r1",
+                "name": "result",
+                "value": "={{ { status: \"invalid\", final: true, error: $json.error?.message ?? $json.error ?? \"solicitud inválida\" } }}",
+                "type": "object"
+              }
+            ]
+          }
+        }
+      },
+      {
+        "id": "b0b0ec10-90ca-43f1-8401-83d6ae61c343",
+        "name": "Salida",
+        "type": "n8n-nodes-base.noOp",
+        "typeVersion": 1,
+        "position": [
+          2200,
+          200
+        ],
+        "parameters": {},
+        "notes": "H-L9-02: devuelve el resultado por la salida 0 cuando no es job (llamada directa desde M2 o TEST.10)"
+      }
+    ],
+    "connections": {
+      "Entrada": {
+        "main": [
+          [
+            {
+              "node": "Solicitud",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Solicitud": {
+        "main": [
+          [
+            {
+              "node": "Presentar",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Presentar": {
+        "main": [
+          [
+            {
+              "node": "Necesita contexto",
+              "type": "main",
+              "index": 0
+            }
+          ],
+          [
+            {
+              "node": "Solicitud invalida",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Necesita contexto": {
+        "main": [
+          [
+            {
+              "node": "Solicitud de contexto a M4",
+              "type": "main",
+              "index": 0
+            }
+          ],
+          [
+            {
+              "node": "Aceptado",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Solicitud de contexto a M4": {
+        "main": [
+          [
+            {
+              "node": "Contexto del destinatario (M4.01)",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Contexto del destinatario (M4.01)": {
+        "main": [
+          [
+            {
+              "node": "Presentar con contexto",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Presentar con contexto": {
+        "main": [
+          [
+            {
+              "node": "Aceptado",
+              "type": "main",
+              "index": 0
+            }
+          ],
+          [
+            {
+              "node": "Solicitud invalida",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Aceptado": {
+        "main": [
+          [
+            {
+              "node": "Pedido de despacho",
+              "type": "main",
+              "index": 0
+            }
+          ],
+          [
+            {
+              "node": "Resultado sin envio",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Pedido de despacho": {
+        "main": [
+          [
+            {
+              "node": "Despachar (M7.02)",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Despachar (M7.02)": {
+        "main": [
+          [
+            {
+              "node": "Resultado del despacho",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Resultado del despacho": {
+        "main": [
+          [
+            {
+              "node": "Es job",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Es job": {
+        "main": [
+          [
+            {
+              "node": "Completar job",
+              "type": "main",
+              "index": 0
+            }
+          ],
+          [
+            {
+              "node": "Salida",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Resultado sin envio": {
+        "main": [
+          [
+            {
+              "node": "Es job",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Solicitud invalida": {
+        "main": [
+          [
+            {
+              "node": "Es job",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      }
+    },
+    "nodeGroups": [],
+    "authors": "Fabian Bocanegra (via MCP)",
+    "name": "H-L9-02: salida 0 cuando no es job",
+    "description": "Added nodes: Salida\nConnections: 1 added, 0 removed",
+    "autosaved": false,
+    "createdAt": "2026-10-05T19:31:33.277Z",
+    "updatedAt": "2026-10-05T19:31:33.277Z"
+  }
+}
