@@ -1,0 +1,539 @@
+{
+  "id": "QU3E9M1kWSOLAR3p",
+  "name": "Consulta historial - TEST Alfa V1",
+  "active": true,
+  "activeVersionId": "e9a46bef-2f68-4e21-af65-9fb13ebb2786",
+  "createdAt": "2025-07-09T02:06:43.347Z",
+  "updatedAt": "2025-07-09T03:11:46.000Z",
+  "isArchived": false,
+  "versionId": "e9a46bef-2f68-4e21-af65-9fb13ebb2786",
+  "triggerCount": 0,
+  "nodes": [
+    {
+      "parameters": {
+        "content": "## Consulta historial - TEST Alfa V1\n\n1. Consulta historial de cliente en instancia QDrant, \"YoEco_Clientes_TEST\"",
+        "height": 180,
+        "width": 500,
+        "color": 6
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [
+        -500,
+        -340
+      ],
+      "typeVersion": 1,
+      "id": "aa3a38d7-1cf3-47ad-bbb1-c732dc70168b",
+      "name": "Sticky Note"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "f9ef56eb-0476-4526-b90a-f5babc081aa2",
+              "name": "user_id",
+              "value": "={{ $json.user_id }}",
+              "type": "string"
+            },
+            {
+              "id": "7ef0a44a-bbd8-47a5-8a11-5fd95ea502de",
+              "name": "message",
+              "value": "={{ $json.message }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        240,
+        0
+      ],
+      "id": "5bfc1743-3798-40ab-b476-7fc1fb57ac7b",
+      "name": "Edit Fields"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.openai.com/v1/embeddings",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "openAiApi",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"input\": \"{{$json[\"message\"]}}\",\n  \"model\": \"text-embedding-ada-002\"\n}\n",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        460,
+        0
+      ],
+      "id": "d8c70240-b7e9-4bfd-b91b-db4b48409710",
+      "name": "Embedding inicial",
+      "credentials": {
+        "openAiApi": {
+          "id": "CxN1M3GiHPXWR4gx",
+          "name": "OpenAi TEST"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "return [{\n  json: {\n    user_id: $('Edit Fields').first().json.user_id,\n    message: $('Edit Fields').first().json.message,\n    embedding: $input.first().json.data[0].embedding\n  }\n}];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        680,
+        0
+      ],
+      "id": "5201887b-4dcb-46fb-b503-b746841c65b2",
+      "name": "Set parametros"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://1537c683-48da-4631-ab76-ad698b6b9881.us-east-1-0.aws.cloud.qdrant.io/collections/YoEco_Clientes_TEST/points/search",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "qdrantApi",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"vector\": {{ JSON.stringify($json.embedding) }},\n  \"top\": 3,\n  \"with_payload\": true,\n  \"filter\": {\n    \"must\": [\n      {\n        \"key\": \"user_id\",\n        \"match\": {\n          \"value\": {{ JSON.stringify($json.user_id) }}\n        }\n      }\n    ]\n  }\n}\n\n",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        900,
+        0
+      ],
+      "id": "562e8a6d-8c59-4629-a343-20bee4d6737c",
+      "name": "Consulta Qdrant",
+      "credentials": {
+        "qdrantApi": {
+          "id": "9oUogOvtDqsTDKBQ",
+          "name": "QdrantApi TEST"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const historial = $input.first().json.result || [];\nconst textos = historial.map(i => i.payload?.text || \"\").filter(Boolean).join(\"\\n---\\n\");\nconst user_id = $('Edit Fields').first().json.user_id;\nconst mensajeActual = $('Edit Fields').first().json.message;\n\nlet prompt = \"\";\n\nif (historial.length > 0) {\n  prompt = `Historial de usuario:\\n${textos}\\n\\nMensaje actual:\\n${mensajeActual}`;\n} else {\n  prompt = `Mensaje de nuevo usuario:\\n${mensajeActual}`;\n}\n\nreturn [{\n  json: {\n    user_id,\n    prompt,\n    historial_disponible: historial.length > 0\n  }\n}];\n"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1160,
+        0
+      ],
+      "id": "e9b7753a-f29a-4c09-bf84-b6a9f9ecc42b",
+      "name": "Agrega historial a prompt"
+    },
+    {
+      "parameters": {
+        "workflowInputs": {
+          "values": [
+            {
+              "name": "user_id"
+            },
+            {
+              "name": "message"
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.executeWorkflowTrigger",
+      "typeVersion": 1.1,
+      "position": [
+        0,
+        0
+      ],
+      "id": "da090b4e-fb10-444a-9450-bcf86ed91d30",
+      "name": "When Executed by Another Workflow"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "68a5fdff-a84d-4e1d-9c17-42b853e7de87",
+              "name": "user_id",
+              "value": "={{ $json.user_id }}",
+              "type": "string"
+            },
+            {
+              "id": "6e4aed49-b622-4ac5-bb7d-22bfd5007352",
+              "name": "prompt",
+              "value": "={{ $json.prompt }}",
+              "type": "string"
+            },
+            {
+              "id": "5a71bd91-e971-4545-81fb-15765f3809fd",
+              "name": "historial_disponible",
+              "value": "={{ $json.historial_disponible }}",
+              "type": "boolean"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        1380,
+        0
+      ],
+      "id": "5eee08f2-c91c-45ee-9112-6502cfbc7d00",
+      "name": "Edit Fields3"
+    }
+  ],
+  "connections": {
+    "Edit Fields": {
+      "main": [
+        [
+          {
+            "node": "Embedding inicial",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Embedding inicial": {
+      "main": [
+        [
+          {
+            "node": "Set parametros",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Set parametros": {
+      "main": [
+        [
+          {
+            "node": "Consulta Qdrant",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Consulta Qdrant": {
+      "main": [
+        [
+          {
+            "node": "Agrega historial a prompt",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Agrega historial a prompt": {
+      "main": [
+        [
+          {
+            "node": "Edit Fields3",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "When Executed by Another Workflow": {
+      "main": [
+        [
+          {
+            "node": "Edit Fields",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "nodeGroups": [],
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "staticData": null,
+  "pinData": {},
+  "meta": null,
+  "tags": [],
+  "shared": [
+    {
+      "role": "workflow:owner",
+      "workflowId": "QU3E9M1kWSOLAR3p",
+      "projectId": "tRHCC8ts4mkRGXGn",
+      "createdAt": "2025-07-09T02:06:43.349Z",
+      "updatedAt": "2025-07-09T02:06:43.349Z"
+    }
+  ],
+  "activeVersion": {
+    "versionId": "e9a46bef-2f68-4e21-af65-9fb13ebb2786",
+    "workflowId": "QU3E9M1kWSOLAR3p",
+    "nodes": [
+      {
+        "parameters": {
+          "content": "## Consulta historial - TEST Alfa V1\n\n1. Consulta historial de cliente en instancia QDrant, \"YoEco_Clientes_TEST\"",
+          "height": 180,
+          "width": 500,
+          "color": 6
+        },
+        "type": "n8n-nodes-base.stickyNote",
+        "position": [
+          -500,
+          -340
+        ],
+        "typeVersion": 1,
+        "id": "aa3a38d7-1cf3-47ad-bbb1-c732dc70168b",
+        "name": "Sticky Note"
+      },
+      {
+        "parameters": {
+          "assignments": {
+            "assignments": [
+              {
+                "id": "f9ef56eb-0476-4526-b90a-f5babc081aa2",
+                "name": "user_id",
+                "value": "={{ $json.user_id }}",
+                "type": "string"
+              },
+              {
+                "id": "7ef0a44a-bbd8-47a5-8a11-5fd95ea502de",
+                "name": "message",
+                "value": "={{ $json.message }}",
+                "type": "string"
+              }
+            ]
+          },
+          "options": {}
+        },
+        "type": "n8n-nodes-base.set",
+        "typeVersion": 3.4,
+        "position": [
+          240,
+          0
+        ],
+        "id": "5bfc1743-3798-40ab-b476-7fc1fb57ac7b",
+        "name": "Edit Fields"
+      },
+      {
+        "parameters": {
+          "method": "POST",
+          "url": "https://api.openai.com/v1/embeddings",
+          "authentication": "predefinedCredentialType",
+          "nodeCredentialType": "openAiApi",
+          "sendBody": true,
+          "specifyBody": "json",
+          "jsonBody": "={\n  \"input\": \"{{$json[\"message\"]}}\",\n  \"model\": \"text-embedding-ada-002\"\n}\n",
+          "options": {}
+        },
+        "type": "n8n-nodes-base.httpRequest",
+        "typeVersion": 4.2,
+        "position": [
+          460,
+          0
+        ],
+        "id": "d8c70240-b7e9-4bfd-b91b-db4b48409710",
+        "name": "Embedding inicial",
+        "credentials": {
+          "openAiApi": {
+            "id": "CxN1M3GiHPXWR4gx",
+            "name": "OpenAi TEST"
+          }
+        }
+      },
+      {
+        "parameters": {
+          "jsCode": "return [{\n  json: {\n    user_id: $('Edit Fields').first().json.user_id,\n    message: $('Edit Fields').first().json.message,\n    embedding: $input.first().json.data[0].embedding\n  }\n}];"
+        },
+        "type": "n8n-nodes-base.code",
+        "typeVersion": 2,
+        "position": [
+          680,
+          0
+        ],
+        "id": "5201887b-4dcb-46fb-b503-b746841c65b2",
+        "name": "Set parametros"
+      },
+      {
+        "parameters": {
+          "method": "POST",
+          "url": "https://1537c683-48da-4631-ab76-ad698b6b9881.us-east-1-0.aws.cloud.qdrant.io/collections/YoEco_Clientes_TEST/points/search",
+          "authentication": "predefinedCredentialType",
+          "nodeCredentialType": "qdrantApi",
+          "sendBody": true,
+          "specifyBody": "json",
+          "jsonBody": "={\n  \"vector\": {{ JSON.stringify($json.embedding) }},\n  \"top\": 3,\n  \"with_payload\": true,\n  \"filter\": {\n    \"must\": [\n      {\n        \"key\": \"user_id\",\n        \"match\": {\n          \"value\": {{ JSON.stringify($json.user_id) }}\n        }\n      }\n    ]\n  }\n}\n\n",
+          "options": {}
+        },
+        "type": "n8n-nodes-base.httpRequest",
+        "typeVersion": 4.2,
+        "position": [
+          900,
+          0
+        ],
+        "id": "562e8a6d-8c59-4629-a343-20bee4d6737c",
+        "name": "Consulta Qdrant",
+        "credentials": {
+          "qdrantApi": {
+            "id": "9oUogOvtDqsTDKBQ",
+            "name": "QdrantApi TEST"
+          }
+        }
+      },
+      {
+        "parameters": {
+          "jsCode": "const historial = $input.first().json.result || [];\nconst textos = historial.map(i => i.payload?.text || \"\").filter(Boolean).join(\"\\n---\\n\");\nconst user_id = $('Edit Fields').first().json.user_id;\nconst mensajeActual = $('Edit Fields').first().json.message;\n\nlet prompt = \"\";\n\nif (historial.length > 0) {\n  prompt = `Historial de usuario:\\n${textos}\\n\\nMensaje actual:\\n${mensajeActual}`;\n} else {\n  prompt = `Mensaje de nuevo usuario:\\n${mensajeActual}`;\n}\n\nreturn [{\n  json: {\n    user_id,\n    prompt,\n    historial_disponible: historial.length > 0\n  }\n}];\n"
+        },
+        "type": "n8n-nodes-base.code",
+        "typeVersion": 2,
+        "position": [
+          1160,
+          0
+        ],
+        "id": "e9b7753a-f29a-4c09-bf84-b6a9f9ecc42b",
+        "name": "Agrega historial a prompt"
+      },
+      {
+        "parameters": {
+          "workflowInputs": {
+            "values": [
+              {
+                "name": "user_id"
+              },
+              {
+                "name": "message"
+              }
+            ]
+          }
+        },
+        "type": "n8n-nodes-base.executeWorkflowTrigger",
+        "typeVersion": 1.1,
+        "position": [
+          0,
+          0
+        ],
+        "id": "da090b4e-fb10-444a-9450-bcf86ed91d30",
+        "name": "When Executed by Another Workflow"
+      },
+      {
+        "parameters": {
+          "assignments": {
+            "assignments": [
+              {
+                "id": "68a5fdff-a84d-4e1d-9c17-42b853e7de87",
+                "name": "user_id",
+                "value": "={{ $json.user_id }}",
+                "type": "string"
+              },
+              {
+                "id": "6e4aed49-b622-4ac5-bb7d-22bfd5007352",
+                "name": "prompt",
+                "value": "={{ $json.prompt }}",
+                "type": "string"
+              },
+              {
+                "id": "5a71bd91-e971-4545-81fb-15765f3809fd",
+                "name": "historial_disponible",
+                "value": "={{ $json.historial_disponible }}",
+                "type": "boolean"
+              }
+            ]
+          },
+          "options": {}
+        },
+        "type": "n8n-nodes-base.set",
+        "typeVersion": 3.4,
+        "position": [
+          1380,
+          0
+        ],
+        "id": "5eee08f2-c91c-45ee-9112-6502cfbc7d00",
+        "name": "Edit Fields3"
+      }
+    ],
+    "connections": {
+      "Edit Fields": {
+        "main": [
+          [
+            {
+              "node": "Embedding inicial",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Embedding inicial": {
+        "main": [
+          [
+            {
+              "node": "Set parametros",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Set parametros": {
+        "main": [
+          [
+            {
+              "node": "Consulta Qdrant",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Consulta Qdrant": {
+        "main": [
+          [
+            {
+              "node": "Agrega historial a prompt",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Agrega historial a prompt": {
+        "main": [
+          [
+            {
+              "node": "Edit Fields3",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "When Executed by Another Workflow": {
+        "main": [
+          [
+            {
+              "node": "Edit Fields",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      }
+    },
+    "nodeGroups": [],
+    "authors": "system migration",
+    "name": null,
+    "description": null,
+    "autosaved": false,
+    "createdAt": "2025-12-16T23:48:57.308Z",
+    "updatedAt": "2025-12-16T23:48:57.308Z"
+  }
+}
