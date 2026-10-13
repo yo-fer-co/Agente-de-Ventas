@@ -1,0 +1,826 @@
+{
+  "id": "qTWaEvzUaP5k7Mx1",
+  "name": "DALIA_M9.04_Correccion_recertificacion_y_reconciliacion",
+  "active": true,
+  "activeVersionId": "7cce5b37-e791-40d3-b4b3-180fd2ce0268",
+  "createdAt": "2026-10-04T03:17:31.892Z",
+  "updatedAt": "2026-10-04T03:18:18.573Z",
+  "isArchived": false,
+  "versionId": "7cce5b37-e791-40d3-b4b3-180fd2ce0268",
+  "triggerCount": 1,
+  "nodes": [
+    {
+      "id": "186411d6-0344-48f7-bccf-a7b73c01fe3f",
+      "name": "Diario 05:20",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.4,
+      "position": [
+        0,
+        0
+      ],
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "days",
+              "daysInterval": 1,
+              "triggerAtHour": 5,
+              "triggerAtMinute": 20
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "29f692aa-6ba2-439d-a66c-011ee7a486c6",
+      "name": "Ciclo de vida del conocimiento",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.7,
+      "position": [
+        224,
+        0
+      ],
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "select dalia.m9_lifecycle_cycle('M9.04') as report;"
+      },
+      "credentials": {
+        "postgres": {
+          "id": "HfCgVAjUygK1vrkU",
+          "name": "DALIA dev Supabase"
+        }
+      }
+    },
+    {
+      "id": "d5de078c-d752-452f-85ef-3d8573cffb7c",
+      "name": "Job recibido",
+      "type": "n8n-nodes-base.executeWorkflowTrigger",
+      "typeVersion": 1.2,
+      "position": [
+        0,
+        320
+      ],
+      "parameters": {
+        "inputSource": "passthrough"
+      }
+    },
+    {
+      "id": "1e7b3d92-9239-4198-999b-9113f7a64426",
+      "name": "Siguiente paso de reconciliacion",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.7,
+      "position": [
+        224,
+        320
+      ],
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "select dalia.m9_reconcile_next($1::jsonb) as step;",
+        "options": {
+          "queryReplacement": "={{ [ JSON.stringify($json.payload ?? {}) ] }}"
+        }
+      },
+      "credentials": {
+        "postgres": {
+          "id": "HfCgVAjUygK1vrkU",
+          "name": "DALIA dev Supabase"
+        }
+      },
+      "onError": "continueErrorOutput"
+    },
+    {
+      "id": "ddabc6b6-ced2-47ea-adb2-f759604d806b",
+      "name": "Requiere puerto",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        448,
+        256
+      ],
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose"
+          },
+          "conditions": [
+            {
+              "leftValue": "={{ $json.step.action === \"port\" }}",
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        }
+      }
+    },
+    {
+      "id": "d1e0709f-b2c1-4cd0-85d5-90c965e3aaaf",
+      "name": "Preparar llamada a Qdrant",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        672,
+        224
+      ],
+      "parameters": {
+        "mode": "manual",
+        "includeOtherFields": false,
+        "assignments": {
+          "assignments": [
+            {
+              "id": "p1",
+              "name": "port",
+              "value": "={{ $json.step.port_request.port }}",
+              "type": "string"
+            },
+            {
+              "id": "p2",
+              "name": "operation",
+              "value": "={{ $json.step.port_request.operation }}",
+              "type": "string"
+            },
+            {
+              "id": "p3",
+              "name": "input",
+              "value": "={{ $json.step.port_request.input }}",
+              "type": "object"
+            },
+            {
+              "id": "p4",
+              "name": "envelope",
+              "value": "={{ $json.step.port_request.envelope ?? {} }}",
+              "type": "object"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "1aeb8e82-a597-42bb-a6d8-3287e1cf3da9",
+      "name": "Qdrant por INT.port",
+      "type": "n8n-nodes-base.executeWorkflow",
+      "typeVersion": 1.3,
+      "position": [
+        896,
+        224
+      ],
+      "parameters": {
+        "mode": "each",
+        "source": "database",
+        "workflowId": {
+          "__rl": true,
+          "mode": "id",
+          "value": "5gbpWhv0zIA8bZ0w"
+        },
+        "options": {
+          "waitForSubWorkflow": true
+        }
+      }
+    },
+    {
+      "id": "03e7b2ac-0bac-4271-8449-1f49e2bb1d82",
+      "name": "Aplicar resultado",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.7,
+      "position": [
+        1120,
+        224
+      ],
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "select dalia.m9_reconcile_applied($1::jsonb, $2::jsonb, $3::jsonb) as result;",
+        "options": {
+          "queryReplacement": "={{ [ JSON.stringify($(\"Job recibido\").item.json.payload ?? {}), JSON.stringify($(\"Siguiente paso de reconciliacion\").item.json.step.step), JSON.stringify($json) ] }}"
+        }
+      },
+      "credentials": {
+        "postgres": {
+          "id": "HfCgVAjUygK1vrkU",
+          "name": "DALIA dev Supabase"
+        }
+      }
+    },
+    {
+      "id": "3e8b92a2-05be-4946-ad1d-f49b66b81992",
+      "name": "Reintentar",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        1344,
+        224
+      ],
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose"
+          },
+          "conditions": [
+            {
+              "leftValue": "={{ $json.result.job === \"retry\" }}",
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        }
+      }
+    },
+    {
+      "id": "e6b72773-b41b-468f-8c19-c18c97ac0ae3",
+      "name": "Fallar job (reintentable)",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.7,
+      "position": [
+        1568,
+        224
+      ],
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "select dalia.sys_fail_job($1::uuid, $2::jsonb, true) as job_status;",
+        "options": {
+          "queryReplacement": "={{ [ $(\"Job recibido\").item.json.job_id, JSON.stringify({ code: $json.result?.status ?? \"HANDLER_ERROR\", message: $json.error?.message ?? $json.result?.error?.message ?? $json.error ?? \"reintentar\" }) ] }}"
+        }
+      },
+      "credentials": {
+        "postgres": {
+          "id": "HfCgVAjUygK1vrkU",
+          "name": "DALIA dev Supabase"
+        }
+      }
+    },
+    {
+      "id": "d6ba48b4-68d2-44f1-967d-6f4f6c3194b8",
+      "name": "Completar job",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.7,
+      "position": [
+        1568,
+        448
+      ],
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "select dalia.sys_complete_job($1::uuid, $2::jsonb) as job_status;",
+        "options": {
+          "queryReplacement": "={{ [ $(\"Job recibido\").item.json.job_id, JSON.stringify($json.result ?? $json.step ?? {}) ] }}"
+        }
+      },
+      "credentials": {
+        "postgres": {
+          "id": "HfCgVAjUygK1vrkU",
+          "name": "DALIA dev Supabase"
+        }
+      }
+    }
+  ],
+  "connections": {
+    "Diario 05:20": {
+      "main": [
+        [
+          {
+            "node": "Ciclo de vida del conocimiento",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Job recibido": {
+      "main": [
+        [
+          {
+            "node": "Siguiente paso de reconciliacion",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Siguiente paso de reconciliacion": {
+      "main": [
+        [
+          {
+            "node": "Requiere puerto",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Fallar job (reintentable)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Requiere puerto": {
+      "main": [
+        [
+          {
+            "node": "Preparar llamada a Qdrant",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Completar job",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Preparar llamada a Qdrant": {
+      "main": [
+        [
+          {
+            "node": "Qdrant por INT.port",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Qdrant por INT.port": {
+      "main": [
+        [
+          {
+            "node": "Aplicar resultado",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Aplicar resultado": {
+      "main": [
+        [
+          {
+            "node": "Reintentar",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Reintentar": {
+      "main": [
+        [
+          {
+            "node": "Fallar job (reintentable)",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Completar job",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "nodeGroups": [],
+  "settings": {
+    "executionOrder": "v1",
+    "availableInMCP": true,
+    "errorWorkflow": "cjjQno2MxMTT3Icc",
+    "timezone": "America/Bogota",
+    "saveDataSuccessExecution": "none",
+    "callerPolicy": "workflowsFromSameOwner"
+  },
+  "staticData": {
+    "node:Diario 05:20": {
+      "recurrenceRules": [
+        null
+      ],
+      "recurrenceRuleSignatures": [
+        null
+      ]
+    }
+  },
+  "pinData": null,
+  "meta": {
+    "aiBuilderAssisted": true,
+    "builderVariant": "mcp"
+  },
+  "tags": [],
+  "shared": [
+    {
+      "role": "workflow:owner",
+      "workflowId": "qTWaEvzUaP5k7Mx1",
+      "projectId": "tRHCC8ts4mkRGXGn",
+      "createdAt": "2026-10-09T21:09:17.796Z",
+      "updatedAt": "2026-10-09T21:09:17.796Z"
+    }
+  ],
+  "activeVersion": {
+    "versionId": "7cce5b37-e791-40d3-b4b3-180fd2ce0268",
+    "workflowId": "qTWaEvzUaP5k7Mx1",
+    "nodes": [
+      {
+        "id": "186411d6-0344-48f7-bccf-a7b73c01fe3f",
+        "name": "Diario 05:20",
+        "type": "n8n-nodes-base.scheduleTrigger",
+        "typeVersion": 1.4,
+        "position": [
+          0,
+          0
+        ],
+        "parameters": {
+          "rule": {
+            "interval": [
+              {
+                "field": "days",
+                "daysInterval": 1,
+                "triggerAtHour": 5,
+                "triggerAtMinute": 20
+              }
+            ]
+          }
+        }
+      },
+      {
+        "id": "29f692aa-6ba2-439d-a66c-011ee7a486c6",
+        "name": "Ciclo de vida del conocimiento",
+        "type": "n8n-nodes-base.postgres",
+        "typeVersion": 2.7,
+        "position": [
+          224,
+          0
+        ],
+        "parameters": {
+          "operation": "executeQuery",
+          "query": "select dalia.m9_lifecycle_cycle('M9.04') as report;"
+        },
+        "credentials": {
+          "postgres": {
+            "id": "HfCgVAjUygK1vrkU",
+            "name": "DALIA dev Supabase"
+          }
+        }
+      },
+      {
+        "id": "d5de078c-d752-452f-85ef-3d8573cffb7c",
+        "name": "Job recibido",
+        "type": "n8n-nodes-base.executeWorkflowTrigger",
+        "typeVersion": 1.2,
+        "position": [
+          0,
+          320
+        ],
+        "parameters": {
+          "inputSource": "passthrough"
+        }
+      },
+      {
+        "id": "1e7b3d92-9239-4198-999b-9113f7a64426",
+        "name": "Siguiente paso de reconciliacion",
+        "type": "n8n-nodes-base.postgres",
+        "typeVersion": 2.7,
+        "position": [
+          224,
+          320
+        ],
+        "parameters": {
+          "operation": "executeQuery",
+          "query": "select dalia.m9_reconcile_next($1::jsonb) as step;",
+          "options": {
+            "queryReplacement": "={{ [ JSON.stringify($json.payload ?? {}) ] }}"
+          }
+        },
+        "credentials": {
+          "postgres": {
+            "id": "HfCgVAjUygK1vrkU",
+            "name": "DALIA dev Supabase"
+          }
+        },
+        "onError": "continueErrorOutput"
+      },
+      {
+        "id": "ddabc6b6-ced2-47ea-adb2-f759604d806b",
+        "name": "Requiere puerto",
+        "type": "n8n-nodes-base.if",
+        "typeVersion": 2.2,
+        "position": [
+          448,
+          256
+        ],
+        "parameters": {
+          "conditions": {
+            "options": {
+              "caseSensitive": true,
+              "leftValue": "",
+              "typeValidation": "loose"
+            },
+            "conditions": [
+              {
+                "leftValue": "={{ $json.step.action === \"port\" }}",
+                "operator": {
+                  "type": "boolean",
+                  "operation": "true",
+                  "singleValue": true
+                }
+              }
+            ],
+            "combinator": "and"
+          }
+        }
+      },
+      {
+        "id": "d1e0709f-b2c1-4cd0-85d5-90c965e3aaaf",
+        "name": "Preparar llamada a Qdrant",
+        "type": "n8n-nodes-base.set",
+        "typeVersion": 3.4,
+        "position": [
+          672,
+          224
+        ],
+        "parameters": {
+          "mode": "manual",
+          "includeOtherFields": false,
+          "assignments": {
+            "assignments": [
+              {
+                "id": "p1",
+                "name": "port",
+                "value": "={{ $json.step.port_request.port }}",
+                "type": "string"
+              },
+              {
+                "id": "p2",
+                "name": "operation",
+                "value": "={{ $json.step.port_request.operation }}",
+                "type": "string"
+              },
+              {
+                "id": "p3",
+                "name": "input",
+                "value": "={{ $json.step.port_request.input }}",
+                "type": "object"
+              },
+              {
+                "id": "p4",
+                "name": "envelope",
+                "value": "={{ $json.step.port_request.envelope ?? {} }}",
+                "type": "object"
+              }
+            ]
+          }
+        }
+      },
+      {
+        "id": "1aeb8e82-a597-42bb-a6d8-3287e1cf3da9",
+        "name": "Qdrant por INT.port",
+        "type": "n8n-nodes-base.executeWorkflow",
+        "typeVersion": 1.3,
+        "position": [
+          896,
+          224
+        ],
+        "parameters": {
+          "mode": "each",
+          "source": "database",
+          "workflowId": {
+            "__rl": true,
+            "mode": "id",
+            "value": "5gbpWhv0zIA8bZ0w"
+          },
+          "options": {
+            "waitForSubWorkflow": true
+          }
+        }
+      },
+      {
+        "id": "03e7b2ac-0bac-4271-8449-1f49e2bb1d82",
+        "name": "Aplicar resultado",
+        "type": "n8n-nodes-base.postgres",
+        "typeVersion": 2.7,
+        "position": [
+          1120,
+          224
+        ],
+        "parameters": {
+          "operation": "executeQuery",
+          "query": "select dalia.m9_reconcile_applied($1::jsonb, $2::jsonb, $3::jsonb) as result;",
+          "options": {
+            "queryReplacement": "={{ [ JSON.stringify($(\"Job recibido\").item.json.payload ?? {}), JSON.stringify($(\"Siguiente paso de reconciliacion\").item.json.step.step), JSON.stringify($json) ] }}"
+          }
+        },
+        "credentials": {
+          "postgres": {
+            "id": "HfCgVAjUygK1vrkU",
+            "name": "DALIA dev Supabase"
+          }
+        }
+      },
+      {
+        "id": "3e8b92a2-05be-4946-ad1d-f49b66b81992",
+        "name": "Reintentar",
+        "type": "n8n-nodes-base.if",
+        "typeVersion": 2.2,
+        "position": [
+          1344,
+          224
+        ],
+        "parameters": {
+          "conditions": {
+            "options": {
+              "caseSensitive": true,
+              "leftValue": "",
+              "typeValidation": "loose"
+            },
+            "conditions": [
+              {
+                "leftValue": "={{ $json.result.job === \"retry\" }}",
+                "operator": {
+                  "type": "boolean",
+                  "operation": "true",
+                  "singleValue": true
+                }
+              }
+            ],
+            "combinator": "and"
+          }
+        }
+      },
+      {
+        "id": "e6b72773-b41b-468f-8c19-c18c97ac0ae3",
+        "name": "Fallar job (reintentable)",
+        "type": "n8n-nodes-base.postgres",
+        "typeVersion": 2.7,
+        "position": [
+          1568,
+          224
+        ],
+        "parameters": {
+          "operation": "executeQuery",
+          "query": "select dalia.sys_fail_job($1::uuid, $2::jsonb, true) as job_status;",
+          "options": {
+            "queryReplacement": "={{ [ $(\"Job recibido\").item.json.job_id, JSON.stringify({ code: $json.result?.status ?? \"HANDLER_ERROR\", message: $json.error?.message ?? $json.result?.error?.message ?? $json.error ?? \"reintentar\" }) ] }}"
+          }
+        },
+        "credentials": {
+          "postgres": {
+            "id": "HfCgVAjUygK1vrkU",
+            "name": "DALIA dev Supabase"
+          }
+        }
+      },
+      {
+        "id": "d6ba48b4-68d2-44f1-967d-6f4f6c3194b8",
+        "name": "Completar job",
+        "type": "n8n-nodes-base.postgres",
+        "typeVersion": 2.7,
+        "position": [
+          1568,
+          448
+        ],
+        "parameters": {
+          "operation": "executeQuery",
+          "query": "select dalia.sys_complete_job($1::uuid, $2::jsonb) as job_status;",
+          "options": {
+            "queryReplacement": "={{ [ $(\"Job recibido\").item.json.job_id, JSON.stringify($json.result ?? $json.step ?? {}) ] }}"
+          }
+        },
+        "credentials": {
+          "postgres": {
+            "id": "HfCgVAjUygK1vrkU",
+            "name": "DALIA dev Supabase"
+          }
+        }
+      }
+    ],
+    "connections": {
+      "Diario 05:20": {
+        "main": [
+          [
+            {
+              "node": "Ciclo de vida del conocimiento",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Job recibido": {
+        "main": [
+          [
+            {
+              "node": "Siguiente paso de reconciliacion",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Siguiente paso de reconciliacion": {
+        "main": [
+          [
+            {
+              "node": "Requiere puerto",
+              "type": "main",
+              "index": 0
+            }
+          ],
+          [
+            {
+              "node": "Fallar job (reintentable)",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Requiere puerto": {
+        "main": [
+          [
+            {
+              "node": "Preparar llamada a Qdrant",
+              "type": "main",
+              "index": 0
+            }
+          ],
+          [
+            {
+              "node": "Completar job",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Preparar llamada a Qdrant": {
+        "main": [
+          [
+            {
+              "node": "Qdrant por INT.port",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Qdrant por INT.port": {
+        "main": [
+          [
+            {
+              "node": "Aplicar resultado",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Aplicar resultado": {
+        "main": [
+          [
+            {
+              "node": "Reintentar",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Reintentar": {
+        "main": [
+          [
+            {
+              "node": "Fallar job (reintentable)",
+              "type": "main",
+              "index": 0
+            }
+          ],
+          [
+            {
+              "node": "Completar job",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      }
+    },
+    "nodeGroups": [],
+    "authors": "Fabian Bocanegra (via MCP)",
+    "name": "Lote 5 M9: instalación inicial",
+    "description": "Created with 11 nodes: Diario 05:20, Ciclo de vida del conocimiento, Job recibido, Siguiente paso de reconciliacion, Requiere puerto and 6 more",
+    "autosaved": false,
+    "createdAt": "2026-10-04T03:17:31.894Z",
+    "updatedAt": "2026-10-04T03:17:31.894Z"
+  }
+}
