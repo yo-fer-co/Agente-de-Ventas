@@ -1,0 +1,222 @@
+{
+  "id": "tcaP6eeFBs9mshHK",
+  "name": "ai_usage_log (PROD)",
+  "active": true,
+  "activeVersionId": "9bb47940-2dda-4f5f-b104-b4775db70c61",
+  "createdAt": "2026-02-25T23:12:54.784Z",
+  "updatedAt": "2026-02-27T22:25:13.032Z",
+  "isArchived": false,
+  "versionId": "9bb47940-2dda-4f5f-b104-b4775db70c61",
+  "triggerCount": 0,
+  "nodes": [
+    {
+      "parameters": {
+        "useCustomSchema": true,
+        "tableId": "ai_usage_log_prd",
+        "fieldsUi": {
+          "fieldValues": [
+            {
+              "fieldId": "process_id",
+              "fieldValue": "={{ $json.process_id }}"
+            },
+            {
+              "fieldId": "model_name",
+              "fieldValue": "={{ $json.model_name }}"
+            },
+            {
+              "fieldId": "prompt_tokens",
+              "fieldValue": "={{ $json.prompt_tokens }}"
+            },
+            {
+              "fieldId": "completion_tokens",
+              "fieldValue": "={{ $json.completion_tokens }}"
+            },
+            {
+              "fieldId": "total_tokens",
+              "fieldValue": "={{ $json.total_tokens }}"
+            },
+            {
+              "fieldId": "ai_response",
+              "fieldValue": "={{ $json.ai_response }}"
+            },
+            {
+              "fieldId": "environment",
+              "fieldValue": "={{ $json.environment }}"
+            },
+            {
+              "fieldId": "estimated_cost_usd",
+              "fieldValue": "={{ ($json.prompt_tokens * 0.00000015) + ($json.completion_tokens * 0.0000006) }}"
+            }
+          ]
+        }
+      },
+      "name": "save ai usage log",
+      "type": "n8n-nodes-base.supabase",
+      "typeVersion": 1,
+      "position": [
+        1136,
+        240
+      ],
+      "id": "114fff83-8dcb-4e27-9afd-277b20bc53b2",
+      "credentials": {
+        "supabaseApi": {
+          "id": "kIgZyufmgS2O0dQO",
+          "name": "Supabase account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "inputSource": "jsonExample",
+        "jsonExample": "{\n  \"process_id\": \"coordinating_agent\",\n  \"model_name\": \"gpt-4o-mini\",\n  \"prompt_tokens\": 116,\n  \"completion_tokens\": 62,\n  \"total_tokens\": 178,\n  \"ai_response\": \"El mensaje recibido es 'final'. No contiene palabras clave para Agente de Ventas, clasificado como Agente Asesor.\",\n  \"completed_at\": 1770769818254,\n  \"created_at\": 1770769818254,\n  \"environment\": \"ist\"\n}"
+      },
+      "type": "n8n-nodes-base.executeWorkflowTrigger",
+      "typeVersion": 1.1,
+      "position": [
+        752,
+        240
+      ],
+      "id": "501eb3ab-58b8-49a4-bb4c-3ce2864d41c6",
+      "name": "When Executed by Another Workflow"
+    }
+  ],
+  "connections": {
+    "When Executed by Another Workflow": {
+      "main": [
+        [
+          {
+            "node": "save ai usage log",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "nodeGroups": [],
+  "settings": {
+    "executionOrder": "v1",
+    "availableInMCP": false,
+    "timeSavedMode": "fixed",
+    "callerPolicy": "workflowsFromSameOwner",
+    "errorWorkflow": "GZN4CJ6QgYxm77J7"
+  },
+  "staticData": null,
+  "pinData": {},
+  "meta": {
+    "templateCredsSetupCompleted": true
+  },
+  "tags": [
+    {
+      "id": "2nDb4zfpAXOj9Pvx",
+      "name": "env:prod",
+      "createdAt": "2026-02-25T21:45:46.330Z",
+      "updatedAt": "2026-02-25T21:45:46.330Z"
+    }
+  ],
+  "shared": [
+    {
+      "role": "workflow:owner",
+      "workflowId": "tcaP6eeFBs9mshHK",
+      "projectId": "8h8pwWGcWlnGEym3",
+      "createdAt": "2026-02-25T23:12:54.788Z",
+      "updatedAt": "2026-02-25T23:12:54.788Z"
+    }
+  ],
+  "activeVersion": {
+    "versionId": "9bb47940-2dda-4f5f-b104-b4775db70c61",
+    "workflowId": "tcaP6eeFBs9mshHK",
+    "nodes": [
+      {
+        "parameters": {
+          "useCustomSchema": true,
+          "tableId": "ai_usage_log_prd",
+          "fieldsUi": {
+            "fieldValues": [
+              {
+                "fieldId": "process_id",
+                "fieldValue": "={{ $json.process_id }}"
+              },
+              {
+                "fieldId": "model_name",
+                "fieldValue": "={{ $json.model_name }}"
+              },
+              {
+                "fieldId": "prompt_tokens",
+                "fieldValue": "={{ $json.prompt_tokens }}"
+              },
+              {
+                "fieldId": "completion_tokens",
+                "fieldValue": "={{ $json.completion_tokens }}"
+              },
+              {
+                "fieldId": "total_tokens",
+                "fieldValue": "={{ $json.total_tokens }}"
+              },
+              {
+                "fieldId": "ai_response",
+                "fieldValue": "={{ $json.ai_response }}"
+              },
+              {
+                "fieldId": "environment",
+                "fieldValue": "={{ $json.environment }}"
+              },
+              {
+                "fieldId": "estimated_cost_usd",
+                "fieldValue": "={{ ($json.prompt_tokens * 0.00000015) + ($json.completion_tokens * 0.0000006) }}"
+              }
+            ]
+          }
+        },
+        "name": "save ai usage log",
+        "type": "n8n-nodes-base.supabase",
+        "typeVersion": 1,
+        "position": [
+          1136,
+          240
+        ],
+        "id": "114fff83-8dcb-4e27-9afd-277b20bc53b2",
+        "credentials": {
+          "supabaseApi": {
+            "id": "kIgZyufmgS2O0dQO",
+            "name": "Supabase account"
+          }
+        }
+      },
+      {
+        "parameters": {
+          "inputSource": "jsonExample",
+          "jsonExample": "{\n  \"process_id\": \"coordinating_agent\",\n  \"model_name\": \"gpt-4o-mini\",\n  \"prompt_tokens\": 116,\n  \"completion_tokens\": 62,\n  \"total_tokens\": 178,\n  \"ai_response\": \"El mensaje recibido es 'final'. No contiene palabras clave para Agente de Ventas, clasificado como Agente Asesor.\",\n  \"completed_at\": 1770769818254,\n  \"created_at\": 1770769818254,\n  \"environment\": \"ist\"\n}"
+        },
+        "type": "n8n-nodes-base.executeWorkflowTrigger",
+        "typeVersion": 1.1,
+        "position": [
+          752,
+          240
+        ],
+        "id": "501eb3ab-58b8-49a4-bb4c-3ce2864d41c6",
+        "name": "When Executed by Another Workflow"
+      }
+    ],
+    "connections": {
+      "When Executed by Another Workflow": {
+        "main": [
+          [
+            {
+              "node": "save ai usage log",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      }
+    },
+    "nodeGroups": [],
+    "authors": "Kmilo Guerrero",
+    "name": "Version 9bb47940",
+    "description": "",
+    "autosaved": true,
+    "createdAt": "2026-02-27T22:25:13.033Z",
+    "updatedAt": "2026-02-27T22:25:35.000Z"
+  }
+}
