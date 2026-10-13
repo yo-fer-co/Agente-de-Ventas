@@ -1,0 +1,136 @@
+{
+  "id": "HdPVbh01Qjh8iZp1",
+  "name": "My workflow 26",
+  "active": false,
+  "activeVersionId": null,
+  "createdAt": "2026-10-06T03:44:29.892Z",
+  "updatedAt": "2026-10-06T03:58:41.000Z",
+  "isArchived": true,
+  "versionId": "c7ce3f6e-887f-4a43-ac9d-aa13f7531a72",
+  "triggerCount": 0,
+  "nodes": [
+    {
+      "parameters": {},
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [
+        -288,
+        -32
+      ],
+      "id": "1d10b56c-96df-4257-9707-bff6ec3fcf9a",
+      "name": "When clicking ‘Execute workflow’"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://9j7ghx-5q.myshopify.com/admin/api/2024-10/graphql.json",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": []
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"query\": \"mutation inventoryItemUpdate($id: ID!, $input: InventoryItemInput!) { inventoryItemUpdate(id: $id, input: $input) { inventoryItem { id tracked } userErrors { message } } }\",\n  \"variables\": {\n    \"id\": \"gid://shopify/InventoryItem/{{ $json['InventoryItem ID'] }}\",\n    \"input\": {\n      \"tracked\": true\n    }\n  }\n}",
+        "options": {
+          "redirect": {
+            "redirect": {}
+          }
+        }
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.3,
+      "position": [
+        176,
+        -32
+      ],
+      "id": "c06da5a2-8afb-4aa9-ab7e-315e3cef7d60",
+      "name": "Activa seguimiento stock",
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "x8QGd0rUV895fhF7",
+          "name": "BW_shopify_Prod"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "documentId": {
+          "__rl": true,
+          "value": "1j_2SEqXpi42nChTp9Og4gOZiTOxWOdHL__9GaI2-HMM",
+          "mode": "list",
+          "cachedResultName": "Modificaciones catalogo",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1j_2SEqXpi42nChTp9Og4gOZiTOxWOdHL__9GaI2-HMM/edit?usp=drivesdk"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": 635472354,
+          "mode": "list",
+          "cachedResultName": "Hoja 7",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1j_2SEqXpi42nChTp9Og4gOZiTOxWOdHL__9GaI2-HMM/edit#gid=635472354"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [
+        -64,
+        -32
+      ],
+      "id": "ab4c8f62-e151-498b-ab3f-fcb70725fa72",
+      "name": "Get row(s) in sheet",
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "Pf0TYy2joLTmqt2C",
+          "name": "Google Sheets account 3"
+        }
+      }
+    }
+  ],
+  "connections": {
+    "When clicking ‘Execute workflow’": {
+      "main": [
+        [
+          {
+            "node": "Get row(s) in sheet",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get row(s) in sheet": {
+      "main": [
+        [
+          {
+            "node": "Activa seguimiento stock",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "nodeGroups": [],
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate"
+  },
+  "staticData": null,
+  "pinData": {},
+  "meta": {
+    "templateCredsSetupCompleted": true
+  },
+  "tags": [],
+  "shared": [
+    {
+      "role": "workflow:owner",
+      "workflowId": "HdPVbh01Qjh8iZp1",
+      "projectId": "8h8pwWGcWlnGEym3",
+      "createdAt": "2026-10-06T03:44:29.894Z",
+      "updatedAt": "2026-10-06T03:44:29.894Z"
+    }
+  ],
+  "activeVersion": null
+}
