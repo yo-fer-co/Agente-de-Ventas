@@ -1,0 +1,205 @@
+{
+  "id": "GHAXwENBdwiofj1H",
+  "name": "WF_Gateway_Telegram_Inbound_MVP",
+  "active": false,
+  "activeVersionId": null,
+  "createdAt": "2025-12-27T03:34:49.349Z",
+  "updatedAt": "2026-10-07T23:35:21.000Z",
+  "isArchived": true,
+  "versionId": "97b1e2aa-4767-4319-8811-25b6ff6af1a8",
+  "triggerCount": 0,
+  "nodes": [
+    {
+      "parameters": {
+        "updates": [
+          "message"
+        ],
+        "additionalFields": {}
+      },
+      "type": "n8n-nodes-base.telegramTrigger",
+      "typeVersion": 1.2,
+      "position": [
+        0,
+        0
+      ],
+      "id": "76c47dfe-e122-4ae8-8f46-02eefe80339d",
+      "name": "Telegram Trigger",
+      "webhookId": "f818be25-bddf-4319-9c44-b4857279aaac",
+      "credentials": {
+        "telegramApi": {
+          "id": "WQXk45RZTXhOuqLz",
+          "name": "Telegram account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "chatId": "={{ $json.chat_id }}",
+        "text": "={{ $json.text }}",
+        "additionalFields": {}
+      },
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        1072,
+        0
+      ],
+      "id": "d02ab608-b1d2-4860-89b4-add5a6b6cba2",
+      "name": "Send a text message",
+      "webhookId": "9795b446-7d47-43f5-8010-ea7246213ead",
+      "credentials": {
+        "telegramApi": {
+          "id": "WQXk45RZTXhOuqLz",
+          "name": "Telegram account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "// Obtenemos el payload completo que viene del Telegram Trigger\nconst update = $input.first().json;\n\nconst msg = update.message || {};\nconst from = msg.from || {};\nconst chat = msg.chat || {};\n\nconst userId = from.id;\nconst chatId = chat.id;\nconst text = msg.text || '';\nconst language = from.language_code || 'es';\n\n// Timestamps: 'date' es epoch en segundos\nconst dateEpoch = msg.date ? msg.date * 1000 : Date.now();\nconst isoDate = new Date(dateEpoch).toISOString();\n\n// Para el MVP, client_hint fijo\nconst clientHint = 'yoeco_telegram_poc';\n\n// event_id y conversation_id sencillos\nconst eventId = `tg_${dateEpoch}_${msg.message_id || 'm0'}`;\nconst conversationId = `tg_chat_${chatId}`;\n\n// Construimos el ConversationEvent\nconst conversationEvent = {\n  event_id: eventId,\n  channel: 'telegram',\n  client_hint: clientHint,\n  client_id_hint: null,        // se llenará en la capa Agentic\n  user_id: `tg:${userId}`,\n  chat_id: chatId,\n  conversation_id: conversationId,\n  direction: 'inbound',\n  text,\n  attachments: [],             // para el MVP solo manejamos texto\n  locale_hint: language,\n  timestamp: isoDate,\n  raw: update\n};\n\nreturn [{ json: conversationEvent }];\n"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        208,
+        0
+      ],
+      "id": "09280929-c2a3-4715-8f23-c76110fdc764",
+      "name": "FN_Normalize_Telegram_To_ConversationEvent"
+    },
+    {
+      "parameters": {
+        "jsCode": "const event = $input.first().json;\n\n// Para el MVP usamos el chat como session_id\nevent.session_id = event.conversation_id;\n\nreturn [{ json: event }];\n"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        416,
+        0
+      ],
+      "id": "8c7d2ce9-e935-49f0-8b01-7c5a9282132e",
+      "name": "FN_Add_Session_Id_MVP"
+    },
+    {
+      "parameters": {
+        "workflowId": {
+          "__rl": true,
+          "value": "1i3FSQjwQtfcmvjU",
+          "mode": "list",
+          "cachedResultUrl": "/workflow/1i3FSQjwQtfcmvjU",
+          "cachedResultName": "Babys World — WF_Conversation_Gateway_MVP"
+        },
+        "workflowInputs": {
+          "mappingMode": "defineBelow",
+          "value": {},
+          "matchingColumns": [],
+          "schema": [],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": true
+        },
+        "mode": "each",
+        "options": {
+          "waitForSubWorkflow": true
+        }
+      },
+      "type": "n8n-nodes-base.executeWorkflow",
+      "typeVersion": 1.3,
+      "position": [
+        624,
+        0
+      ],
+      "id": "468c8e1f-a6ec-473b-a4a6-1929f77fb97e",
+      "name": "Call 'WF_Conversation_Gateway_MVP'"
+    },
+    {
+      "parameters": {
+        "jsCode": "const reply = $input.first().json;\n\n// user_id viene como \"tg:1103727157\", recuperamos el número\nconst chatId = reply.chat_id || reply.user_id.replace('tg:', '');\n\nreturn [{\n  json: {\n    chat_id: chatId,\n    text: reply.reply_text || 'Lo siento, no tengo respuesta en este momento.'\n  }\n}];\n"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        832,
+        0
+      ],
+      "id": "a5463e66-7016-49fa-85d3-fe6e1087733d",
+      "name": "FN_Prepare_Telegram_Reply"
+    }
+  ],
+  "connections": {
+    "Telegram Trigger": {
+      "main": [
+        [
+          {
+            "node": "FN_Normalize_Telegram_To_ConversationEvent",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "FN_Normalize_Telegram_To_ConversationEvent": {
+      "main": [
+        [
+          {
+            "node": "FN_Add_Session_Id_MVP",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "FN_Add_Session_Id_MVP": {
+      "main": [
+        [
+          {
+            "node": "Call 'WF_Conversation_Gateway_MVP'",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Call 'WF_Conversation_Gateway_MVP'": {
+      "main": [
+        [
+          {
+            "node": "FN_Prepare_Telegram_Reply",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "FN_Prepare_Telegram_Reply": {
+      "main": [
+        [
+          {
+            "node": "Send a text message",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "nodeGroups": [],
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "staticData": null,
+  "pinData": {},
+  "meta": {
+    "templateCredsSetupCompleted": true
+  },
+  "tags": [],
+  "shared": [
+    {
+      "role": "workflow:owner",
+      "workflowId": "GHAXwENBdwiofj1H",
+      "projectId": "8h8pwWGcWlnGEym3",
+      "createdAt": "2025-12-27T03:34:49.355Z",
+      "updatedAt": "2025-12-27T03:34:49.355Z"
+    }
+  ],
+  "activeVersion": null
+}
