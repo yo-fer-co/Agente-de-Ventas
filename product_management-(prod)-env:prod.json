@@ -1,0 +1,1761 @@
+{
+  "id": "HPhKJvra1skVILfI",
+  "name": "Product_Management (PROD)",
+  "active": true,
+  "activeVersionId": "86b0994b-b0f1-4867-823e-d232f9657a83",
+  "createdAt": "2026-10-08T23:22:57.107Z",
+  "updatedAt": "2026-10-09T00:05:27.550Z",
+  "isArchived": false,
+  "versionId": "86b0994b-b0f1-4867-823e-d232f9657a83",
+  "triggerCount": 0,
+  "nodes": [
+    {
+      "parameters": {
+        "content": "## Product_Management\n\nLogica de negocio del modulo de catalogo: normaliza el input segun el topic, valida el contrato interno, enruta por accion (create/update vs delete), resuelve la imagen correcta por variante, genera el embedding y hace upsert/delete determinista en Qdrant. Todas las ramas convergen en un unico nodo de salida (Return_Product_Result).\n\nWorkflow nuevo e independiente de M5_02_Payment_Management: se uso su MISMA FORMA como referencia de diseño (normalizar -> validar contrato -> gate -> switch por accion -> salida unica), pero no hay ninguna llamada ni dependencia entre ambos.\n\nNOTA (actualizado): la rama delete YA NO usa SKU — el webhook real products/delete de Shopify no trae variants/sku, solo el id del producto. Build_Delete_Input pasa product_id directo, y 'Subflow: Delete Qdrant Point' borra por FILTRO de product_id (todas las variantes de ese producto de una vez).\n\nNOTA (actualizado 2026-08-13, ejecuciones 91567/91574): Call_Generate_Embedding/Call_Upsert_Qdrant_Point corrian en modo 'once' (una sola vez para todo el lote) en vez de una vez por variante — con un producto de 2 variantes, solo la PRIMERA llegaba a Qdrant. Corregido: ambos Execute Workflow ahora corren en modo 'each', y Merge_Embedding_With_Payload / Build_Success_Output_Upsert iteran sobre TODOS los items de entrada.\n\nNOTA (cambio de plan, 2026-08-13): se guardan TODAS las variantes en Qdrant, tengan o no SKU asignado en Shopify — ya NO se filtran ni se rechaza el producto por falta de SKU. Validate_Internal_Contract ya no exige ningun SKU.\n\nNOTA (cambio de diseno, 2026-08-13, mismo dia): 'Subflow: Upsert Qdrant Point' ya NO usa el SKU para calcular el id determinista en ningun caso — usa SIEMPRE `variant-${variant_id}` (estable de por vida para esa variante en Shopify). Esto evita que el id cambie (y se genere un punto huerfano duplicado) el dia que a una variante sin SKU se le agrega uno. Ademas, Build_Catalog_Entries ahora guarda `sku` y `color` (variant.option1/title) dentro del payload que se persiste en Qdrant — antes el sku solo se usaba de paso para calcular el id y nunca quedaba guardado; el color no se guardaba en absoluto. Esto cierra el requisito 2 de la seccion 8 (color especifico -> imagen de ese color).\n\nPendiente: reemplaza a 'Flujo Catalogo En Qdrant' en su forma actual (ver Fase 4 del plan de ejecucion) una vez validado end-to-end.\n\nNOTA (fix, 2026-08-13, ejecucion 91628): se detecto que al eliminar UNA variante dentro de un producto (sin borrar el producto entero), Shopify NO manda ningun evento de borrado -- manda un products/update normal con el estado actual del producto, simplemente con esa variante ausente de la lista. El punto de esa variante quedaba huerfano en Qdrant para siempre, porque el pipeline solo hacia upsert de las variantes presentes en el evento y nunca comparaba contra lo que ya habia guardado. Fix: al final de la rama create/update (despues de Build_Success_Output_Upsert), se agrego Prepare_Cleanup_Check -> Qdrant_Scroll_Existing_Points (trae los puntos ya guardados para este product_id) -> Find_Orphaned_Variants (compara sus variant_id contra los de Build_Catalog_Entries del evento actual) -> Has_Orphaned_Variants? -> si hay, Qdrant_Delete_Orphaned_Variants los borra (filtro product_id + variant_id). Corre una sola vez por evento, no una vez por variante.\n\nNOTA (2026-08-19): se agrego el campo 'descripcion' al payload persistido en Qdrant (Build_Catalog_Entries), tomado de product.body_html sin etiquetas HTML -- ya se calculaba para armar el texto del embedding, pero nunca se guardaba en el payload. Es preparacion para cuando se adapte Agente Asesor/Catalogo Qdrant a leer el esquema plano nuevo (no se toco nada de esa lectura todavia, solo el lado de guardado). No cambia ninguna otra logica existente.\n\nNOTA (2026-08-25): se agrega 'Call_Get_Product_Collections' (nuevo Execute Workflow) entre Route_Product_Action y Call_Resolve_Product_Image, en la rama create/update. Llama a 'Subflow: Get Shopify Product Collections' (nueva, GraphQL) con el product_id, y Build_Catalog_Entries agrega el resultado (collection_titles) al payload como el campo 'collections' (array de strings). Ver seccion 17 del plan.\n\nNOTA (2026-08-26, ejecuciones 95400/95401): se detecto una condicion de carrera en la limpieza de variantes huerfanas -- dos products/update casi simultaneos para el mismo producto (Shopify recreo una variante al agregarle/quitarle el SKU, disparando dos webhooks segundos aparte) hacian que cada evento borrara la variante que el OTRO evento (mas nuevo) ya habia escrito, dejando el producto con CERO puntos en Qdrant pese a tener una variante activa real. Fix: Build_Catalog_Entries ahora guarda 'qdrant_written_at' (timestamp de la propia ejecucion, no un campo de Shopify) en el payload; Find_Orphaned_Variants nunca marca huerfano un punto cuyo 'qdrant_written_at' sea mas reciente que el de este evento -- eso significa que un evento mas nuevo ya lo escribio, y uno mas viejo no debe poder borrarlo. Los puntos genuinamente huerfanos (mas viejos, o sin el campo -- de antes de este fix) se siguen borrando igual que antes.",
+        "height": 460,
+        "width": 480,
+        "color": 5
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        26272,
+        -432
+      ],
+      "id": "724d46ee-ecee-458a-9bbf-0e4ec9702d20",
+      "name": "Sticky_e5f17b5f"
+    },
+    {
+      "parameters": {
+        "workflowInputs": {
+          "values": [
+            {
+              "name": "topic"
+            },
+            {
+              "name": "product",
+              "type": "object"
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.executeWorkflowTrigger",
+      "typeVersion": 1.1,
+      "position": [
+        26736,
+        0
+      ],
+      "id": "55d522d1-b90a-49cc-bc8e-0e592d2858b6",
+      "name": "When Executed by Another Workflow"
+    },
+    {
+      "parameters": {
+        "jsCode": "const input = $input.first().json ?? {};\nconst topic = input.topic ?? null;\nconst product = input.product ?? {};\nconst variants = Array.isArray(product.variants) ? product.variants : [];\n\nreturn [{\n  json: {\n    topic,\n    product,\n    product_id: product.id ?? null,\n    title: product.title ?? null,\n    product_type: product.product_type ?? null,\n    variant_count: variants.length,\n    skus: variants.map((v) => v.sku).filter(Boolean)\n  }\n}];\n"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        26976,
+        0
+      ],
+      "id": "fc8985e2-266f-4dd3-95d5-cdfa227b1e10",
+      "name": "01_Normalize_Product_Input"
+    },
+    {
+      "parameters": {
+        "jsCode": "const input = $input.first().json ?? {};\nconst errors = [];\n\nconst SUPPORTED_TOPICS = ['products/create', 'products/update', 'products/delete'];\n\nif (!input.topic) errors.push('missing_topic');\nelse if (!SUPPORTED_TOPICS.includes(input.topic)) errors.push('unsupported_topic');\n\nif (!input.product_id) errors.push('missing_product_id');\n\n// Cambio de plan (2026-08-13): ya NO se exige SKU para aceptar el producto -- se\n// guardan todas las variantes tengan o no SKU (ver Build_Catalog_Entries y\n// 'Subflow: Upsert Qdrant Point', que usa variant_id como llave alterna sin SKU).\n\nreturn [{\n  json: {\n    ...input,\n    contract_errors: errors,\n    contract_is_valid: errors.length === 0\n  }\n}];\n"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        27216,
+        0
+      ],
+      "id": "87d76eb6-dcf2-4eb8-b2bd-4ba18786b819",
+      "name": "Validate_Internal_Contract"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "f0468069-a8d9-49e0-8ec9-4bc3f028cf95",
+              "leftValue": "={{ $json.contract_is_valid }}",
+              "rightValue": "",
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        27456,
+        0
+      ],
+      "id": "be0867b9-2111-411f-80a7-287a550f65cc",
+      "name": "Input_Is_Valid"
+    },
+    {
+      "parameters": {
+        "jsCode": "const input = $input.first().json ?? {};\n\nreturn [{\n  json: {\n    success: false,\n    stage: 'input_validation',\n    errors: input.contract_errors ?? ['unknown_validation_error'],\n    topic: input.topic ?? null,\n    product_id: input.product_id ?? null\n  }\n}];\n"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        27712,
+        256
+      ],
+      "id": "9b05d04f-8387-4533-b6c0-1ab6f263e041",
+      "name": "Build_Input_Error"
+    },
+    {
+      "parameters": {
+        "rules": {
+          "values": [
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 3
+                },
+                "conditions": [
+                  {
+                    "id": "038a7c40-d821-434f-a023-976ae59c36c6",
+                    "leftValue": "={{ $json.topic }}",
+                    "rightValue": "products/(create|update)",
+                    "operator": {
+                      "type": "string",
+                      "operation": "regex"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              }
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 3
+                },
+                "conditions": [
+                  {
+                    "id": "158603b8-5099-4f8b-a92b-26e4f73dcc89",
+                    "leftValue": "={{ $json.topic }}",
+                    "rightValue": "products/delete",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              }
+            }
+          ]
+        },
+        "options": {
+          "fallbackOutput": "none"
+        }
+      },
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 3.2,
+      "position": [
+        27696,
+        -128
+      ],
+      "id": "bba285ec-0b1e-45be-aa3c-20071212362a",
+      "name": "Route_Product_Action"
+    },
+    {
+      "parameters": {
+        "workflowId": {
+          "__rl": true,
+          "value": "OYFFtGZJFhyESGWQ",
+          "mode": "list",
+          "cachedResultUrl": "/workflow/OYFFtGZJFhyESGWQ",
+          "cachedResultName": "Babys World — Subflow: Resolve Shopify Product Image (PROD)"
+        },
+        "workflowInputs": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "product": "={{ $('Route_Product_Action').item.json.product }}"
+          },
+          "matchingColumns": [
+            "product"
+          ],
+          "schema": [
+            {
+              "id": "product",
+              "displayName": "product",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "object",
+              "removed": false
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": true
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.executeWorkflow",
+      "typeVersion": 1.2,
+      "position": [
+        27936,
+        -272
+      ],
+      "id": "05b186f1-eeb8-49fa-a02d-6f7717f6e386",
+      "name": "Call_Resolve_Product_Image"
+    },
+    {
+      "parameters": {
+        "jsCode": "const product = $('Route_Product_Action').item.json.product;\nconst images = $json ?? {};\nconst collectionTitles = $('Call_Get_Product_Collections').item.json.collection_titles ?? [];\nconst variants = Array.isArray(product.variants) ? product.variants : [];\n// Cambio de plan (2026-08-13): se incluyen TODAS las variantes, tengan o no SKU.\n// El id deterministico en 'Subflow: Upsert Qdrant Point' se calcula SIEMPRE a partir de\n// variant_id (nunca del SKU) -- por eso variant_id siempre va en el payload. El SKU (si\n// existe) y el color se guardan aqui como datos del payload, no como llave de identidad.\nconst items = variants.length > 0 ? variants : [{ sku: null, price: null, id: null, inventory_quantity: null, option1: null, title: null }];\n\nconst description = product.body_html\n  ? String(product.body_html).replace(/<[^>]*>/g, ' ').replace(/\\s+/g, ' ').trim()\n  : null;\n\n// Cambio (2026-08-26, ejecuciones 95400/95401): se agrega 'qdrant_written_at' (timestamp\n// de ESTA ejecucion, no un campo de Shopify) al payload persistido. Sirve como guardia\n// contra la condicion de carrera de Find_Orphaned_Variants -- ver la nota en ese nodo.\nconst eventTimestamp = new Date().toISOString();\n\n// Cambio (2026-08-25): se agrega 'collections' al payload persistido, tomado del\n// resultado de 'Subflow: Get Shopify Product Collections' (llamada GraphQL adicional,\n// ya que Shopify no manda las collections de un producto en el webhook). Reemplaza a\n// product_type como fuente de 'categoria' en la busqueda (Catalogo Qdrant (DEV)) --\n// product_type se mantiene en el payload sin cambios, solo deja de ser lo que se usa\n// para categoria.\n// Cambio (2026-08-19): se agrega 'descripcion' al payload persistido (antes solo se usaba\n// para armar el 'text' del embedding, nunca se guardaba en Qdrant). Preparacion para cuando\n// se adapte Agente Asesor a leer el esquema plano nuevo -- no cambia nada de la logica de\n// escritura/limpieza existente, solo agrega este campo.\n// Cambio (2026-09-07): dual-write de compatibilidad. Se agrega un espejo del esquema\n// viejo (pageContent + metadata.{sku,titulo,categoria,precio,stock,descripcion,Color})\n// DENTRO del mismo payload plano, sin quitar ni renombrar ningun campo existente --\n// 'Catalogo Qdrant (DEV)' hoy todavia lee item.payload.metadata.* (no se ha migrado su\n// parser al esquema plano) y el equipo pidio no tocar ese flujo hasta terminar de probar\n// el resto del pipeline. 'categoria' se deriva de collections[0] en mayusculas (misma\n// convencion que usaba la columna curada del Sheet viejo); si no hay ninguna collection\n// todavia, queda null. product_id/variant_id/main_image_url/variant_image_url NUNCA se\n// tocan -- siguen en el mismo lugar de siempre en el payload plano.\nconst categoriaMirror = (Array.isArray(collectionTitles) && collectionTitles.length > 0 && collectionTitles[0])\n  ? String(collectionTitles[0]).toUpperCase()\n  : null;\n\nreturn items.map((variant) => ({\n  json: {\n    sku: variant.sku ?? null,\n    text: [product.title, product.product_type, description].filter(Boolean).join(' - '),\n    payload: {\n      product_id: product.id,\n      title: product.title,\n      product_type: product.product_type,\n      price: variant.price ?? null,\n      inventory: variant.inventory_quantity ?? null,\n      variant_id: variant.id ?? null,\n      sku: variant.sku ?? null,\n      color: variant.option1 ?? variant.title ?? null,\n      descripcion: description,\n      collections: collectionTitles,\n      main_image_url: images.main_image_url ?? null,\n      variant_image_url: (images.variant_images && variant.id) ? (images.variant_images[variant.id] ?? null) : null,\n      qdrant_written_at: eventTimestamp,\n      pageContent: product.title ?? null,\n      metadata: {\n        sku: variant.sku ?? null,\n        titulo: product.title ?? null,\n        categoria: categoriaMirror,\n        precio: variant.price ?? null,\n        stock: variant.inventory_quantity ?? null,\n        descripcion: description,\n        Color: variant.option1 ?? variant.title ?? null\n      }\n    }\n  }\n}));"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        28176,
+        -272
+      ],
+      "id": "bc78fc5b-4924-4a32-9cc5-1240ff9d69ee",
+      "name": "Build_Catalog_Entries"
+    },
+    {
+      "parameters": {
+        "workflowId": {
+          "__rl": true,
+          "value": "Ey40XungXqtg4vrq",
+          "mode": "list",
+          "cachedResultUrl": "/workflow/Ey40XungXqtg4vrq",
+          "cachedResultName": "Babys World — Subflow: Generate OpenAI Embedding (PROD)"
+        },
+        "workflowInputs": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "text": "={{ $json.text }}"
+          },
+          "matchingColumns": [
+            "text"
+          ],
+          "schema": [
+            {
+              "id": "text",
+              "displayName": "text",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string",
+              "removed": false
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": true
+        },
+        "mode": "each",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.executeWorkflow",
+      "typeVersion": 1.2,
+      "position": [
+        28416,
+        -272
+      ],
+      "id": "3c5083f7-a7a2-4d4e-91f6-0bf4c515caf1",
+      "name": "Call_Generate_Embedding"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Call_Generate_Embedding ahora corre en modo 'each' (una vez por variante), asi que\n// llegan tantos items aqui como variantes con SKU se hayan construido en Build_Catalog_Entries.\n// Se emparejan por indice (mismo orden de entrada/salida que garantiza el modo 'each').\nconst entries = $('Build_Catalog_Entries').all();\nreturn $input.all().map((item, i) => ({\n  json: {\n    sku: entries[i].json.sku,\n    payload: entries[i].json.payload,\n    vector: item.json.vector\n  }\n}));\n"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        28656,
+        -272
+      ],
+      "id": "1eda1ea8-d228-4d85-9f7b-bbabb0af34b5",
+      "name": "Merge_Embedding_With_Payload"
+    },
+    {
+      "parameters": {
+        "workflowId": {
+          "__rl": true,
+          "value": "a0b4Tr1zYv68C1Cf",
+          "mode": "list",
+          "cachedResultUrl": "/workflow/a0b4Tr1zYv68C1Cf",
+          "cachedResultName": "Babys World — Subflow: Upsert Qdrant Point (PROD)"
+        },
+        "workflowInputs": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "sku": "={{ $json.sku }}",
+            "payload": "={{ $json.payload }}",
+            "vector": "={{ $json.vector }}"
+          },
+          "matchingColumns": [],
+          "schema": [
+            {
+              "id": "sku",
+              "displayName": "sku",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string",
+              "removed": false
+            },
+            {
+              "id": "payload",
+              "displayName": "payload",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "object",
+              "removed": false
+            },
+            {
+              "id": "vector",
+              "displayName": "vector",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "array",
+              "removed": false
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": true
+        },
+        "mode": "each",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.executeWorkflow",
+      "typeVersion": 1.2,
+      "position": [
+        28896,
+        -272
+      ],
+      "id": "99ed7e72-dbde-47e1-af48-1a00b703fa06",
+      "name": "Call_Upsert_Qdrant_Point"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Call_Upsert_Qdrant_Point ahora corre en modo 'each' (una vez por variante). Se\n// emparejan por indice con Merge_Embedding_With_Payload para reportar el sku correcto\n// de cada variante upserteada (antes se reportaba un solo sku fijo, siempre el mismo).\nconst merged = $('Merge_Embedding_With_Payload').all();\nreturn $input.all().map((item, i) => ({\n  json: {\n    success: true,\n    action: 'upserted',\n    sku: merged[i]?.json?.sku ?? null,\n    product_id: $('Route_Product_Action').item.json.product_id\n  }\n}));\n"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        29136,
+        -272
+      ],
+      "id": "4f3a6a3f-a8e4-4913-9c09-1df64dde62d9",
+      "name": "Build_Success_Output_Upsert"
+    },
+    {
+      "parameters": {
+        "jsCode": "return [{\n  json: {\n    product_id: String($('Route_Product_Action').item.json.product_id)\n  }\n}];\n"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        27936,
+        112
+      ],
+      "id": "40d6d1ea-c0f0-4e8b-a991-c77508d419e7",
+      "name": "Build_Delete_Input"
+    },
+    {
+      "parameters": {
+        "workflowId": {
+          "__rl": true,
+          "value": "clmkMKPU47jRKAXo",
+          "mode": "list",
+          "cachedResultUrl": "/workflow/clmkMKPU47jRKAXo",
+          "cachedResultName": "Babys World — Subflow: Delete Qdrant Point (PROD)"
+        },
+        "workflowInputs": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "product_id": "={{ $json.product_id }}"
+          },
+          "matchingColumns": [
+            "product_id"
+          ],
+          "schema": [
+            {
+              "id": "product_id",
+              "displayName": "product_id",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string",
+              "removed": false
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": true
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.executeWorkflow",
+      "typeVersion": 1.2,
+      "position": [
+        28176,
+        112
+      ],
+      "id": "d1e9843c-a3ca-4399-ae3f-7144a13380a1",
+      "name": "Call_Delete_Qdrant_Point"
+    },
+    {
+      "parameters": {
+        "jsCode": "return [{\n  json: {\n    success: true,\n    action: 'deleted',\n    product_id: $('Route_Product_Action').item.json.product_id\n  }\n}];\n"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        28416,
+        112
+      ],
+      "id": "da8db7b8-5333-474b-9bd7-b75481bba8d2",
+      "name": "Build_Success_Output_Delete"
+    },
+    {
+      "parameters": {},
+      "type": "n8n-nodes-base.noOp",
+      "typeVersion": 1,
+      "position": [
+        29408,
+        256
+      ],
+      "id": "63584c97-ca1e-49c1-a890-558ddee4547d",
+      "name": "Return_Product_Result"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Corre una sola vez por evento (sin importar cuantas variantes se hayan\n// upserteado arriba), para no repetir la consulta/limpieza de huerfanos N veces.\nreturn [{\n  json: {\n    product_id: $('Route_Product_Action').item.json.product_id\n  }\n}];\n"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        29376,
+        -272
+      ],
+      "id": "74609781-aa4b-444f-8a20-aedc698a50cb",
+      "name": "Prepare_Cleanup_Check"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://1537c683-48da-4631-ab76-ad698b6b9881.us-east-1-0.aws.cloud.qdrant.io:6333/collections/BabysWorld_Catalogo/points/scroll",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "qdrantApi",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ {\n  filter: {\n    must: [ { key: 'product_id', match: { value: $json.product_id } } ]\n  },\n  with_payload: true,\n  with_vector: false,\n  limit: 250\n} }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        29616,
+        -272
+      ],
+      "id": "256471b4-d540-49fd-bd77-680bbbc1be8d",
+      "name": "Qdrant_Scroll_Existing_Points",
+      "credentials": {
+        "qdrantApi": {
+          "id": "ZYv8vdr6tkTS4jYz",
+          "name": "QdrantApi account 3"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const scrollResponse = $input.first().json ?? {};\nconst existingPoints = Array.isArray(scrollResponse.result?.points) ? scrollResponse.result.points : [];\n\nconst currentEntries = $('Build_Catalog_Entries').all();\nconst currentVariantIds = currentEntries\n  .map((item) => item.json?.payload?.variant_id)\n  .filter((id) => id !== null && id !== undefined);\nconst currentSet = new Set(currentVariantIds.map(String));\n\n// Timestamp de ESTA ejecucion (asignado en Build_Catalog_Entries, mismo valor para\n// todas las variantes de este evento). Se usa como guardia de carrera abajo.\nconst eventTimestamp = currentEntries[0]?.json?.payload?.qdrant_written_at ?? null;\n\n// Fix (2026-08-26, ejecuciones 95400/95401): dos eventos products/update casi\n// simultaneos para el MISMO producto (Shopify recreo una variante -- id nuevo -- al\n// agregarle/quitarle el SKU, y disparo dos webhooks segundos aparte) causaban que la\n// limpieza de huerfanos de cada evento borrara la variante que el OTRO evento (mas\n// nuevo) ya habia escrito -- terminando con el producto en CERO puntos en Qdrant pese\n// a tener una variante activa real. Causa: cada evento solo conoce su propio payload\n// (viejo o nuevo) y comparaba contra el estado completo de Qdrant sin saber si un punto\n// que no reconoce es genuinamente huerfano o fue escrito por un evento mas reciente que\n// llego casi al mismo tiempo.\n// Fix: cada punto guarda su propio 'qdrant_written_at' (seccion de arriba). Aqui, un\n// punto NUNCA se marca huerfano si su 'qdrant_written_at' es MAS RECIENTE que el de\n// este evento -- eso significa que un evento mas nuevo ya lo escribio despues de que\n// este evento arranco, y no debe ser borrado por uno mas viejo. Los puntos genuinamente\n// huerfanos (mas viejos que este evento, o sin el campo -- puntos de antes de este fix)\n// se siguen borrando igual que antes.\nconst orphanedVariantIds = [...new Set(\n  existingPoints\n    .filter((p) => {\n      const pointTimestamp = p.payload?.qdrant_written_at;\n      if (eventTimestamp && pointTimestamp && pointTimestamp > eventTimestamp) {\n        return false; // escrito por un evento mas nuevo -- no tocar\n      }\n      return true;\n    })\n    .map((p) => p.payload?.variant_id)\n    .filter((id) => id !== null && id !== undefined && !currentSet.has(String(id)))\n)];\n\nreturn [{\n  json: {\n    product_id: $('Route_Product_Action').item.json.product_id,\n    orphaned_variant_ids: orphanedVariantIds\n  }\n}];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        29856,
+        -272
+      ],
+      "id": "9f8b36c7-464f-44b7-b580-e26283cbe33e",
+      "name": "Find_Orphaned_Variants"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "c1a1b2b3-4d5e-4f60-8a1b-2c3d4e5f6001",
+              "leftValue": "={{ $json.orphaned_variant_ids.length }}",
+              "rightValue": 0,
+              "operator": {
+                "type": "number",
+                "operation": "gt"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        30096,
+        -272
+      ],
+      "id": "66050985-567b-428c-abae-aacae18e9115",
+      "name": "Has_Orphaned_Variants?"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://1537c683-48da-4631-ab76-ad698b6b9881.us-east-1-0.aws.cloud.qdrant.io:6333/collections/BabysWorld_Catalogo/points/delete",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "qdrantApi",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ {\n  filter: {\n    must: [ { key: 'product_id', match: { value: $json.product_id } } ],\n    should: $json.orphaned_variant_ids.map(v => ({ key: 'variant_id', match: { value: v } }))\n  }\n} }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        30336,
+        -368
+      ],
+      "id": "00e9ce10-6f77-480f-916f-7f201060d871",
+      "name": "Qdrant_Delete_Orphaned_Variants",
+      "credentials": {
+        "qdrantApi": {
+          "id": "ZYv8vdr6tkTS4jYz",
+          "name": "QdrantApi account 3"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "workflowId": {
+          "__rl": true,
+          "value": "12AJ8IreT01EGVZx",
+          "mode": "list",
+          "cachedResultUrl": "/workflow/12AJ8IreT01EGVZx",
+          "cachedResultName": "Babys World — Subflow: Get Shopify Product Collections (PROD)"
+        },
+        "workflowInputs": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "product_id": "={{ String($('Route_Product_Action').item.json.product.id) }}"
+          },
+          "matchingColumns": [
+            "product_id"
+          ],
+          "schema": [
+            {
+              "id": "product_id",
+              "displayName": "product_id",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string",
+              "removed": false
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": true
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.executeWorkflow",
+      "typeVersion": 1.2,
+      "position": [
+        27696,
+        -352
+      ],
+      "id": "2fc796b9-deb4-4505-8128-071fec394dff",
+      "name": "Call_Get_Product_Collections"
+    }
+  ],
+  "connections": {
+    "When Executed by Another Workflow": {
+      "main": [
+        [
+          {
+            "node": "01_Normalize_Product_Input",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "01_Normalize_Product_Input": {
+      "main": [
+        [
+          {
+            "node": "Validate_Internal_Contract",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Validate_Internal_Contract": {
+      "main": [
+        [
+          {
+            "node": "Input_Is_Valid",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Build_Input_Error": {
+      "main": [
+        [
+          {
+            "node": "Return_Product_Result",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Call_Resolve_Product_Image": {
+      "main": [
+        [
+          {
+            "node": "Build_Catalog_Entries",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Build_Catalog_Entries": {
+      "main": [
+        [
+          {
+            "node": "Call_Generate_Embedding",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Call_Generate_Embedding": {
+      "main": [
+        [
+          {
+            "node": "Merge_Embedding_With_Payload",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Merge_Embedding_With_Payload": {
+      "main": [
+        [
+          {
+            "node": "Call_Upsert_Qdrant_Point",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Call_Upsert_Qdrant_Point": {
+      "main": [
+        [
+          {
+            "node": "Build_Success_Output_Upsert",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Build_Success_Output_Upsert": {
+      "main": [
+        [
+          {
+            "node": "Prepare_Cleanup_Check",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Build_Delete_Input": {
+      "main": [
+        [
+          {
+            "node": "Call_Delete_Qdrant_Point",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Call_Delete_Qdrant_Point": {
+      "main": [
+        [
+          {
+            "node": "Build_Success_Output_Delete",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Build_Success_Output_Delete": {
+      "main": [
+        [
+          {
+            "node": "Return_Product_Result",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Input_Is_Valid": {
+      "main": [
+        [
+          {
+            "node": "Route_Product_Action",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Build_Input_Error",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Route_Product_Action": {
+      "main": [
+        [
+          {
+            "node": "Call_Get_Product_Collections",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Build_Delete_Input",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Prepare_Cleanup_Check": {
+      "main": [
+        [
+          {
+            "node": "Qdrant_Scroll_Existing_Points",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Qdrant_Scroll_Existing_Points": {
+      "main": [
+        [
+          {
+            "node": "Find_Orphaned_Variants",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Find_Orphaned_Variants": {
+      "main": [
+        [
+          {
+            "node": "Has_Orphaned_Variants?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Has_Orphaned_Variants?": {
+      "main": [
+        [
+          {
+            "node": "Qdrant_Delete_Orphaned_Variants",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Return_Product_Result",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Qdrant_Delete_Orphaned_Variants": {
+      "main": [
+        [
+          {
+            "node": "Return_Product_Result",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Call_Get_Product_Collections": {
+      "main": [
+        [
+          {
+            "node": "Call_Resolve_Product_Image",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "nodeGroups": [],
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate",
+    "availableInMCP": false,
+    "timeSavedMode": "fixed",
+    "errorWorkflow": "GZN4CJ6QgYxm77J7",
+    "callerPolicy": "workflowsFromSameOwner"
+  },
+  "staticData": null,
+  "pinData": {},
+  "meta": null,
+  "tags": [
+    {
+      "id": "2nDb4zfpAXOj9Pvx",
+      "name": "env:prod",
+      "createdAt": "2026-02-25T21:45:46.330Z",
+      "updatedAt": "2026-02-25T21:45:46.330Z"
+    }
+  ],
+  "shared": [
+    {
+      "role": "workflow:owner",
+      "workflowId": "HPhKJvra1skVILfI",
+      "projectId": "8h8pwWGcWlnGEym3",
+      "createdAt": "2026-10-08T23:22:57.114Z",
+      "updatedAt": "2026-10-08T23:22:57.114Z"
+    }
+  ],
+  "activeVersion": {
+    "versionId": "86b0994b-b0f1-4867-823e-d232f9657a83",
+    "workflowId": "HPhKJvra1skVILfI",
+    "nodes": [
+      {
+        "parameters": {
+          "content": "## Product_Management\n\nLogica de negocio del modulo de catalogo: normaliza el input segun el topic, valida el contrato interno, enruta por accion (create/update vs delete), resuelve la imagen correcta por variante, genera el embedding y hace upsert/delete determinista en Qdrant. Todas las ramas convergen en un unico nodo de salida (Return_Product_Result).\n\nWorkflow nuevo e independiente de M5_02_Payment_Management: se uso su MISMA FORMA como referencia de diseño (normalizar -> validar contrato -> gate -> switch por accion -> salida unica), pero no hay ninguna llamada ni dependencia entre ambos.\n\nNOTA (actualizado): la rama delete YA NO usa SKU — el webhook real products/delete de Shopify no trae variants/sku, solo el id del producto. Build_Delete_Input pasa product_id directo, y 'Subflow: Delete Qdrant Point' borra por FILTRO de product_id (todas las variantes de ese producto de una vez).\n\nNOTA (actualizado 2026-08-13, ejecuciones 91567/91574): Call_Generate_Embedding/Call_Upsert_Qdrant_Point corrian en modo 'once' (una sola vez para todo el lote) en vez de una vez por variante — con un producto de 2 variantes, solo la PRIMERA llegaba a Qdrant. Corregido: ambos Execute Workflow ahora corren en modo 'each', y Merge_Embedding_With_Payload / Build_Success_Output_Upsert iteran sobre TODOS los items de entrada.\n\nNOTA (cambio de plan, 2026-08-13): se guardan TODAS las variantes en Qdrant, tengan o no SKU asignado en Shopify — ya NO se filtran ni se rechaza el producto por falta de SKU. Validate_Internal_Contract ya no exige ningun SKU.\n\nNOTA (cambio de diseno, 2026-08-13, mismo dia): 'Subflow: Upsert Qdrant Point' ya NO usa el SKU para calcular el id determinista en ningun caso — usa SIEMPRE `variant-${variant_id}` (estable de por vida para esa variante en Shopify). Esto evita que el id cambie (y se genere un punto huerfano duplicado) el dia que a una variante sin SKU se le agrega uno. Ademas, Build_Catalog_Entries ahora guarda `sku` y `color` (variant.option1/title) dentro del payload que se persiste en Qdrant — antes el sku solo se usaba de paso para calcular el id y nunca quedaba guardado; el color no se guardaba en absoluto. Esto cierra el requisito 2 de la seccion 8 (color especifico -> imagen de ese color).\n\nPendiente: reemplaza a 'Flujo Catalogo En Qdrant' en su forma actual (ver Fase 4 del plan de ejecucion) una vez validado end-to-end.\n\nNOTA (fix, 2026-08-13, ejecucion 91628): se detecto que al eliminar UNA variante dentro de un producto (sin borrar el producto entero), Shopify NO manda ningun evento de borrado -- manda un products/update normal con el estado actual del producto, simplemente con esa variante ausente de la lista. El punto de esa variante quedaba huerfano en Qdrant para siempre, porque el pipeline solo hacia upsert de las variantes presentes en el evento y nunca comparaba contra lo que ya habia guardado. Fix: al final de la rama create/update (despues de Build_Success_Output_Upsert), se agrego Prepare_Cleanup_Check -> Qdrant_Scroll_Existing_Points (trae los puntos ya guardados para este product_id) -> Find_Orphaned_Variants (compara sus variant_id contra los de Build_Catalog_Entries del evento actual) -> Has_Orphaned_Variants? -> si hay, Qdrant_Delete_Orphaned_Variants los borra (filtro product_id + variant_id). Corre una sola vez por evento, no una vez por variante.\n\nNOTA (2026-08-19): se agrego el campo 'descripcion' al payload persistido en Qdrant (Build_Catalog_Entries), tomado de product.body_html sin etiquetas HTML -- ya se calculaba para armar el texto del embedding, pero nunca se guardaba en el payload. Es preparacion para cuando se adapte Agente Asesor/Catalogo Qdrant a leer el esquema plano nuevo (no se toco nada de esa lectura todavia, solo el lado de guardado). No cambia ninguna otra logica existente.\n\nNOTA (2026-08-25): se agrega 'Call_Get_Product_Collections' (nuevo Execute Workflow) entre Route_Product_Action y Call_Resolve_Product_Image, en la rama create/update. Llama a 'Subflow: Get Shopify Product Collections' (nueva, GraphQL) con el product_id, y Build_Catalog_Entries agrega el resultado (collection_titles) al payload como el campo 'collections' (array de strings). Ver seccion 17 del plan.\n\nNOTA (2026-08-26, ejecuciones 95400/95401): se detecto una condicion de carrera en la limpieza de variantes huerfanas -- dos products/update casi simultaneos para el mismo producto (Shopify recreo una variante al agregarle/quitarle el SKU, disparando dos webhooks segundos aparte) hacian que cada evento borrara la variante que el OTRO evento (mas nuevo) ya habia escrito, dejando el producto con CERO puntos en Qdrant pese a tener una variante activa real. Fix: Build_Catalog_Entries ahora guarda 'qdrant_written_at' (timestamp de la propia ejecucion, no un campo de Shopify) en el payload; Find_Orphaned_Variants nunca marca huerfano un punto cuyo 'qdrant_written_at' sea mas reciente que el de este evento -- eso significa que un evento mas nuevo ya lo escribio, y uno mas viejo no debe poder borrarlo. Los puntos genuinamente huerfanos (mas viejos, o sin el campo -- de antes de este fix) se siguen borrando igual que antes.",
+          "height": 460,
+          "width": 480,
+          "color": 5
+        },
+        "type": "n8n-nodes-base.stickyNote",
+        "typeVersion": 1,
+        "position": [
+          26272,
+          -432
+        ],
+        "id": "724d46ee-ecee-458a-9bbf-0e4ec9702d20",
+        "name": "Sticky_e5f17b5f"
+      },
+      {
+        "parameters": {
+          "workflowInputs": {
+            "values": [
+              {
+                "name": "topic"
+              },
+              {
+                "name": "product",
+                "type": "object"
+              }
+            ]
+          }
+        },
+        "type": "n8n-nodes-base.executeWorkflowTrigger",
+        "typeVersion": 1.1,
+        "position": [
+          26736,
+          0
+        ],
+        "id": "55d522d1-b90a-49cc-bc8e-0e592d2858b6",
+        "name": "When Executed by Another Workflow"
+      },
+      {
+        "parameters": {
+          "jsCode": "const input = $input.first().json ?? {};\nconst topic = input.topic ?? null;\nconst product = input.product ?? {};\nconst variants = Array.isArray(product.variants) ? product.variants : [];\n\nreturn [{\n  json: {\n    topic,\n    product,\n    product_id: product.id ?? null,\n    title: product.title ?? null,\n    product_type: product.product_type ?? null,\n    variant_count: variants.length,\n    skus: variants.map((v) => v.sku).filter(Boolean)\n  }\n}];\n"
+        },
+        "type": "n8n-nodes-base.code",
+        "typeVersion": 2,
+        "position": [
+          26976,
+          0
+        ],
+        "id": "fc8985e2-266f-4dd3-95d5-cdfa227b1e10",
+        "name": "01_Normalize_Product_Input"
+      },
+      {
+        "parameters": {
+          "jsCode": "const input = $input.first().json ?? {};\nconst errors = [];\n\nconst SUPPORTED_TOPICS = ['products/create', 'products/update', 'products/delete'];\n\nif (!input.topic) errors.push('missing_topic');\nelse if (!SUPPORTED_TOPICS.includes(input.topic)) errors.push('unsupported_topic');\n\nif (!input.product_id) errors.push('missing_product_id');\n\n// Cambio de plan (2026-08-13): ya NO se exige SKU para aceptar el producto -- se\n// guardan todas las variantes tengan o no SKU (ver Build_Catalog_Entries y\n// 'Subflow: Upsert Qdrant Point', que usa variant_id como llave alterna sin SKU).\n\nreturn [{\n  json: {\n    ...input,\n    contract_errors: errors,\n    contract_is_valid: errors.length === 0\n  }\n}];\n"
+        },
+        "type": "n8n-nodes-base.code",
+        "typeVersion": 2,
+        "position": [
+          27216,
+          0
+        ],
+        "id": "87d76eb6-dcf2-4eb8-b2bd-4ba18786b819",
+        "name": "Validate_Internal_Contract"
+      },
+      {
+        "parameters": {
+          "conditions": {
+            "options": {
+              "caseSensitive": true,
+              "leftValue": "",
+              "typeValidation": "strict",
+              "version": 3
+            },
+            "conditions": [
+              {
+                "id": "f0468069-a8d9-49e0-8ec9-4bc3f028cf95",
+                "leftValue": "={{ $json.contract_is_valid }}",
+                "rightValue": "",
+                "operator": {
+                  "type": "boolean",
+                  "operation": "true",
+                  "singleValue": true
+                }
+              }
+            ],
+            "combinator": "and"
+          },
+          "options": {}
+        },
+        "type": "n8n-nodes-base.if",
+        "typeVersion": 2.3,
+        "position": [
+          27456,
+          0
+        ],
+        "id": "be0867b9-2111-411f-80a7-287a550f65cc",
+        "name": "Input_Is_Valid"
+      },
+      {
+        "parameters": {
+          "jsCode": "const input = $input.first().json ?? {};\n\nreturn [{\n  json: {\n    success: false,\n    stage: 'input_validation',\n    errors: input.contract_errors ?? ['unknown_validation_error'],\n    topic: input.topic ?? null,\n    product_id: input.product_id ?? null\n  }\n}];\n"
+        },
+        "type": "n8n-nodes-base.code",
+        "typeVersion": 2,
+        "position": [
+          27712,
+          256
+        ],
+        "id": "9b05d04f-8387-4533-b6c0-1ab6f263e041",
+        "name": "Build_Input_Error"
+      },
+      {
+        "parameters": {
+          "rules": {
+            "values": [
+              {
+                "conditions": {
+                  "options": {
+                    "caseSensitive": true,
+                    "leftValue": "",
+                    "typeValidation": "strict",
+                    "version": 3
+                  },
+                  "conditions": [
+                    {
+                      "id": "038a7c40-d821-434f-a023-976ae59c36c6",
+                      "leftValue": "={{ $json.topic }}",
+                      "rightValue": "products/(create|update)",
+                      "operator": {
+                        "type": "string",
+                        "operation": "regex"
+                      }
+                    }
+                  ],
+                  "combinator": "and"
+                }
+              },
+              {
+                "conditions": {
+                  "options": {
+                    "caseSensitive": true,
+                    "leftValue": "",
+                    "typeValidation": "strict",
+                    "version": 3
+                  },
+                  "conditions": [
+                    {
+                      "id": "158603b8-5099-4f8b-a92b-26e4f73dcc89",
+                      "leftValue": "={{ $json.topic }}",
+                      "rightValue": "products/delete",
+                      "operator": {
+                        "type": "string",
+                        "operation": "equals"
+                      }
+                    }
+                  ],
+                  "combinator": "and"
+                }
+              }
+            ]
+          },
+          "options": {
+            "fallbackOutput": "none"
+          }
+        },
+        "type": "n8n-nodes-base.switch",
+        "typeVersion": 3.2,
+        "position": [
+          27696,
+          -128
+        ],
+        "id": "bba285ec-0b1e-45be-aa3c-20071212362a",
+        "name": "Route_Product_Action"
+      },
+      {
+        "parameters": {
+          "workflowId": {
+            "__rl": true,
+            "value": "OYFFtGZJFhyESGWQ",
+            "mode": "list",
+            "cachedResultUrl": "/workflow/OYFFtGZJFhyESGWQ",
+            "cachedResultName": "Babys World — Subflow: Resolve Shopify Product Image (PROD)"
+          },
+          "workflowInputs": {
+            "mappingMode": "defineBelow",
+            "value": {
+              "product": "={{ $('Route_Product_Action').item.json.product }}"
+            },
+            "matchingColumns": [
+              "product"
+            ],
+            "schema": [
+              {
+                "id": "product",
+                "displayName": "product",
+                "required": false,
+                "defaultMatch": false,
+                "display": true,
+                "canBeUsedToMatch": true,
+                "type": "object",
+                "removed": false
+              }
+            ],
+            "attemptToConvertTypes": false,
+            "convertFieldsToString": true
+          },
+          "options": {}
+        },
+        "type": "n8n-nodes-base.executeWorkflow",
+        "typeVersion": 1.2,
+        "position": [
+          27936,
+          -272
+        ],
+        "id": "05b186f1-eeb8-49fa-a02d-6f7717f6e386",
+        "name": "Call_Resolve_Product_Image"
+      },
+      {
+        "parameters": {
+          "jsCode": "const product = $('Route_Product_Action').item.json.product;\nconst images = $json ?? {};\nconst collectionTitles = $('Call_Get_Product_Collections').item.json.collection_titles ?? [];\nconst variants = Array.isArray(product.variants) ? product.variants : [];\n// Cambio de plan (2026-08-13): se incluyen TODAS las variantes, tengan o no SKU.\n// El id deterministico en 'Subflow: Upsert Qdrant Point' se calcula SIEMPRE a partir de\n// variant_id (nunca del SKU) -- por eso variant_id siempre va en el payload. El SKU (si\n// existe) y el color se guardan aqui como datos del payload, no como llave de identidad.\nconst items = variants.length > 0 ? variants : [{ sku: null, price: null, id: null, inventory_quantity: null, option1: null, title: null }];\n\nconst description = product.body_html\n  ? String(product.body_html).replace(/<[^>]*>/g, ' ').replace(/\\s+/g, ' ').trim()\n  : null;\n\n// Cambio (2026-08-26, ejecuciones 95400/95401): se agrega 'qdrant_written_at' (timestamp\n// de ESTA ejecucion, no un campo de Shopify) al payload persistido. Sirve como guardia\n// contra la condicion de carrera de Find_Orphaned_Variants -- ver la nota en ese nodo.\nconst eventTimestamp = new Date().toISOString();\n\n// Cambio (2026-08-25): se agrega 'collections' al payload persistido, tomado del\n// resultado de 'Subflow: Get Shopify Product Collections' (llamada GraphQL adicional,\n// ya que Shopify no manda las collections de un producto en el webhook). Reemplaza a\n// product_type como fuente de 'categoria' en la busqueda (Catalogo Qdrant (DEV)) --\n// product_type se mantiene en el payload sin cambios, solo deja de ser lo que se usa\n// para categoria.\n// Cambio (2026-08-19): se agrega 'descripcion' al payload persistido (antes solo se usaba\n// para armar el 'text' del embedding, nunca se guardaba en Qdrant). Preparacion para cuando\n// se adapte Agente Asesor a leer el esquema plano nuevo -- no cambia nada de la logica de\n// escritura/limpieza existente, solo agrega este campo.\n// Cambio (2026-09-07): dual-write de compatibilidad. Se agrega un espejo del esquema\n// viejo (pageContent + metadata.{sku,titulo,categoria,precio,stock,descripcion,Color})\n// DENTRO del mismo payload plano, sin quitar ni renombrar ningun campo existente --\n// 'Catalogo Qdrant (DEV)' hoy todavia lee item.payload.metadata.* (no se ha migrado su\n// parser al esquema plano) y el equipo pidio no tocar ese flujo hasta terminar de probar\n// el resto del pipeline. 'categoria' se deriva de collections[0] en mayusculas (misma\n// convencion que usaba la columna curada del Sheet viejo); si no hay ninguna collection\n// todavia, queda null. product_id/variant_id/main_image_url/variant_image_url NUNCA se\n// tocan -- siguen en el mismo lugar de siempre en el payload plano.\nconst categoriaMirror = (Array.isArray(collectionTitles) && collectionTitles.length > 0 && collectionTitles[0])\n  ? String(collectionTitles[0]).toUpperCase()\n  : null;\n\nreturn items.map((variant) => ({\n  json: {\n    sku: variant.sku ?? null,\n    text: [product.title, product.product_type, description].filter(Boolean).join(' - '),\n    payload: {\n      product_id: product.id,\n      title: product.title,\n      product_type: product.product_type,\n      price: variant.price ?? null,\n      inventory: variant.inventory_quantity ?? null,\n      variant_id: variant.id ?? null,\n      sku: variant.sku ?? null,\n      color: variant.option1 ?? variant.title ?? null,\n      descripcion: description,\n      collections: collectionTitles,\n      main_image_url: images.main_image_url ?? null,\n      variant_image_url: (images.variant_images && variant.id) ? (images.variant_images[variant.id] ?? null) : null,\n      qdrant_written_at: eventTimestamp,\n      pageContent: product.title ?? null,\n      metadata: {\n        sku: variant.sku ?? null,\n        titulo: product.title ?? null,\n        categoria: categoriaMirror,\n        precio: variant.price ?? null,\n        stock: variant.inventory_quantity ?? null,\n        descripcion: description,\n        Color: variant.option1 ?? variant.title ?? null\n      }\n    }\n  }\n}));"
+        },
+        "type": "n8n-nodes-base.code",
+        "typeVersion": 2,
+        "position": [
+          28176,
+          -272
+        ],
+        "id": "bc78fc5b-4924-4a32-9cc5-1240ff9d69ee",
+        "name": "Build_Catalog_Entries"
+      },
+      {
+        "parameters": {
+          "workflowId": {
+            "__rl": true,
+            "value": "Ey40XungXqtg4vrq",
+            "mode": "list",
+            "cachedResultUrl": "/workflow/Ey40XungXqtg4vrq",
+            "cachedResultName": "Babys World — Subflow: Generate OpenAI Embedding (PROD)"
+          },
+          "workflowInputs": {
+            "mappingMode": "defineBelow",
+            "value": {
+              "text": "={{ $json.text }}"
+            },
+            "matchingColumns": [
+              "text"
+            ],
+            "schema": [
+              {
+                "id": "text",
+                "displayName": "text",
+                "required": false,
+                "defaultMatch": false,
+                "display": true,
+                "canBeUsedToMatch": true,
+                "type": "string",
+                "removed": false
+              }
+            ],
+            "attemptToConvertTypes": false,
+            "convertFieldsToString": true
+          },
+          "mode": "each",
+          "options": {}
+        },
+        "type": "n8n-nodes-base.executeWorkflow",
+        "typeVersion": 1.2,
+        "position": [
+          28416,
+          -272
+        ],
+        "id": "3c5083f7-a7a2-4d4e-91f6-0bf4c515caf1",
+        "name": "Call_Generate_Embedding"
+      },
+      {
+        "parameters": {
+          "jsCode": "// Call_Generate_Embedding ahora corre en modo 'each' (una vez por variante), asi que\n// llegan tantos items aqui como variantes con SKU se hayan construido en Build_Catalog_Entries.\n// Se emparejan por indice (mismo orden de entrada/salida que garantiza el modo 'each').\nconst entries = $('Build_Catalog_Entries').all();\nreturn $input.all().map((item, i) => ({\n  json: {\n    sku: entries[i].json.sku,\n    payload: entries[i].json.payload,\n    vector: item.json.vector\n  }\n}));\n"
+        },
+        "type": "n8n-nodes-base.code",
+        "typeVersion": 2,
+        "position": [
+          28656,
+          -272
+        ],
+        "id": "1eda1ea8-d228-4d85-9f7b-bbabb0af34b5",
+        "name": "Merge_Embedding_With_Payload"
+      },
+      {
+        "parameters": {
+          "workflowId": {
+            "__rl": true,
+            "value": "a0b4Tr1zYv68C1Cf",
+            "mode": "list",
+            "cachedResultUrl": "/workflow/a0b4Tr1zYv68C1Cf",
+            "cachedResultName": "Babys World — Subflow: Upsert Qdrant Point (PROD)"
+          },
+          "workflowInputs": {
+            "mappingMode": "defineBelow",
+            "value": {
+              "sku": "={{ $json.sku }}",
+              "payload": "={{ $json.payload }}",
+              "vector": "={{ $json.vector }}"
+            },
+            "matchingColumns": [],
+            "schema": [
+              {
+                "id": "sku",
+                "displayName": "sku",
+                "required": false,
+                "defaultMatch": false,
+                "display": true,
+                "canBeUsedToMatch": true,
+                "type": "string",
+                "removed": false
+              },
+              {
+                "id": "payload",
+                "displayName": "payload",
+                "required": false,
+                "defaultMatch": false,
+                "display": true,
+                "canBeUsedToMatch": true,
+                "type": "object",
+                "removed": false
+              },
+              {
+                "id": "vector",
+                "displayName": "vector",
+                "required": false,
+                "defaultMatch": false,
+                "display": true,
+                "canBeUsedToMatch": true,
+                "type": "array",
+                "removed": false
+              }
+            ],
+            "attemptToConvertTypes": false,
+            "convertFieldsToString": true
+          },
+          "mode": "each",
+          "options": {}
+        },
+        "type": "n8n-nodes-base.executeWorkflow",
+        "typeVersion": 1.2,
+        "position": [
+          28896,
+          -272
+        ],
+        "id": "99ed7e72-dbde-47e1-af48-1a00b703fa06",
+        "name": "Call_Upsert_Qdrant_Point"
+      },
+      {
+        "parameters": {
+          "jsCode": "// Call_Upsert_Qdrant_Point ahora corre en modo 'each' (una vez por variante). Se\n// emparejan por indice con Merge_Embedding_With_Payload para reportar el sku correcto\n// de cada variante upserteada (antes se reportaba un solo sku fijo, siempre el mismo).\nconst merged = $('Merge_Embedding_With_Payload').all();\nreturn $input.all().map((item, i) => ({\n  json: {\n    success: true,\n    action: 'upserted',\n    sku: merged[i]?.json?.sku ?? null,\n    product_id: $('Route_Product_Action').item.json.product_id\n  }\n}));\n"
+        },
+        "type": "n8n-nodes-base.code",
+        "typeVersion": 2,
+        "position": [
+          29136,
+          -272
+        ],
+        "id": "4f3a6a3f-a8e4-4913-9c09-1df64dde62d9",
+        "name": "Build_Success_Output_Upsert"
+      },
+      {
+        "parameters": {
+          "jsCode": "return [{\n  json: {\n    product_id: String($('Route_Product_Action').item.json.product_id)\n  }\n}];\n"
+        },
+        "type": "n8n-nodes-base.code",
+        "typeVersion": 2,
+        "position": [
+          27936,
+          112
+        ],
+        "id": "40d6d1ea-c0f0-4e8b-a991-c77508d419e7",
+        "name": "Build_Delete_Input"
+      },
+      {
+        "parameters": {
+          "workflowId": {
+            "__rl": true,
+            "value": "clmkMKPU47jRKAXo",
+            "mode": "list",
+            "cachedResultUrl": "/workflow/clmkMKPU47jRKAXo",
+            "cachedResultName": "Babys World — Subflow: Delete Qdrant Point (PROD)"
+          },
+          "workflowInputs": {
+            "mappingMode": "defineBelow",
+            "value": {
+              "product_id": "={{ $json.product_id }}"
+            },
+            "matchingColumns": [
+              "product_id"
+            ],
+            "schema": [
+              {
+                "id": "product_id",
+                "displayName": "product_id",
+                "required": false,
+                "defaultMatch": false,
+                "display": true,
+                "canBeUsedToMatch": true,
+                "type": "string",
+                "removed": false
+              }
+            ],
+            "attemptToConvertTypes": false,
+            "convertFieldsToString": true
+          },
+          "options": {}
+        },
+        "type": "n8n-nodes-base.executeWorkflow",
+        "typeVersion": 1.2,
+        "position": [
+          28176,
+          112
+        ],
+        "id": "d1e9843c-a3ca-4399-ae3f-7144a13380a1",
+        "name": "Call_Delete_Qdrant_Point"
+      },
+      {
+        "parameters": {
+          "jsCode": "return [{\n  json: {\n    success: true,\n    action: 'deleted',\n    product_id: $('Route_Product_Action').item.json.product_id\n  }\n}];\n"
+        },
+        "type": "n8n-nodes-base.code",
+        "typeVersion": 2,
+        "position": [
+          28416,
+          112
+        ],
+        "id": "da8db7b8-5333-474b-9bd7-b75481bba8d2",
+        "name": "Build_Success_Output_Delete"
+      },
+      {
+        "parameters": {},
+        "type": "n8n-nodes-base.noOp",
+        "typeVersion": 1,
+        "position": [
+          29408,
+          256
+        ],
+        "id": "63584c97-ca1e-49c1-a890-558ddee4547d",
+        "name": "Return_Product_Result"
+      },
+      {
+        "parameters": {
+          "jsCode": "// Corre una sola vez por evento (sin importar cuantas variantes se hayan\n// upserteado arriba), para no repetir la consulta/limpieza de huerfanos N veces.\nreturn [{\n  json: {\n    product_id: $('Route_Product_Action').item.json.product_id\n  }\n}];\n"
+        },
+        "type": "n8n-nodes-base.code",
+        "typeVersion": 2,
+        "position": [
+          29376,
+          -272
+        ],
+        "id": "74609781-aa4b-444f-8a20-aedc698a50cb",
+        "name": "Prepare_Cleanup_Check"
+      },
+      {
+        "parameters": {
+          "method": "POST",
+          "url": "https://1537c683-48da-4631-ab76-ad698b6b9881.us-east-1-0.aws.cloud.qdrant.io:6333/collections/BabysWorld_Catalogo/points/scroll",
+          "authentication": "predefinedCredentialType",
+          "nodeCredentialType": "qdrantApi",
+          "sendBody": true,
+          "specifyBody": "json",
+          "jsonBody": "={{ {\n  filter: {\n    must: [ { key: 'product_id', match: { value: $json.product_id } } ]\n  },\n  with_payload: true,\n  with_vector: false,\n  limit: 250\n} }}",
+          "options": {}
+        },
+        "type": "n8n-nodes-base.httpRequest",
+        "typeVersion": 4.2,
+        "position": [
+          29616,
+          -272
+        ],
+        "id": "256471b4-d540-49fd-bd77-680bbbc1be8d",
+        "name": "Qdrant_Scroll_Existing_Points",
+        "credentials": {
+          "qdrantApi": {
+            "id": "ZYv8vdr6tkTS4jYz",
+            "name": "QdrantApi account 3"
+          }
+        }
+      },
+      {
+        "parameters": {
+          "jsCode": "const scrollResponse = $input.first().json ?? {};\nconst existingPoints = Array.isArray(scrollResponse.result?.points) ? scrollResponse.result.points : [];\n\nconst currentEntries = $('Build_Catalog_Entries').all();\nconst currentVariantIds = currentEntries\n  .map((item) => item.json?.payload?.variant_id)\n  .filter((id) => id !== null && id !== undefined);\nconst currentSet = new Set(currentVariantIds.map(String));\n\n// Timestamp de ESTA ejecucion (asignado en Build_Catalog_Entries, mismo valor para\n// todas las variantes de este evento). Se usa como guardia de carrera abajo.\nconst eventTimestamp = currentEntries[0]?.json?.payload?.qdrant_written_at ?? null;\n\n// Fix (2026-08-26, ejecuciones 95400/95401): dos eventos products/update casi\n// simultaneos para el MISMO producto (Shopify recreo una variante -- id nuevo -- al\n// agregarle/quitarle el SKU, y disparo dos webhooks segundos aparte) causaban que la\n// limpieza de huerfanos de cada evento borrara la variante que el OTRO evento (mas\n// nuevo) ya habia escrito -- terminando con el producto en CERO puntos en Qdrant pese\n// a tener una variante activa real. Causa: cada evento solo conoce su propio payload\n// (viejo o nuevo) y comparaba contra el estado completo de Qdrant sin saber si un punto\n// que no reconoce es genuinamente huerfano o fue escrito por un evento mas reciente que\n// llego casi al mismo tiempo.\n// Fix: cada punto guarda su propio 'qdrant_written_at' (seccion de arriba). Aqui, un\n// punto NUNCA se marca huerfano si su 'qdrant_written_at' es MAS RECIENTE que el de\n// este evento -- eso significa que un evento mas nuevo ya lo escribio despues de que\n// este evento arranco, y no debe ser borrado por uno mas viejo. Los puntos genuinamente\n// huerfanos (mas viejos que este evento, o sin el campo -- puntos de antes de este fix)\n// se siguen borrando igual que antes.\nconst orphanedVariantIds = [...new Set(\n  existingPoints\n    .filter((p) => {\n      const pointTimestamp = p.payload?.qdrant_written_at;\n      if (eventTimestamp && pointTimestamp && pointTimestamp > eventTimestamp) {\n        return false; // escrito por un evento mas nuevo -- no tocar\n      }\n      return true;\n    })\n    .map((p) => p.payload?.variant_id)\n    .filter((id) => id !== null && id !== undefined && !currentSet.has(String(id)))\n)];\n\nreturn [{\n  json: {\n    product_id: $('Route_Product_Action').item.json.product_id,\n    orphaned_variant_ids: orphanedVariantIds\n  }\n}];"
+        },
+        "type": "n8n-nodes-base.code",
+        "typeVersion": 2,
+        "position": [
+          29856,
+          -272
+        ],
+        "id": "9f8b36c7-464f-44b7-b580-e26283cbe33e",
+        "name": "Find_Orphaned_Variants"
+      },
+      {
+        "parameters": {
+          "conditions": {
+            "options": {
+              "caseSensitive": true,
+              "leftValue": "",
+              "typeValidation": "strict",
+              "version": 3
+            },
+            "conditions": [
+              {
+                "id": "c1a1b2b3-4d5e-4f60-8a1b-2c3d4e5f6001",
+                "leftValue": "={{ $json.orphaned_variant_ids.length }}",
+                "rightValue": 0,
+                "operator": {
+                  "type": "number",
+                  "operation": "gt"
+                }
+              }
+            ],
+            "combinator": "and"
+          },
+          "options": {}
+        },
+        "type": "n8n-nodes-base.if",
+        "typeVersion": 2.3,
+        "position": [
+          30096,
+          -272
+        ],
+        "id": "66050985-567b-428c-abae-aacae18e9115",
+        "name": "Has_Orphaned_Variants?"
+      },
+      {
+        "parameters": {
+          "method": "POST",
+          "url": "https://1537c683-48da-4631-ab76-ad698b6b9881.us-east-1-0.aws.cloud.qdrant.io:6333/collections/BabysWorld_Catalogo/points/delete",
+          "authentication": "predefinedCredentialType",
+          "nodeCredentialType": "qdrantApi",
+          "sendBody": true,
+          "specifyBody": "json",
+          "jsonBody": "={{ {\n  filter: {\n    must: [ { key: 'product_id', match: { value: $json.product_id } } ],\n    should: $json.orphaned_variant_ids.map(v => ({ key: 'variant_id', match: { value: v } }))\n  }\n} }}",
+          "options": {}
+        },
+        "type": "n8n-nodes-base.httpRequest",
+        "typeVersion": 4.2,
+        "position": [
+          30336,
+          -368
+        ],
+        "id": "00e9ce10-6f77-480f-916f-7f201060d871",
+        "name": "Qdrant_Delete_Orphaned_Variants",
+        "credentials": {
+          "qdrantApi": {
+            "id": "ZYv8vdr6tkTS4jYz",
+            "name": "QdrantApi account 3"
+          }
+        }
+      },
+      {
+        "parameters": {
+          "workflowId": {
+            "__rl": true,
+            "value": "12AJ8IreT01EGVZx",
+            "mode": "list",
+            "cachedResultUrl": "/workflow/12AJ8IreT01EGVZx",
+            "cachedResultName": "Babys World — Subflow: Get Shopify Product Collections (PROD)"
+          },
+          "workflowInputs": {
+            "mappingMode": "defineBelow",
+            "value": {
+              "product_id": "={{ String($('Route_Product_Action').item.json.product.id) }}"
+            },
+            "matchingColumns": [
+              "product_id"
+            ],
+            "schema": [
+              {
+                "id": "product_id",
+                "displayName": "product_id",
+                "required": false,
+                "defaultMatch": false,
+                "display": true,
+                "canBeUsedToMatch": true,
+                "type": "string",
+                "removed": false
+              }
+            ],
+            "attemptToConvertTypes": false,
+            "convertFieldsToString": true
+          },
+          "options": {}
+        },
+        "type": "n8n-nodes-base.executeWorkflow",
+        "typeVersion": 1.2,
+        "position": [
+          27696,
+          -352
+        ],
+        "id": "2fc796b9-deb4-4505-8128-071fec394dff",
+        "name": "Call_Get_Product_Collections"
+      }
+    ],
+    "connections": {
+      "When Executed by Another Workflow": {
+        "main": [
+          [
+            {
+              "node": "01_Normalize_Product_Input",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "01_Normalize_Product_Input": {
+        "main": [
+          [
+            {
+              "node": "Validate_Internal_Contract",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Validate_Internal_Contract": {
+        "main": [
+          [
+            {
+              "node": "Input_Is_Valid",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Build_Input_Error": {
+        "main": [
+          [
+            {
+              "node": "Return_Product_Result",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Call_Resolve_Product_Image": {
+        "main": [
+          [
+            {
+              "node": "Build_Catalog_Entries",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Build_Catalog_Entries": {
+        "main": [
+          [
+            {
+              "node": "Call_Generate_Embedding",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Call_Generate_Embedding": {
+        "main": [
+          [
+            {
+              "node": "Merge_Embedding_With_Payload",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Merge_Embedding_With_Payload": {
+        "main": [
+          [
+            {
+              "node": "Call_Upsert_Qdrant_Point",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Call_Upsert_Qdrant_Point": {
+        "main": [
+          [
+            {
+              "node": "Build_Success_Output_Upsert",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Build_Success_Output_Upsert": {
+        "main": [
+          [
+            {
+              "node": "Prepare_Cleanup_Check",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Build_Delete_Input": {
+        "main": [
+          [
+            {
+              "node": "Call_Delete_Qdrant_Point",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Call_Delete_Qdrant_Point": {
+        "main": [
+          [
+            {
+              "node": "Build_Success_Output_Delete",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Build_Success_Output_Delete": {
+        "main": [
+          [
+            {
+              "node": "Return_Product_Result",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Input_Is_Valid": {
+        "main": [
+          [
+            {
+              "node": "Route_Product_Action",
+              "type": "main",
+              "index": 0
+            }
+          ],
+          [
+            {
+              "node": "Build_Input_Error",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Route_Product_Action": {
+        "main": [
+          [
+            {
+              "node": "Call_Get_Product_Collections",
+              "type": "main",
+              "index": 0
+            }
+          ],
+          [
+            {
+              "node": "Build_Delete_Input",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Prepare_Cleanup_Check": {
+        "main": [
+          [
+            {
+              "node": "Qdrant_Scroll_Existing_Points",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Qdrant_Scroll_Existing_Points": {
+        "main": [
+          [
+            {
+              "node": "Find_Orphaned_Variants",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Find_Orphaned_Variants": {
+        "main": [
+          [
+            {
+              "node": "Has_Orphaned_Variants?",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Has_Orphaned_Variants?": {
+        "main": [
+          [
+            {
+              "node": "Qdrant_Delete_Orphaned_Variants",
+              "type": "main",
+              "index": 0
+            }
+          ],
+          [
+            {
+              "node": "Return_Product_Result",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Qdrant_Delete_Orphaned_Variants": {
+        "main": [
+          [
+            {
+              "node": "Return_Product_Result",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Call_Get_Product_Collections": {
+        "main": [
+          [
+            {
+              "node": "Call_Resolve_Product_Image",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      }
+    },
+    "nodeGroups": [],
+    "authors": "Michelo Vaca Cardozo",
+    "name": "Version 86b0994b",
+    "description": "",
+    "autosaved": true,
+    "createdAt": "2026-10-08T23:27:05.623Z",
+    "updatedAt": "2026-10-09T00:11:11.000Z"
+  }
+}
