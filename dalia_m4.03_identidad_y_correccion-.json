@@ -1,0 +1,494 @@
+{
+  "id": "k1khjbQ5pMxysgsk",
+  "name": "DALIA_M4.03_Identidad_y_correccion",
+  "active": true,
+  "activeVersionId": "d0c25830-a6fa-4145-a2ac-13ef230e5813",
+  "createdAt": "2026-10-04T04:13:14.349Z",
+  "updatedAt": "2026-10-04T04:14:14.885Z",
+  "isArchived": false,
+  "versionId": "d0c25830-a6fa-4145-a2ac-13ef230e5813",
+  "triggerCount": 0,
+  "nodes": [
+    {
+      "id": "32dad257-5447-4c3d-bb5d-65c0326c58d4",
+      "name": "Entrada",
+      "type": "n8n-nodes-base.executeWorkflowTrigger",
+      "typeVersion": 1.2,
+      "position": [
+        0,
+        192
+      ],
+      "parameters": {
+        "inputSource": "passthrough"
+      }
+    },
+    {
+      "id": "ac232786-f34b-44f9-a73b-8dcf595f5b61",
+      "name": "Es job de caso",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        224,
+        192
+      ],
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose"
+          },
+          "conditions": [
+            {
+              "leftValue": "={{ $json.type === \"m4.review_resolved\" }}",
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        }
+      }
+    },
+    {
+      "id": "12d21536-d3d7-4412-beaf-e928e3e37d12",
+      "name": "Aplicar decision del caso",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.7,
+      "position": [
+        448,
+        96
+      ],
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "select dalia.m4_on_review_resolved($1::uuid) as result;",
+        "options": {
+          "queryReplacement": "={{ [ $json.payload.review_id ] }}"
+        }
+      },
+      "credentials": {
+        "postgres": {
+          "id": "HfCgVAjUygK1vrkU",
+          "name": "DALIA dev Supabase"
+        }
+      },
+      "onError": "continueErrorOutput"
+    },
+    {
+      "id": "81fe9590-a88e-4cde-bc57-53a40f6c5af2",
+      "name": "Completar job",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.7,
+      "position": [
+        672,
+        0
+      ],
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "select dalia.sys_complete_job($1::uuid, $2::jsonb) as job_status;",
+        "options": {
+          "queryReplacement": "={{ [ $(\"Entrada\").item.json.job_id, JSON.stringify($json.result ?? {}) ] }}"
+        }
+      },
+      "credentials": {
+        "postgres": {
+          "id": "HfCgVAjUygK1vrkU",
+          "name": "DALIA dev Supabase"
+        }
+      }
+    },
+    {
+      "id": "1a0223aa-d5c4-479d-ba2c-df7530e99151",
+      "name": "Ejecutar accion",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.7,
+      "position": [
+        448,
+        384
+      ],
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "select dalia.m4_apply_action($1, $2::jsonb, $3) as result;",
+        "options": {
+          "queryReplacement": "={{ [ $json.action, JSON.stringify($json.data ?? {}), $json.actor ] }}"
+        }
+      },
+      "credentials": {
+        "postgres": {
+          "id": "HfCgVAjUygK1vrkU",
+          "name": "DALIA dev Supabase"
+        }
+      },
+      "onError": "continueErrorOutput"
+    },
+    {
+      "id": "09e3f640-0705-40b5-8b1a-0ab8b1c26bd1",
+      "name": "Fallar job (reintentable)",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.7,
+      "position": [
+        672,
+        192
+      ],
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "select dalia.sys_fail_job($1::uuid, $2::jsonb, true) as job_status;",
+        "options": {
+          "queryReplacement": "={{ [ $(\"Entrada\").item.json.job_id, JSON.stringify({ code: \"HANDLER_ERROR\", message: $json.error?.message ?? $json.error ?? \"reintentar\" }) ] }}"
+        }
+      },
+      "credentials": {
+        "postgres": {
+          "id": "HfCgVAjUygK1vrkU",
+          "name": "DALIA dev Supabase"
+        }
+      }
+    },
+    {
+      "id": "9b473a99-682b-49d0-937b-5764956516c9",
+      "name": "Accion rechazada",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        672,
+        384
+      ],
+      "parameters": {
+        "mode": "manual",
+        "includeOtherFields": false,
+        "assignments": {
+          "assignments": [
+            {
+              "id": "r1",
+              "name": "result",
+              "value": "={{ { ok: false, error: $json.error?.message ?? $json.error ?? \"acción rechazada\" } }}",
+              "type": "object"
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "connections": {
+    "Entrada": {
+      "main": [
+        [
+          {
+            "node": "Es job de caso",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Es job de caso": {
+      "main": [
+        [
+          {
+            "node": "Aplicar decision del caso",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Ejecutar accion",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Aplicar decision del caso": {
+      "main": [
+        [
+          {
+            "node": "Completar job",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Fallar job (reintentable)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Ejecutar accion": {
+      "main": [
+        [],
+        [
+          {
+            "node": "Accion rechazada",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "nodeGroups": [],
+  "settings": {
+    "executionOrder": "v1",
+    "availableInMCP": true,
+    "errorWorkflow": "cjjQno2MxMTT3Icc",
+    "timezone": "America/Bogota",
+    "callerPolicy": "workflowsFromSameOwner"
+  },
+  "staticData": null,
+  "pinData": null,
+  "meta": {
+    "aiBuilderAssisted": true,
+    "builderVariant": "mcp"
+  },
+  "tags": [],
+  "shared": [
+    {
+      "role": "workflow:owner",
+      "workflowId": "k1khjbQ5pMxysgsk",
+      "projectId": "tRHCC8ts4mkRGXGn",
+      "createdAt": "2026-10-09T21:09:17.805Z",
+      "updatedAt": "2026-10-09T21:09:17.805Z"
+    }
+  ],
+  "activeVersion": {
+    "versionId": "d0c25830-a6fa-4145-a2ac-13ef230e5813",
+    "workflowId": "k1khjbQ5pMxysgsk",
+    "nodes": [
+      {
+        "id": "32dad257-5447-4c3d-bb5d-65c0326c58d4",
+        "name": "Entrada",
+        "type": "n8n-nodes-base.executeWorkflowTrigger",
+        "typeVersion": 1.2,
+        "position": [
+          0,
+          192
+        ],
+        "parameters": {
+          "inputSource": "passthrough"
+        }
+      },
+      {
+        "id": "ac232786-f34b-44f9-a73b-8dcf595f5b61",
+        "name": "Es job de caso",
+        "type": "n8n-nodes-base.if",
+        "typeVersion": 2.2,
+        "position": [
+          224,
+          192
+        ],
+        "parameters": {
+          "conditions": {
+            "options": {
+              "caseSensitive": true,
+              "leftValue": "",
+              "typeValidation": "loose"
+            },
+            "conditions": [
+              {
+                "leftValue": "={{ $json.type === \"m4.review_resolved\" }}",
+                "operator": {
+                  "type": "boolean",
+                  "operation": "true",
+                  "singleValue": true
+                }
+              }
+            ],
+            "combinator": "and"
+          }
+        }
+      },
+      {
+        "id": "12d21536-d3d7-4412-beaf-e928e3e37d12",
+        "name": "Aplicar decision del caso",
+        "type": "n8n-nodes-base.postgres",
+        "typeVersion": 2.7,
+        "position": [
+          448,
+          96
+        ],
+        "parameters": {
+          "operation": "executeQuery",
+          "query": "select dalia.m4_on_review_resolved($1::uuid) as result;",
+          "options": {
+            "queryReplacement": "={{ [ $json.payload.review_id ] }}"
+          }
+        },
+        "credentials": {
+          "postgres": {
+            "id": "HfCgVAjUygK1vrkU",
+            "name": "DALIA dev Supabase"
+          }
+        },
+        "onError": "continueErrorOutput"
+      },
+      {
+        "id": "81fe9590-a88e-4cde-bc57-53a40f6c5af2",
+        "name": "Completar job",
+        "type": "n8n-nodes-base.postgres",
+        "typeVersion": 2.7,
+        "position": [
+          672,
+          0
+        ],
+        "parameters": {
+          "operation": "executeQuery",
+          "query": "select dalia.sys_complete_job($1::uuid, $2::jsonb) as job_status;",
+          "options": {
+            "queryReplacement": "={{ [ $(\"Entrada\").item.json.job_id, JSON.stringify($json.result ?? {}) ] }}"
+          }
+        },
+        "credentials": {
+          "postgres": {
+            "id": "HfCgVAjUygK1vrkU",
+            "name": "DALIA dev Supabase"
+          }
+        }
+      },
+      {
+        "id": "1a0223aa-d5c4-479d-ba2c-df7530e99151",
+        "name": "Ejecutar accion",
+        "type": "n8n-nodes-base.postgres",
+        "typeVersion": 2.7,
+        "position": [
+          448,
+          384
+        ],
+        "parameters": {
+          "operation": "executeQuery",
+          "query": "select dalia.m4_apply_action($1, $2::jsonb, $3) as result;",
+          "options": {
+            "queryReplacement": "={{ [ $json.action, JSON.stringify($json.data ?? {}), $json.actor ] }}"
+          }
+        },
+        "credentials": {
+          "postgres": {
+            "id": "HfCgVAjUygK1vrkU",
+            "name": "DALIA dev Supabase"
+          }
+        },
+        "onError": "continueErrorOutput"
+      },
+      {
+        "id": "09e3f640-0705-40b5-8b1a-0ab8b1c26bd1",
+        "name": "Fallar job (reintentable)",
+        "type": "n8n-nodes-base.postgres",
+        "typeVersion": 2.7,
+        "position": [
+          672,
+          192
+        ],
+        "parameters": {
+          "operation": "executeQuery",
+          "query": "select dalia.sys_fail_job($1::uuid, $2::jsonb, true) as job_status;",
+          "options": {
+            "queryReplacement": "={{ [ $(\"Entrada\").item.json.job_id, JSON.stringify({ code: \"HANDLER_ERROR\", message: $json.error?.message ?? $json.error ?? \"reintentar\" }) ] }}"
+          }
+        },
+        "credentials": {
+          "postgres": {
+            "id": "HfCgVAjUygK1vrkU",
+            "name": "DALIA dev Supabase"
+          }
+        }
+      },
+      {
+        "id": "9b473a99-682b-49d0-937b-5764956516c9",
+        "name": "Accion rechazada",
+        "type": "n8n-nodes-base.set",
+        "typeVersion": 3.4,
+        "position": [
+          672,
+          384
+        ],
+        "parameters": {
+          "mode": "manual",
+          "includeOtherFields": false,
+          "assignments": {
+            "assignments": [
+              {
+                "id": "r1",
+                "name": "result",
+                "value": "={{ { ok: false, error: $json.error?.message ?? $json.error ?? \"acción rechazada\" } }}",
+                "type": "object"
+              }
+            ]
+          }
+        }
+      }
+    ],
+    "connections": {
+      "Entrada": {
+        "main": [
+          [
+            {
+              "node": "Es job de caso",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Es job de caso": {
+        "main": [
+          [
+            {
+              "node": "Aplicar decision del caso",
+              "type": "main",
+              "index": 0
+            }
+          ],
+          [
+            {
+              "node": "Ejecutar accion",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Aplicar decision del caso": {
+        "main": [
+          [
+            {
+              "node": "Completar job",
+              "type": "main",
+              "index": 0
+            }
+          ],
+          [
+            {
+              "node": "Fallar job (reintentable)",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Ejecutar accion": {
+        "main": [
+          [],
+          [
+            {
+              "node": "Accion rechazada",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      }
+    },
+    "nodeGroups": [],
+    "authors": "Fabian Bocanegra (via MCP)",
+    "name": "Lote 6 M4: instalación inicial",
+    "description": "Created with 7 nodes: Entrada, Es job de caso, Aplicar decision del caso, Completar job, Ejecutar accion and 2 more",
+    "autosaved": false,
+    "createdAt": "2026-10-04T04:13:14.351Z",
+    "updatedAt": "2026-10-04T04:13:14.351Z"
+  }
+}
