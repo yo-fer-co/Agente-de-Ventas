@@ -1,0 +1,963 @@
+{
+  "id": "V3SPVjCW77FT1ROT",
+  "name": "M5_02_Payment_Management",
+  "active": false,
+  "activeVersionId": null,
+  "createdAt": "2026-07-02T16:59:59.851Z",
+  "updatedAt": "2026-10-07T23:36:31.000Z",
+  "isArchived": true,
+  "versionId": "2cc66f47-db8c-43fd-9b64-5b3c4c983cc8",
+  "triggerCount": 1,
+  "nodes": [
+    {
+      "parameters": {},
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [
+        -816,
+        -240
+      ],
+      "id": "2c23426a-29c2-4896-a4fd-13707ce34885",
+      "name": "When clicking ‘Execute workflow’"
+    },
+    {
+      "parameters": {
+        "mode": "raw",
+        "jsonOutput": "{\n  \"operation\": {\n    \"action\": \"create_payment\",\n    \"requested_at\": \"2026-07-09T10:10:00-05:00\",\n    \"idempotency_key\": \"transaction_uuid:create_payment\"\n  },\n  \"transaction\": {\n    \"id\": \"7c858210-3a4e-4bd2-a772-51214497fe59\",\n    \"business_id\": \"babys_world\",\n    \"customer_id\": \"customer_001\",\n    \"status\": \"commercially_validated\",\n    \"sub_status\": null,\n    \"next_action\": \"create_payment\",\n    \"currency\": \"COP\",\n    \"total\": 500000,\n    \"metadata\": {}\n  },\n  \"items\": [\n    {\n      \"sku\": \"BW-2025\",\n      \"name\": \"Cochecito para bebé\",\n      \"quantity\": 1,\n      \"unit_price\": 200000,\n      \"total\": 200000,\n      \"metadata\": {\n        \"variant\": \"AZUL\"\n      }\n    },\n    {\n      \"sku\": \"BW-20261340\",\n      \"name\": \"ESCALERA REDUCTOR\",\n      \"quantity\": 1,\n      \"unit_price\": 300000,\n      \"total\": 300000,\n      \"metadata\": {}\n    }\n  ],\n  \"customer\": {\n    \"customer_id\": \"customer_001\",\n    \"name\": \"Emmanuel Arevalo\",\n    \"phone\": \"573192563967\",\n    \"email\": \"emmanuelarevalov@gmail.com\"\n  },\n  \"payment_context\": {\n    \"amount\": 500000,\n    \"currency\": \"COP\",\n    \"existing_payment\": null,\n    \"customer_confirmation\": {\n      \"confirmed\": true\n    }\n  },\n  \"configuration\": {\n    \"payment\": {\n      \"required\": true,\n      \"mode\": \"online\",\n      \"provider\": \"shopify\",\n      \"allowed_methods\": [\n        \"shopify_checkout\"\n      ],\n      \"confirmation_mode\": \"callback\",\n      \"expiration_minutes\": 60,\n      \"shopify\": {\n        \"store_domain\": \"babys-wolrd.myshopify.com\",\n        \"api_version\": \"2026-01\"\n      }\n    },\n    \"automation\": {\n      \"max_retries\": 3,\n      \"allow_human_handoff\": true\n    }\n  },\n  \"dependencies\": {\n    \"latest_order\": null\n  },\n  \"external_event\": null,\n  \"request_context\": {\n    \"business_id\": \"babys_world\",\n    \"session_id\": \"session_001\",\n    \"channel\": \"whatsapp\",\n    \"source_module\": \"M5\"\n  },\n  \"orchestration_route\": {\n    \"route_key\": \"payment\",\n    \"effective_action\": \"create_payment\"\n  },\n  \"trace\": {\n    \"trace_id\": \"trace_001\",\n    \"request_id\": \"req_001\",\n    \"parent_workflow\": \"DALIA_M5_Commerce_Orchestrator\"\n  }\n}\n",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        -624,
+        -224
+      ],
+      "id": "d42a0eda-9f98-47a7-9b98-7ccca2a1238b",
+      "name": "Edit Fields1"
+    },
+    {
+      "parameters": {
+        "jsCode": "const items = $input.all();\n\nif (items.length !== 1) {\n  throw new Error(\n    `M5_02_EXPECTED_ONE_ITEM: Se esperaba un elemento y se recibieron ${items.length}.`\n  );\n}\n\nconst raw = items[0]?.json ?? {};\n\nfunction isPlainObject(value) {\n  return (\n    value !== null &&\n    typeof value === 'object' &&\n    !Array.isArray(value)\n  );\n}\n\nfunction objectOrEmpty(value) {\n  return isPlainObject(value) ? value : {};\n}\n\nfunction arrayOrEmpty(value) {\n  return Array.isArray(value) ? value : [];\n}\n\nfunction nullableString(value) {\n  if (typeof value !== 'string') {\n    return value ?? null;\n  }\n\n  const normalized = value.trim();\n  return normalized.length > 0 ? normalized : null;\n}\n\nfunction normalizeNumber(value) {\n  if (value === null || value === undefined || value === '') {\n    return null;\n  }\n\n  const number = Number(value);\n  return Number.isFinite(number) ? number : null;\n}\n\nconst operation = objectOrEmpty(raw.operation);\nconst transaction = objectOrEmpty(raw.transaction);\nconst customer = objectOrEmpty(raw.customer);\nconst paymentContext = objectOrEmpty(raw.payment_context);\nconst configuration = objectOrEmpty(raw.configuration);\nconst requestContext = objectOrEmpty(raw.request_context);\nconst trace = objectOrEmpty(raw.trace);\n\nreturn [\n  {\n    json: {\n      operation: {\n        action: nullableString(operation.action)?.toLowerCase() ?? null,\n        requested_at: nullableString(operation.requested_at) ?? new Date().toISOString(),\n        idempotency_key: nullableString(operation.idempotency_key)\n      },\n\n      transaction: {\n        ...transaction,\n        id: nullableString(transaction.id),\n        business_id: nullableString(transaction.business_id),\n        customer_id: nullableString(transaction.customer_id),\n        status: nullableString(transaction.status)?.toLowerCase() ?? null,\n        sub_status: nullableString(transaction.sub_status)?.toLowerCase() ?? null,\n        next_action: nullableString(transaction.next_action)?.toLowerCase() ?? null,\n        currency: nullableString(transaction.currency)?.toUpperCase() ?? 'COP',\n        total: normalizeNumber(transaction.total),\n        metadata: objectOrEmpty(transaction.metadata)\n      },\n\n      items: arrayOrEmpty(raw.items).map((item) => {\n        const clean = objectOrEmpty(item);\n\n        return {\n          ...clean,\n          sku: nullableString(clean.sku),\n          name: nullableString(clean.name),\n          quantity: normalizeNumber(clean.quantity),\n          unit_price: normalizeNumber(clean.unit_price),\n          total: normalizeNumber(clean.total),\n          metadata: objectOrEmpty(clean.metadata)\n        };\n      }),\n\n      customer: {\n        ...customer,\n        customer_id: nullableString(customer.customer_id),\n        name: nullableString(customer.name),\n        phone: nullableString(customer.phone),\n        email: nullableString(customer.email)?.toLowerCase() ?? null\n      },\n\n      payment_context: {\n        ...paymentContext,\n        amount: normalizeNumber(paymentContext.amount),\n        currency: nullableString(paymentContext.currency)?.toUpperCase() ?? null,\n        existing_payment: paymentContext.existing_payment ?? null,\n        customer_confirmation: objectOrEmpty(paymentContext.customer_confirmation)\n      },\n\n      configuration: {\n        payment: objectOrEmpty(configuration.payment),\n        automation: objectOrEmpty(configuration.automation)\n      },\n\n      dependencies: objectOrEmpty(raw.dependencies),\n\n      external_event:\n        raw.external_event === null || raw.external_event === undefined\n          ? null\n          : objectOrEmpty(raw.external_event),\n\n      request_context: {\n        ...requestContext,\n        business_id: nullableString(requestContext.business_id),\n        session_id: nullableString(requestContext.session_id),\n        channel: nullableString(requestContext.channel)?.toLowerCase() ?? null,\n        source_module: nullableString(requestContext.source_module)\n      },\n\n      orchestration_route: objectOrEmpty(raw.orchestration_route),\n\n      trace: {\n        ...trace,\n        trace_id: nullableString(trace.trace_id),\n        request_id: nullableString(trace.request_id),\n        parent_workflow: nullableString(trace.parent_workflow)\n      },\n\n      payment_execution: {\n        workflow: 'DALIA_M5_02_Payment_Management',\n        received_at: new Date().toISOString(),\n        stage: 'input_normalized'\n      }\n    }\n  }\n];\n"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -256,
+        -144
+      ],
+      "id": "69e9cfb4-e726-4b5d-aec7-b738a9cfd072",
+      "name": "01_Normalize_Payment_Input"
+    },
+    {
+      "parameters": {
+        "jsCode": "const payload = $input.first().json;\n\nconst missingFields = [];\nconst invalidFields = [];\n\nfunction isNonEmptyString(value) {\n  return typeof value === 'string' && value.trim().length > 0;\n}\n\nfunction isPositiveNumber(value) {\n  return typeof value === 'number' && Number.isFinite(value) && value > 0;\n}\n\nfunction requireString(value, field) {\n  if (!isNonEmptyString(value)) {\n    missingFields.push(field);\n  }\n}\n\nfunction invalid(field, reason, value = undefined) {\n  const item = { field, reason };\n\n  if (value !== undefined) {\n    item.value = value;\n  }\n\n  invalidFields.push(item);\n}\n\nconst allowedActions = new Set([\n  'create_payment',\n  'process_payment_event'\n]);\n\nrequireString(payload.operation?.action, 'operation.action');\nrequireString(payload.operation?.idempotency_key, 'operation.idempotency_key');\nrequireString(payload.transaction?.id, 'transaction.id');\nrequireString(payload.transaction?.business_id, 'transaction.business_id');\nrequireString(payload.transaction?.status, 'transaction.status');\nrequireString(payload.request_context?.business_id, 'request_context.business_id');\nrequireString(payload.trace?.trace_id, 'trace.trace_id');\nrequireString(payload.trace?.request_id, 'trace.request_id');\n\nif (\n  isNonEmptyString(payload.operation?.action) &&\n  !allowedActions.has(payload.operation.action)\n) {\n  invalid('operation.action', 'unsupported_action', payload.operation.action);\n}\n\nconst uuidPattern =\n  /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;\n\nif (\n  isNonEmptyString(payload.transaction?.id) &&\n  !uuidPattern.test(payload.transaction.id)\n) {\n  invalid('transaction.id', 'invalid_uuid', payload.transaction.id);\n}\n\nif (\n  payload.transaction?.business_id &&\n  payload.request_context?.business_id &&\n  payload.transaction.business_id !== payload.request_context.business_id\n) {\n  invalid(\n    'request_context.business_id',\n    'business_id_mismatch',\n    {\n      transaction_business_id: payload.transaction.business_id,\n      request_business_id: payload.request_context.business_id\n    }\n  );\n}\n\nconst payment = payload.configuration?.payment ?? {};\n\nif (payment.required !== true) {\n  invalid(\n    'configuration.payment.required',\n    'payment_workflow_called_when_payment_not_required',\n    payment.required\n  );\n}\n\nif (payment.mode !== 'online') {\n  invalid(\n    'configuration.payment.mode',\n    'shopify_checkout_requires_online_payment_mode',\n    payment.mode\n  );\n}\n\nif (payment.provider !== 'shopify') {\n  invalid(\n    'configuration.payment.provider',\n    'provider_must_be_shopify',\n    payment.provider\n  );\n}\n\nif (\n  !Array.isArray(payment.allowed_methods) ||\n  !payment.allowed_methods.includes('shopify_checkout')\n) {\n  invalid(\n    'configuration.payment.allowed_methods',\n    'shopify_checkout_method_required',\n    payment.allowed_methods\n  );\n}\n\nif (\n  payload.operation?.action === 'create_payment' &&\n  !isPositiveNumber(payload.payment_context?.amount)\n) {\n  invalid(\n    'payment_context.amount',\n    'must_be_positive_number',\n    payload.payment_context?.amount\n  );\n}\n\nif (\n  payload.operation?.action === 'create_payment' &&\n  (!Array.isArray(payload.items) || payload.items.length === 0)\n) {\n  missingFields.push('items');\n}\n\nif (\n  payload.operation?.action === 'create_payment' &&\n  Array.isArray(payload.items)\n) {\n  payload.items.forEach((item, index) => {\n    if (!isNonEmptyString(item.sku)) {\n      missingFields.push(`items[${index}].sku`);\n    }\n\n    if (!isPositiveNumber(item.quantity)) {\n      invalid(\n        `items[${index}].quantity`,\n        'must_be_positive_number',\n        item.quantity\n      );\n    }\n  });\n}\n\nif (\n  payload.operation?.action === 'process_payment_event' &&\n  !payload.external_event\n) {\n  missingFields.push('external_event');\n}\n\nconst uniqueMissing = [...new Set(missingFields)];\n\nconst uniqueInvalid = Array.from(\n  new Map(\n    invalidFields.map((item) => [\n      `${item.field}:${item.reason}`,\n      item\n    ])\n  ).values()\n);\n\nreturn [\n  {\n    json: {\n      ...payload,\n      internal_contract_validation: {\n        valid: uniqueMissing.length === 0 && uniqueInvalid.length === 0,\n        missing_fields: uniqueMissing,\n        invalid_fields: uniqueInvalid,\n        validated_at: new Date().toISOString()\n      },\n      payment_execution: {\n        ...(payload.payment_execution ?? {}),\n        stage: 'internal_contract_validated'\n      }\n    }\n  }\n];\n"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -32,
+        -144
+      ],
+      "id": "f3c625a5-f562-4e01-9242-711307f33dfd",
+      "name": "Validate_Internal_Contract"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "1c6f6c39-d3e3-4522-9c84-f31a131df8dd",
+              "leftValue": "={{ $json.internal_contract_validation.valid }}",
+              "rightValue": "",
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        192,
+        -144
+      ],
+      "id": "cdcbdd28-5f7b-4ade-802a-9211f6d3d7af",
+      "name": "Input_Is_Valid"
+    },
+    {
+      "parameters": {
+        "jsCode": "const payload = $input.first().json;\nconst validation = payload.internal_contract_validation ?? {};\n\nreturn [\n  {\n    json: {\n      result: {\n        success: false,\n        outcome: 'transaction_failed'\n      },\n\n      transaction: {\n        transaction_id: payload.transaction?.id ?? null,\n        previous_status: payload.transaction?.status ?? null,\n        current_status: payload.transaction?.status ?? null,\n        sub_status: payload.transaction?.sub_status ?? null,\n        next_action: payload.transaction?.next_action ?? null\n      },\n\n      route: {\n        selected_flow: 'DALIA_M5_02_Payment_Management',\n        effective_action: payload.operation?.action ?? null,\n        reason: 'invalid_internal_contract'\n      },\n\n      response: {\n        message_required: false,\n        message_type: null,\n        reply_text: null,\n        requested_fields: []\n      },\n\n      data: {\n        internal_contract_validation: validation\n      },\n\n      error: {\n        code: 'INVALID_M5_02_INPUT',\n        category: 'validation',\n        message: 'La entrada interna de gestión de pago con Shopify no es válida.',\n        retryable: false,\n        details: {\n          missing_fields: validation.missing_fields ?? [],\n          invalid_fields: validation.invalid_fields ?? []\n        }\n      },\n\n      trace: {\n        trace_id: payload.trace?.trace_id ?? null,\n        request_id: payload.trace?.request_id ?? null,\n        workflow: 'DALIA_M5_02_Payment_Management',\n        stage: 'input_rejected',\n        processed_at: new Date().toISOString()\n      }\n    }\n  }\n];\n"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        3552,
+        336
+      ],
+      "id": "c20cab39-bcf8-4e92-b8c0-c3eb8c2a5cef",
+      "name": "Build_Input_Error"
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "with requested as (\n    select\n        $1::uuid as transaction_id,\n        $2::text as business_id,\n        $3::jsonb as workflow_input\n),\ncurrent_data as (\n    select t.*\n    from commerce.transactions t\n    inner join requested r\n        on r.transaction_id = t.id\n       and r.business_id = t.business_id\n)\nselect\n    r.transaction_id,\n    r.business_id,\n    r.workflow_input,\n\n    case\n        when t.id is not null then true\n        else false\n    end as transaction_found,\n\n    case\n        when t.id is null then null\n        else to_jsonb(t)\n    end as current_transaction,\n\n    (\n        select to_jsonb(p)\n        from commerce.payments p\n        where p.transaction_id = r.transaction_id\n        order by p.created_at desc\n        limit 1\n    ) as latest_payment\n\nfrom requested r\nleft join current_data t\n    on t.id = r.transaction_id;\n",
+        "options": {
+          "queryReplacement": "={{\n[\n  $json.transaction.id,\n  $json.request_context.business_id,\n  JSON.stringify($json)\n]\n}}\n"
+        }
+      },
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [
+        416,
+        -240
+      ],
+      "id": "bffde084-0b55-4292-84ab-e5968e1ab00c",
+      "name": "Load_Current_Transaction",
+      "credentials": {
+        "postgres": {
+          "id": "YQQz8BhJGmfwa1CY",
+          "name": "Postgres account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const databaseResult = $input.first().json;\n\nconst workflowInput = databaseResult.workflow_input ?? {};\nconst currentTransaction = databaseResult.current_transaction ?? null;\nconst latestPayment = databaseResult.latest_payment ?? null;\n\nconst action = workflowInput.operation?.action;\nconst errors = [];\n\nif (databaseResult.transaction_found !== true) {\n  errors.push({\n    code: 'TRANSACTION_NOT_FOUND',\n    reason: 'transaction_not_found_or_not_accessible'\n  });\n}\n\nif (currentTransaction) {\n  if (action === 'create_payment') {\n    if (currentTransaction.status !== 'commercially_validated') {\n      errors.push({\n        code: 'INVALID_SHOPIFY_CHECKOUT_CREATION_STATUS',\n        reason: 'shopify_checkout_can_only_be_created_from_commercially_validated',\n        current_status: currentTransaction.status\n      });\n    }\n\n    if (currentTransaction.next_action !== 'create_payment') {\n      errors.push({\n        code: 'INVALID_NEXT_ACTION',\n        reason: 'next_action_must_be_create_payment',\n        current_next_action: currentTransaction.next_action\n      });\n    }\n  }\n\n  if (action === 'process_payment_event') {\n    if (currentTransaction.status !== 'payment_pending') {\n      errors.push({\n        code: 'INVALID_SHOPIFY_PAYMENT_EVENT_STATUS',\n        reason: 'shopify_payment_events_can_only_be_processed_from_payment_pending',\n        current_status: currentTransaction.status\n      });\n    }\n\n    if (\n      currentTransaction.next_action !== 'wait_payment_confirmation' &&\n      currentTransaction.next_action !== 'process_payment_event'\n    ) {\n      errors.push({\n        code: 'INVALID_NEXT_ACTION',\n        reason: 'next_action_must_wait_for_payment_confirmation',\n        current_next_action: currentTransaction.next_action\n      });\n    }\n  }\n}\n\nreturn [\n  {\n    json: {\n      ...workflowInput,\n\n      current_transaction: currentTransaction,\n      latest_payment: latestPayment,\n\n      transaction_recheck: {\n        valid: errors.length === 0,\n        errors,\n        checked_at: new Date().toISOString()\n      },\n\n      payment_execution: {\n        ...(workflowInput.payment_execution ?? {}),\n        stage: 'transaction_rechecked'\n      }\n    }\n  }\n];\n"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        640,
+        -240
+      ],
+      "id": "ec43fcd6-a104-4129-a70c-dcc4baec1b14",
+      "name": "Check_Current_Transaction"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "a6b1552b-368f-4731-8d94-991088f99cf3",
+              "leftValue": "={{ $json.transaction_recheck.valid }}",
+              "rightValue": "",
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        864,
+        -240
+      ],
+      "id": "de14031d-3cf5-4710-9276-8d49e3bbcb8e",
+      "name": "Transaction_Is_Valid"
+    },
+    {
+      "parameters": {
+        "jsCode": "const payload = $input.first().json;\n\nconst transaction =\n  payload.current_transaction ??\n  payload.transaction ??\n  {};\n\nconst recheck = payload.transaction_recheck ?? {};\nconst mainError = recheck.errors?.[0] ?? {};\n\nreturn [\n  {\n    json: {\n      result: {\n        success: false,\n        outcome: 'transaction_failed'\n      },\n\n      transaction: {\n        transaction_id: transaction.id ?? null,\n        previous_status: payload.transaction?.status ?? null,\n        current_status: transaction.status ?? null,\n        sub_status: transaction.sub_status ?? null,\n        next_action: transaction.next_action ?? null\n      },\n\n      route: {\n        selected_flow: 'DALIA_M5_02_Payment_Management',\n        effective_action: payload.operation?.action ?? null,\n        reason: mainError.reason ?? 'transaction_recheck_failed'\n      },\n\n      response: {\n        message_required: false,\n        message_type: null,\n        reply_text: null,\n        requested_fields: []\n      },\n\n      data: {\n        transaction_recheck: recheck\n      },\n\n      error: {\n        code: mainError.code ?? 'TRANSACTION_RECHECK_FAILED',\n        category: 'business_rule',\n        message: 'La transacción no está en un estado válido para gestionar checkout de Shopify.',\n        retryable: false,\n        details: {\n          errors: recheck.errors ?? []\n        }\n      },\n\n      trace: {\n        trace_id: payload.trace?.trace_id ?? null,\n        request_id: payload.trace?.request_id ?? null,\n        workflow: 'DALIA_M5_02_Payment_Management',\n        stage: 'transaction_recheck_failed',\n        processed_at: new Date().toISOString()\n      }\n    }\n  }\n];\n"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        3552,
+        144
+      ],
+      "id": "8fb12a15-6dee-426d-aeb0-b52d847b11a6",
+      "name": "Build_Transaction_Error"
+    },
+    {
+      "parameters": {
+        "rules": {
+          "values": [
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 3
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $json.operation.action }}",
+                    "rightValue": "create_payment",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    },
+                    "id": "57f49549-ce42-48c3-a1ff-23214ff5c975"
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "create_payment"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 3
+                },
+                "conditions": [
+                  {
+                    "id": "8b495ee7-59c9-48fc-86e0-ea12599e921b",
+                    "leftValue": "={{ $json.operation.action }}",
+                    "rightValue": "process_payment_event",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals",
+                      "name": "filter.operator.equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "process_payment_event"
+            }
+          ]
+        },
+        "options": {
+          "fallbackOutput": "extra"
+        }
+      },
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 3.4,
+      "position": [
+        1088,
+        -544
+      ],
+      "id": "8be59276-cb0d-419c-9fee-593be9954240",
+      "name": "Route_Payment_Action"
+    },
+    {
+      "parameters": {
+        "jsCode": "const result = $input.first().json;\n\nconst payload = result.workflow_payload ?? {};\nconst transaction =\n  result.transaction ??\n  payload.current_transaction ??\n  {};\n\nconst payment =\n  result.payment ??\n  payload.latest_payment ??\n  null;\n\nconst action = payload.operation?.action;\n\nlet outcome = 'action_completed';\nlet success = true;\nlet messageRequired = false;\nlet messageType = null;\nlet replyText = null;\nlet error = null;\n\nif (action === 'create_payment') {\n  outcome = 'waiting_external_event';\n  messageRequired = true;\n  messageType = 'send_shopify_checkout_url';\n\n  const customerName =\n    payload.customer?.name?.split(' ')?.[0] ??\n    '';\n\n  const itemsText =\n    (payload.items ?? [])\n      .map((item) => {\n        const variant =\n          item.metadata?.variant\n            ? ` ${item.metadata.variant}`\n            : '';\n\n        return `${item.quantity}x ${item.name}${variant}`;\n      })\n      .join(', ');\n\n  const checkoutUrl =\n    payment?.payment_url ??\n    payload.shopify_cart_result?.checkout_url ??\n    null;\n\n  replyText = checkoutUrl\n    ? `¡Perfecto${customerName ? `, ${customerName}` : ''}! Para finalizar tu compra de ${itemsText}, ingresa a este link seguro de Shopify: ${checkoutUrl}`\n    : 'Tu carrito fue creado en Shopify. Te compartiremos el enlace para finalizar la compra.';\n}\n\nif (action === 'process_payment_event') {\n  const status =\n    payload.normalized_shopify_event?.normalized_status;\n\n  if (status === 'confirmed') {\n    outcome = 'action_completed';\n    messageRequired = false;\n  } else if (status === 'failed') {\n    outcome = 'action_pending';\n    messageRequired = true;\n    messageType = 'shopify_payment_failed';\n    replyText = 'El pago no pudo ser confirmado en Shopify. Puedes intentar nuevamente desde el enlace de compra.';\n  } else if (status === 'expired') {\n    outcome = 'transaction_failed';\n    success = false;\n    error = {\n      code: 'SHOPIFY_CHECKOUT_EXPIRED',\n      category: 'business_rule',\n      message: 'El checkout de Shopify expiró.',\n      retryable: false,\n      details: {}\n    };\n  } else {\n    outcome = 'waiting_external_event';\n  }\n}\n\nreturn [\n  {\n    json: {\n      result: {\n        success,\n        outcome\n      },\n\n      transaction: {\n        transaction_id: transaction.id ?? null,\n        previous_status: payload.current_transaction?.status ?? null,\n        current_status: transaction.status ?? null,\n        sub_status: transaction.sub_status ?? null,\n        next_action: transaction.next_action ?? null\n      },\n\n      route: {\n        selected_flow: 'DALIA_M5_02_Payment_Management',\n        effective_action: action ?? null,\n        reason:\n          action === 'create_payment'\n            ? 'shopify_checkout_created'\n            : 'shopify_payment_event_processed'\n      },\n\n      response: {\n        message_required: messageRequired,\n        message_type: messageType,\n        reply_text: replyText,\n        requested_fields: []\n      },\n\n      data: {\n        payment: {\n          payment_id: payment?.id ?? null,\n          provider: 'shopify',\n          provider_payment_id: payment?.provider_payment_id ?? null,\n          payment_method: 'shopify_checkout',\n          status: payment?.status ?? null,\n          amount: payment?.amount ?? null,\n          currency: payment?.currency ?? null,\n          payment_url: payment?.payment_url ?? null,\n          expires_at: payment?.expires_at ?? null,\n          duplicate: result.duplicate === true || result.duplicate_or_existing === true,\n          shopify_cart_id:\n            payment?.metadata?.shopify_cart_id ??\n            payload.shopify_cart_result?.cart?.id ??\n            null,\n          shopify_checkout_url:\n            payment?.metadata?.shopify_checkout_url ??\n            payment?.payment_url ??\n            payload.shopify_cart_result?.checkout_url ??\n            null,\n          shopify_order_id:\n            payment?.metadata?.shopify_order_id ??\n            payload.normalized_shopify_event?.shopify_order_id ??\n            null\n        },\n\n        shopify: {\n          cart_result:\n            payload.shopify_cart_result ?? null,\n          cart_lines:\n            payload.shopify_cart_lines ?? null,\n          webhook:\n            payload.normalized_shopify_event ?? null\n        },\n\n        event_id: result.event_id ?? null\n      },\n\n      error,\n\n      trace: {\n        trace_id: payload.trace?.trace_id ?? null,\n        request_id: payload.trace?.request_id ?? null,\n        workflow: 'DALIA_M5_02_Payment_Management',\n        execution_id:\n          typeof $execution !== 'undefined'\n            ? $execution.id\n            : null,\n        stage: 'shopify_payment_operation_completed',\n        processed_at: new Date().toISOString()\n      }\n    }\n  }\n];\n"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        3552,
+        -528
+      ],
+      "id": "262df5c1-6d1d-445d-959c-d06be9d569f2",
+      "name": "Build_Payment_Output"
+    },
+    {
+      "parameters": {
+        "content": "07A_Build_Unsupported_Action_Error para fallback"
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        2080,
+        32
+      ],
+      "id": "cf25d2af-1ccf-4ea9-b26e-0357d4e08a59",
+      "name": "Sticky Note"
+    },
+    {
+      "parameters": {
+        "jsCode": "const payload = $input.first().json;\n\nconst latestPayment = payload.latest_payment ?? null;\n\nlet decision = 'create_new_shopify_cart';\nlet reason = 'no_existing_shopify_checkout';\n\nif (latestPayment) {\n  const isShopify =\n    latestPayment.provider === 'shopify' ||\n    latestPayment.payment_method === 'shopify_checkout';\n\n  if (\n    isShopify &&\n    ['pending', 'created', 'waiting_confirmation'].includes(latestPayment.status)\n  ) {\n    decision = 'return_existing_shopify_checkout';\n    reason = 'pending_shopify_checkout_already_exists';\n  }\n\n  if (\n    isShopify &&\n    latestPayment.status === 'confirmed'\n  ) {\n    decision = 'shopify_payment_already_confirmed';\n    reason = 'confirmed_shopify_payment_already_exists';\n  }\n}\n\nreturn [\n  {\n    json: {\n      ...payload,\n      shopify_checkout_decision: {\n        decision,\n        reason,\n        evaluated_at: new Date().toISOString()\n      }\n    }\n  }\n];\n"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1312,
+        -608
+      ],
+      "id": "1f8edaa6-6bac-4585-b67b-11258ff16c18",
+      "name": "Check_Existing_Shopify_Checkout"
+    },
+    {
+      "parameters": {
+        "jsCode": "const payload = $input.first().json;\n\nconst skus = [];\n\nfor (const item of payload.items ?? []) {\n  if (item.sku) {\n    skus.push(item.sku);\n  }\n}\n\nconst uniqueSkus = [...new Set(skus)];\n\nconst queryString = uniqueSkus\n  .map((sku) => `sku:${sku}`)\n  .join(' OR ');\n\nreturn [\n  {\n    json: {\n      ...payload,\n\n      shopify_product_query: {\n        query: queryString,\n        skus: uniqueSkus,\n        built_at: new Date().toISOString()\n      }\n    }\n  }\n];\n"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1760,
+        -624
+      ],
+      "id": "e3b4b551-2e60-4d5a-bdcb-30391eb6fbf9",
+      "name": "Build_Shopify_Product_Query"
+    },
+    {
+      "parameters": {
+        "endpoint": "={{ \"https://\" + ($json.configuration.payment.shopify?.store_domain ?? \"babys-wolrd.myshopify.com\") + \"/api/\" + ($json.configuration.payment.shopify?.api_version ?? \"2026-01\") + \"/graphql.json\" }}",
+        "query": "query GetProductsForCart($query: String!) {\n  products(first: 20, query: $query) {\n    edges {\n      node {\n        id\n        title\n        handle\n        variants(first: 20) {\n          edges {\n            node {\n              id\n              title\n              sku\n              availableForSale\n              price {\n                amount\n                currencyCode\n              }\n            }\n          }\n        }\n      }\n    }\n  }\n}\n",
+        "variables": "={{\n{\n  \"query\": $json.shopify_product_query.query\n}\n}}\n",
+        "headerParametersUi": {
+          "parameter": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.graphql",
+      "typeVersion": 1.1,
+      "position": [
+        1984,
+        -624
+      ],
+      "id": "74e7eee5-5ab2-4d26-9432-44225c036937",
+      "name": "Shopify_Query_Products_By_SKU"
+    },
+    {
+      "parameters": {
+        "jsCode": "const shopifyResponse = $input.first().json;\n\nconst payload =\n  shopifyResponse.workflow_payload ??\n  $('09A_Build_Shopify_Product_Query').first().json;\n\nconst products =\n  shopifyResponse.data?.products?.edges ?? [];\n\nconst variantsBySku = {};\n\nfor (const productEdge of products) {\n  const product = productEdge.node;\n\n  for (const variantEdge of product.variants.edges ?? []) {\n    const variant = variantEdge.node;\n\n    if (variant.sku) {\n      variantsBySku[variant.sku] = {\n        ...variant,\n        product: {\n          id: product.id,\n          title: product.title,\n          handle: product.handle\n        }\n      };\n    }\n  }\n}\n\nconst lines = [];\nconst notFound = [];\nconst notAvailable = [];\nconst priceWarnings = [];\n\nfor (const item of payload.items ?? []) {\n  const variant = variantsBySku[item.sku];\n\n  if (!variant) {\n    notFound.push({\n      sku: item.sku,\n      reason: 'sku_not_found_in_shopify'\n    });\n    continue;\n  }\n\n  if (variant.availableForSale !== true) {\n    notAvailable.push({\n      sku: item.sku,\n      reason: 'variant_not_available_for_sale'\n    });\n    continue;\n  }\n\n  const shopifyPrice = Number(variant.price?.amount);\n  const expectedPrice = Number(item.unit_price);\n\n  if (\n    Number.isFinite(shopifyPrice) &&\n    Number.isFinite(expectedPrice) &&\n    shopifyPrice !== expectedPrice\n  ) {\n    priceWarnings.push({\n      sku: item.sku,\n      expected_price: expectedPrice,\n      shopify_price: shopifyPrice,\n      currency: variant.price?.currencyCode ?? null\n    });\n  }\n\n  lines.push({\n    merchandiseId: variant.id,\n    quantity: Number(item.quantity)\n  });\n}\n\nconst hasErrors =\n  notFound.length > 0 ||\n  notAvailable.length > 0 ||\n  lines.length === 0;\n\nreturn [\n  {\n    json: {\n      ...payload,\n\n      shopify_cart_lines: {\n        lines,\n        not_found: notFound,\n        not_available: notAvailable,\n        price_warnings: priceWarnings,\n        has_errors: hasErrors,\n        built_at: new Date().toISOString()\n      }\n    }\n  }\n];\n"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        2208,
+        -624
+      ],
+      "id": "bf2a11af-5ca2-43c7-adb8-4d3c65f4a346",
+      "name": "Build_Cart_Lines"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "afa5aab7-2b3f-4c98-8367-fc604e7a7056",
+              "leftValue": "={{ $json.shopify_cart_lines.has_errors }}",
+              "rightValue": "",
+              "operator": {
+                "type": "boolean",
+                "operation": "false",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        2432,
+        -624
+      ],
+      "id": "f2601af5-1338-4bab-bc03-efb8ec31ee99",
+      "name": "Lines_Are_Valid"
+    },
+    {
+      "parameters": {
+        "jsCode": "const payload = $input.first().json;\n\nconst cartLines = payload.shopify_cart_lines ?? {};\n\nreturn [\n  {\n    json: {\n      result: {\n        success: false,\n        outcome: 'human_intervention_required'\n      },\n\n      transaction: {\n        transaction_id: payload.current_transaction?.id ?? null,\n        previous_status: payload.current_transaction?.status ?? null,\n        current_status: payload.current_transaction?.status ?? null,\n        sub_status: payload.current_transaction?.sub_status ?? null,\n        next_action: payload.current_transaction?.next_action ?? null\n      },\n\n      route: {\n        selected_flow: 'DALIA_M5_02_Payment_Management',\n        effective_action: 'create_payment',\n        reason: 'shopify_products_not_available'\n      },\n\n      response: {\n        message_required: false,\n        message_type: null,\n        reply_text: null,\n        requested_fields: []\n      },\n\n      data: {\n        shopify_cart_lines: cartLines\n      },\n\n      error: {\n        code: 'SHOPIFY_CART_LINES_INVALID',\n        category: 'business_rule',\n        message: 'No fue posible crear el carrito porque uno o más productos no están disponibles en Shopify.',\n        retryable: false,\n        details: {\n          not_found: cartLines.not_found ?? [],\n          not_available: cartLines.not_available ?? [],\n          price_warnings: cartLines.price_warnings ?? []\n        }\n      },\n\n      trace: {\n        trace_id: payload.trace?.trace_id ?? null,\n        request_id: payload.trace?.request_id ?? null,\n        workflow: 'DALIA_M5_02_Payment_Management',\n        stage: 'shopify_cart_lines_invalid',\n        processed_at: new Date().toISOString()\n      }\n    }\n  }\n];\n"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        3552,
+        -144
+      ],
+      "id": "a87455e1-1261-47af-946d-bd0158591d8f",
+      "name": "Build_Shopify_Product_Error"
+    },
+    {
+      "parameters": {
+        "jsCode": "const output = $input.first().json;\n\nreturn [\n  {\n    json: {\n      result:\n        output.result ?? {\n          success: false,\n          outcome: 'transaction_failed'\n        },\n\n      transaction:\n        output.transaction ?? {\n          transaction_id: null,\n          previous_status: null,\n          current_status: null,\n          sub_status: null,\n          next_action: null\n        },\n\n      route:\n        output.route ?? {\n          selected_flow: 'DALIA_M5_02_Payment_Management',\n          effective_action: null,\n          reason: null\n        },\n\n      response:\n        output.response ?? {\n          message_required: false,\n          message_type: null,\n          reply_text: null,\n          requested_fields: []\n        },\n\n      data:\n        output.data ?? null,\n\n      error:\n        output.error ?? null,\n\n      trace:\n        output.trace ?? {\n          trace_id: null,\n          request_id: null,\n          workflow: 'DALIA_M5_02_Payment_Management',\n          stage: 'returned',\n          processed_at: new Date().toISOString()\n        }\n    }\n  }\n];\n"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        3776,
+        -112
+      ],
+      "id": "34e6e2df-5ae2-4a4e-9906-be467f68fe40",
+      "name": "Return_M5_02_Result"
+    },
+    {
+      "parameters": {
+        "endpoint": "={{ \"https://\" + ($json.configuration.payment.shopify?.store_domain ?? \"babys-wolrd.myshopify.com\") + \"/api/\" + ($json.configuration.payment.shopify?.api_version ?? \"2026-01\") + \"/graphql.json\" }}",
+        "query": "mutation CreateCartWithLines($lines: [CartLineInput!]!, $attributes: [AttributeInput!]) {\n  cartCreate(input: {\n    lines: $lines,\n    attributes: $attributes\n  }) {\n    cart {\n      id\n      checkoutUrl\n      totalQuantity\n      attributes {\n        key\n        value\n      }\n    }\n    userErrors {\n      field\n      message\n    }\n  }\n}\n",
+        "variables": "={{\n{\n  \"lines\": $json.shopify_cart_lines.lines,\n  \"attributes\": [\n    {\n      \"key\": \"dalia_transaction_id\",\n      \"value\": $json.current_transaction.id\n    },\n    {\n      \"key\": \"dalia_business_id\",\n      \"value\": $json.current_transaction.business_id\n    },\n    {\n      \"key\": \"dalia_trace_id\",\n      \"value\": $json.trace.trace_id\n    },\n    {\n      \"key\": \"dalia_request_id\",\n      \"value\": $json.trace.request_id\n    }\n  ]\n}\n}}\n",
+        "headerParametersUi": {
+          "parameter": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.graphql",
+      "typeVersion": 1.1,
+      "position": [
+        2656,
+        -624
+      ],
+      "id": "da7d4357-e250-49cc-b439-0b1c5fc50795",
+      "name": "Shopify_Create_Cart"
+    },
+    {
+      "parameters": {
+        "jsCode": "const shopifyResponse = $input.first().json;\n\nconst payload =\n  $('11A_Build_Cart_Lines').first().json;\n\nconst cartCreate =\n  shopifyResponse.data?.cartCreate ?? null;\n\nconst errors = [];\n\nif (!cartCreate) {\n  errors.push({\n    code: 'SHOPIFY_CART_CREATE_EMPTY_RESPONSE',\n    message: 'Shopify no devolvió respuesta de cartCreate.'\n  });\n}\n\nif (cartCreate?.userErrors?.length > 0) {\n  errors.push({\n    code: 'SHOPIFY_CART_CREATE_USER_ERRORS',\n    message: 'Shopify devolvió errores al crear el carrito.',\n    user_errors: cartCreate.userErrors\n  });\n}\n\nif (!cartCreate?.cart?.checkoutUrl) {\n  errors.push({\n    code: 'SHOPIFY_CHECKOUT_URL_MISSING',\n    message: 'Shopify no devolvió checkoutUrl.'\n  });\n}\n\nconst expirationMinutes =\n  payload.configuration?.payment?.expiration_minutes ?? null;\n\nconst expiresAt =\n  Number.isInteger(expirationMinutes)\n    ? new Date(Date.now() + expirationMinutes * 60000).toISOString()\n    : null;\n\nreturn [\n  {\n    json: {\n      ...payload,\n\n      shopify_cart_result: {\n        valid: errors.length === 0,\n        errors,\n        cart: cartCreate?.cart ?? null,\n        checkout_url: cartCreate?.cart?.checkoutUrl ?? null,\n        total_quantity: cartCreate?.cart?.totalQuantity ?? null,\n        expires_at: expiresAt,\n        normalized_at: new Date().toISOString()\n      }\n    }\n  }\n];\n"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        2880,
+        -624
+      ],
+      "id": "4ce5a7a6-33f1-4a21-8166-9154ef141bf8",
+      "name": "Normalize_Shopify_Cart"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "e1161361-469a-49be-b3c3-99c2056b9f69",
+              "leftValue": "={{ $json.shopify_cart_result.valid }}",
+              "rightValue": "",
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        3104,
+        -624
+      ],
+      "id": "668a0824-ec04-465a-a87a-5909971055b6",
+      "name": "Shopify_Cart_Is_Valid"
+    },
+    {
+      "parameters": {
+        "jsCode": "const payload = $input.first().json;\n\nreturn [\n  {\n    json: {\n      result: {\n        success: false,\n        outcome: 'transaction_failed'\n      },\n\n      transaction: {\n        transaction_id: payload.current_transaction?.id ?? null,\n        previous_status: payload.current_transaction?.status ?? null,\n        current_status: payload.current_transaction?.status ?? null,\n        sub_status: payload.current_transaction?.sub_status ?? null,\n        next_action: payload.current_transaction?.next_action ?? null\n      },\n\n      route: {\n        selected_flow: 'DALIA_M5_02_Payment_Management',\n        effective_action: 'create_payment',\n        reason: 'shopify_cart_create_failed'\n      },\n\n      response: {\n        message_required: false,\n        message_type: null,\n        reply_text: null,\n        requested_fields: []\n      },\n\n      data: {\n        shopify_cart_result: payload.shopify_cart_result\n      },\n\n      error: {\n        code: 'SHOPIFY_CART_CREATE_FAILED',\n        category: 'external_system',\n        message: 'No fue posible crear el carrito de Shopify.',\n        retryable: true,\n        details: {\n          errors: payload.shopify_cart_result?.errors ?? []\n        }\n      },\n\n      trace: {\n        trace_id: payload.trace?.trace_id ?? null,\n        request_id: payload.trace?.request_id ?? null,\n        workflow: 'DALIA_M5_02_Payment_Management',\n        stage: 'shopify_cart_create_failed',\n        processed_at: new Date().toISOString()\n      }\n    }\n  }\n];\n"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        3552,
+        -336
+      ],
+      "id": "48434ab0-0e8a-46ad-a296-abf31efb47e2",
+      "name": "Build_Shopify_Cart_Error"
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "with input_data as (\n    select\n        $1::uuid as transaction_id,\n        $2::text as expected_status,\n        $3::numeric as amount,\n        $4::char(3) as currency,\n        $5::text as shopify_cart_id,\n        $6::text as checkout_url,\n        $7::timestamptz as expires_at,\n        $8::text as idempotency_key,\n        $9::jsonb as shopify_payload,\n        $10::jsonb as workflow_payload\n),\n\nexisting_payment as (\n    select p.*\n    from commerce.payments p\n    inner join input_data d\n        on p.transaction_id = d.transaction_id\n    where\n        p.metadata ->> 'idempotency_key' = d.idempotency_key\n        or (\n            p.provider = 'shopify'\n            and p.payment_method = 'shopify_checkout'\n            and p.status in ('pending', 'created', 'waiting_confirmation')\n        )\n    order by p.created_at desc\n    limit 1\n),\n\ninserted_payment as (\n    insert into commerce.payments (\n        transaction_id,\n        provider,\n        provider_payment_id,\n        payment_method,\n        status,\n        amount,\n        currency,\n        payment_url,\n        expires_at,\n        metadata,\n        created_at,\n        updated_at\n    )\n    select\n        d.transaction_id,\n        'shopify',\n        d.shopify_cart_id,\n        'shopify_checkout',\n        'pending',\n        d.amount,\n        d.currency,\n        d.checkout_url,\n        d.expires_at,\n        jsonb_build_object(\n            'idempotency_key', d.idempotency_key,\n            'shopify_cart_id', d.shopify_cart_id,\n            'shopify_checkout_url', d.checkout_url,\n            'shopify_payload', d.shopify_payload,\n            'created_by', 'DALIA_M5_02_Payment_Management'\n        ),\n        now(),\n        now()\n    from input_data d\n    where not exists (\n        select 1\n        from existing_payment\n    )\n    returning *\n),\n\nresolved_payment as (\n    select to_jsonb(ep) as payment\n    from existing_payment ep\n\n    union all\n\n    select to_jsonb(ip) as payment\n    from inserted_payment ip\n\n    limit 1\n),\n\nupdated_transaction as (\n    update commerce.transactions t\n    set\n        status = 'payment_pending',\n        sub_status = 'shopify_checkout_url_sent',\n        next_action = 'wait_payment_confirmation',\n        metadata =\n            coalesce(t.metadata, '{}'::jsonb) ||\n            jsonb_build_object(\n                'last_payment_operation',\n                jsonb_build_object(\n                    'provider', 'shopify',\n                    'payment_method', 'shopify_checkout',\n                    'shopify_cart_id', d.shopify_cart_id,\n                    'checkout_url', d.checkout_url,\n                    'idempotency_key', d.idempotency_key,\n                    'processed_at', now()\n                )\n            ),\n        updated_at = now()\n    from input_data d\n    where\n        t.id = d.transaction_id\n        and t.status = d.expected_status\n    returning t.*\n),\n\ninserted_event as (\n    insert into commerce.events (\n        transaction_id,\n        event_type,\n        source,\n        status,\n        payload,\n        processed_at\n    )\n    select\n        d.transaction_id,\n        'shopify_checkout_created',\n        'DALIA_M5_02_Payment_Management',\n        'processed',\n        jsonb_build_object(\n            'provider', 'shopify',\n            'shopify_cart_id', d.shopify_cart_id,\n            'checkout_url', d.checkout_url,\n            'idempotency_key', d.idempotency_key\n        ),\n        now()\n    from input_data d\n    where exists (\n        select 1\n        from updated_transaction\n    )\n    returning id\n)\n\nselect\n    case\n        when exists (\n            select 1\n            from resolved_payment\n        )\n        and exists (\n            select 1\n            from updated_transaction\n        )\n        then true\n        else false\n    end as persisted,\n\n    case\n        when exists (\n            select 1\n            from existing_payment\n        )\n        then true\n        else false\n    end as duplicate_or_existing,\n\n    (\n        select payment\n        from resolved_payment\n        limit 1\n    ) as payment,\n\n    (\n        select to_jsonb(t)\n        from updated_transaction t\n        limit 1\n    ) as transaction,\n\n    (\n        select id\n        from inserted_event\n        limit 1\n    ) as event_id,\n\n    d.workflow_payload\n\nfrom input_data d;\n",
+        "options": {
+          "queryReplacement": "={{ [   $json.current_transaction.id,   $json.current_transaction.status,   $json.payment_context.amount,   $json.payment_context.currency || $json.current_transaction.currency || 'COP',   $json.shopify_cart_result.cart.id,   $json.shopify_cart_result.checkout_url,   $json.shopify_cart_result.expires_at,   $json.operation.idempotency_key,   JSON.stringify($json.shopify_cart_result),   JSON.stringify($json) ] }}"
+        }
+      },
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [
+        3328,
+        -640
+      ],
+      "id": "1edaf7ec-9bf7-4fa5-89d4-725b233c141b",
+      "name": "Persist_Shopify_Checkout",
+      "credentials": {
+        "postgres": {
+          "id": "YQQz8BhJGmfwa1CY",
+          "name": "Postgres account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "5b0448d1-11ec-4c23-8601-c7d95692da35",
+              "leftValue": "={{ $json.shopify_checkout_decision.decision }}",
+              "rightValue": "return_existing_shopify_checkout",
+              "operator": {
+                "type": "string",
+                "operation": "equals",
+                "name": "filter.operator.equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        1536,
+        -608
+      ],
+      "id": "1108bfee-3b9a-4743-9dcc-4ef453c2dfb1",
+      "name": "Checkout_Already_Exists"
+    },
+    {
+      "parameters": {
+        "jsCode": "const payload = $input.first().json;\n\nconst event = payload.external_event ?? {};\n\nfunction text(value) {\n  if (typeof value !== 'string') {\n    return value ?? null;\n  }\n\n  const trimmed = value.trim();\n  return trimmed.length > 0 ? trimmed : null;\n}\n\nconst topic = text(event.topic) ?? text(event.event_type);\nconst financialStatus =\n  text(event.financial_status) ??\n  text(event.payment_status) ??\n  text(event.status);\n\nlet normalizedStatus = 'unknown';\n\nif (\n  topic === 'orders/paid' ||\n  financialStatus === 'paid' ||\n  financialStatus === 'authorized' ||\n  financialStatus === 'partially_paid'\n) {\n  normalizedStatus = 'confirmed';\n}\n\nif (\n  financialStatus === 'voided' ||\n  financialStatus === 'refunded' ||\n  financialStatus === 'partially_refunded'\n) {\n  normalizedStatus = 'failed';\n}\n\nif (\n  topic === 'checkouts/delete' ||\n  financialStatus === 'expired'\n) {\n  normalizedStatus = 'expired';\n}\n\nconst eventId =\n  text(event.event_id) ??\n  text(event.webhook_id) ??\n  text(event.id) ??\n  `${topic}:${event.shopify_order_id ?? event.shopify_cart_id ?? Date.now()}`;\n\nreturn [\n  {\n    json: {\n      ...payload,\n\n      normalized_shopify_event: {\n        provider: 'shopify',\n        topic,\n        normalized_status: normalizedStatus,\n        financial_status: financialStatus ?? null,\n        shopify_order_id:\n          text(event.shopify_order_id) ??\n          text(event.order_id) ??\n          null,\n        shopify_cart_id:\n          text(event.shopify_cart_id) ??\n          text(event.cart_id) ??\n          null,\n        shopify_checkout_id:\n          text(event.shopify_checkout_id) ??\n          text(event.checkout_id) ??\n          null,\n        amount:\n          Number(\n            event.total_price ??\n            event.amount ??\n            payload.current_transaction?.total\n          ),\n        currency:\n          text(event.currency)?.toUpperCase() ??\n          payload.current_transaction?.currency ??\n          'COP',\n        event_id: eventId,\n        transaction_id:\n          text(event.transaction_id) ??\n          text(event.dalia_transaction_id) ??\n          payload.current_transaction?.id ??\n          null,\n        raw_event: event.raw ?? event,\n        received_at: new Date().toISOString()\n      }\n    }\n  }\n];\n\n"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        3104,
+        -16
+      ],
+      "id": "b665b8f5-dbcb-4077-8d6f-ed59d87f7773",
+      "name": "Normalize_Shopify_Webhook"
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "with input_data as (\n    select\n        $1::uuid as transaction_id,\n        $2::text as expected_status,\n        $3::text as shopify_order_id,\n        $4::text as shopify_cart_id,\n        $5::text as normalized_status,\n        $6::numeric as amount,\n        $7::char(3) as currency,\n        $8::text as event_idempotency_key,\n        $9::jsonb as event_payload,\n        $10::jsonb as workflow_payload\n),\n\nalready_processed as (\n    select e.*\n    from commerce.events e\n    inner join input_data d\n        on e.transaction_id = d.transaction_id\n    where\n        e.event_type = 'shopify_payment_event_processed'\n        and e.payload ->> 'event_idempotency_key' = d.event_idempotency_key\n    limit 1\n),\n\ntarget_payment as (\n    select p.*\n    from commerce.payments p\n    inner join input_data d\n        on p.transaction_id = d.transaction_id\n    where\n        p.provider = 'shopify'\n        and (\n            p.provider_payment_id = d.shopify_cart_id\n            or p.metadata ->> 'shopify_cart_id' = d.shopify_cart_id\n            or p.status in ('pending', 'created', 'waiting_confirmation')\n        )\n    order by p.created_at desc\n    limit 1\n),\n\nupdated_payment as (\n    update commerce.payments p\n    set\n        status =\n            case\n                when d.normalized_status = 'confirmed' then 'confirmed'\n                when d.normalized_status = 'failed' then 'failed'\n                when d.normalized_status = 'expired' then 'expired'\n                else p.status\n            end,\n        provider_payment_id =\n            coalesce(d.shopify_order_id, p.provider_payment_id),\n        amount =\n            coalesce(d.amount, p.amount),\n        currency =\n            coalesce(d.currency, p.currency),\n        metadata =\n            coalesce(p.metadata, '{}'::jsonb) ||\n            jsonb_build_object(\n                'shopify_order_id', d.shopify_order_id,\n                'shopify_cart_id', d.shopify_cart_id,\n                'last_shopify_event', d.event_payload,\n                'event_idempotency_key', d.event_idempotency_key\n            ),\n        updated_at = now()\n    from input_data d\n    where\n        p.id = (\n            select id\n            from target_payment\n            limit 1\n        )\n        and not exists (\n            select 1\n            from already_processed\n        )\n    returning p.*\n),\n\nupdated_transaction as (\n    update commerce.transactions t\n    set\n        status =\n            case\n                when d.normalized_status = 'confirmed' then 'payment_confirmed'\n                when d.normalized_status = 'expired' then 'expired'\n                else t.status\n            end,\n        sub_status =\n            case\n                when d.normalized_status = 'confirmed' then 'shopify_payment_confirmed'\n                when d.normalized_status = 'failed' then 'shopify_payment_failed'\n                when d.normalized_status = 'expired' then 'shopify_checkout_expired'\n                else t.sub_status\n            end,\n        next_action =\n            case\n                when d.normalized_status = 'confirmed' then 'create_order'\n                when d.normalized_status = 'failed' then 'create_payment'\n                when d.normalized_status = 'expired' then null\n                else t.next_action\n            end,\n        metadata =\n            coalesce(t.metadata, '{}'::jsonb) ||\n            jsonb_build_object(\n                'last_shopify_payment_event',\n                d.event_payload\n            ),\n        updated_at = now()\n    from input_data d\n    where\n        t.id = d.transaction_id\n        and t.status = d.expected_status\n        and not exists (\n            select 1\n            from already_processed\n        )\n    returning t.*\n),\n\ninserted_event as (\n    insert into commerce.events (\n        transaction_id,\n        event_type,\n        source,\n        status,\n        payload,\n        processed_at\n    )\n    select\n        d.transaction_id,\n        'shopify_payment_event_processed',\n        'DALIA_M5_02_Payment_Management',\n        'processed',\n        jsonb_build_object(\n            'provider', 'shopify',\n            'shopify_order_id', d.shopify_order_id,\n            'shopify_cart_id', d.shopify_cart_id,\n            'normalized_status', d.normalized_status,\n            'event_idempotency_key', d.event_idempotency_key,\n            'event_payload', d.event_payload\n        ),\n        now()\n    from input_data d\n    where\n        not exists (\n            select 1\n            from already_processed\n        )\n    returning id\n),\n\nresolved_payment as (\n    select to_jsonb(up) as payment\n    from updated_payment up\n\n    union all\n\n    select to_jsonb(tp) as payment\n    from target_payment tp\n    where exists (\n        select 1\n        from already_processed\n    )\n\n    limit 1\n),\n\nresolved_transaction as (\n    select to_jsonb(ut) as transaction\n    from updated_transaction ut\n\n    union all\n\n    select to_jsonb(t) as transaction\n    from commerce.transactions t\n    inner join input_data d\n        on t.id = d.transaction_id\n    where exists (\n        select 1\n        from already_processed\n    )\n\n    limit 1\n)\n\nselect\n    case\n        when exists (\n            select 1\n            from updated_transaction\n        )\n        then true\n        when exists (\n            select 1\n            from already_processed\n        )\n        then true\n        else false\n    end as persisted_or_duplicate,\n\n    case\n        when exists (\n            select 1\n            from already_processed\n        )\n        then true\n        else false\n    end as duplicate,\n\n    (\n        select payment\n        from resolved_payment\n        limit 1\n    ) as payment,\n\n    (\n        select transaction\n        from resolved_transaction\n        limit 1\n    ) as transaction,\n\n    (\n        select id\n        from inserted_event\n        limit 1\n    ) as event_id,\n\n    d.workflow_payload\n\nfrom input_data d;\n",
+        "options": {
+          "queryReplacement": "={{\n[\n  $json.current_transaction.id,\n  $json.current_transaction.status,\n  $json.normalized_shopify_event.shopify_order_id,\n  $json.normalized_shopify_event.shopify_cart_id,\n  $json.normalized_shopify_event.normalized_status,\n  $json.normalized_shopify_event.amount,\n  $json.normalized_shopify_event.currency,\n  `${$json.current_transaction.id}:shopify:${$json.normalized_shopify_event.event_id}`,\n  JSON.stringify($json.normalized_shopify_event),\n  JSON.stringify($json)\n]\n}}\n"
+        }
+      },
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [
+        3328,
+        -16
+      ],
+      "id": "de86e303-2a0d-427b-849b-c5f754139cbe",
+      "name": "Process_Shopify_Payment_Event",
+      "credentials": {
+        "postgres": {
+          "id": "YQQz8BhJGmfwa1CY",
+          "name": "Postgres account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "inputSource": "passthrough"
+      },
+      "type": "n8n-nodes-base.executeWorkflowTrigger",
+      "typeVersion": 1.2,
+      "position": [
+        -832,
+        16
+      ],
+      "id": "8aaf3946-37b0-4203-ad31-e3bb81b7af1d",
+      "name": "When Executed by Another Workflow"
+    }
+  ],
+  "connections": {
+    "When clicking ‘Execute workflow’": {
+      "main": [
+        [
+          {
+            "node": "Edit Fields1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Edit Fields1": {
+      "main": [
+        [
+          {
+            "node": "01_Normalize_Payment_Input",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "01_Normalize_Payment_Input": {
+      "main": [
+        [
+          {
+            "node": "Validate_Internal_Contract",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Validate_Internal_Contract": {
+      "main": [
+        [
+          {
+            "node": "Input_Is_Valid",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Input_Is_Valid": {
+      "main": [
+        [
+          {
+            "node": "Load_Current_Transaction",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Build_Input_Error",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Load_Current_Transaction": {
+      "main": [
+        [
+          {
+            "node": "Check_Current_Transaction",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Check_Current_Transaction": {
+      "main": [
+        [
+          {
+            "node": "Transaction_Is_Valid",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Transaction_Is_Valid": {
+      "main": [
+        [
+          {
+            "node": "Route_Payment_Action",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Build_Transaction_Error",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Route_Payment_Action": {
+      "main": [
+        [
+          {
+            "node": "Check_Existing_Shopify_Checkout",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Normalize_Shopify_Webhook",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Build_Payment_Output": {
+      "main": [
+        [
+          {
+            "node": "Return_M5_02_Result",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Build_Input_Error": {
+      "main": [
+        [
+          {
+            "node": "Return_M5_02_Result",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Build_Transaction_Error": {
+      "main": [
+        [
+          {
+            "node": "Return_M5_02_Result",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Check_Existing_Shopify_Checkout": {
+      "main": [
+        [
+          {
+            "node": "Checkout_Already_Exists",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Build_Shopify_Product_Query": {
+      "main": [
+        [
+          {
+            "node": "Shopify_Query_Products_By_SKU",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Shopify_Query_Products_By_SKU": {
+      "main": [
+        [
+          {
+            "node": "Build_Cart_Lines",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Build_Cart_Lines": {
+      "main": [
+        [
+          {
+            "node": "Lines_Are_Valid",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Lines_Are_Valid": {
+      "main": [
+        [
+          {
+            "node": "Shopify_Create_Cart",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Build_Shopify_Product_Error",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Build_Shopify_Product_Error": {
+      "main": [
+        [
+          {
+            "node": "Return_M5_02_Result",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Shopify_Create_Cart": {
+      "main": [
+        [
+          {
+            "node": "Normalize_Shopify_Cart",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Normalize_Shopify_Cart": {
+      "main": [
+        [
+          {
+            "node": "Shopify_Cart_Is_Valid",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Shopify_Cart_Is_Valid": {
+      "main": [
+        [
+          {
+            "node": "Persist_Shopify_Checkout",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Build_Shopify_Cart_Error",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Build_Shopify_Cart_Error": {
+      "main": [
+        [
+          {
+            "node": "Return_M5_02_Result",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Checkout_Already_Exists": {
+      "main": [
+        [
+          {
+            "node": "Build_Payment_Output",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Build_Shopify_Product_Query",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Persist_Shopify_Checkout": {
+      "main": [
+        [
+          {
+            "node": "Build_Payment_Output",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Normalize_Shopify_Webhook": {
+      "main": [
+        [
+          {
+            "node": "Process_Shopify_Payment_Event",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Process_Shopify_Payment_Event": {
+      "main": [
+        [
+          {
+            "node": "Build_Payment_Output",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "When Executed by Another Workflow": {
+      "main": [
+        [
+          {
+            "node": "01_Normalize_Payment_Input",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "nodeGroups": [],
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate",
+    "availableInMCP": false
+  },
+  "staticData": null,
+  "pinData": {},
+  "meta": {
+    "templateCredsSetupCompleted": true
+  },
+  "tags": [],
+  "shared": [
+    {
+      "role": "workflow:owner",
+      "workflowId": "V3SPVjCW77FT1ROT",
+      "projectId": "8h8pwWGcWlnGEym3",
+      "createdAt": "2026-07-10T22:09:27.528Z",
+      "updatedAt": "2026-07-10T22:09:27.528Z"
+    }
+  ],
+  "activeVersion": null
+}
