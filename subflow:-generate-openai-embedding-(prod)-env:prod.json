@@ -1,0 +1,251 @@
+{
+  "id": "Ey40XungXqtg4vrq",
+  "name": "Subflow: Generate OpenAI Embedding (PROD)",
+  "active": true,
+  "activeVersionId": "89a35a2b-9c25-4757-9797-20bc9b51b6f7",
+  "createdAt": "2026-10-08T23:14:32.571Z",
+  "updatedAt": "2026-10-09T00:05:50.461Z",
+  "isArchived": false,
+  "versionId": "89a35a2b-9c25-4757-9797-20bc9b51b6f7",
+  "triggerCount": 0,
+  "nodes": [
+    {
+      "parameters": {
+        "content": "## Subflow: Generate OpenAI Embedding\n\nCentraliza la llamada a /v1/embeddings que hoy esta duplicada en 'Catalogo Qdrant (DEV)' (nodo 'embeding text') y en 'Flujo Catalogo En Qdrant' (nodo 'HTTP Request1') / 'Envia historial a Qdrant' (nodo 'Embeddings') — cada una con su propia copia de la misma llamada HTTP. Mismo modelo que ya usan (text-embedding-ada-002) y misma credencial OpenAI (OpenAi_YoEco_DEV).\n\nMejora oportunista, no bloqueante: se puede usar solo desde el nuevo flujo de productos sin tocar los otros dos workflows, o migrarlos despues a este subflujo si el equipo quiere eliminar la duplicacion por completo.\n\nInput: text (string).\nOutput: { vector: number[] }.",
+        "height": 300,
+        "width": 400,
+        "color": 5
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        496,
+        -16
+      ],
+      "id": "d451871c-0b97-44c9-8576-3beea1269a82",
+      "name": "Sticky_4c8fbc6b"
+    },
+    {
+      "parameters": {
+        "workflowInputs": {
+          "values": [
+            {
+              "name": "text"
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.executeWorkflowTrigger",
+      "typeVersion": 1.1,
+      "position": [
+        928,
+        96
+      ],
+      "id": "1c942a1e-09b7-48c9-a352-141afd98edc1",
+      "name": "When Executed by Another Workflow"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.openai.com/v1/embeddings",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "openAiApi",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ { \"input\": $json.text, \"model\": \"text-embedding-ada-002\" } }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        1184,
+        96
+      ],
+      "id": "9805c2b8-dae5-42fc-ab65-f9079525a227",
+      "name": "Generate_Embedding",
+      "credentials": {
+        "openAiApi": {
+          "id": "LPsWoB91jlNHqeNc",
+          "name": "OpenAi_BW_Prod"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const input = $input.first().json ?? {};\nconst embedding = input?.data?.[0]?.embedding ?? null;\n\nreturn [{\n  json: {\n    vector: embedding\n  }\n}];\n"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1440,
+        96
+      ],
+      "id": "cdcef6fd-a5c5-430b-a3c3-4d8c98afe76b",
+      "name": "Extract_Vector"
+    }
+  ],
+  "connections": {
+    "When Executed by Another Workflow": {
+      "main": [
+        [
+          {
+            "node": "Generate_Embedding",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Generate_Embedding": {
+      "main": [
+        [
+          {
+            "node": "Extract_Vector",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "nodeGroups": [],
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate",
+    "availableInMCP": false,
+    "timeSavedMode": "fixed",
+    "errorWorkflow": "GZN4CJ6QgYxm77J7",
+    "callerPolicy": "workflowsFromSameOwner"
+  },
+  "staticData": null,
+  "pinData": {},
+  "meta": null,
+  "tags": [
+    {
+      "id": "2nDb4zfpAXOj9Pvx",
+      "name": "env:prod",
+      "createdAt": "2026-02-25T21:45:46.330Z",
+      "updatedAt": "2026-02-25T21:45:46.330Z"
+    }
+  ],
+  "shared": [
+    {
+      "role": "workflow:owner",
+      "workflowId": "Ey40XungXqtg4vrq",
+      "projectId": "8h8pwWGcWlnGEym3",
+      "createdAt": "2026-10-08T23:14:32.574Z",
+      "updatedAt": "2026-10-08T23:14:32.574Z"
+    }
+  ],
+  "activeVersion": {
+    "versionId": "89a35a2b-9c25-4757-9797-20bc9b51b6f7",
+    "workflowId": "Ey40XungXqtg4vrq",
+    "nodes": [
+      {
+        "parameters": {
+          "content": "## Subflow: Generate OpenAI Embedding\n\nCentraliza la llamada a /v1/embeddings que hoy esta duplicada en 'Catalogo Qdrant (DEV)' (nodo 'embeding text') y en 'Flujo Catalogo En Qdrant' (nodo 'HTTP Request1') / 'Envia historial a Qdrant' (nodo 'Embeddings') — cada una con su propia copia de la misma llamada HTTP. Mismo modelo que ya usan (text-embedding-ada-002) y misma credencial OpenAI (OpenAi_YoEco_DEV).\n\nMejora oportunista, no bloqueante: se puede usar solo desde el nuevo flujo de productos sin tocar los otros dos workflows, o migrarlos despues a este subflujo si el equipo quiere eliminar la duplicacion por completo.\n\nInput: text (string).\nOutput: { vector: number[] }.",
+          "height": 300,
+          "width": 400,
+          "color": 5
+        },
+        "type": "n8n-nodes-base.stickyNote",
+        "typeVersion": 1,
+        "position": [
+          496,
+          -16
+        ],
+        "id": "d451871c-0b97-44c9-8576-3beea1269a82",
+        "name": "Sticky_4c8fbc6b"
+      },
+      {
+        "parameters": {
+          "workflowInputs": {
+            "values": [
+              {
+                "name": "text"
+              }
+            ]
+          }
+        },
+        "type": "n8n-nodes-base.executeWorkflowTrigger",
+        "typeVersion": 1.1,
+        "position": [
+          928,
+          96
+        ],
+        "id": "1c942a1e-09b7-48c9-a352-141afd98edc1",
+        "name": "When Executed by Another Workflow"
+      },
+      {
+        "parameters": {
+          "method": "POST",
+          "url": "https://api.openai.com/v1/embeddings",
+          "authentication": "predefinedCredentialType",
+          "nodeCredentialType": "openAiApi",
+          "sendBody": true,
+          "specifyBody": "json",
+          "jsonBody": "={{ { \"input\": $json.text, \"model\": \"text-embedding-ada-002\" } }}",
+          "options": {}
+        },
+        "type": "n8n-nodes-base.httpRequest",
+        "typeVersion": 4.2,
+        "position": [
+          1184,
+          96
+        ],
+        "id": "9805c2b8-dae5-42fc-ab65-f9079525a227",
+        "name": "Generate_Embedding",
+        "credentials": {
+          "openAiApi": {
+            "id": "LPsWoB91jlNHqeNc",
+            "name": "OpenAi_BW_Prod"
+          }
+        }
+      },
+      {
+        "parameters": {
+          "jsCode": "const input = $input.first().json ?? {};\nconst embedding = input?.data?.[0]?.embedding ?? null;\n\nreturn [{\n  json: {\n    vector: embedding\n  }\n}];\n"
+        },
+        "type": "n8n-nodes-base.code",
+        "typeVersion": 2,
+        "position": [
+          1440,
+          96
+        ],
+        "id": "cdcef6fd-a5c5-430b-a3c3-4d8c98afe76b",
+        "name": "Extract_Vector"
+      }
+    ],
+    "connections": {
+      "When Executed by Another Workflow": {
+        "main": [
+          [
+            {
+              "node": "Generate_Embedding",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Generate_Embedding": {
+        "main": [
+          [
+            {
+              "node": "Extract_Vector",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      }
+    },
+    "nodeGroups": [],
+    "authors": "Michelo Vaca Cardozo",
+    "name": "Version 89a35a2b",
+    "description": "",
+    "autosaved": true,
+    "createdAt": "2026-10-08T23:22:03.479Z",
+    "updatedAt": "2026-10-09T00:08:00.000Z"
+  }
+}
