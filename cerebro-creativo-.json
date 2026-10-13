@@ -1,0 +1,428 @@
+{
+  "id": "Btadr5JZwP8Oeuav",
+  "name": "Cerebro Creativo",
+  "active": false,
+  "activeVersionId": null,
+  "createdAt": "2026-10-05T20:19:33.953Z",
+  "updatedAt": "2026-10-05T21:16:58.666Z",
+  "isArchived": false,
+  "versionId": "8de37d2a-6157-4368-8612-782cdaef49c6",
+  "triggerCount": 0,
+  "nodes": [
+    {
+      "parameters": {},
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [
+        0,
+        0
+      ],
+      "id": "71f7d2d2-1b0b-48df-ae28-3a94ff21226b",
+      "name": "When clicking ‘Execute workflow’"
+    },
+    {
+      "parameters": {
+        "resource": "fileFolder",
+        "searchMethod": "query",
+        "queryString": "=name contains 'Info campaña -' and not name contains 'Guiones' and mimeType = 'application/vnd.google-apps.document' and trashed = false",
+        "returnAll": true,
+        "filter": {},
+        "options": {
+          "fields": [
+            "*"
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.googleDrive",
+      "typeVersion": 3,
+      "position": [
+        224,
+        0
+      ],
+      "id": "7571d8a5-e7c8-41df-b39e-7cef7f342eaf",
+      "name": "Search files and folders",
+      "credentials": {
+        "googleDriveOAuth2Api": {
+          "id": "lgNrEQGQeSWc6bsi",
+          "name": "Google Drive OAuth2 API"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "type": "n8n-nodes-base.splitInBatches",
+      "typeVersion": 3,
+      "position": [
+        448,
+        0
+      ],
+      "id": "ef9dd871-1b47-49ee-a909-1e608d994299",
+      "name": "Loop Over Items"
+    },
+    {
+      "parameters": {
+        "operation": "get",
+        "documentURL": "={{ $('Loop Over Items').item.json.id }}"
+      },
+      "type": "n8n-nodes-base.googleDocs",
+      "typeVersion": 2,
+      "position": [
+        1152,
+        16
+      ],
+      "id": "b60d803c-4553-4014-82ea-df8eb702b43a",
+      "name": "Get a document",
+      "credentials": {
+        "googleDocsOAuth2Api": {
+          "id": "EjmuZJumZlAz5nP9",
+          "name": "Google Docs account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "={{ $json.content }}",
+        "options": {
+          "systemMessage": "=Eres un Director Creativo y experto en marketing digital. Acabo de recibir esta solicitud de campaña de un cliente. \n\nINSTRUCCIÓN OBLIGATORIA: Antes de redactar, DEBES usar la herramienta de Wikipedia para buscar el concepto principal de los productos a promocionar (por ejemplo, busca qué es exactamente una \"Cerveza IPA\", qué es un \"Teclado mecánico\" o qué es una \"Cama ortopédica para perros\"). \n\nUsa la información histórica, técnica o cultural que encuentres en Wikipedia para darle más profundidad a tu análisis, y luego genera lo siguiente:\n\n1. Nombre del Cliente y Título de la Campaña: (Crea un título muy atractivo y comercial).\n2. Contexto y Público Objetivo: (Un resumen breve usando lo que aprendiste en Wikipedia para explicar por qué este producto es valioso y quién es el cliente ideal).\n3. 3 Ideas de Guiones para Reels/TikTok: (Guiones creativos que incluyan: texto en pantalla, sugerencia de actitud/música, y la descripción visual del video. DEBES mencionar los precios y promociones del documento).\n\nAquí están los detalles de la solicitud del cliente:\n{{ $json.content }}"
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 3.1,
+      "position": [
+        1376,
+        16
+      ],
+      "id": "63bafce8-ecd4-4f12-b30e-e8b0543f1ed1",
+      "name": "AI Agent"
+    },
+    {
+      "parameters": {
+        "model": {
+          "__rl": true,
+          "value": "gpt-3.5-turbo",
+          "mode": "list",
+          "cachedResultName": "gpt-3.5-turbo"
+        },
+        "builtInTools": {},
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatOpenAi",
+      "typeVersion": 1.3,
+      "position": [
+        1344,
+        224
+      ],
+      "id": "e69f6d57-02af-4daf-a688-0b49cb67f740",
+      "name": "OpenAI Chat Model",
+      "credentials": {
+        "openAiApi": {
+          "id": "4YeSn6Yr4kCkAQYP",
+          "name": "OpenAI: dev"
+        }
+      }
+    },
+    {
+      "parameters": {},
+      "type": "@n8n/n8n-nodes-langchain.toolWikipedia",
+      "typeVersion": 1,
+      "position": [
+        1520,
+        208
+      ],
+      "id": "c01cb79f-cb5f-4b79-81b4-b3c270799379",
+      "name": "Wikipedia"
+    },
+    {
+      "parameters": {
+        "folderId": "={{ $('Loop Over Items').item.json.parents[0] }}",
+        "title": "=Guiones de Campaña - {{ $('Loop Over Items').item.json.name }}"
+      },
+      "type": "n8n-nodes-base.googleDocs",
+      "typeVersion": 2,
+      "position": [
+        1744,
+        16
+      ],
+      "id": "186e1d41-ac73-4696-80e4-54b17aa2c1dd",
+      "name": "Create a document",
+      "credentials": {
+        "googleDocsOAuth2Api": {
+          "id": "EjmuZJumZlAz5nP9",
+          "name": "Google Docs account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "update",
+        "documentURL": "={{ $json.id }}",
+        "actionsUi": {
+          "actionFields": [
+            {
+              "action": "insert",
+              "locationChoice": "location",
+              "text": "={{ $('AI Agent').item.json.output }}"
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.googleDocs",
+      "typeVersion": 2,
+      "position": [
+        1968,
+        16
+      ],
+      "id": "22f2b479-9ae6-4c83-9d13-3cfd6c814cb7",
+      "name": "Update a document",
+      "credentials": {
+        "googleDocsOAuth2Api": {
+          "id": "EjmuZJumZlAz5nP9",
+          "name": "Google Docs account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "sendTo": "juanyeyis25@gmail.com",
+        "subject": "✅ Guiones de campaña listos en Drive",
+        "message": "=¡Hola equipo! El Agente IA ha terminado de redactar los guiones para las nuevas campañas. Ya pueden revisarlos en las carpetas respectivas de Google Drive.",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.2,
+      "position": [
+        672,
+        -96
+      ],
+      "id": "aa03b274-be5b-4598-a15b-706e71593a83",
+      "name": "Send a message",
+      "webhookId": "5f8fa850-a53d-487a-a293-8fe8ea05b719",
+      "executeOnce": true,
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "VeI8YD6VoAyoeX4e",
+          "name": "Gmail account 3"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "resource": "fileFolder",
+        "searchMethod": "query",
+        "queryString": "=name = 'Guiones de Campaña - {{ $json.name }}' and trashed = false",
+        "filter": {},
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleDrive",
+      "typeVersion": 3,
+      "position": [
+        608,
+        16
+      ],
+      "id": "f9b36d1f-31a5-4a86-b519-7d1cce0585d3",
+      "name": "Search files and folders1",
+      "alwaysOutputData": true,
+      "credentials": {
+        "googleDriveOAuth2Api": {
+          "id": "lgNrEQGQeSWc6bsi",
+          "name": "Google Drive OAuth2 API"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "d695ae16-6b55-4f9d-825b-8d80c5e6b43b",
+              "leftValue": "={{ $json.id }}",
+              "rightValue": "",
+              "operator": {
+                "type": "string",
+                "operation": "empty",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        832,
+        16
+      ],
+      "id": "67ae5196-045c-4640-a7c7-f855a6055559",
+      "name": "If"
+    }
+  ],
+  "connections": {
+    "When clicking ‘Execute workflow’": {
+      "main": [
+        [
+          {
+            "node": "Search files and folders",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Search files and folders": {
+      "main": [
+        [
+          {
+            "node": "Loop Over Items",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Loop Over Items": {
+      "main": [
+        [
+          {
+            "node": "Send a message",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Search files and folders1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get a document": {
+      "main": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "OpenAI Chat Model": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Wikipedia": {
+      "ai_tool": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "AI Agent": {
+      "main": [
+        [
+          {
+            "node": "Create a document",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Create a document": {
+      "main": [
+        [
+          {
+            "node": "Update a document",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Update a document": {
+      "main": [
+        [
+          {
+            "node": "Loop Over Items",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Search files and folders1": {
+      "main": [
+        [
+          {
+            "node": "If",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "If": {
+      "main": [
+        [
+          {
+            "node": "Get a document",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Loop Over Items",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "nodeGroups": [],
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate"
+  },
+  "staticData": null,
+  "pinData": {},
+  "meta": {
+    "templateCredsSetupCompleted": true
+  },
+  "tags": [],
+  "shared": [
+    {
+      "role": "workflow:owner",
+      "workflowId": "Btadr5JZwP8Oeuav",
+      "projectId": "tRHCC8ts4mkRGXGn",
+      "createdAt": "2026-10-05T20:19:33.955Z",
+      "updatedAt": "2026-10-05T20:19:33.955Z"
+    }
+  ],
+  "activeVersion": null
+}
