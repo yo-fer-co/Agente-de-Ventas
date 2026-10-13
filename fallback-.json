@@ -1,0 +1,930 @@
+{
+  "id": "hoRz18Cf4VQB5zfw",
+  "name": "fallback",
+  "active": true,
+  "activeVersionId": "15663cee-9e7c-44c0-aebb-ec9258ab22f2",
+  "createdAt": "2026-05-08T17:58:54.817Z",
+  "updatedAt": "2026-05-26T22:24:18.088Z",
+  "isArchived": false,
+  "versionId": "15663cee-9e7c-44c0-aebb-ec9258ab22f2",
+  "triggerCount": 0,
+  "nodes": [
+    {
+      "parameters": {
+        "inputSource": "passthrough"
+      },
+      "id": "c055762a-8fe7-4141-a639-df2372f30060",
+      "typeVersion": 1.1,
+      "name": "When Executed by Another Workflow",
+      "type": "n8n-nodes-base.executeWorkflowTrigger",
+      "position": [
+        288,
+        416
+      ]
+    },
+    {
+      "parameters": {
+        "rules": {
+          "values": [
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 3
+                },
+                "conditions": [
+                  {
+                    "id": "813e5890-500c-4dda-b513-5e99b4bea8cb",
+                    "leftValue": "={{ $json.control.requires_handoff }}",
+                    "rightValue": "={{ true }}",
+                    "operator": {
+                      "type": "boolean",
+                      "operation": "true",
+                      "singleValue": true
+                    }
+                  }
+                ],
+                "combinator": "and"
+              }
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 3
+                },
+                "conditions": [
+                  {
+                    "id": "4ff24831-ab6e-43a4-adc1-2d3511443206",
+                    "leftValue": "={{ $json.control.needs_clarification }}",
+                    "rightValue": "{{ false }}",
+                    "operator": {
+                      "type": "boolean",
+                      "operation": "false",
+                      "singleValue": true
+                    }
+                  }
+                ],
+                "combinator": "and"
+              }
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 3
+                },
+                "conditions": [
+                  {
+                    "id": "f6f2381f-bf4a-45aa-94af-f157fd154b3e",
+                    "leftValue": "={{ $json.control.fallback_reason }}",
+                    "rightValue": "repeated_uncertainty",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals",
+                      "name": "filter.operator.equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              }
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 3
+                },
+                "conditions": [
+                  {
+                    "id": "58ab31d6-2aa5-4aa2-8ab8-b8986d770f37",
+                    "leftValue": "={{ $json.control.fallback_reason }}",
+                    "rightValue": "critical_technical_error",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals",
+                      "name": "filter.operator.equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              }
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 3
+                },
+                "conditions": [
+                  {
+                    "id": "67894b9f-284a-43a8-a400-91d459fb82b0",
+                    "leftValue": "={{ $json.decision.intent }}",
+                    "rightValue": "human_request",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals",
+                      "name": "filter.operator.equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              }
+            }
+          ]
+        },
+        "options": {
+          "fallbackOutput": "extra"
+        }
+      },
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 3.4,
+      "position": [
+        480,
+        352
+      ],
+      "id": "b8436403-25cf-433c-b297-24794d693a66",
+      "name": "Evaluar Fallback M2"
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        704,
+        336
+      ],
+      "id": "26a5f8df-088b-4f13-a056-05976c727738",
+      "name": "M6 / Handoff"
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "={{ $json.input.text }}",
+        "options": {
+          "systemMessage": "Basado en el texto deduce porque cayo en fallback y crea una pregunta para hacerle a un cliente y poder saber que se refiere, unicamente crea la pregunta sin nada mas"
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 3.1,
+      "position": [
+        704,
+        496
+      ],
+      "id": "149aec78-5bab-4bd5-b46c-d83154df3255",
+      "name": "AI Agent"
+    },
+    {
+      "parameters": {
+        "model": {
+          "__rl": true,
+          "mode": "list",
+          "value": "gpt-5-mini"
+        },
+        "builtInTools": {},
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatOpenAi",
+      "typeVersion": 1.3,
+      "position": [
+        704,
+        672
+      ],
+      "id": "61998c73-5e00-444d-aff3-aa971e9bf1c5",
+      "name": "OpenAI Chat Model",
+      "credentials": {
+        "openAiApi": {
+          "id": "CxN1M3GiHPXWR4gx",
+          "name": "OpenAi TEST"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "sessionIdType": "customKey",
+        "sessionKey": "={{ $json.trace.session_id }}",
+        "contextWindowLength": 1
+      },
+      "type": "@n8n/n8n-nodes-langchain.memoryBufferWindow",
+      "typeVersion": 1.3,
+      "position": [
+        800,
+        672
+      ],
+      "id": "c38cdd86-2ca8-4ed7-900f-fdc0ca564e48",
+      "name": "Simple Memory"
+    },
+    {
+      "parameters": {
+        "workflowId": {
+          "__rl": true,
+          "value": "Vel9S6tG1dAe94up",
+          "mode": "list",
+          "cachedResultUrl": "/workflow/Vel9S6tG1dAe94up",
+          "cachedResultName": "Agente de Ventas - TEST — M6 Handoff"
+        },
+        "workflowInputs": {
+          "mappingMode": "defineBelow",
+          "value": {},
+          "matchingColumns": [],
+          "schema": [],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": true
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.executeWorkflow",
+      "typeVersion": 1.3,
+      "position": [
+        912,
+        336
+      ],
+      "id": "8a965eb3-5036-4f48-a59c-704cfbe925ca",
+      "name": "Call 'M6 Handoff'"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "d23d707f-ae0d-459c-8437-cdf8196a9cd9",
+              "name": "text",
+              "value": "={{ $json.output }}",
+              "type": "string"
+            },
+            {
+              "id": "b2e3896e-6882-4f38-baab-bc98f6653cf1",
+              "name": "user_id",
+              "value": "={{ $('When Executed by Another Workflow').item.json.context.user_id }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        976,
+        496
+      ],
+      "id": "9626e6c8-cee3-45cf-893f-b01f2a779f34",
+      "name": "Edit Fields"
+    },
+    {
+      "parameters": {
+        "workflowId": {
+          "__rl": true,
+          "value": "uUkm8XfKgUgR9AIf",
+          "mode": "list",
+          "cachedResultUrl": "/workflow/uUkm8XfKgUgR9AIf",
+          "cachedResultName": "Agente de Ventas - TEST — DALIA_M7_Messaging_Service_Lite"
+        },
+        "workflowInputs": {
+          "mappingMode": "defineBelow",
+          "value": {},
+          "matchingColumns": [],
+          "schema": [],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": true
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.executeWorkflow",
+      "typeVersion": 1.3,
+      "position": [
+        1136,
+        496
+      ],
+      "id": "4132d9cb-40e8-4ea3-be8e-b7190cc3b90d",
+      "name": "Call 'DALIA_M7_Messaging_Service_Lite'"
+    }
+  ],
+  "connections": {
+    "When Executed by Another Workflow": {
+      "main": [
+        [
+          {
+            "node": "Evaluar Fallback M2",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Evaluar Fallback M2": {
+      "main": [
+        [
+          {
+            "node": "M6 / Handoff",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "M6 / Handoff",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "M6 / Handoff",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "M6 / Handoff",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "M6 / Handoff",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "AI Agent",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "M6 / Handoff": {
+      "main": [
+        [
+          {
+            "node": "Call 'M6 Handoff'",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "AI Agent": {
+      "main": [
+        [
+          {
+            "node": "Edit Fields",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "OpenAI Chat Model": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Simple Memory": {
+      "ai_memory": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_memory",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Edit Fields": {
+      "main": [
+        [
+          {
+            "node": "Call 'DALIA_M7_Messaging_Service_Lite'",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "nodeGroups": [],
+  "settings": {
+    "executionOrder": "v1",
+    "availableInMCP": false,
+    "binaryMode": "separate"
+  },
+  "staticData": null,
+  "pinData": {
+    "When Executed by Another Workflow": [
+      {
+        "json": {
+          "schema_version": "dalia.m2.routing_decision.v1",
+          "trace": {
+            "event_id": "evt_1779388240780",
+            "conversation_id": "conv_wa_1104496126080610_573192563967",
+            "session_id": "wa_demo_1104496126080610_573192563967"
+          },
+          "context": {
+            "environment": "demo",
+            "business_id": "business_demo",
+            "channel": "whatsapp",
+            "user_id": "573192563967",
+            "display_name": "Em"
+          },
+          "input": {
+            "message_id": "wamid.HBgMNTczMTkyNTYzOTY3FQIAEhggQUMzNDRCMzE0NjU4NjkyODFENkY0RUYyOThFRjE1RjUA",
+            "type": "text",
+            "text": "Homa",
+            "timestamp": "2026-05-21T18:30:35.000Z",
+            "processing_status": "ready"
+          },
+          "decision": {
+            "intent": "unsupported",
+            "destination": "fallback",
+            "confidence": 1,
+            "commercial_stage": "unknown",
+            "reason": "Message 'Homa' is likely a typo or non-processable input."
+          },
+          "extracted": {
+            "category_candidate": null,
+            "product_candidate": null,
+            "quantity": null,
+            "city": null,
+            "preference": null
+          },
+          "control": {
+            "needs_clarification": true,
+            "needs_memory_lookup": false,
+            "requires_handoff": false,
+            "fallback_reason": "ambiguous_message"
+          },
+          "session_memory": {}
+        },
+        "pairedItem": {
+          "item": 0
+        }
+      }
+    ]
+  },
+  "meta": {
+    "templateCredsSetupCompleted": true
+  },
+  "tags": [],
+  "shared": [
+    {
+      "role": "workflow:owner",
+      "workflowId": "hoRz18Cf4VQB5zfw",
+      "projectId": "tRHCC8ts4mkRGXGn",
+      "createdAt": "2026-05-08T17:58:54.819Z",
+      "updatedAt": "2026-05-08T17:58:54.819Z"
+    }
+  ],
+  "activeVersion": {
+    "versionId": "15663cee-9e7c-44c0-aebb-ec9258ab22f2",
+    "workflowId": "hoRz18Cf4VQB5zfw",
+    "nodes": [
+      {
+        "parameters": {
+          "inputSource": "passthrough"
+        },
+        "id": "c055762a-8fe7-4141-a639-df2372f30060",
+        "typeVersion": 1.1,
+        "name": "When Executed by Another Workflow",
+        "type": "n8n-nodes-base.executeWorkflowTrigger",
+        "position": [
+          288,
+          416
+        ]
+      },
+      {
+        "parameters": {
+          "rules": {
+            "values": [
+              {
+                "conditions": {
+                  "options": {
+                    "caseSensitive": true,
+                    "leftValue": "",
+                    "typeValidation": "strict",
+                    "version": 3
+                  },
+                  "conditions": [
+                    {
+                      "id": "813e5890-500c-4dda-b513-5e99b4bea8cb",
+                      "leftValue": "={{ $json.control.requires_handoff }}",
+                      "rightValue": "={{ true }}",
+                      "operator": {
+                        "type": "boolean",
+                        "operation": "true",
+                        "singleValue": true
+                      }
+                    }
+                  ],
+                  "combinator": "and"
+                }
+              },
+              {
+                "conditions": {
+                  "options": {
+                    "caseSensitive": true,
+                    "leftValue": "",
+                    "typeValidation": "strict",
+                    "version": 3
+                  },
+                  "conditions": [
+                    {
+                      "id": "4ff24831-ab6e-43a4-adc1-2d3511443206",
+                      "leftValue": "={{ $json.control.needs_clarification }}",
+                      "rightValue": "{{ false }}",
+                      "operator": {
+                        "type": "boolean",
+                        "operation": "false",
+                        "singleValue": true
+                      }
+                    }
+                  ],
+                  "combinator": "and"
+                }
+              },
+              {
+                "conditions": {
+                  "options": {
+                    "caseSensitive": true,
+                    "leftValue": "",
+                    "typeValidation": "strict",
+                    "version": 3
+                  },
+                  "conditions": [
+                    {
+                      "id": "f6f2381f-bf4a-45aa-94af-f157fd154b3e",
+                      "leftValue": "={{ $json.control.fallback_reason }}",
+                      "rightValue": "repeated_uncertainty",
+                      "operator": {
+                        "type": "string",
+                        "operation": "equals",
+                        "name": "filter.operator.equals"
+                      }
+                    }
+                  ],
+                  "combinator": "and"
+                }
+              },
+              {
+                "conditions": {
+                  "options": {
+                    "caseSensitive": true,
+                    "leftValue": "",
+                    "typeValidation": "strict",
+                    "version": 3
+                  },
+                  "conditions": [
+                    {
+                      "id": "58ab31d6-2aa5-4aa2-8ab8-b8986d770f37",
+                      "leftValue": "={{ $json.control.fallback_reason }}",
+                      "rightValue": "critical_technical_error",
+                      "operator": {
+                        "type": "string",
+                        "operation": "equals",
+                        "name": "filter.operator.equals"
+                      }
+                    }
+                  ],
+                  "combinator": "and"
+                }
+              },
+              {
+                "conditions": {
+                  "options": {
+                    "caseSensitive": true,
+                    "leftValue": "",
+                    "typeValidation": "strict",
+                    "version": 3
+                  },
+                  "conditions": [
+                    {
+                      "id": "67894b9f-284a-43a8-a400-91d459fb82b0",
+                      "leftValue": "={{ $json.decision.intent }}",
+                      "rightValue": "human_request",
+                      "operator": {
+                        "type": "string",
+                        "operation": "equals",
+                        "name": "filter.operator.equals"
+                      }
+                    }
+                  ],
+                  "combinator": "and"
+                }
+              }
+            ]
+          },
+          "options": {
+            "fallbackOutput": "extra"
+          }
+        },
+        "type": "n8n-nodes-base.switch",
+        "typeVersion": 3.4,
+        "position": [
+          480,
+          352
+        ],
+        "id": "b8436403-25cf-433c-b297-24794d693a66",
+        "name": "Evaluar Fallback M2"
+      },
+      {
+        "parameters": {
+          "options": {}
+        },
+        "type": "n8n-nodes-base.set",
+        "typeVersion": 3.4,
+        "position": [
+          704,
+          336
+        ],
+        "id": "26a5f8df-088b-4f13-a056-05976c727738",
+        "name": "M6 / Handoff"
+      },
+      {
+        "parameters": {
+          "promptType": "define",
+          "text": "={{ $json.input.text }}",
+          "options": {
+            "systemMessage": "Basado en el texto deduce porque cayo en fallback y crea una pregunta para hacerle a un cliente y poder saber que se refiere, unicamente crea la pregunta sin nada mas"
+          }
+        },
+        "type": "@n8n/n8n-nodes-langchain.agent",
+        "typeVersion": 3.1,
+        "position": [
+          704,
+          496
+        ],
+        "id": "149aec78-5bab-4bd5-b46c-d83154df3255",
+        "name": "AI Agent"
+      },
+      {
+        "parameters": {
+          "model": {
+            "__rl": true,
+            "mode": "list",
+            "value": "gpt-5-mini"
+          },
+          "builtInTools": {},
+          "options": {}
+        },
+        "type": "@n8n/n8n-nodes-langchain.lmChatOpenAi",
+        "typeVersion": 1.3,
+        "position": [
+          704,
+          672
+        ],
+        "id": "61998c73-5e00-444d-aff3-aa971e9bf1c5",
+        "name": "OpenAI Chat Model",
+        "credentials": {
+          "openAiApi": {
+            "id": "CxN1M3GiHPXWR4gx",
+            "name": "OpenAi TEST"
+          }
+        }
+      },
+      {
+        "parameters": {
+          "sessionIdType": "customKey",
+          "sessionKey": "={{ $json.trace.session_id }}",
+          "contextWindowLength": 1
+        },
+        "type": "@n8n/n8n-nodes-langchain.memoryBufferWindow",
+        "typeVersion": 1.3,
+        "position": [
+          800,
+          672
+        ],
+        "id": "c38cdd86-2ca8-4ed7-900f-fdc0ca564e48",
+        "name": "Simple Memory"
+      },
+      {
+        "parameters": {
+          "workflowId": {
+            "__rl": true,
+            "value": "Vel9S6tG1dAe94up",
+            "mode": "list",
+            "cachedResultUrl": "/workflow/Vel9S6tG1dAe94up",
+            "cachedResultName": "Agente de Ventas - TEST — M6 Handoff"
+          },
+          "workflowInputs": {
+            "mappingMode": "defineBelow",
+            "value": {},
+            "matchingColumns": [],
+            "schema": [],
+            "attemptToConvertTypes": false,
+            "convertFieldsToString": true
+          },
+          "options": {}
+        },
+        "type": "n8n-nodes-base.executeWorkflow",
+        "typeVersion": 1.3,
+        "position": [
+          912,
+          336
+        ],
+        "id": "8a965eb3-5036-4f48-a59c-704cfbe925ca",
+        "name": "Call 'M6 Handoff'"
+      },
+      {
+        "parameters": {
+          "assignments": {
+            "assignments": [
+              {
+                "id": "d23d707f-ae0d-459c-8437-cdf8196a9cd9",
+                "name": "text",
+                "value": "={{ $json.output }}",
+                "type": "string"
+              },
+              {
+                "id": "b2e3896e-6882-4f38-baab-bc98f6653cf1",
+                "name": "user_id",
+                "value": "={{ $('When Executed by Another Workflow').item.json.context.user_id }}",
+                "type": "string"
+              }
+            ]
+          },
+          "options": {}
+        },
+        "type": "n8n-nodes-base.set",
+        "typeVersion": 3.4,
+        "position": [
+          976,
+          496
+        ],
+        "id": "9626e6c8-cee3-45cf-893f-b01f2a779f34",
+        "name": "Edit Fields"
+      },
+      {
+        "parameters": {
+          "workflowId": {
+            "__rl": true,
+            "value": "uUkm8XfKgUgR9AIf",
+            "mode": "list",
+            "cachedResultUrl": "/workflow/uUkm8XfKgUgR9AIf",
+            "cachedResultName": "Agente de Ventas - TEST — DALIA_M7_Messaging_Service_Lite"
+          },
+          "workflowInputs": {
+            "mappingMode": "defineBelow",
+            "value": {},
+            "matchingColumns": [],
+            "schema": [],
+            "attemptToConvertTypes": false,
+            "convertFieldsToString": true
+          },
+          "options": {}
+        },
+        "type": "n8n-nodes-base.executeWorkflow",
+        "typeVersion": 1.3,
+        "position": [
+          1136,
+          496
+        ],
+        "id": "4132d9cb-40e8-4ea3-be8e-b7190cc3b90d",
+        "name": "Call 'DALIA_M7_Messaging_Service_Lite'"
+      }
+    ],
+    "connections": {
+      "When Executed by Another Workflow": {
+        "main": [
+          [
+            {
+              "node": "Evaluar Fallback M2",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Evaluar Fallback M2": {
+        "main": [
+          [
+            {
+              "node": "M6 / Handoff",
+              "type": "main",
+              "index": 0
+            }
+          ],
+          [
+            {
+              "node": "M6 / Handoff",
+              "type": "main",
+              "index": 0
+            }
+          ],
+          [
+            {
+              "node": "M6 / Handoff",
+              "type": "main",
+              "index": 0
+            }
+          ],
+          [
+            {
+              "node": "M6 / Handoff",
+              "type": "main",
+              "index": 0
+            }
+          ],
+          [
+            {
+              "node": "M6 / Handoff",
+              "type": "main",
+              "index": 0
+            }
+          ],
+          [
+            {
+              "node": "AI Agent",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "M6 / Handoff": {
+        "main": [
+          [
+            {
+              "node": "Call 'M6 Handoff'",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "AI Agent": {
+        "main": [
+          [
+            {
+              "node": "Edit Fields",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "OpenAI Chat Model": {
+        "ai_languageModel": [
+          [
+            {
+              "node": "AI Agent",
+              "type": "ai_languageModel",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Simple Memory": {
+        "ai_memory": [
+          [
+            {
+              "node": "AI Agent",
+              "type": "ai_memory",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Edit Fields": {
+        "main": [
+          [
+            {
+              "node": "Call 'DALIA_M7_Messaging_Service_Lite'",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      }
+    },
+    "nodeGroups": [],
+    "authors": "Emmanuel Arevalo",
+    "name": "Version 15663cee",
+    "description": "",
+    "autosaved": true,
+    "createdAt": "2026-05-26T22:24:18.089Z",
+    "updatedAt": "2026-05-26T22:24:22.000Z"
+  }
+}
