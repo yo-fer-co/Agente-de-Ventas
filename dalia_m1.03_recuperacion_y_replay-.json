@@ -1,0 +1,1649 @@
+{
+  "id": "0ul9f8f5zexgBS3Y",
+  "name": "DALIA_M1.03_Recuperacion_y_replay",
+  "active": true,
+  "activeVersionId": "f794062f-c489-4b12-85f2-86d3f564969f",
+  "createdAt": "2026-10-06T16:34:30.156Z",
+  "updatedAt": "2026-10-07T22:45:12.312Z",
+  "isArchived": false,
+  "versionId": "cab689dd-f97e-49a7-82cc-13ede6b811ed",
+  "triggerCount": 1,
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {}
+          ]
+        }
+      },
+      "id": "39c4698d-b77a-4e93-888b-867d80525404",
+      "name": "Cada 10 minutos (DEV)",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.4,
+      "position": [
+        1344,
+        704
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "select dalia.m1_cycle('M1.03') as r;",
+        "options": {}
+      },
+      "id": "4bebc406-6d6c-4272-a6c1-311d9ed93eb1",
+      "name": "Ciclo de ingreso",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.7,
+      "position": [
+        1568,
+        704
+      ],
+      "credentials": {
+        "postgres": {
+          "id": "HfCgVAjUygK1vrkU",
+          "name": "DALIA dev Supabase"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "fieldToSplitOut": "r.deliver",
+        "options": {}
+      },
+      "id": "cf6d09b9-5207-42fa-8cae-8f47106b0ebf",
+      "name": "Turnos del ciclo",
+      "type": "n8n-nodes-base.splitOut",
+      "typeVersion": 1,
+      "position": [
+        1792,
+        624
+      ]
+    },
+    {
+      "parameters": {
+        "workflowId": {
+          "__rl": true,
+          "mode": "id",
+          "value": "3pbxdp2jPBwAdzQm"
+        },
+        "mode": "each",
+        "options": {
+          "waitForSubWorkflow": false
+        }
+      },
+      "id": "79933ec8-418a-4bda-b011-9767a178de52",
+      "name": "Procesar turno (M2.01)",
+      "type": "n8n-nodes-base.executeWorkflow",
+      "typeVersion": 1.3,
+      "position": [
+        2016,
+        288
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "select dalia.m1_mark_delivered($1::uuid, $2::bigint, 'M1.03') as d;",
+        "options": {
+          "queryReplacement": "={{ [ $json.conversation_id, $json.burst_seq ] }}"
+        }
+      },
+      "id": "173fa40e-32f4-42b1-a4b0-178406284402",
+      "name": "Marcar entregada",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.7,
+      "position": [
+        2240,
+        288
+      ],
+      "credentials": {
+        "postgres": {
+          "id": "HfCgVAjUygK1vrkU",
+          "name": "DALIA dev Supabase"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose",
+            "version": 1
+          },
+          "conditions": [
+            {
+              "leftValue": "={{ ($(\"Ciclo de ingreso\").first().json.r.storage_delete ?? []).length > 0 && !!$(\"Ciclo de ingreso\").first().json.r.storage.url }}",
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "520328d9-6687-4c9a-81d8-8cadf0c79310",
+      "name": "Hay adjuntos vencidos",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        1792,
+        816
+      ]
+    },
+    {
+      "parameters": {
+        "method": "DELETE",
+        "url": "={{ $(\"Ciclo de ingreso\").first().json.r.storage.url + \"/object/\" + $(\"Ciclo de ingreso\").first().json.r.storage.bucket }}",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpCustomAuth",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ prefixes: $(\"Ciclo de ingreso\").first().json.r.storage_delete }) }}",
+        "options": {
+          "response": {
+            "response": {
+              "fullResponse": true,
+              "neverError": true,
+              "responseFormat": "json"
+            }
+          },
+          "timeout": 30000
+        }
+      },
+      "id": "03e71b9b-a423-4cc0-a049-d53c87e32226",
+      "name": "Borrar adjuntos vencidos",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        2016,
+        816
+      ],
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "select dalia.m1_storage_deleted($1::jsonb, $2::jsonb) as x;",
+        "options": {
+          "queryReplacement": "={{ [ JSON.stringify($(\"Ciclo de ingreso\").first().json.r.storage_delete), JSON.stringify({ ok: $json.statusCode >= 200 && $json.statusCode < 300, error: $json.statusCode + \" \" + JSON.stringify($json.body ?? \"\").slice(0, 150) }) ] }}"
+        }
+      },
+      "id": "c862c780-d164-4593-9715-614d6efbeed5",
+      "name": "Registrar borrado",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.7,
+      "position": [
+        2240,
+        816
+      ],
+      "credentials": {
+        "postgres": {
+          "id": "HfCgVAjUygK1vrkU",
+          "name": "DALIA dev Supabase"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "inputSource": "passthrough"
+      },
+      "id": "ffedc495-1141-4bce-970f-7617224be2cf",
+      "name": "Entrada",
+      "type": "n8n-nodes-base.executeWorkflowTrigger",
+      "typeVersion": 1.2,
+      "position": [
+        0,
+        336
+      ]
+    },
+    {
+      "parameters": {
+        "rules": {
+          "values": [
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 1
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $json.type ?? \"m5.execute\" }}",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    },
+                    "rightValue": "m1.burst_timeout"
+                  },
+                  {
+                    "leftValue": "={{ $json.type ?? \"m5.execute\" }}",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    },
+                    "rightValue": "m1.redeliver"
+                  }
+                ],
+                "combinator": "or"
+              }
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 1
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $json.type ?? \"m5.execute\" }}",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    },
+                    "rightValue": "m1.privacy_erase"
+                  }
+                ],
+                "combinator": "or"
+              }
+            }
+          ]
+        },
+        "options": {
+          "fallbackOutput": "extra",
+          "renameFallbackOutput": "Desconocido"
+        }
+      },
+      "id": "a3a3d6ee-d215-45da-b1a4-a262dd3197d3",
+      "name": "Tipo de job",
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 3.2,
+      "position": [
+        224,
+        320
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "select dalia.m1_job($1, $2::jsonb) as r;",
+        "options": {
+          "queryReplacement": "={{ [ $json.type, JSON.stringify($json.payload ?? {}) ] }}"
+        }
+      },
+      "id": "3094b171-4c75-4c91-9f89-ec6b123db695",
+      "name": "Atender job",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.7,
+      "position": [
+        896,
+        0
+      ],
+      "credentials": {
+        "postgres": {
+          "id": "HfCgVAjUygK1vrkU",
+          "name": "DALIA dev Supabase"
+        }
+      },
+      "onError": "continueErrorOutput"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose",
+            "version": 1
+          },
+          "conditions": [
+            {
+              "leftValue": "={{ $json.r.job === \"retry\" }}",
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "da1b7bb0-77e6-4915-80b4-a8d592a76a88",
+      "name": "Reintentar",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        1120,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "select dalia.sys_fail_job($1::uuid, $2::jsonb, true) as job_status;",
+        "options": {
+          "queryReplacement": "={{ [ $(\"Entrada\").first().json.job_id, JSON.stringify({ code: \"HANDLER_ERROR\", message: $json.error?.message ?? $json.error ?? \"reintentar\" }) ] }}"
+        }
+      },
+      "id": "145527b5-d7ba-4a2c-8059-d004a080af3e",
+      "name": "Fallar job (reintentable)",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.7,
+      "position": [
+        1344,
+        96
+      ],
+      "credentials": {
+        "postgres": {
+          "id": "HfCgVAjUygK1vrkU",
+          "name": "DALIA dev Supabase"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "select dalia.sys_complete_job($1::uuid, $2::jsonb) as job_status;",
+        "options": {
+          "queryReplacement": "={{ [ $(\"Entrada\").first().json.job_id, JSON.stringify($json.r.result ?? {}) ] }}"
+        }
+      },
+      "id": "0088a3a7-e6f9-4556-bb5d-e8f0c810d5cd",
+      "name": "Completar job de rafaga",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.7,
+      "position": [
+        1344,
+        288
+      ],
+      "credentials": {
+        "postgres": {
+          "id": "HfCgVAjUygK1vrkU",
+          "name": "DALIA dev Supabase"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "mode": "raw",
+        "jsonOutput": "={{ JSON.stringify({ deliver: $(\"Atender job\").first().json.r.deliver ?? [] }) }}",
+        "options": {}
+      },
+      "id": "5610cdb1-6fcb-43e8-8a1f-c1ea8b2406a4",
+      "name": "Entregas del job",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        1568,
+        288
+      ]
+    },
+    {
+      "parameters": {
+        "fieldToSplitOut": "deliver",
+        "options": {}
+      },
+      "id": "edf318b3-28ab-4499-a35a-b052b2ed0594",
+      "name": "Turnos del job",
+      "type": "n8n-nodes-base.splitOut",
+      "typeVersion": 1,
+      "position": [
+        1792,
+        288
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "select dalia.m1_privacy_erase($1::jsonb) as e;",
+        "options": {
+          "queryReplacement": "={{ [ JSON.stringify($json.payload ?? {}) ] }}"
+        }
+      },
+      "id": "6702352b-f6a9-4056-b124-2e3abed5996e",
+      "name": "Preparar olvido",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.7,
+      "position": [
+        448,
+        512
+      ],
+      "credentials": {
+        "postgres": {
+          "id": "HfCgVAjUygK1vrkU",
+          "name": "DALIA dev Supabase"
+        }
+      },
+      "onError": "continueErrorOutput"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose",
+            "version": 1
+          },
+          "conditions": [
+            {
+              "leftValue": "={{ ($json.e.storage_delete ?? []).length > 0 }}",
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "b9a91462-771d-4d05-ae6b-786ad11380d4",
+      "name": "Hay adjuntos del contacto",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        672,
+        464
+      ]
+    },
+    {
+      "parameters": {
+        "method": "DELETE",
+        "url": "={{ $json.e.storage.url + \"/object/\" + $json.e.storage.bucket }}",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpCustomAuth",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ prefixes: $json.e.storage_delete }) }}",
+        "options": {
+          "response": {
+            "response": {
+              "fullResponse": true,
+              "neverError": true,
+              "responseFormat": "json"
+            }
+          },
+          "timeout": 30000
+        }
+      },
+      "id": "ccf975f9-6267-4be0-b44b-581a36546187",
+      "name": "Borrar adjuntos del contacto",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        896,
+        384
+      ],
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "select dalia.m1_privacy_finish($1::jsonb, $2::jsonb) as result;",
+        "options": {
+          "queryReplacement": "={{ [ JSON.stringify($(\"Preparar olvido\").first().json.e), JSON.stringify({ ok: $(\"Borrar adjuntos del contacto\").isExecuted ? ($(\"Borrar adjuntos del contacto\").first().json.statusCode >= 200 && $(\"Borrar adjuntos del contacto\").first().json.statusCode < 300) : false }) ] }}"
+        }
+      },
+      "id": "e32f13eb-e69f-4a9f-9e04-86666e54bdef",
+      "name": "Terminar olvido",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.7,
+      "position": [
+        1120,
+        464
+      ],
+      "credentials": {
+        "postgres": {
+          "id": "HfCgVAjUygK1vrkU",
+          "name": "DALIA dev Supabase"
+        }
+      },
+      "onError": "continueErrorOutput"
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "select dalia.sys_complete_job($1::uuid, $2::jsonb) as job_status;",
+        "options": {
+          "queryReplacement": "={{ [ $(\"Entrada\").first().json.job_id, JSON.stringify($json.result ?? $json.c ?? $json.step ?? {}) ] }}"
+        }
+      },
+      "id": "555a4945-91d8-401f-82e6-728f2336ceea",
+      "name": "Completar job",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.7,
+      "position": [
+        1344,
+        512
+      ],
+      "credentials": {
+        "postgres": {
+          "id": "HfCgVAjUygK1vrkU",
+          "name": "DALIA dev Supabase"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "select dalia.sys_fail_job($1::uuid, $2::jsonb, false) as job_status;",
+        "options": {
+          "queryReplacement": "={{ [ $(\"Entrada\").first().json.job_id, JSON.stringify({ code: \"UNKNOWN_JOB_TYPE\", message: $(\"Entrada\").first().json.type }) ] }}"
+        }
+      },
+      "id": "634e8bac-64b6-43e0-9d08-c0c17306146d",
+      "name": "Fallar job (tipo desconocido)",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.7,
+      "position": [
+        448,
+        704
+      ],
+      "credentials": {
+        "postgres": {
+          "id": "HfCgVAjUygK1vrkU",
+          "name": "DALIA dev Supabase"
+        }
+      }
+    }
+  ],
+  "connections": {
+    "Cada 10 minutos (DEV)": {
+      "main": [
+        [
+          {
+            "node": "Ciclo de ingreso",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Ciclo de ingreso": {
+      "main": [
+        [
+          {
+            "node": "Turnos del ciclo",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Hay adjuntos vencidos",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Turnos del ciclo": {
+      "main": [
+        [
+          {
+            "node": "Procesar turno (M2.01)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Procesar turno (M2.01)": {
+      "main": [
+        [
+          {
+            "node": "Marcar entregada",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Hay adjuntos vencidos": {
+      "main": [
+        [
+          {
+            "node": "Borrar adjuntos vencidos",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Borrar adjuntos vencidos": {
+      "main": [
+        [
+          {
+            "node": "Registrar borrado",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Entrada": {
+      "main": [
+        [
+          {
+            "node": "Tipo de job",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Tipo de job": {
+      "main": [
+        [
+          {
+            "node": "Atender job",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Preparar olvido",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Fallar job (tipo desconocido)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Atender job": {
+      "main": [
+        [
+          {
+            "node": "Reintentar",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Fallar job (reintentable)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Reintentar": {
+      "main": [
+        [
+          {
+            "node": "Fallar job (reintentable)",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Completar job de rafaga",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Completar job de rafaga": {
+      "main": [
+        [
+          {
+            "node": "Entregas del job",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Entregas del job": {
+      "main": [
+        [
+          {
+            "node": "Turnos del job",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Turnos del job": {
+      "main": [
+        [
+          {
+            "node": "Procesar turno (M2.01)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Preparar olvido": {
+      "main": [
+        [
+          {
+            "node": "Hay adjuntos del contacto",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Fallar job (reintentable)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Hay adjuntos del contacto": {
+      "main": [
+        [
+          {
+            "node": "Borrar adjuntos del contacto",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Terminar olvido",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Borrar adjuntos del contacto": {
+      "main": [
+        [
+          {
+            "node": "Terminar olvido",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Terminar olvido": {
+      "main": [
+        [
+          {
+            "node": "Completar job",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Fallar job (reintentable)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "nodeGroups": [],
+  "settings": {
+    "executionOrder": "v1",
+    "availableInMCP": true,
+    "errorWorkflow": "cjjQno2MxMTT3Icc",
+    "timezone": "America/Bogota",
+    "saveDataErrorExecution": "all",
+    "saveDataSuccessExecution": "none",
+    "callerPolicy": "workflowsFromSameOwner",
+    "binaryMode": "separate"
+  },
+  "staticData": {
+    "node:Cada 10 minutos (DEV)": {
+      "recurrenceRules": [
+        null
+      ],
+      "recurrenceRuleSignatures": [
+        null
+      ]
+    }
+  },
+  "pinData": {},
+  "meta": {
+    "aiBuilderAssisted": true,
+    "builderVariant": "mcp"
+  },
+  "tags": [],
+  "shared": [
+    {
+      "role": "workflow:owner",
+      "workflowId": "0ul9f8f5zexgBS3Y",
+      "projectId": "tRHCC8ts4mkRGXGn",
+      "createdAt": "2026-10-09T21:09:17.863Z",
+      "updatedAt": "2026-10-09T21:09:17.863Z"
+    }
+  ],
+  "activeVersion": {
+    "versionId": "f794062f-c489-4b12-85f2-86d3f564969f",
+    "workflowId": "0ul9f8f5zexgBS3Y",
+    "nodes": [
+      {
+        "id": "39c4698d-b77a-4e93-888b-867d80525404",
+        "name": "Cada 10 minutos (DEV)",
+        "type": "n8n-nodes-base.scheduleTrigger",
+        "typeVersion": 1.4,
+        "position": [
+          1344,
+          704
+        ],
+        "parameters": {
+          "rule": {
+            "interval": [
+              {
+                "field": "minutes",
+                "minutesInterval": 10
+              }
+            ]
+          }
+        }
+      },
+      {
+        "id": "4bebc406-6d6c-4272-a6c1-311d9ed93eb1",
+        "name": "Ciclo de ingreso",
+        "type": "n8n-nodes-base.postgres",
+        "typeVersion": 2.7,
+        "position": [
+          1568,
+          704
+        ],
+        "parameters": {
+          "operation": "executeQuery",
+          "query": "select dalia.m1_cycle('M1.03') as r;"
+        },
+        "credentials": {
+          "postgres": {
+            "id": "HfCgVAjUygK1vrkU",
+            "name": "DALIA dev Supabase"
+          }
+        }
+      },
+      {
+        "id": "cf6d09b9-5207-42fa-8cae-8f47106b0ebf",
+        "name": "Turnos del ciclo",
+        "type": "n8n-nodes-base.splitOut",
+        "typeVersion": 1,
+        "position": [
+          1792,
+          624
+        ],
+        "parameters": {
+          "fieldToSplitOut": "r.deliver",
+          "options": {}
+        }
+      },
+      {
+        "id": "79933ec8-418a-4bda-b011-9767a178de52",
+        "name": "Procesar turno (M2.01)",
+        "type": "n8n-nodes-base.executeWorkflow",
+        "typeVersion": 1.3,
+        "position": [
+          2016,
+          288
+        ],
+        "parameters": {
+          "mode": "each",
+          "source": "database",
+          "workflowId": {
+            "__rl": true,
+            "mode": "id",
+            "value": "3pbxdp2jPBwAdzQm"
+          },
+          "options": {
+            "waitForSubWorkflow": false
+          }
+        }
+      },
+      {
+        "id": "173fa40e-32f4-42b1-a4b0-178406284402",
+        "name": "Marcar entregada",
+        "type": "n8n-nodes-base.postgres",
+        "typeVersion": 2.7,
+        "position": [
+          2240,
+          288
+        ],
+        "parameters": {
+          "operation": "executeQuery",
+          "query": "select dalia.m1_mark_delivered($1::uuid, $2::bigint, 'M1.03') as d;",
+          "options": {
+            "queryReplacement": "={{ [ $json.conversation_id, $json.burst_seq ] }}"
+          }
+        },
+        "credentials": {
+          "postgres": {
+            "id": "HfCgVAjUygK1vrkU",
+            "name": "DALIA dev Supabase"
+          }
+        }
+      },
+      {
+        "id": "520328d9-6687-4c9a-81d8-8cadf0c79310",
+        "name": "Hay adjuntos vencidos",
+        "type": "n8n-nodes-base.if",
+        "typeVersion": 2.2,
+        "position": [
+          1792,
+          816
+        ],
+        "parameters": {
+          "conditions": {
+            "options": {
+              "caseSensitive": true,
+              "leftValue": "",
+              "typeValidation": "loose"
+            },
+            "conditions": [
+              {
+                "leftValue": "={{ ($(\"Ciclo de ingreso\").first().json.r.storage_delete ?? []).length > 0 && !!$(\"Ciclo de ingreso\").first().json.r.storage.url }}",
+                "operator": {
+                  "type": "boolean",
+                  "operation": "true",
+                  "singleValue": true
+                }
+              }
+            ],
+            "combinator": "and"
+          }
+        }
+      },
+      {
+        "id": "03e71b9b-a423-4cc0-a049-d53c87e32226",
+        "name": "Borrar adjuntos vencidos",
+        "type": "n8n-nodes-base.httpRequest",
+        "typeVersion": 4.2,
+        "position": [
+          2016,
+          816
+        ],
+        "parameters": {
+          "method": "DELETE",
+          "url": "={{ $(\"Ciclo de ingreso\").first().json.r.storage.url + \"/object/\" + $(\"Ciclo de ingreso\").first().json.r.storage.bucket }}",
+          "authentication": "genericCredentialType",
+          "genericAuthType": "httpCustomAuth",
+          "sendBody": true,
+          "contentType": "json",
+          "specifyBody": "json",
+          "jsonBody": "={{ JSON.stringify({ prefixes: $(\"Ciclo de ingreso\").first().json.r.storage_delete }) }}",
+          "options": {
+            "timeout": 30000,
+            "response": {
+              "response": {
+                "fullResponse": true,
+                "neverError": true,
+                "responseFormat": "json"
+              }
+            }
+          }
+        },
+        "onError": "continueRegularOutput"
+      },
+      {
+        "id": "c862c780-d164-4593-9715-614d6efbeed5",
+        "name": "Registrar borrado",
+        "type": "n8n-nodes-base.postgres",
+        "typeVersion": 2.7,
+        "position": [
+          2240,
+          816
+        ],
+        "parameters": {
+          "operation": "executeQuery",
+          "query": "select dalia.m1_storage_deleted($1::jsonb, $2::jsonb) as x;",
+          "options": {
+            "queryReplacement": "={{ [ JSON.stringify($(\"Ciclo de ingreso\").first().json.r.storage_delete), JSON.stringify({ ok: $json.statusCode >= 200 && $json.statusCode < 300, error: $json.statusCode + \" \" + JSON.stringify($json.body ?? \"\").slice(0, 150) }) ] }}"
+          }
+        },
+        "credentials": {
+          "postgres": {
+            "id": "HfCgVAjUygK1vrkU",
+            "name": "DALIA dev Supabase"
+          }
+        }
+      },
+      {
+        "id": "ffedc495-1141-4bce-970f-7617224be2cf",
+        "name": "Entrada",
+        "type": "n8n-nodes-base.executeWorkflowTrigger",
+        "typeVersion": 1.2,
+        "position": [
+          0,
+          336
+        ],
+        "parameters": {
+          "inputSource": "passthrough"
+        }
+      },
+      {
+        "id": "a3a3d6ee-d215-45da-b1a4-a262dd3197d3",
+        "name": "Tipo de job",
+        "type": "n8n-nodes-base.switch",
+        "typeVersion": 3.2,
+        "position": [
+          224,
+          320
+        ],
+        "parameters": {
+          "rules": {
+            "values": [
+              {
+                "outputKey": "rafaga",
+                "conditions": {
+                  "options": {
+                    "caseSensitive": true,
+                    "leftValue": "",
+                    "typeValidation": "strict"
+                  },
+                  "conditions": [
+                    {
+                      "leftValue": "={{ $json.type ?? \"m5.execute\" }}",
+                      "operator": {
+                        "type": "string",
+                        "operation": "equals"
+                      },
+                      "rightValue": "m1.burst_timeout"
+                    },
+                    {
+                      "leftValue": "={{ $json.type ?? \"m5.execute\" }}",
+                      "operator": {
+                        "type": "string",
+                        "operation": "equals"
+                      },
+                      "rightValue": "m1.redeliver"
+                    }
+                  ],
+                  "combinator": "or"
+                }
+              },
+              {
+                "outputKey": "olvido",
+                "conditions": {
+                  "options": {
+                    "caseSensitive": true,
+                    "leftValue": "",
+                    "typeValidation": "strict"
+                  },
+                  "conditions": [
+                    {
+                      "leftValue": "={{ $json.type ?? \"m5.execute\" }}",
+                      "operator": {
+                        "type": "string",
+                        "operation": "equals"
+                      },
+                      "rightValue": "m1.privacy_erase"
+                    }
+                  ],
+                  "combinator": "or"
+                }
+              }
+            ]
+          },
+          "options": {
+            "fallbackOutput": "extra",
+            "renameFallbackOutput": "Desconocido"
+          }
+        }
+      },
+      {
+        "id": "3094b171-4c75-4c91-9f89-ec6b123db695",
+        "name": "Atender job",
+        "type": "n8n-nodes-base.postgres",
+        "typeVersion": 2.7,
+        "position": [
+          896,
+          0
+        ],
+        "parameters": {
+          "operation": "executeQuery",
+          "query": "select dalia.m1_job($1, $2::jsonb) as r;",
+          "options": {
+            "queryReplacement": "={{ [ $json.type, JSON.stringify($json.payload ?? {}) ] }}"
+          }
+        },
+        "credentials": {
+          "postgres": {
+            "id": "HfCgVAjUygK1vrkU",
+            "name": "DALIA dev Supabase"
+          }
+        },
+        "onError": "continueErrorOutput"
+      },
+      {
+        "id": "da1b7bb0-77e6-4915-80b4-a8d592a76a88",
+        "name": "Reintentar",
+        "type": "n8n-nodes-base.if",
+        "typeVersion": 2.2,
+        "position": [
+          1120,
+          0
+        ],
+        "parameters": {
+          "conditions": {
+            "options": {
+              "caseSensitive": true,
+              "leftValue": "",
+              "typeValidation": "loose"
+            },
+            "conditions": [
+              {
+                "leftValue": "={{ $json.r.job === \"retry\" }}",
+                "operator": {
+                  "type": "boolean",
+                  "operation": "true",
+                  "singleValue": true
+                }
+              }
+            ],
+            "combinator": "and"
+          }
+        }
+      },
+      {
+        "id": "145527b5-d7ba-4a2c-8059-d004a080af3e",
+        "name": "Fallar job (reintentable)",
+        "type": "n8n-nodes-base.postgres",
+        "typeVersion": 2.7,
+        "position": [
+          1344,
+          96
+        ],
+        "parameters": {
+          "operation": "executeQuery",
+          "query": "select dalia.sys_fail_job($1::uuid, $2::jsonb, true) as job_status;",
+          "options": {
+            "queryReplacement": "={{ [ $(\"Entrada\").first().json.job_id, JSON.stringify({ code: \"HANDLER_ERROR\", message: $json.error?.message ?? $json.error ?? \"reintentar\" }) ] }}"
+          }
+        },
+        "credentials": {
+          "postgres": {
+            "id": "HfCgVAjUygK1vrkU",
+            "name": "DALIA dev Supabase"
+          }
+        }
+      },
+      {
+        "id": "0088a3a7-e6f9-4556-bb5d-e8f0c810d5cd",
+        "name": "Completar job de rafaga",
+        "type": "n8n-nodes-base.postgres",
+        "typeVersion": 2.7,
+        "position": [
+          1344,
+          288
+        ],
+        "parameters": {
+          "operation": "executeQuery",
+          "query": "select dalia.sys_complete_job($1::uuid, $2::jsonb) as job_status;",
+          "options": {
+            "queryReplacement": "={{ [ $(\"Entrada\").first().json.job_id, JSON.stringify($json.r.result ?? {}) ] }}"
+          }
+        },
+        "credentials": {
+          "postgres": {
+            "id": "HfCgVAjUygK1vrkU",
+            "name": "DALIA dev Supabase"
+          }
+        }
+      },
+      {
+        "id": "5610cdb1-6fcb-43e8-8a1f-c1ea8b2406a4",
+        "name": "Entregas del job",
+        "type": "n8n-nodes-base.set",
+        "typeVersion": 3.4,
+        "position": [
+          1568,
+          288
+        ],
+        "parameters": {
+          "mode": "raw",
+          "jsonOutput": "={{ JSON.stringify({ deliver: $(\"Atender job\").first().json.r.deliver ?? [] }) }}",
+          "options": {}
+        }
+      },
+      {
+        "id": "edf318b3-28ab-4499-a35a-b052b2ed0594",
+        "name": "Turnos del job",
+        "type": "n8n-nodes-base.splitOut",
+        "typeVersion": 1,
+        "position": [
+          1792,
+          288
+        ],
+        "parameters": {
+          "fieldToSplitOut": "deliver",
+          "options": {}
+        }
+      },
+      {
+        "id": "6702352b-f6a9-4056-b124-2e3abed5996e",
+        "name": "Preparar olvido",
+        "type": "n8n-nodes-base.postgres",
+        "typeVersion": 2.7,
+        "position": [
+          448,
+          512
+        ],
+        "parameters": {
+          "operation": "executeQuery",
+          "query": "select dalia.m1_privacy_erase($1::jsonb) as e;",
+          "options": {
+            "queryReplacement": "={{ [ JSON.stringify($json.payload ?? {}) ] }}"
+          }
+        },
+        "credentials": {
+          "postgres": {
+            "id": "HfCgVAjUygK1vrkU",
+            "name": "DALIA dev Supabase"
+          }
+        },
+        "onError": "continueErrorOutput"
+      },
+      {
+        "id": "b9a91462-771d-4d05-ae6b-786ad11380d4",
+        "name": "Hay adjuntos del contacto",
+        "type": "n8n-nodes-base.if",
+        "typeVersion": 2.2,
+        "position": [
+          672,
+          464
+        ],
+        "parameters": {
+          "conditions": {
+            "options": {
+              "caseSensitive": true,
+              "leftValue": "",
+              "typeValidation": "loose"
+            },
+            "conditions": [
+              {
+                "leftValue": "={{ ($json.e.storage_delete ?? []).length > 0 }}",
+                "operator": {
+                  "type": "boolean",
+                  "operation": "true",
+                  "singleValue": true
+                }
+              }
+            ],
+            "combinator": "and"
+          }
+        }
+      },
+      {
+        "id": "ccf975f9-6267-4be0-b44b-581a36546187",
+        "name": "Borrar adjuntos del contacto",
+        "type": "n8n-nodes-base.httpRequest",
+        "typeVersion": 4.2,
+        "position": [
+          896,
+          384
+        ],
+        "parameters": {
+          "method": "DELETE",
+          "url": "={{ $json.e.storage.url + \"/object/\" + $json.e.storage.bucket }}",
+          "authentication": "genericCredentialType",
+          "genericAuthType": "httpCustomAuth",
+          "sendBody": true,
+          "contentType": "json",
+          "specifyBody": "json",
+          "jsonBody": "={{ JSON.stringify({ prefixes: $json.e.storage_delete }) }}",
+          "options": {
+            "timeout": 30000,
+            "response": {
+              "response": {
+                "fullResponse": true,
+                "neverError": true,
+                "responseFormat": "json"
+              }
+            }
+          }
+        },
+        "onError": "continueRegularOutput"
+      },
+      {
+        "id": "e32f13eb-e69f-4a9f-9e04-86666e54bdef",
+        "name": "Terminar olvido",
+        "type": "n8n-nodes-base.postgres",
+        "typeVersion": 2.7,
+        "position": [
+          1120,
+          464
+        ],
+        "parameters": {
+          "operation": "executeQuery",
+          "query": "select dalia.m1_privacy_finish($1::jsonb, $2::jsonb) as result;",
+          "options": {
+            "queryReplacement": "={{ [ JSON.stringify($(\"Preparar olvido\").first().json.e), JSON.stringify({ ok: $(\"Borrar adjuntos del contacto\").isExecuted ? ($(\"Borrar adjuntos del contacto\").first().json.statusCode >= 200 && $(\"Borrar adjuntos del contacto\").first().json.statusCode < 300) : false }) ] }}"
+          }
+        },
+        "credentials": {
+          "postgres": {
+            "id": "HfCgVAjUygK1vrkU",
+            "name": "DALIA dev Supabase"
+          }
+        },
+        "onError": "continueErrorOutput"
+      },
+      {
+        "id": "555a4945-91d8-401f-82e6-728f2336ceea",
+        "name": "Completar job",
+        "type": "n8n-nodes-base.postgres",
+        "typeVersion": 2.7,
+        "position": [
+          1344,
+          512
+        ],
+        "parameters": {
+          "operation": "executeQuery",
+          "query": "select dalia.sys_complete_job($1::uuid, $2::jsonb) as job_status;",
+          "options": {
+            "queryReplacement": "={{ [ $(\"Entrada\").first().json.job_id, JSON.stringify($json.result ?? $json.c ?? $json.step ?? {}) ] }}"
+          }
+        },
+        "credentials": {
+          "postgres": {
+            "id": "HfCgVAjUygK1vrkU",
+            "name": "DALIA dev Supabase"
+          }
+        }
+      },
+      {
+        "id": "634e8bac-64b6-43e0-9d08-c0c17306146d",
+        "name": "Fallar job (tipo desconocido)",
+        "type": "n8n-nodes-base.postgres",
+        "typeVersion": 2.7,
+        "position": [
+          448,
+          704
+        ],
+        "parameters": {
+          "operation": "executeQuery",
+          "query": "select dalia.sys_fail_job($1::uuid, $2::jsonb, false) as job_status;",
+          "options": {
+            "queryReplacement": "={{ [ $(\"Entrada\").first().json.job_id, JSON.stringify({ code: \"UNKNOWN_JOB_TYPE\", message: $(\"Entrada\").first().json.type }) ] }}"
+          }
+        },
+        "credentials": {
+          "postgres": {
+            "id": "HfCgVAjUygK1vrkU",
+            "name": "DALIA dev Supabase"
+          }
+        }
+      }
+    ],
+    "connections": {
+      "Cada 10 minutos (DEV)": {
+        "main": [
+          [
+            {
+              "node": "Ciclo de ingreso",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Ciclo de ingreso": {
+        "main": [
+          [
+            {
+              "node": "Turnos del ciclo",
+              "type": "main",
+              "index": 0
+            },
+            {
+              "node": "Hay adjuntos vencidos",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Turnos del ciclo": {
+        "main": [
+          [
+            {
+              "node": "Procesar turno (M2.01)",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Procesar turno (M2.01)": {
+        "main": [
+          [
+            {
+              "node": "Marcar entregada",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Hay adjuntos vencidos": {
+        "main": [
+          [
+            {
+              "node": "Borrar adjuntos vencidos",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Borrar adjuntos vencidos": {
+        "main": [
+          [
+            {
+              "node": "Registrar borrado",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Entrada": {
+        "main": [
+          [
+            {
+              "node": "Tipo de job",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Tipo de job": {
+        "main": [
+          [
+            {
+              "node": "Atender job",
+              "type": "main",
+              "index": 0
+            }
+          ],
+          [
+            {
+              "node": "Preparar olvido",
+              "type": "main",
+              "index": 0
+            }
+          ],
+          [
+            {
+              "node": "Fallar job (tipo desconocido)",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Atender job": {
+        "main": [
+          [
+            {
+              "node": "Reintentar",
+              "type": "main",
+              "index": 0
+            }
+          ],
+          [
+            {
+              "node": "Fallar job (reintentable)",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Reintentar": {
+        "main": [
+          [
+            {
+              "node": "Fallar job (reintentable)",
+              "type": "main",
+              "index": 0
+            }
+          ],
+          [
+            {
+              "node": "Completar job de rafaga",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Completar job de rafaga": {
+        "main": [
+          [
+            {
+              "node": "Entregas del job",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Entregas del job": {
+        "main": [
+          [
+            {
+              "node": "Turnos del job",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Turnos del job": {
+        "main": [
+          [
+            {
+              "node": "Procesar turno (M2.01)",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Preparar olvido": {
+        "main": [
+          [
+            {
+              "node": "Hay adjuntos del contacto",
+              "type": "main",
+              "index": 0
+            }
+          ],
+          [
+            {
+              "node": "Fallar job (reintentable)",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Hay adjuntos del contacto": {
+        "main": [
+          [
+            {
+              "node": "Borrar adjuntos del contacto",
+              "type": "main",
+              "index": 0
+            }
+          ],
+          [
+            {
+              "node": "Terminar olvido",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Borrar adjuntos del contacto": {
+        "main": [
+          [
+            {
+              "node": "Terminar olvido",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Terminar olvido": {
+        "main": [
+          [
+            {
+              "node": "Completar job",
+              "type": "main",
+              "index": 0
+            }
+          ],
+          [
+            {
+              "node": "Fallar job (reintentable)",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      }
+    },
+    "nodeGroups": [],
+    "authors": "Fabian Bocanegra (via MCP)",
+    "name": "Lote 12: M1.03 Recuperación y replay (ciclo cada 10 min en DEV)",
+    "description": "Created with 22 nodes: Cada 10 minutos (DEV), Ciclo de ingreso, Turnos del ciclo, Procesar turno (M2.01), Marcar entregada and 17 more",
+    "autosaved": false,
+    "createdAt": "2026-10-06T16:34:30.159Z",
+    "updatedAt": "2026-10-06T16:34:30.159Z"
+  }
+}
