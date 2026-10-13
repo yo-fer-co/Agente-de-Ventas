@@ -1,0 +1,727 @@
+{
+  "id": "WmkmswrRGrPYzNwh",
+  "name": "DALIA_INT.openai",
+  "active": true,
+  "activeVersionId": "72f7217a-7b7d-4eec-bbdc-b2e6d67c2123",
+  "createdAt": "2026-10-03T03:26:21.248Z",
+  "updatedAt": "2026-10-03T16:46:52.953Z",
+  "isArchived": false,
+  "versionId": "72f7217a-7b7d-4eec-bbdc-b2e6d67c2123",
+  "triggerCount": 0,
+  "nodes": [
+    {
+      "id": "dd2023cf-d741-4040-82d2-99d87f9990f4",
+      "name": "Solicitud del puerto",
+      "type": "n8n-nodes-base.executeWorkflowTrigger",
+      "typeVersion": 1.2,
+      "position": [
+        0,
+        240
+      ],
+      "parameters": {
+        "inputSource": "passthrough"
+      }
+    },
+    {
+      "id": "51037738-7fac-413c-aebd-5fe4623f7760",
+      "name": "Construir solicitud OpenAI",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        224,
+        240
+      ],
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "jsCode": "// Construye la solicitud HTTP a OpenAI según la operación del puerto (llm.complete | llm.transcribe | embeddings.embed)\nconst r = $json;\nconst s = r.settings || {};\nconst inp = r.input || {};\nconst base = (s.base_url || 'https://api.openai.com/v1').replace(/\\/$/, '');\nlet url, body;\nif (r.port === 'llm' && r.operation === 'complete') {\n  url = base + '/chat/completions';\n  body = { model: inp.model || s.default_model, messages: inp.messages || [] };\n  if (!body.model) { return { json: { skip: true, status: 'PERMANENT_ERROR', error: { code: 'VALIDATION', message: 'llm.complete sin modelo (input.model o settings.default_model)' } } }; }\n  if (inp.max_output_tokens) body.max_completion_tokens = inp.max_output_tokens;\n  if (inp.temperature !== undefined && inp.temperature !== null) body.temperature = inp.temperature;\n  const effort = inp.reasoning_effort || s.default_reasoning_effort;\n  if (effort) body.reasoning_effort = effort;\n  if (inp.response_format && inp.response_format.type === 'json_schema') {\n    body.response_format = { type: 'json_schema', json_schema: { name: inp.response_format.name || 'respuesta', schema: inp.response_format.schema, strict: true } };\n  } else if (inp.response_format && inp.response_format.type === 'json_object') {\n    body.response_format = { type: 'json_object' };\n  }\n} else if (r.port === 'embeddings' && r.operation === 'embed') {\n  url = base + '/embeddings';\n  body = { model: inp.model || s.model, input: inp.texts || [] };\n  if (s.dimensions) body.dimensions = s.dimensions;\n  if (!body.model) { return { json: { skip: true, status: 'PERMANENT_ERROR', error: { code: 'VALIDATION', message: 'embeddings.embed sin modelo (input.model o settings.model)' } } }; }\n} else if (r.port === 'llm' && r.operation === 'transcribe') {\n  // Nota de voz → texto (lote 12, D-65). El audio llega en base64 (input.audio_base64) y se envía como multipart.\n  const model = inp.model || s.transcribe_model;\n  if (!model) { return { json: { skip: true, status: 'PERMANENT_ERROR', error: { code: 'VALIDATION', message: 'llm.transcribe sin modelo (input.model o settings.transcribe_model)' } } }; }\n  if (!inp.audio_base64) { return { json: { skip: true, status: 'PERMANENT_ERROR', error: { code: 'VALIDATION', message: 'llm.transcribe sin input.audio_base64' } } }; }\n  return { json: { skip: false, multipart: true, url: base + '/audio/transcriptions', model, language: inp.language || s.transcribe_language || 'es',\n                   timeout_ms: s.timeout_ms || 30000, started: Date.now() },\n           binary: { file: { data: inp.audio_base64, mimeType: inp.mime_type || 'audio/ogg', fileName: inp.filename || 'audio.ogg' } } };\n} else {\n  return { json: { skip: true, status: 'NOT_SUPPORTED', error: { code: 'OPERATION_NOT_SUPPORTED', message: r.port + '.' + r.operation } } };\n}\nreturn { json: { skip: false, url, body, timeout_ms: s.timeout_ms || 30000, started: Date.now() } };"
+      }
+    },
+    {
+      "id": "9daa1df6-5958-477b-b39c-7fb942f0b102",
+      "name": "Operacion soportada",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        448,
+        240
+      ],
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose"
+          },
+          "conditions": [
+            {
+              "leftValue": "={{ $json.skip === false }}",
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        }
+      }
+    },
+    {
+      "id": "26e4b665-c8b5-42dd-a952-be05b0ab9553",
+      "name": "Es transcripcion",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        672,
+        144
+      ],
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose"
+          },
+          "conditions": [
+            {
+              "leftValue": "={{ $json.multipart === true }}",
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        }
+      }
+    },
+    {
+      "id": "ab942845-645b-4e1a-9ee5-99907969c442",
+      "name": "Transcribir audio",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        896,
+        0
+      ],
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $json.url }}",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "openAiApi",
+        "sendBody": true,
+        "contentType": "multipart-form-data",
+        "bodyParameters": {
+          "parameters": [
+            {
+              "parameterType": "formBinaryData",
+              "name": "file",
+              "inputDataFieldName": "file"
+            },
+            {
+              "parameterType": "formData",
+              "name": "model",
+              "value": "={{ $json.model }}"
+            },
+            {
+              "parameterType": "formData",
+              "name": "language",
+              "value": "={{ $json.language }}"
+            },
+            {
+              "parameterType": "formData",
+              "name": "response_format",
+              "value": "json"
+            }
+          ]
+        },
+        "options": {
+          "timeout": "={{ $json.timeout_ms }}",
+          "response": {
+            "response": {
+              "fullResponse": true,
+              "neverError": true,
+              "responseFormat": "json"
+            }
+          }
+        }
+      },
+      "credentials": {
+        "openAiApi": {
+          "id": "2SzcSmxabrSvH16W",
+          "name": "DALIA OpenAI"
+        }
+      },
+      "onError": "continueErrorOutput"
+    },
+    {
+      "id": "d505b09a-6c9f-456c-93b6-f02fd4fe0d14",
+      "name": "Normalizar respuesta",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1120,
+        48
+      ],
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "jsCode": "// Normaliza la respuesta de OpenAI al contrato del puerto\nconst req = $('Solicitud del puerto').item.json;\nconst s = req.settings || {};\nconst res = $json;\nconst code = res.statusCode;\nconst body = res.body || {};\nif (code >= 200 && code < 300) {\n  // Precio: modelo devuelto, modelo pedido, modelo por defecto o, si el proveedor devuelve una instantánea\n  // (p. ej. \"gpt-6-luna-2026-09-22\"), la clave más larga que sea prefijo del modelo devuelto.\n  const prices = s.pricing || {};\n  const prefixKey = Object.keys(prices).filter(k => String(body.model || '').startsWith(k)).sort((a, b) => b.length - a.length)[0];\n  const pricing = prices[body.model] || (prefixKey ? prices[prefixKey] : null) || prices[req.input?.model] || prices[s.default_model] || prices[s.model] || null;\n  if (req.port === 'llm' && req.operation === 'transcribe') {\n    // usage: {type: 'tokens', input_tokens, output_tokens} o {type: 'duration', seconds}, según el modelo\n    const u = body.usage || {};\n    const tp = prices[req.input?.model] || prices[s.transcribe_model] || pricing;\n    let tcost = null;\n    if (tp && u.type === 'duration' && tp.per_minute !== undefined) tcost = (u.seconds || 0) / 60 * tp.per_minute;\n    else if (tp && u.input_tokens !== undefined && tp.input_per_1m !== undefined) tcost = ((u.input_tokens || 0) * tp.input_per_1m + (u.output_tokens || 0) * (tp.output_per_1m || 0)) / 1e6;\n    return { json: { status: 'OK', data: { text: body.text ?? '', model: req.input?.model || s.transcribe_model, language: body.language ?? null },\n                     usage: { input_tokens: u.input_tokens ?? 0, output_tokens: u.output_tokens ?? 0, seconds: u.seconds ?? null }, cost_usd: tcost, error: null } };\n  }\n  if (req.port === 'llm') {\n    const choice = (body.choices || [])[0] || {};\n    const content = choice.message?.content ?? '';\n    let parsed = null;\n    if (req.input?.response_format && ['json_schema', 'json_object'].includes(req.input.response_format.type)) {\n      try { parsed = JSON.parse(content); } catch (e) { return { json: { status: 'PERMANENT_ERROR', data: { content }, error: { code: 'INVALID_JSON_OUTPUT', message: 'el modelo no devolvió JSON válido' } } }; }\n    }\n    const cached = body.usage?.prompt_tokens_details?.cached_tokens ?? 0;\n    const usage = { input_tokens: body.usage?.prompt_tokens ?? 0, output_tokens: body.usage?.completion_tokens ?? 0, cached_input_tokens: cached,\n                    reasoning_tokens: body.usage?.completion_tokens_details?.reasoning_tokens ?? 0 };\n    // Los tokens de razonamiento ya vienen dentro de completion_tokens (se cobran como salida).\n    const cachedRate = pricing && pricing.cached_input_per_1m !== undefined ? pricing.cached_input_per_1m : (pricing ? pricing.input_per_1m : 0);\n    const cost = pricing ? ((usage.input_tokens - cached) * pricing.input_per_1m + cached * cachedRate + usage.output_tokens * pricing.output_per_1m) / 1e6 : null;\n    return { json: { status: 'OK', data: { content, parsed, finish_reason: choice.finish_reason ?? null, model: body.model }, usage, cost_usd: cost, error: null } };\n  }\n  const vectors = (body.data || []).slice().sort((a, b) => a.index - b.index).map(d => d.embedding);\n  const usage = { input_tokens: body.usage?.prompt_tokens ?? 0, output_tokens: 0 };\n  const cost = pricing ? usage.input_tokens * pricing.input_per_1m / 1e6 : null;\n  return { json: { status: 'OK', data: { vectors, model: body.model, dimensions: vectors[0]?.length ?? null }, usage, cost_usd: cost, error: null } };\n}\nconst retry = code === 408 || code === 409 || code === 429 || code >= 500;\nreturn { json: { status: retry ? 'RETRYABLE_ERROR' : 'PERMANENT_ERROR', data: null, error: { code: body.error?.code || ('HTTP_' + code), message: body.error?.message || ('HTTP ' + code), http_status: code } } };"
+      }
+    },
+    {
+      "id": "f4e4c678-c8e0-40dc-9a04-ee59fe689328",
+      "name": "Llamar a OpenAI",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.5,
+      "position": [
+        896,
+        288
+      ],
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $json.url }}",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "openAiApi",
+        "sendBody": true,
+        "contentType": "json",
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify($json.body) }}",
+        "options": {
+          "timeout": "={{ $json.timeout_ms }}",
+          "response": {
+            "response": {
+              "fullResponse": true,
+              "neverError": true,
+              "responseFormat": "json"
+            }
+          }
+        }
+      },
+      "credentials": {
+        "openAiApi": {
+          "id": "2SzcSmxabrSvH16W",
+          "name": "DALIA OpenAI"
+        }
+      },
+      "onError": "continueErrorOutput"
+    },
+    {
+      "id": "accb5343-8255-4b2c-8d47-99f013998512",
+      "name": "Solicitud no ejecutable",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        672,
+        336
+      ],
+      "parameters": {
+        "mode": "manual",
+        "includeOtherFields": false,
+        "assignments": {
+          "assignments": [
+            {
+              "id": "n1",
+              "name": "status",
+              "value": "={{ $json.status }}",
+              "type": "string"
+            },
+            {
+              "id": "n2",
+              "name": "error",
+              "value": "={{ $json.error }}",
+              "type": "object"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "7be7fb32-6cc4-4bfc-af5c-dacf6619cbe5",
+      "name": "Clasificar fallo",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1120,
+        240
+      ],
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "jsCode": "// Timeout o error de red en una operación NO sensible: reintentable\nconst msg = $json.error?.message ?? String($json.error ?? 'error de red');\nreturn { json: { status: 'RETRYABLE_ERROR', data: null, error: { code: /timeout/i.test(msg) ? 'TIMEOUT' : 'NETWORK_ERROR', message: msg } } };"
+      }
+    }
+  ],
+  "connections": {
+    "Solicitud del puerto": {
+      "main": [
+        [
+          {
+            "node": "Construir solicitud OpenAI",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Construir solicitud OpenAI": {
+      "main": [
+        [
+          {
+            "node": "Operacion soportada",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Operacion soportada": {
+      "main": [
+        [
+          {
+            "node": "Es transcripcion",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Solicitud no ejecutable",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Es transcripcion": {
+      "main": [
+        [
+          {
+            "node": "Transcribir audio",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Llamar a OpenAI",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Transcribir audio": {
+      "main": [
+        [
+          {
+            "node": "Normalizar respuesta",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Clasificar fallo",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Llamar a OpenAI": {
+      "main": [
+        [
+          {
+            "node": "Normalizar respuesta",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Clasificar fallo",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "nodeGroups": [],
+  "settings": {
+    "executionOrder": "v1",
+    "availableInMCP": true,
+    "errorWorkflow": "cjjQno2MxMTT3Icc",
+    "timezone": "America/Bogota",
+    "saveManualExecutions": true,
+    "saveDataErrorExecution": "all",
+    "saveDataSuccessExecution": "none",
+    "callerPolicy": "workflowsFromSameOwner"
+  },
+  "staticData": null,
+  "pinData": null,
+  "meta": {
+    "aiBuilderAssisted": true,
+    "builderVariant": "mcp"
+  },
+  "tags": [],
+  "shared": [
+    {
+      "role": "workflow:owner",
+      "workflowId": "WmkmswrRGrPYzNwh",
+      "projectId": "tRHCC8ts4mkRGXGn",
+      "createdAt": "2026-10-09T21:09:17.769Z",
+      "updatedAt": "2026-10-09T21:09:17.769Z"
+    }
+  ],
+  "activeVersion": {
+    "versionId": "72f7217a-7b7d-4eec-bbdc-b2e6d67c2123",
+    "workflowId": "WmkmswrRGrPYzNwh",
+    "nodes": [
+      {
+        "id": "dd2023cf-d741-4040-82d2-99d87f9990f4",
+        "name": "Solicitud del puerto",
+        "type": "n8n-nodes-base.executeWorkflowTrigger",
+        "typeVersion": 1.2,
+        "position": [
+          0,
+          240
+        ],
+        "parameters": {
+          "inputSource": "passthrough"
+        }
+      },
+      {
+        "id": "51037738-7fac-413c-aebd-5fe4623f7760",
+        "name": "Construir solicitud OpenAI",
+        "type": "n8n-nodes-base.code",
+        "typeVersion": 2,
+        "position": [
+          224,
+          240
+        ],
+        "parameters": {
+          "mode": "runOnceForEachItem",
+          "jsCode": "// Construye la solicitud HTTP a OpenAI según la operación del puerto (llm.complete | llm.transcribe | embeddings.embed)\nconst r = $json;\nconst s = r.settings || {};\nconst inp = r.input || {};\nconst base = (s.base_url || 'https://api.openai.com/v1').replace(/\\/$/, '');\nlet url, body;\nif (r.port === 'llm' && r.operation === 'complete') {\n  url = base + '/chat/completions';\n  body = { model: inp.model || s.default_model, messages: inp.messages || [] };\n  if (!body.model) { return { json: { skip: true, status: 'PERMANENT_ERROR', error: { code: 'VALIDATION', message: 'llm.complete sin modelo (input.model o settings.default_model)' } } }; }\n  if (inp.max_output_tokens) body.max_completion_tokens = inp.max_output_tokens;\n  if (inp.temperature !== undefined && inp.temperature !== null) body.temperature = inp.temperature;\n  const effort = inp.reasoning_effort || s.default_reasoning_effort;\n  if (effort) body.reasoning_effort = effort;\n  if (inp.response_format && inp.response_format.type === 'json_schema') {\n    body.response_format = { type: 'json_schema', json_schema: { name: inp.response_format.name || 'respuesta', schema: inp.response_format.schema, strict: true } };\n  } else if (inp.response_format && inp.response_format.type === 'json_object') {\n    body.response_format = { type: 'json_object' };\n  }\n} else if (r.port === 'embeddings' && r.operation === 'embed') {\n  url = base + '/embeddings';\n  body = { model: inp.model || s.model, input: inp.texts || [] };\n  if (s.dimensions) body.dimensions = s.dimensions;\n  if (!body.model) { return { json: { skip: true, status: 'PERMANENT_ERROR', error: { code: 'VALIDATION', message: 'embeddings.embed sin modelo (input.model o settings.model)' } } }; }\n} else if (r.port === 'llm' && r.operation === 'transcribe') {\n  // Nota de voz → texto (lote 12, D-65). El audio llega en base64 (input.audio_base64) y se envía como multipart.\n  const model = inp.model || s.transcribe_model;\n  if (!model) { return { json: { skip: true, status: 'PERMANENT_ERROR', error: { code: 'VALIDATION', message: 'llm.transcribe sin modelo (input.model o settings.transcribe_model)' } } }; }\n  if (!inp.audio_base64) { return { json: { skip: true, status: 'PERMANENT_ERROR', error: { code: 'VALIDATION', message: 'llm.transcribe sin input.audio_base64' } } }; }\n  return { json: { skip: false, multipart: true, url: base + '/audio/transcriptions', model, language: inp.language || s.transcribe_language || 'es',\n                   timeout_ms: s.timeout_ms || 30000, started: Date.now() },\n           binary: { file: { data: inp.audio_base64, mimeType: inp.mime_type || 'audio/ogg', fileName: inp.filename || 'audio.ogg' } } };\n} else {\n  return { json: { skip: true, status: 'NOT_SUPPORTED', error: { code: 'OPERATION_NOT_SUPPORTED', message: r.port + '.' + r.operation } } };\n}\nreturn { json: { skip: false, url, body, timeout_ms: s.timeout_ms || 30000, started: Date.now() } };"
+        }
+      },
+      {
+        "id": "9daa1df6-5958-477b-b39c-7fb942f0b102",
+        "name": "Operacion soportada",
+        "type": "n8n-nodes-base.if",
+        "typeVersion": 2.2,
+        "position": [
+          448,
+          240
+        ],
+        "parameters": {
+          "conditions": {
+            "options": {
+              "caseSensitive": true,
+              "leftValue": "",
+              "typeValidation": "loose"
+            },
+            "conditions": [
+              {
+                "leftValue": "={{ $json.skip === false }}",
+                "operator": {
+                  "type": "boolean",
+                  "operation": "true",
+                  "singleValue": true
+                }
+              }
+            ],
+            "combinator": "and"
+          }
+        }
+      },
+      {
+        "id": "26e4b665-c8b5-42dd-a952-be05b0ab9553",
+        "name": "Es transcripcion",
+        "type": "n8n-nodes-base.if",
+        "typeVersion": 2.2,
+        "position": [
+          672,
+          144
+        ],
+        "parameters": {
+          "conditions": {
+            "options": {
+              "caseSensitive": true,
+              "leftValue": "",
+              "typeValidation": "loose"
+            },
+            "conditions": [
+              {
+                "leftValue": "={{ $json.multipart === true }}",
+                "operator": {
+                  "type": "boolean",
+                  "operation": "true",
+                  "singleValue": true
+                }
+              }
+            ],
+            "combinator": "and"
+          }
+        }
+      },
+      {
+        "id": "ab942845-645b-4e1a-9ee5-99907969c442",
+        "name": "Transcribir audio",
+        "type": "n8n-nodes-base.httpRequest",
+        "typeVersion": 4.2,
+        "position": [
+          896,
+          0
+        ],
+        "parameters": {
+          "method": "POST",
+          "url": "={{ $json.url }}",
+          "authentication": "predefinedCredentialType",
+          "nodeCredentialType": "openAiApi",
+          "sendBody": true,
+          "contentType": "multipart-form-data",
+          "bodyParameters": {
+            "parameters": [
+              {
+                "parameterType": "formBinaryData",
+                "name": "file",
+                "inputDataFieldName": "file"
+              },
+              {
+                "parameterType": "formData",
+                "name": "model",
+                "value": "={{ $json.model }}"
+              },
+              {
+                "parameterType": "formData",
+                "name": "language",
+                "value": "={{ $json.language }}"
+              },
+              {
+                "parameterType": "formData",
+                "name": "response_format",
+                "value": "json"
+              }
+            ]
+          },
+          "options": {
+            "timeout": "={{ $json.timeout_ms }}",
+            "response": {
+              "response": {
+                "fullResponse": true,
+                "neverError": true,
+                "responseFormat": "json"
+              }
+            }
+          }
+        },
+        "credentials": {
+          "openAiApi": {
+            "id": "2SzcSmxabrSvH16W",
+            "name": "DALIA OpenAI"
+          }
+        },
+        "onError": "continueErrorOutput"
+      },
+      {
+        "id": "d505b09a-6c9f-456c-93b6-f02fd4fe0d14",
+        "name": "Normalizar respuesta",
+        "type": "n8n-nodes-base.code",
+        "typeVersion": 2,
+        "position": [
+          1120,
+          48
+        ],
+        "parameters": {
+          "mode": "runOnceForEachItem",
+          "jsCode": "// Normaliza la respuesta de OpenAI al contrato del puerto\nconst req = $('Solicitud del puerto').item.json;\nconst s = req.settings || {};\nconst res = $json;\nconst code = res.statusCode;\nconst body = res.body || {};\nif (code >= 200 && code < 300) {\n  // Precio: modelo devuelto, modelo pedido, modelo por defecto o, si el proveedor devuelve una instantánea\n  // (p. ej. \"gpt-6-luna-2026-09-22\"), la clave más larga que sea prefijo del modelo devuelto.\n  const prices = s.pricing || {};\n  const prefixKey = Object.keys(prices).filter(k => String(body.model || '').startsWith(k)).sort((a, b) => b.length - a.length)[0];\n  const pricing = prices[body.model] || (prefixKey ? prices[prefixKey] : null) || prices[req.input?.model] || prices[s.default_model] || prices[s.model] || null;\n  if (req.port === 'llm' && req.operation === 'transcribe') {\n    // usage: {type: 'tokens', input_tokens, output_tokens} o {type: 'duration', seconds}, según el modelo\n    const u = body.usage || {};\n    const tp = prices[req.input?.model] || prices[s.transcribe_model] || pricing;\n    let tcost = null;\n    if (tp && u.type === 'duration' && tp.per_minute !== undefined) tcost = (u.seconds || 0) / 60 * tp.per_minute;\n    else if (tp && u.input_tokens !== undefined && tp.input_per_1m !== undefined) tcost = ((u.input_tokens || 0) * tp.input_per_1m + (u.output_tokens || 0) * (tp.output_per_1m || 0)) / 1e6;\n    return { json: { status: 'OK', data: { text: body.text ?? '', model: req.input?.model || s.transcribe_model, language: body.language ?? null },\n                     usage: { input_tokens: u.input_tokens ?? 0, output_tokens: u.output_tokens ?? 0, seconds: u.seconds ?? null }, cost_usd: tcost, error: null } };\n  }\n  if (req.port === 'llm') {\n    const choice = (body.choices || [])[0] || {};\n    const content = choice.message?.content ?? '';\n    let parsed = null;\n    if (req.input?.response_format && ['json_schema', 'json_object'].includes(req.input.response_format.type)) {\n      try { parsed = JSON.parse(content); } catch (e) { return { json: { status: 'PERMANENT_ERROR', data: { content }, error: { code: 'INVALID_JSON_OUTPUT', message: 'el modelo no devolvió JSON válido' } } }; }\n    }\n    const cached = body.usage?.prompt_tokens_details?.cached_tokens ?? 0;\n    const usage = { input_tokens: body.usage?.prompt_tokens ?? 0, output_tokens: body.usage?.completion_tokens ?? 0, cached_input_tokens: cached,\n                    reasoning_tokens: body.usage?.completion_tokens_details?.reasoning_tokens ?? 0 };\n    // Los tokens de razonamiento ya vienen dentro de completion_tokens (se cobran como salida).\n    const cachedRate = pricing && pricing.cached_input_per_1m !== undefined ? pricing.cached_input_per_1m : (pricing ? pricing.input_per_1m : 0);\n    const cost = pricing ? ((usage.input_tokens - cached) * pricing.input_per_1m + cached * cachedRate + usage.output_tokens * pricing.output_per_1m) / 1e6 : null;\n    return { json: { status: 'OK', data: { content, parsed, finish_reason: choice.finish_reason ?? null, model: body.model }, usage, cost_usd: cost, error: null } };\n  }\n  const vectors = (body.data || []).slice().sort((a, b) => a.index - b.index).map(d => d.embedding);\n  const usage = { input_tokens: body.usage?.prompt_tokens ?? 0, output_tokens: 0 };\n  const cost = pricing ? usage.input_tokens * pricing.input_per_1m / 1e6 : null;\n  return { json: { status: 'OK', data: { vectors, model: body.model, dimensions: vectors[0]?.length ?? null }, usage, cost_usd: cost, error: null } };\n}\nconst retry = code === 408 || code === 409 || code === 429 || code >= 500;\nreturn { json: { status: retry ? 'RETRYABLE_ERROR' : 'PERMANENT_ERROR', data: null, error: { code: body.error?.code || ('HTTP_' + code), message: body.error?.message || ('HTTP ' + code), http_status: code } } };"
+        }
+      },
+      {
+        "id": "f4e4c678-c8e0-40dc-9a04-ee59fe689328",
+        "name": "Llamar a OpenAI",
+        "type": "n8n-nodes-base.httpRequest",
+        "typeVersion": 4.5,
+        "position": [
+          896,
+          288
+        ],
+        "parameters": {
+          "method": "POST",
+          "url": "={{ $json.url }}",
+          "authentication": "predefinedCredentialType",
+          "nodeCredentialType": "openAiApi",
+          "sendBody": true,
+          "contentType": "json",
+          "specifyBody": "json",
+          "jsonBody": "={{ JSON.stringify($json.body) }}",
+          "options": {
+            "timeout": "={{ $json.timeout_ms }}",
+            "response": {
+              "response": {
+                "fullResponse": true,
+                "neverError": true,
+                "responseFormat": "json"
+              }
+            }
+          }
+        },
+        "credentials": {
+          "openAiApi": {
+            "id": "2SzcSmxabrSvH16W",
+            "name": "DALIA OpenAI"
+          }
+        },
+        "onError": "continueErrorOutput"
+      },
+      {
+        "id": "accb5343-8255-4b2c-8d47-99f013998512",
+        "name": "Solicitud no ejecutable",
+        "type": "n8n-nodes-base.set",
+        "typeVersion": 3.4,
+        "position": [
+          672,
+          336
+        ],
+        "parameters": {
+          "mode": "manual",
+          "includeOtherFields": false,
+          "assignments": {
+            "assignments": [
+              {
+                "id": "n1",
+                "name": "status",
+                "value": "={{ $json.status }}",
+                "type": "string"
+              },
+              {
+                "id": "n2",
+                "name": "error",
+                "value": "={{ $json.error }}",
+                "type": "object"
+              }
+            ]
+          }
+        }
+      },
+      {
+        "id": "7be7fb32-6cc4-4bfc-af5c-dacf6619cbe5",
+        "name": "Clasificar fallo",
+        "type": "n8n-nodes-base.code",
+        "typeVersion": 2,
+        "position": [
+          1120,
+          240
+        ],
+        "parameters": {
+          "mode": "runOnceForEachItem",
+          "jsCode": "// Timeout o error de red en una operación NO sensible: reintentable\nconst msg = $json.error?.message ?? String($json.error ?? 'error de red');\nreturn { json: { status: 'RETRYABLE_ERROR', data: null, error: { code: /timeout/i.test(msg) ? 'TIMEOUT' : 'NETWORK_ERROR', message: msg } } };"
+        }
+      }
+    ],
+    "connections": {
+      "Solicitud del puerto": {
+        "main": [
+          [
+            {
+              "node": "Construir solicitud OpenAI",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Construir solicitud OpenAI": {
+        "main": [
+          [
+            {
+              "node": "Operacion soportada",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Operacion soportada": {
+        "main": [
+          [
+            {
+              "node": "Es transcripcion",
+              "type": "main",
+              "index": 0
+            }
+          ],
+          [
+            {
+              "node": "Solicitud no ejecutable",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Es transcripcion": {
+        "main": [
+          [
+            {
+              "node": "Transcribir audio",
+              "type": "main",
+              "index": 0
+            }
+          ],
+          [
+            {
+              "node": "Llamar a OpenAI",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Transcribir audio": {
+        "main": [
+          [
+            {
+              "node": "Normalizar respuesta",
+              "type": "main",
+              "index": 0
+            }
+          ],
+          [
+            {
+              "node": "Clasificar fallo",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Llamar a OpenAI": {
+        "main": [
+          [
+            {
+              "node": "Normalizar respuesta",
+              "type": "main",
+              "index": 0
+            }
+          ],
+          [
+            {
+              "node": "Clasificar fallo",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      }
+    },
+    "nodeGroups": [],
+    "authors": "Fabian Bocanegra (via MCP)",
+    "name": "DALIA v1.0 lote 2 · instalación DEV",
+    "description": "Created with 9 nodes: Solicitud del puerto, Construir solicitud OpenAI, Operacion soportada, Es transcripcion, Transcribir audio and 4 more",
+    "autosaved": false,
+    "createdAt": "2026-10-03T03:26:21.252Z",
+    "updatedAt": "2026-10-03T03:26:21.252Z"
+  }
+}
