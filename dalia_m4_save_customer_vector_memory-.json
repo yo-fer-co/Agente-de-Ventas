@@ -1,0 +1,871 @@
+{
+  "id": "QFtAthetiMTGZQsC",
+  "name": "DALIA_M4_Save_Customer_Vector_Memory",
+  "active": true,
+  "activeVersionId": "3100d6e6-4c29-487e-9ef3-fde22b9b7744",
+  "createdAt": "2026-06-12T18:28:19.777Z",
+  "updatedAt": "2026-06-19T22:01:57.001Z",
+  "isArchived": false,
+  "versionId": "d00fa8c2-deb3-433e-b595-024612f68205",
+  "triggerCount": 0,
+  "nodes": [
+    {
+      "parameters": {
+        "jsCode": "const input = $input.first().json;\n\nconst userMessage   = input.user_message   || input.message      || \"\";\nconst daliaResponse = input.dalia_response || input.ai_response  || \"\";\nconst sessionMemory = input.session_memory || {};\nconst lastProduct   = sessionMemory.last_product || null;\nconst intention     = input.classified_intention || input.intention || \"\";\nconst city          = sessionMemory.city           || input.city   || null;\nconst purchaseActive = sessionMemory.purchase_active || false;\nconst handoffActive  = sessionMemory.handoff_active  || false;\n\n// Señales que indican que hay algo útil para recordar\nconst hasProduct   = !!lastProduct;\nconst hasCity      = !!city;\nconst hasPurchase  = purchaseActive;\nconst hasHandoff   = handoffActive;\nconst hasIntent    = [\"product_inquiry\",\"purchase_intent\",\"preference_signal\",\n                      \"unresolved_need\",\"handoff_request\"].includes(intention);\n\nconst shouldPersist = hasProduct || hasCity || hasPurchase || hasHandoff || hasIntent;\n\n// Determinar tipo de memoria\nlet memoryType = \"conversation_summary\";\nif (hasPurchase)          memoryType = \"purchase_context\";\nelse if (hasHandoff)      memoryType = \"handoff_context\";\nelse if (hasProduct && hasIntent) memoryType = \"product_interest\";\nelse if (hasCity)         memoryType = \"city_or_location\";\nelse if (hasIntent)       memoryType = \"preference\";\n\n// Calcular confianza básica\nlet confidence = 0.5;\nif (hasProduct)  confidence += 0.2;\nif (hasCity)     confidence += 0.1;\nif (hasPurchase) confidence += 0.2;\nif (hasIntent)   confidence += 0.1;\nconfidence = Math.min(confidence, 0.99);\n\nconst candidate = {\n  persist:      shouldPersist,\n  memory_type:  memoryType,\n  confidence:   parseFloat(confidence.toFixed(2)),\n  product_id:   lastProduct?.product_id   || null,\n  product_name: lastProduct?.product_name || null,\n  category:     lastProduct?.category     || null,\n  city:         city,\n  user_message: userMessage,\n  dalia_response: daliaResponse,\n  intention:    intention\n};\n\nreturn [{ json: { ...input, customer_memory_candidate: candidate } }];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -960,
+        -112
+      ],
+      "id": "59b54c2d-503c-4822-aec8-b85e7aebf29b",
+      "name": "Build Customer Memory Candidate"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "824a1ae6-9e64-48b2-8c9c-7a6018bdf69f",
+              "leftValue": "= {{ $json.customer_memory_candidate.persist }}",
+              "rightValue": "",
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        -736,
+        -112
+      ],
+      "id": "45f731bd-834e-44e6-b7a3-3fe86a396620",
+      "name": "Validate Vector Memory Candidate",
+      "disabled": true
+    },
+    {
+      "parameters": {
+        "jsCode": "const input = $input.first().json;\nconst c = input.customer_memory_candidate;\nconst ctx = input.context || {};\nconst userId = ctx.user_id || input.user_id || \"unknown\";\n\nlet parts = [];\n\n// Base: quién es el cliente y qué hizo\nif (c.memory_type === \"product_interest\" && c.product_name) {\n  parts.push(`Cliente ${userId} mostró interés en ${c.product_name}.`);\n}\nif (c.memory_type === \"purchase_context\" && c.product_name) {\n  parts.push(`Cliente ${userId} inició proceso de compra del producto ${c.product_name}.`);\n}\nif (c.memory_type === \"handoff_context\") {\n  parts.push(`Cliente ${userId} solicitó atención humana por WhatsApp.`);\n}\nif (c.memory_type === \"city_or_location\" && c.city) {\n  parts.push(`Cliente ${userId} mencionó ${c.city} como ciudad de entrega.`);\n}\nif (c.memory_type === \"preference\") {\n  parts.push(`Cliente ${userId} mostró preferencias de compra durante la conversación.`);\n}\nif (c.memory_type === \"conversation_summary\") {\n  parts.push(`Resumen de conversación con cliente ${userId}.`);\n}\n\n// Enriquecer con detalles disponibles\nif (c.product_name && c.memory_type !== \"product_interest\") {\n  parts.push(`Producto consultado: ${c.product_name}.`);\n}\nif (c.category) {\n  parts.push(`Categoría: ${c.category}.`);\n}\nif (c.city && c.memory_type !== \"city_or_location\") {\n  parts.push(`Ciudad mencionada: ${c.city}.`);\n}\nif (c.intention && c.intention !== \"conversation_summary\") {\n  const intentionLabels = {\n    product_inquiry:    \"Consulta de producto\",\n    purchase_intent:    \"Intención de compra\",\n    preference_signal:  \"Señal de preferencia\",\n    unresolved_need:    \"Necesidad no resuelta\",\n    handoff_request:    \"Solicitud de agente humano\"\n  };\n  const label = intentionLabels[c.intention] || c.intention;\n  parts.push(`Intención detectada: ${label}.`);\n}\n\n// Agregar fragmento del mensaje del usuario para contexto semántico\nif (c.user_message && c.user_message.length > 5) {\n  const snippet = c.user_message.substring(0, 120);\n  parts.push(`Mensaje del cliente: \"${snippet}${c.user_message.length > 120 ? \"...\" : \"\"}\"`);\n}\n\nconst memoryText = parts.join(\" \").trim();\n\nreturn [{ json: { ...input, memory_text_to_embed: memoryText } }];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -512,
+        -208
+      ],
+      "id": "daa0848d-e29b-41aa-93d4-d00ba63570df",
+      "name": "Build Customer Memory Text"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.openai.com/v1/embeddings",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "openAiApi",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"input\": \"{{$json[\"message\"]}}\",\n  \"model\": \"text-embedding-ada-002\"\n}\n",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        -288,
+        -208
+      ],
+      "id": "672ceb36-3bf7-4131-8cd1-c83b90b8171e",
+      "name": "Embedding inicial",
+      "credentials": {
+        "openAiApi": {
+          "id": "xxcNO1cCgQSruzFp",
+          "name": "OpenAI account 3"
+        }
+      },
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "jsCode": "const input = $input.first().json;\nconst c     = input.customer_memory_candidate;\nconst ctx   = input.context || {};\n\nconst { v4: uuidv4 } = require(\"uuid\");\nconst pointId = uuidv4();\n\nconst now = new Date().toISOString();\n\nconst payload = {\n  business_id:     ctx.business_id     || input.business_id     || \"business_demo\",\n  user_id:         ctx.user_id         || input.user_id         || \"\",\n  channel:         ctx.channel         || input.channel         || \"whatsapp\",\n  conversation_id: ctx.conversation_id || input.conversation_id || \"\",\n  session_id:      ctx.session_id      || input.session_id      || \"\",\n  memory_type:     c.memory_type,\n  memory_text:     input.memory_text_to_embed,\n  product_id:      c.product_id   || null,\n  product_name:    c.product_name || null,\n  category:        c.category     || null,\n  city:            c.city         || null,\n  source_module:   \"M4\",\n  source_event:    \"post_turn_memory\",\n  confidence:      c.confidence,\n  created_at:      now,\n  expires_at:      null\n};\n\nconst memoryPoint = {\n  point_id: pointId,\n  payload:  payload\n};\n\nreturn [{ json: { ...input, customer_memory_point: memoryPoint } }];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -64,
+        -208
+      ],
+      "id": "b6d9cafa-b1d0-41f7-8511-6319e1f560d5",
+      "name": "Build Qdrant Memory Point"
+    },
+    {
+      "parameters": {
+        "method": "PUT",
+        "url": "=https://1537c683-48da-4631-ab76-ad698b6b9881.us-east-1-0.aws.cloud.qdrant.io/collections/dalia_customer_memory_demo/points?wait=true",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "qdrantApi",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"points\": [\n    {\n      \"id\": \"={{ $json.customer_memory_point.point_id }}\",\n      \"vector\": \"={{ $json.embedding }}\",\n      \"payload\": \"={{ $json.customer_memory_point.payload }}\"\n    }\n  ]\n}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [
+        160,
+        -208
+      ],
+      "id": "d4344a6e-3b2a-42e9-9855-472b623ccd1f",
+      "name": "Upsert Customer Memory Point in Qdrant",
+      "credentials": {
+        "qdrantApi": {
+          "id": "o2UFjTvg1tCw088v",
+          "name": "Qdrant account 3"
+        }
+      },
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "workflowId": {
+          "__rl": true,
+          "value": "sGL1OJ3lklD6wBu0",
+          "mode": "list",
+          "cachedResultUrl": "/workflow/sGL1OJ3lklD6wBu0",
+          "cachedResultName": "Agente de Ventas - TEST — M8: Observability"
+        },
+        "workflowInputs": {
+          "mappingMode": "defineBelow",
+          "value": {},
+          "matchingColumns": [],
+          "schema": [],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": true
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.executeWorkflow",
+      "typeVersion": 1.3,
+      "position": [
+        1280,
+        -208
+      ],
+      "id": "5a1bf852-74ee-4ea1-8ac1-08d771cf44f8",
+      "name": "M8 Register customer_memory_stored"
+    },
+    {
+      "parameters": {
+        "jsCode": "const input = items[0]?.json || {};\nconst c = input.customer_memory_candidate || {};\nconst ctx = input.context || {};\n\n// Determinar por qué se saltó, en base a las señales que sí se evaluaron\nfunction buildSkipReason(candidate) {\n  if (!candidate || Object.keys(candidate).length === 0) {\n    return 'no_candidate_built';\n  }\n  if (candidate.persist === false) {\n    return 'candidate_has_no_commercial_signal';\n  }\n  return 'unknown_skip_reason';\n}\n\nconst event = {\n  schema_version: 'dalia.m8.event_request.v1',\n  event_name: 'customer_memory_skipped',\n  event_type: 'memory',\n  module: 'M4',\n  status: 'skipped',\n  correlation_context: {\n    conversation_id: ctx.conversation_id || input.conversation_id || '',\n    session_id: ctx.session_id || input.session_id || '',\n    user_id: ctx.user_id || input.user_id || ''\n  },\n  payload: {\n    reason: buildSkipReason(c),\n    intention: c.intention || '',\n    had_product: Boolean(c.product_name),\n    had_city: Boolean(c.city),\n    collection: 'dalia_customer_memory_demo'\n  },\n  occurred_at: new Date().toISOString()\n};\n\nreturn [{\n  json: {\n    ...input,\n    m8_event_request: { event }\n  }\n}];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -512,
+        -16
+      ],
+      "id": "652293c7-6e1b-4fc7-9f57-1e8f47f85d0c",
+      "name": "customer_memory_skipped"
+    },
+    {
+      "parameters": {
+        "jsCode": "{\n  \"event_name\": \"customer_memory_stored\",\n  \"event_type\": \"memory\",\n  \"module\": \"M4\",\n  \"status\": \"success\",\n  \"payload\": {\n    \"collection\": \"dalia_customer_memory_demo\",\n    \"point_id\": \"={{ $json.customer_memory_point.point_id }}\",\n    \"memory_type\": \"={{ $json.customer_memory_point.payload.memory_type }}\",\n    \"confidence\": \"={{ $json.customer_memory_point.payload.confidence }}\",\n    \"user_id\": \"={{ $json.customer_memory_point.payload.user_id }}\"\n  }\n}"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1056,
+        -208
+      ],
+      "id": "6e3cf4dd-8220-463f-8304-1038390a7055",
+      "name": "Register customer_memory_stored"
+    },
+    {
+      "parameters": {
+        "tableId": "dalia_customer_vector_memory_registry",
+        "fieldsUi": {
+          "fieldValues": [
+            {
+              "fieldId": "memory_id",
+              "fieldValue": "={{ $json.customer_memory_point.point_id }}"
+            },
+            {
+              "fieldId": "qdrant_collection",
+              "fieldValue": "dalia_customer_memory_demo"
+            },
+            {
+              "fieldId": "qdrant_point_id",
+              "fieldValue": "={{ $json.customer_memory_point.point_id }}"
+            },
+            {
+              "fieldId": "business_id",
+              "fieldValue": "={{ $json.customer_memory_point.payload.business_id }}"
+            },
+            {
+              "fieldId": "user_id",
+              "fieldValue": "={{ $json.customer_memory_point.payload.user_id }}"
+            },
+            {
+              "fieldId": "channel",
+              "fieldValue": "={{ $json.customer_memory_point.payload.channel }}"
+            },
+            {
+              "fieldId": "conversation_id",
+              "fieldValue": "={{ $json.customer_memory_point.payload.conversation_id }}"
+            },
+            {
+              "fieldId": "session_id",
+              "fieldValue": "={{ $json.customer_memory_point.payload.session_id }}"
+            },
+            {
+              "fieldId": "memory_type",
+              "fieldValue": "={{ $json.customer_memory_point.payload.memory_type }}"
+            },
+            {
+              "fieldId": "memory_text",
+              "fieldValue": "={{ $json.customer_memory_point.payload.memory_text }}"
+            },
+            {
+              "fieldId": "product_id",
+              "fieldValue": "={{ $json.customer_memory_point.payload.product_id }}"
+            },
+            {
+              "fieldId": "product_name",
+              "fieldValue": "={{ $json.customer_memory_point.payload.product_name }}"
+            },
+            {
+              "fieldId": "category",
+              "fieldValue": "={{ $json.customer_memory_point.payload.category }}"
+            },
+            {
+              "fieldId": "city",
+              "fieldValue": "={{ $json.customer_memory_point.payload.city }}"
+            },
+            {
+              "fieldId": "confidence",
+              "fieldValue": "={{ $json.customer_memory_point.payload.confidence }}"
+            },
+            {
+              "fieldId": "status",
+              "fieldValue": "active"
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.supabase",
+      "typeVersion": 1,
+      "position": [
+        384,
+        -208
+      ],
+      "id": "b427223c-c195-49d5-9111-d8337dbd2b1e",
+      "name": "Register Memory in Supabase",
+      "alwaysOutputData": true,
+      "credentials": {
+        "supabaseApi": {
+          "id": "npkHU7XcpupfQTID",
+          "name": "Supabase account 2"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const input = items[0]?.json || {};\nreturn [{\n  json: {\n    ...input,\n    branch_context: {\n      branch: 'save_vector_memory',\n      status: 'branch_entry_ready'\n    }\n  }\n}];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        608,
+        -208
+      ],
+      "id": "1a6030cc-94a8-4909-b67e-6c980013dbb3",
+      "name": "Save Vector Memory Branch Entry"
+    },
+    {
+      "parameters": {
+        "jsCode": "const input = items[0]?.json || {};\nreturn [{\n  json: {\n    schema_version: 'dalia.m4.memory_result.v1',\n    operation: 'save_vector_memory',\n    result_type: 'vector_memory_save_result',\n    success: true,\n    point_id: input.customer_memory_point?.point_id || '',\n    memory_type: input.customer_memory_point?.payload?.memory_type || '',\n    user_id: input.customer_memory_point?.payload?.user_id || ''\n  }\n}];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        832,
+        -208
+      ],
+      "id": "cbf16b8b-dfd1-482f-9324-973f66860d55",
+      "name": "Return Save Vector Memory Result"
+    },
+    {
+      "parameters": {
+        "jsCode": "const input = items[0]?.json || {};\nreturn [{\n  json: {\n    schema_version: 'dalia.m4.memory_result.v1',\n    operation: 'save_vector_memory',\n    result_type: 'vector_memory_skipped',\n    success: true,\n    skipped: true,\n    reason: 'no_useful_memory_candidate',\n    user_id: input.context?.user_id || ''\n  }\n}];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -288,
+        -16
+      ],
+      "id": "363c5f8e-9ba5-4e4b-aab1-2ea2d24244a1",
+      "name": "Return Vector Memory Skipped"
+    }
+  ],
+  "connections": {
+    "Build Customer Memory Candidate": {
+      "main": [
+        [
+          {
+            "node": "Validate Vector Memory Candidate",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Validate Vector Memory Candidate": {
+      "main": [
+        [
+          {
+            "node": "Build Customer Memory Text",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "customer_memory_skipped",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Build Customer Memory Text": {
+      "main": [
+        [
+          {
+            "node": "Embedding inicial",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Embedding inicial": {
+      "main": [
+        [
+          {
+            "node": "Build Qdrant Memory Point",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Build Qdrant Memory Point": {
+      "main": [
+        [
+          {
+            "node": "Upsert Customer Memory Point in Qdrant",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Upsert Customer Memory Point in Qdrant": {
+      "main": [
+        [
+          {
+            "node": "Register Memory in Supabase",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "customer_memory_skipped": {
+      "main": [
+        [
+          {
+            "node": "Return Vector Memory Skipped",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Register customer_memory_stored": {
+      "main": [
+        [
+          {
+            "node": "M8 Register customer_memory_stored",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Register Memory in Supabase": {
+      "main": [
+        [
+          {
+            "node": "Save Vector Memory Branch Entry",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Save Vector Memory Branch Entry": {
+      "main": [
+        [
+          {
+            "node": "Return Save Vector Memory Result",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Return Save Vector Memory Result": {
+      "main": [
+        [
+          {
+            "node": "Register customer_memory_stored",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "nodeGroups": [],
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate",
+    "availableInMCP": false
+  },
+  "staticData": null,
+  "pinData": {},
+  "meta": {
+    "templateCredsSetupCompleted": true
+  },
+  "tags": [],
+  "shared": [
+    {
+      "role": "workflow:owner",
+      "workflowId": "QFtAthetiMTGZQsC",
+      "projectId": "tRHCC8ts4mkRGXGn",
+      "createdAt": "2026-06-12T18:28:19.919Z",
+      "updatedAt": "2026-06-12T18:28:19.919Z"
+    }
+  ],
+  "activeVersion": {
+    "versionId": "3100d6e6-4c29-487e-9ef3-fde22b9b7744",
+    "workflowId": "QFtAthetiMTGZQsC",
+    "nodes": [
+      {
+        "parameters": {
+          "inputSource": "passthrough"
+        },
+        "type": "n8n-nodes-base.executeWorkflowTrigger",
+        "typeVersion": 1.2,
+        "position": [
+          -352,
+          0
+        ],
+        "id": "03d62caf-bb9f-4a5c-b87f-febb1ca30316",
+        "name": "When Executed by Another Workflow"
+      },
+      {
+        "parameters": {
+          "jsCode": "const input = $input.first().json;\n\nconst userMessage   = input.user_message   || input.message      || \"\";\nconst daliaResponse = input.dalia_response || input.ai_response  || \"\";\nconst sessionMemory = input.session_memory || {};\nconst lastProduct   = sessionMemory.last_product || null;\nconst intention     = input.classified_intention || input.intention || \"\";\nconst city          = sessionMemory.city           || input.city   || null;\nconst purchaseActive = sessionMemory.purchase_active || false;\nconst handoffActive  = sessionMemory.handoff_active  || false;\n\n// Señales que indican que hay algo útil para recordar\nconst hasProduct   = !!lastProduct;\nconst hasCity      = !!city;\nconst hasPurchase  = purchaseActive;\nconst hasHandoff   = handoffActive;\nconst hasIntent    = [\"product_inquiry\",\"purchase_intent\",\"preference_signal\",\n                      \"unresolved_need\",\"handoff_request\"].includes(intention);\n\nconst shouldPersist = hasProduct || hasCity || hasPurchase || hasHandoff || hasIntent;\n\n// Determinar tipo de memoria\nlet memoryType = \"conversation_summary\";\nif (hasPurchase)          memoryType = \"purchase_context\";\nelse if (hasHandoff)      memoryType = \"handoff_context\";\nelse if (hasProduct && hasIntent) memoryType = \"product_interest\";\nelse if (hasCity)         memoryType = \"city_or_location\";\nelse if (hasIntent)       memoryType = \"preference\";\n\n// Calcular confianza básica\nlet confidence = 0.5;\nif (hasProduct)  confidence += 0.2;\nif (hasCity)     confidence += 0.1;\nif (hasPurchase) confidence += 0.2;\nif (hasIntent)   confidence += 0.1;\nconfidence = Math.min(confidence, 0.99);\n\nconst candidate = {\n  persist:      shouldPersist,\n  memory_type:  memoryType,\n  confidence:   parseFloat(confidence.toFixed(2)),\n  product_id:   lastProduct?.product_id   || null,\n  product_name: lastProduct?.product_name || null,\n  category:     lastProduct?.category     || null,\n  city:         city,\n  user_message: userMessage,\n  dalia_response: daliaResponse,\n  intention:    intention\n};\n\nreturn [{ json: { ...input, customer_memory_candidate: candidate } }];"
+        },
+        "type": "n8n-nodes-base.code",
+        "typeVersion": 2,
+        "position": [
+          -144,
+          0
+        ],
+        "id": "e5c509f1-846c-4407-8168-4af6e99d593d",
+        "name": "Build Customer Memory Candidate"
+      },
+      {
+        "parameters": {
+          "conditions": {
+            "options": {
+              "caseSensitive": true,
+              "leftValue": "",
+              "typeValidation": "strict",
+              "version": 3
+            },
+            "conditions": [
+              {
+                "id": "824a1ae6-9e64-48b2-8c9c-7a6018bdf69f",
+                "leftValue": false,
+                "rightValue": "",
+                "operator": {
+                  "type": "boolean",
+                  "operation": "true",
+                  "singleValue": true
+                }
+              }
+            ],
+            "combinator": "and"
+          },
+          "options": {}
+        },
+        "type": "n8n-nodes-base.if",
+        "typeVersion": 2.3,
+        "position": [
+          96,
+          0
+        ],
+        "id": "a519bb90-04e5-401f-a17b-2db38cd30e6d",
+        "name": "Validate Vector Memory Candidate"
+      },
+      {
+        "parameters": {
+          "jsCode": "const input = $input.first().json;\nconst c = input.customer_memory_candidate;\nconst ctx = input.context || {};\nconst userId = ctx.user_id || input.user_id || \"unknown\";\n\nlet parts = [];\n\n// Base: quién es el cliente y qué hizo\nif (c.memory_type === \"product_interest\" && c.product_name) {\n  parts.push(`Cliente ${userId} mostró interés en ${c.product_name}.`);\n}\nif (c.memory_type === \"purchase_context\" && c.product_name) {\n  parts.push(`Cliente ${userId} inició proceso de compra del producto ${c.product_name}.`);\n}\nif (c.memory_type === \"handoff_context\") {\n  parts.push(`Cliente ${userId} solicitó atención humana por WhatsApp.`);\n}\nif (c.memory_type === \"city_or_location\" && c.city) {\n  parts.push(`Cliente ${userId} mencionó ${c.city} como ciudad de entrega.`);\n}\nif (c.memory_type === \"preference\") {\n  parts.push(`Cliente ${userId} mostró preferencias de compra durante la conversación.`);\n}\nif (c.memory_type === \"conversation_summary\") {\n  parts.push(`Resumen de conversación con cliente ${userId}.`);\n}\n\n// Enriquecer con detalles disponibles\nif (c.product_name && c.memory_type !== \"product_interest\") {\n  parts.push(`Producto consultado: ${c.product_name}.`);\n}\nif (c.category) {\n  parts.push(`Categoría: ${c.category}.`);\n}\nif (c.city && c.memory_type !== \"city_or_location\") {\n  parts.push(`Ciudad mencionada: ${c.city}.`);\n}\nif (c.intention && c.intention !== \"conversation_summary\") {\n  const intentionLabels = {\n    product_inquiry:    \"Consulta de producto\",\n    purchase_intent:    \"Intención de compra\",\n    preference_signal:  \"Señal de preferencia\",\n    unresolved_need:    \"Necesidad no resuelta\",\n    handoff_request:    \"Solicitud de agente humano\"\n  };\n  const label = intentionLabels[c.intention] || c.intention;\n  parts.push(`Intención detectada: ${label}.`);\n}\n\n// Agregar fragmento del mensaje del usuario para contexto semántico\nif (c.user_message && c.user_message.length > 5) {\n  const snippet = c.user_message.substring(0, 120);\n  parts.push(`Mensaje del cliente: \"${snippet}${c.user_message.length > 120 ? \"...\" : \"\"}\"`);\n}\n\nconst memoryText = parts.join(\" \").trim();\n\nreturn [{ json: { ...input, memory_text_to_embed: memoryText } }];"
+        },
+        "type": "n8n-nodes-base.code",
+        "typeVersion": 2,
+        "position": [
+          384,
+          -16
+        ],
+        "id": "ee1d303a-e4fc-43f4-8ef8-dc3638c0e621",
+        "name": "Build Customer Memory Text"
+      },
+      {
+        "parameters": {
+          "method": "POST",
+          "url": "https://api.openai.com/v1/embeddings",
+          "authentication": "predefinedCredentialType",
+          "nodeCredentialType": "openAiApi",
+          "sendBody": true,
+          "specifyBody": "json",
+          "jsonBody": "={\n  \"input\": \"{{$json[\"message\"]}}\",\n  \"model\": \"text-embedding-ada-002\"\n}\n",
+          "options": {}
+        },
+        "type": "n8n-nodes-base.httpRequest",
+        "typeVersion": 4.2,
+        "position": [
+          624,
+          -16
+        ],
+        "id": "27ee2342-7b46-4102-a23d-63ef0eca0c41",
+        "name": "Embedding inicial",
+        "credentials": {
+          "openAiApi": {
+            "id": "xxcNO1cCgQSruzFp",
+            "name": "OpenAI account 3"
+          }
+        },
+        "onError": "continueRegularOutput"
+      },
+      {
+        "parameters": {
+          "jsCode": "const input = $input.first().json;\nconst c     = input.customer_memory_candidate;\nconst ctx   = input.context || {};\n\nconst { v4: uuidv4 } = require(\"uuid\");\nconst pointId = uuidv4();\n\nconst now = new Date().toISOString();\n\nconst payload = {\n  business_id:     ctx.business_id     || input.business_id     || \"business_demo\",\n  user_id:         ctx.user_id         || input.user_id         || \"\",\n  channel:         ctx.channel         || input.channel         || \"whatsapp\",\n  conversation_id: ctx.conversation_id || input.conversation_id || \"\",\n  session_id:      ctx.session_id      || input.session_id      || \"\",\n  memory_type:     c.memory_type,\n  memory_text:     input.memory_text_to_embed,\n  product_id:      c.product_id   || null,\n  product_name:    c.product_name || null,\n  category:        c.category     || null,\n  city:            c.city         || null,\n  source_module:   \"M4\",\n  source_event:    \"post_turn_memory\",\n  confidence:      c.confidence,\n  created_at:      now,\n  expires_at:      null\n};\n\nconst memoryPoint = {\n  point_id: pointId,\n  payload:  payload\n};\n\nreturn [{ json: { ...input, customer_memory_point: memoryPoint } }];"
+        },
+        "type": "n8n-nodes-base.code",
+        "typeVersion": 2,
+        "position": [
+          832,
+          -16
+        ],
+        "id": "3c06c220-26e6-482f-b1fd-87835d8216c6",
+        "name": "Build Qdrant Memory Point"
+      },
+      {
+        "parameters": {
+          "method": "PUT",
+          "url": "=https://1537c683-48da-4631-ab76-ad698b6b9881.us-east-1-0.aws.cloud.qdrant.io/collections/dalia_customer_memory_demo/points?wait=true",
+          "authentication": "genericCredentialType",
+          "genericAuthType": "httpHeaderAuth",
+          "options": {}
+        },
+        "type": "n8n-nodes-base.httpRequest",
+        "typeVersion": 4.4,
+        "position": [
+          1040,
+          -16
+        ],
+        "id": "9f6a9f1a-685b-4b9f-a9bf-135a859e1658",
+        "name": "Upsert Customer Memory Point in Qdrant",
+        "credentials": {
+          "httpHeaderAuth": {
+            "id": "KStDmWlFMeIXgUe7",
+            "name": "Header Auth account"
+          }
+        }
+      },
+      {
+        "parameters": {
+          "workflowId": {
+            "__rl": true,
+            "value": "sGL1OJ3lklD6wBu0",
+            "mode": "list",
+            "cachedResultUrl": "/workflow/sGL1OJ3lklD6wBu0",
+            "cachedResultName": "Agente de Ventas - TEST — M8: Observability"
+          },
+          "workflowInputs": {
+            "mappingMode": "defineBelow",
+            "value": {},
+            "matchingColumns": [],
+            "schema": [],
+            "attemptToConvertTypes": false,
+            "convertFieldsToString": true
+          },
+          "options": {}
+        },
+        "type": "n8n-nodes-base.executeWorkflow",
+        "typeVersion": 1.3,
+        "position": [
+          1632,
+          -16
+        ],
+        "id": "a520aa35-d994-4e5d-9236-312e0b84ab02",
+        "name": "M8 Register customer_memory_stored"
+      },
+      {
+        "parameters": {
+          "jsCode": "// Loop over input items and add a new field called 'myNewField' to the JSON of each one\nfor (const item of $input.all()) {\n  item.json.myNewField = 1;\n}\n\nreturn $input.all();"
+        },
+        "type": "n8n-nodes-base.code",
+        "typeVersion": 2,
+        "position": [
+          384,
+          224
+        ],
+        "id": "6a4e6450-5619-4dca-b7fc-6e044483b164",
+        "name": "customer_memory_skipped"
+      },
+      {
+        "parameters": {
+          "jsCode": "{\n  \"event_name\": \"customer_memory_stored\",\n  \"event_type\": \"memory\",\n  \"module\": \"M4\",\n  \"status\": \"success\",\n  \"payload\": {\n    \"collection\": \"dalia_customer_memory_demo\",\n    \"point_id\": \"={{ $json.customer_memory_point.point_id }}\",\n    \"memory_type\": \"={{ $json.customer_memory_point.payload.memory_type }}\",\n    \"confidence\": \"={{ $json.customer_memory_point.payload.confidence }}\",\n    \"user_id\": \"={{ $json.customer_memory_point.payload.user_id }}\"\n  }\n}"
+        },
+        "type": "n8n-nodes-base.code",
+        "typeVersion": 2,
+        "position": [
+          1440,
+          -16
+        ],
+        "id": "c50b7854-82f5-40fe-9228-6e51aa72338c",
+        "name": "Register customer_memory_stored"
+      },
+      {
+        "parameters": {
+          "tableId": "dalia_customer_vector_memory_registry",
+          "fieldsUi": {
+            "fieldValues": [
+              {
+                "fieldId": "memory_id",
+                "fieldValue": "={{ $json.customer_memory_point.point_id }}"
+              },
+              {
+                "fieldId": "qdrant_collection",
+                "fieldValue": "dalia_customer_memory_demo"
+              },
+              {
+                "fieldId": "qdrant_point_id",
+                "fieldValue": "={{ $json.customer_memory_point.point_id }}"
+              },
+              {
+                "fieldId": "business_id",
+                "fieldValue": "={{ $json.customer_memory_point.payload.business_id }}"
+              },
+              {
+                "fieldId": "user_id",
+                "fieldValue": "={{ $json.customer_memory_point.payload.user_id }}"
+              },
+              {
+                "fieldId": "channel",
+                "fieldValue": "={{ $json.customer_memory_point.payload.channel }}"
+              },
+              {
+                "fieldId": "conversation_id",
+                "fieldValue": "={{ $json.customer_memory_point.payload.conversation_id }}"
+              },
+              {
+                "fieldId": "session_id",
+                "fieldValue": "={{ $json.customer_memory_point.payload.session_id }}"
+              },
+              {
+                "fieldId": "memory_type",
+                "fieldValue": "={{ $json.customer_memory_point.payload.memory_type }}"
+              },
+              {
+                "fieldId": "memory_text",
+                "fieldValue": "={{ $json.customer_memory_point.payload.memory_text }}"
+              },
+              {
+                "fieldId": "product_id",
+                "fieldValue": "={{ $json.customer_memory_point.payload.product_id }}"
+              },
+              {
+                "fieldId": "product_name",
+                "fieldValue": "={{ $json.customer_memory_point.payload.product_name }}"
+              },
+              {
+                "fieldId": "category",
+                "fieldValue": "={{ $json.customer_memory_point.payload.category }}"
+              },
+              {
+                "fieldId": "city",
+                "fieldValue": "={{ $json.customer_memory_point.payload.city }}"
+              },
+              {
+                "fieldId": "confidence",
+                "fieldValue": "={{ $json.customer_memory_point.payload.confidence }}"
+              },
+              {
+                "fieldId": "status",
+                "fieldValue": "active"
+              }
+            ]
+          }
+        },
+        "type": "n8n-nodes-base.supabase",
+        "typeVersion": 1,
+        "position": [
+          1248,
+          -16
+        ],
+        "id": "5473f68b-eb8b-4221-b5e2-012078e62b1f",
+        "name": "Register Memory in Supabase",
+        "credentials": {
+          "supabaseApi": {
+            "id": "npkHU7XcpupfQTID",
+            "name": "Supabase account 2"
+          }
+        }
+      }
+    ],
+    "connections": {
+      "When Executed by Another Workflow": {
+        "main": [
+          [
+            {
+              "node": "Build Customer Memory Candidate",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Build Customer Memory Candidate": {
+        "main": [
+          [
+            {
+              "node": "Validate Vector Memory Candidate",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Validate Vector Memory Candidate": {
+        "main": [
+          [
+            {
+              "node": "Build Customer Memory Text",
+              "type": "main",
+              "index": 0
+            }
+          ],
+          [
+            {
+              "node": "customer_memory_skipped",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Build Customer Memory Text": {
+        "main": [
+          [
+            {
+              "node": "Embedding inicial",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Embedding inicial": {
+        "main": [
+          [
+            {
+              "node": "Build Qdrant Memory Point",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Build Qdrant Memory Point": {
+        "main": [
+          [
+            {
+              "node": "Upsert Customer Memory Point in Qdrant",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Upsert Customer Memory Point in Qdrant": {
+        "main": [
+          [
+            {
+              "node": "Register Memory in Supabase",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Register customer_memory_stored": {
+        "main": [
+          [
+            {
+              "node": "M8 Register customer_memory_stored",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Register Memory in Supabase": {
+        "main": [
+          [
+            {
+              "node": "Register customer_memory_stored",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      }
+    },
+    "nodeGroups": [],
+    "authors": "Emmanuel Arevalo",
+    "name": "Version 3100d6e6",
+    "description": "",
+    "autosaved": true,
+    "createdAt": "2026-06-17T20:19:13.433Z",
+    "updatedAt": "2026-06-18T20:35:58.000Z"
+  }
+}
