@@ -1,0 +1,320 @@
+{
+  "id": "YkTi0InSL1FhnQDo",
+  "name": "Flujo Catalogo En Qdrant",
+  "active": false,
+  "activeVersionId": null,
+  "createdAt": "2025-11-04T15:39:32.380Z",
+  "updatedAt": "2026-01-28T03:46:38.000Z",
+  "isArchived": true,
+  "versionId": "65486b99-f3ec-4370-9218-4979c1064830",
+  "triggerCount": 0,
+  "nodes": [
+    {
+      "parameters": {
+        "documentId": {
+          "__rl": true,
+          "value": "1z3iO_NUqb9Se5x2q_7TxobJccftx3iRKD_AukhQdQrU",
+          "mode": "list",
+          "cachedResultName": "Levantamiento de atributos_Catálogo",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1z3iO_NUqb9Se5x2q_7TxobJccftx3iRKD_AukhQdQrU/edit?usp=drivesdk"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": 1522749382,
+          "mode": "list",
+          "cachedResultName": "plantilla_atributos_productos",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1z3iO_NUqb9Se5x2q_7TxobJccftx3iRKD_AukhQdQrU/edit#gid=1522749382"
+        },
+        "filtersUI": {
+          "values": [
+            {
+              "lookupColumn": "Categoria*",
+              "lookupValue": "SILLAS PARA CARRO "
+            }
+          ]
+        },
+        "options": {
+          "returnFirstMatch": false
+        }
+      },
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [
+        16,
+        0
+      ],
+      "id": "0675bf5e-955c-4699-8dd1-3cff99686a12",
+      "name": "Get row(s) in sheet",
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "Pf0TYy2joLTmqt2C",
+          "name": "Google Sheets account 3"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "83d3c5f5-45ed-4bdc-9de4-8854b261944a",
+              "name": "pageContent",
+              "value": "={{ $json[\"Titulo*\"] }} - {{ $json[\"Categoria*\"] }} - {{ $json[\"DescripcionBreve*\"] }} - {{ $json.Marca }} - {{ $json.Color }}\n{\n  \"sku\": \"{{ $json[\"SKU*\"] }}\",\n  \"titulo\": \"{{ $json[\"Titulo*\"] }}\",\n  \"categoria\": \"{{ $json[\"Categoria*\"] }}\",\n  \"precio\": {{ $json[\"Precio*\"] }},\n  \"estado\": \"{{ $json['Estado* (nuevo/usado)'] }}\",\n}",
+              "type": "string"
+            },
+            {
+              "id": "d19a668b-0cc7-4cb5-bc58-484a241bb74d",
+              "name": "metadata",
+              "value": "={\n  \"sku\": \"{{ $json[\"SKU*\"] }}\",\n  \"titulo\": \"{{ $json[\"Titulo*\"] }}\",\n  \"categoria\": \"{{ $json[\"Categoria*\"] }}\",\n  \"precio\": {{ $json[\"Precio*\"] }},\n  \"estado\": \"{{ $json['Estado* (nuevo/usado)'] }}\",\n}",
+              "type": "string"
+            },
+            {
+              "id": "72cc7611-6cc7-4329-84cc-57fce9d36d50",
+              "name": "",
+              "value": "",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        224,
+        0
+      ],
+      "id": "3ef5c7a8-cd7d-464f-b719-6ede4017fcd0",
+      "name": "Edit Fields"
+    },
+    {
+      "parameters": {},
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [
+        -224,
+        0
+      ],
+      "id": "d4fd8675-0c7b-4bcb-bc86-719f4ee44174",
+      "name": "When clicking ‘Execute workflow’"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Loop over input items and add a new field called 'myNewField' to the JSON of each one\nfunction generateUUID() {\n  // genera UUID manualmente\n  return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) {\n    const r = Math.random() * 16 | 0;\n    const v = c === 'x' ? r : (r & 0x3 | 0x8);\n    return v.toString(16);\n  });\n}\n\nreturn [{\n  json: {\n    id: generateUUID(),\n    vector: $input.first().json.data,\n    Texto: $input.first().json.Texto,\n    Sku: $input.first().json.Sku,\n    Titulo: $input.first().json.Titulo,\n    Categoria: $input.first().json.Categoria,\n    Precio: $input.first().json.Precio,\n    Estado: $input.first().json.Estado,\n    DescripcionBreve: $('Get row(s) in sheet').first().json['DescripcionBreve*'],\n    timestamp: $now\n  }\n}];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        848,
+        0
+      ],
+      "id": "86f6d789-41d1-41bf-b849-ab23af8312c8",
+      "name": "Code in JavaScript"
+    },
+    {
+      "parameters": {
+        "method": "PUT",
+        "url": "https://1537c683-48da-4631-ab76-ad698b6b9881.us-east-1-0.aws.cloud.qdrant.io:6333/collections/Catalogo_test_test/points",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "qdrantApi",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ {\n  points: [\n    {\n      id: $json.id ?? undefined,        \n      vector: $json.vector,\n      payload: {\n        pageContent: String($json.Texto ?? $json.texto ?? ''),\n        metadata: {\n          sku:       String($json.Sku       ?? $json.sku       ?? ''),\n          titulo:    String($json.Titulo    ?? $json.titulo    ?? ''),\n          categoria: String($json.Categoria ?? $json.categoria ?? ''),\n          precio:    Number($json.Precio    ?? $json.precio    ?? 0),\n          estado:    String($json.Estado    ?? $json.estado    ?? ''),\n          descripcion:    String($json.DescripcionBreve    ?? $json.DescripcionBreve    ?? ''),\n        }\n      }\n    }\n  ]\n} }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        1056,
+        0
+      ],
+      "id": "2b5b60eb-dcd0-4c63-a460-69f369eab65b",
+      "name": "HTTP Request",
+      "credentials": {
+        "qdrantApi": {
+          "id": "ZYv8vdr6tkTS4jYz",
+          "name": "QdrantApi account 3"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.openai.com/v1/embeddings",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "openAiApi",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ { \"input\": $json.pageContent, \"model\": \"text-embedding-ada-002\" } }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        432,
+        0
+      ],
+      "id": "3ec351bf-f380-4baa-b040-2fc21bccd8bd",
+      "name": "HTTP Request1",
+      "credentials": {
+        "qdrantApi": {
+          "id": "ZYv8vdr6tkTS4jYz",
+          "name": "QdrantApi account 3"
+        },
+        "openAiApi": {
+          "id": "cm7TdxurmQCEHkxZ",
+          "name": "OpenAi account 4"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "4f960b9f-0c04-4fa0-aae4-7c93f44e3af9",
+              "name": "Texto",
+              "value": "={{ $('Get row(s) in sheet').item.json['Titulo*'] }}",
+              "type": "string"
+            },
+            {
+              "id": "68ee7541-34ff-4a14-bc2d-97059d6d1b90",
+              "name": "data",
+              "value": "={{ $json.data[0].embedding }}",
+              "type": "array"
+            },
+            {
+              "id": "386c1cf2-65af-4f5d-8d22-c7e38abb914d",
+              "name": "Sku",
+              "value": "={{ $('Get row(s) in sheet').item.json['SKU*'] }}",
+              "type": "string"
+            },
+            {
+              "id": "17176fba-fd39-4fa9-8b0c-f0b43fd596cc",
+              "name": "Titulo",
+              "value": "={{ $('Get row(s) in sheet').item.json['Titulo*'] }}",
+              "type": "string"
+            },
+            {
+              "id": "ef38cbf9-6cfc-4abc-b3c9-ca0fe4ae436e",
+              "name": "Categoria",
+              "value": "={{ $('Get row(s) in sheet').item.json['Categoria*'] }}",
+              "type": "string"
+            },
+            {
+              "id": "4320bc68-a367-4f87-9d8f-e7b735e55f21",
+              "name": "Precio",
+              "value": "={{ $('Get row(s) in sheet').item.json['Precio*'] }}",
+              "type": "string"
+            },
+            {
+              "id": "cc051d6c-de4d-4f24-83c2-cd536a3f31e6",
+              "name": "Estado",
+              "value": "={{ $('Get row(s) in sheet').item.json['Estado* (nuevo/usado)'] }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        640,
+        0
+      ],
+      "id": "2ba021d1-b11f-469c-adbc-03a332c04115",
+      "name": "Edit Fields1"
+    }
+  ],
+  "connections": {
+    "Get row(s) in sheet": {
+      "main": [
+        [
+          {
+            "node": "Edit Fields",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Edit Fields": {
+      "main": [
+        [
+          {
+            "node": "HTTP Request1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "When clicking ‘Execute workflow’": {
+      "main": [
+        [
+          {
+            "node": "Get row(s) in sheet",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code in JavaScript": {
+      "main": [
+        [
+          {
+            "node": "HTTP Request",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "HTTP Request1": {
+      "main": [
+        [
+          {
+            "node": "Edit Fields1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Edit Fields1": {
+      "main": [
+        [
+          {
+            "node": "Code in JavaScript",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "nodeGroups": [],
+  "settings": {
+    "executionOrder": "v1",
+    "callerPolicy": "workflowsFromSameOwner",
+    "errorWorkflow": "5j9hfL5IlhLCpydB"
+  },
+  "staticData": null,
+  "pinData": {},
+  "meta": {
+    "templateCredsSetupCompleted": true
+  },
+  "tags": [],
+  "shared": [
+    {
+      "role": "workflow:owner",
+      "workflowId": "YkTi0InSL1FhnQDo",
+      "projectId": "8h8pwWGcWlnGEym3",
+      "createdAt": "2025-11-04T15:39:32.381Z",
+      "updatedAt": "2025-11-04T15:39:32.381Z"
+    }
+  ],
+  "activeVersion": null
+}
