@@ -1,0 +1,441 @@
+{
+  "id": "pUbC5lQxCocS4JH3",
+  "name": "DALIA_INT.webhook_generic",
+  "active": true,
+  "activeVersionId": "0c17923e-6bc4-4ba1-bf0e-25b2bb531971",
+  "createdAt": "2026-10-03T02:18:45.023Z",
+  "updatedAt": "2026-10-03T16:46:52.873Z",
+  "isArchived": false,
+  "versionId": "0c17923e-6bc4-4ba1-bf0e-25b2bb531971",
+  "triggerCount": 1,
+  "nodes": [
+    {
+      "id": "760880f7-0a18-4aa2-bee5-876c168f7225",
+      "name": "Webhook generico",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2.1,
+      "position": [
+        0,
+        96
+      ],
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "dalia/in",
+        "responseMode": "responseNode",
+        "options": {
+          "rawBody": true
+        }
+      },
+      "webhookId": "a341b6f6-2878-4f88-a141-e4bdc963de37"
+    },
+    {
+      "id": "1c278723-f090-4307-864f-cd556a455c19",
+      "name": "Leer solicitud",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        224,
+        96
+      ],
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "jsCode": "// Adaptador genérico de entrada: cuerpo crudo, cabeceras y fuente (?source=<puerto>.<nombre>)\nconst item = $input.first();\nlet raw = '';\ntry { raw = (await this.helpers.getBinaryDataBuffer(0, 'data')).toString('utf8'); } catch (e) { raw = JSON.stringify(item.json.body || {}); }\nconst h = item.json.headers || {};\nconst headers = Object.fromEntries(Object.entries(h).map(([k, v]) => [String(k).toLowerCase(), Array.isArray(v) ? v[0] : v]));\nreturn [{ json: { source: String(item.json.query?.source || 'desconocido'), raw, headers, body: item.json.body || {} } }];"
+      }
+    },
+    {
+      "id": "775ca443-3246-4e61-9b0b-beb8694bbd0f",
+      "name": "Verificar firma",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.7,
+      "position": [
+        448,
+        96
+      ],
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "select dalia.int_inbound_check_headers($1, $2, $3::jsonb) as chk;",
+        "options": {
+          "queryReplacement": "={{ [ $json.source, $json.raw, JSON.stringify($json.headers) ] }}"
+        }
+      },
+      "credentials": {
+        "postgres": {
+          "id": "HfCgVAjUygK1vrkU",
+          "name": "DALIA dev Supabase"
+        }
+      },
+      "onError": "continueErrorOutput"
+    },
+    {
+      "id": "5234b4c3-15be-4fa0-8381-972ff2189157",
+      "name": "Normalizar evento",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        672,
+        0
+      ],
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "jsCode": "// Adaptador genérico de entrada: arma el callback sys.callback.v1 según inbound[<source>]\n//   event_id_path   : ruta del ID único del evento en el cuerpo, o lista de rutas que se unen con ':'\n//                     (p. ej. [\"data.id\", \"data.status\"]); si falta, se usa el sha256 del cuerpo\n//   event_type_path : ruta del tipo de evento en el cuerpo\n//   event_type      : tipo fijo (si no hay event_type_path)\n//   event_type_map  : tipo del proveedor → tipo normalizado del puerto\n//   payload_map     : campo normalizado → ruta en el cuerpo (si falta, se entrega el cuerpo completo)\n//   status_field / status_map : normalización del estado, igual que en la salida\nconst w = $('Leer solicitud').first().json;\nconst chk = $json.chk || {};\nconst cfg = chk.settings || {};\nconst b = w.body || {};\nconst get = (obj, path) => String(path).split('.').reduce((a, k) => {\n  if (a === undefined || a === null) return undefined;\n  const m = k.match(/^(.*)\\[(\\d+)\\]$/);\n  return m ? (m[1] ? a[m[1]] : a)?.[Number(m[2])] : a[k];\n}, obj);\nconst eventId = Array.isArray(cfg.event_id_path) ? cfg.event_id_path.map(p => get(b, p) ?? '').join(':') : (cfg.event_id_path ? get(b, cfg.event_id_path) : null);\nconst rawType = cfg.event_type_path ? get(b, cfg.event_type_path) : cfg.event_type;\nconst eventType = (cfg.event_type_map || {})[rawType] || rawType || 'unmapped';\nlet payload = b;\nif (cfg.payload_map) { payload = {}; for (const [k, p] of Object.entries(cfg.payload_map)) payload[k] = get(b, p) ?? null; }\nif (cfg.status_field && cfg.status_map && payload && typeof payload === 'object') {\n  const raw = payload[cfg.status_field];\n  payload.provider_status = raw ?? null;\n  payload[cfg.status_field] = cfg.status_map[raw] ?? cfg.status_map['*'] ?? 'unknown';\n}\nreturn [{ json: { source: w.source, external_event_id: String(eventId ?? chk.body_sha256), event_type: eventType, signature_valid: chk.signature_valid === true, payload, envelope: {} } }];"
+      }
+    },
+    {
+      "id": "5ae08823-b981-4c78-a643-34f8a95d65fd",
+      "name": "Entregar a SYS.03",
+      "type": "n8n-nodes-base.executeWorkflow",
+      "typeVersion": 1.3,
+      "position": [
+        896,
+        0
+      ],
+      "parameters": {
+        "mode": "each",
+        "source": "database",
+        "workflowId": {
+          "__rl": true,
+          "mode": "id",
+          "value": "utnQfoflAlLrlVVx"
+        },
+        "options": {
+          "waitForSubWorkflow": true
+        }
+      },
+      "onError": "continueRegularOutput"
+    },
+    {
+      "id": "5117e89c-2283-4457-bb1a-e1683b9b3234",
+      "name": "Responder",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.5,
+      "position": [
+        1120,
+        0
+      ],
+      "parameters": {
+        "respondWith": "text",
+        "responseBody": "ok",
+        "options": {
+          "responseCode": "={{ $input.all().some(i => i.json.error != null && i.json.status === undefined && i.json.r === undefined && i.json.inbox_id === undefined) ? 500 : 200 }}"
+        }
+      },
+      "executeOnce": true
+    },
+    {
+      "id": "3ed8ee1a-f3ad-4f8b-880f-025b6e9bbc83",
+      "name": "Responder error",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.5,
+      "position": [
+        672,
+        192
+      ],
+      "parameters": {
+        "respondWith": "text",
+        "responseBody": "retry",
+        "options": {
+          "responseCode": 500
+        }
+      },
+      "executeOnce": true
+    }
+  ],
+  "connections": {
+    "Webhook generico": {
+      "main": [
+        [
+          {
+            "node": "Leer solicitud",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Leer solicitud": {
+      "main": [
+        [
+          {
+            "node": "Verificar firma",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Verificar firma": {
+      "main": [
+        [
+          {
+            "node": "Normalizar evento",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Responder error",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Normalizar evento": {
+      "main": [
+        [
+          {
+            "node": "Entregar a SYS.03",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Entregar a SYS.03": {
+      "main": [
+        [
+          {
+            "node": "Responder",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "nodeGroups": [],
+  "settings": {
+    "executionOrder": "v1",
+    "availableInMCP": true,
+    "errorWorkflow": "cjjQno2MxMTT3Icc",
+    "timezone": "America/Bogota",
+    "saveManualExecutions": true,
+    "saveDataErrorExecution": "all",
+    "saveDataSuccessExecution": "all",
+    "callerPolicy": "workflowsFromSameOwner"
+  },
+  "staticData": null,
+  "pinData": null,
+  "meta": {
+    "aiBuilderAssisted": true,
+    "builderVariant": "mcp"
+  },
+  "tags": [],
+  "shared": [
+    {
+      "role": "workflow:owner",
+      "workflowId": "pUbC5lQxCocS4JH3",
+      "projectId": "tRHCC8ts4mkRGXGn",
+      "createdAt": "2026-10-09T21:09:17.758Z",
+      "updatedAt": "2026-10-09T21:09:17.758Z"
+    }
+  ],
+  "activeVersion": {
+    "versionId": "0c17923e-6bc4-4ba1-bf0e-25b2bb531971",
+    "workflowId": "pUbC5lQxCocS4JH3",
+    "nodes": [
+      {
+        "id": "760880f7-0a18-4aa2-bee5-876c168f7225",
+        "name": "Webhook generico",
+        "type": "n8n-nodes-base.webhook",
+        "typeVersion": 2.1,
+        "position": [
+          0,
+          96
+        ],
+        "parameters": {
+          "httpMethod": "POST",
+          "path": "dalia/in",
+          "responseMode": "responseNode",
+          "options": {
+            "rawBody": true
+          }
+        },
+        "webhookId": "a341b6f6-2878-4f88-a141-e4bdc963de37"
+      },
+      {
+        "id": "1c278723-f090-4307-864f-cd556a455c19",
+        "name": "Leer solicitud",
+        "type": "n8n-nodes-base.code",
+        "typeVersion": 2,
+        "position": [
+          224,
+          96
+        ],
+        "parameters": {
+          "mode": "runOnceForAllItems",
+          "jsCode": "// Adaptador genérico de entrada: cuerpo crudo, cabeceras y fuente (?source=<puerto>.<nombre>)\nconst item = $input.first();\nlet raw = '';\ntry { raw = (await this.helpers.getBinaryDataBuffer(0, 'data')).toString('utf8'); } catch (e) { raw = JSON.stringify(item.json.body || {}); }\nconst h = item.json.headers || {};\nconst headers = Object.fromEntries(Object.entries(h).map(([k, v]) => [String(k).toLowerCase(), Array.isArray(v) ? v[0] : v]));\nreturn [{ json: { source: String(item.json.query?.source || 'desconocido'), raw, headers, body: item.json.body || {} } }];"
+        }
+      },
+      {
+        "id": "775ca443-3246-4e61-9b0b-beb8694bbd0f",
+        "name": "Verificar firma",
+        "type": "n8n-nodes-base.postgres",
+        "typeVersion": 2.7,
+        "position": [
+          448,
+          96
+        ],
+        "parameters": {
+          "operation": "executeQuery",
+          "query": "select dalia.int_inbound_check_headers($1, $2, $3::jsonb) as chk;",
+          "options": {
+            "queryReplacement": "={{ [ $json.source, $json.raw, JSON.stringify($json.headers) ] }}"
+          }
+        },
+        "credentials": {
+          "postgres": {
+            "id": "HfCgVAjUygK1vrkU",
+            "name": "DALIA dev Supabase"
+          }
+        },
+        "onError": "continueErrorOutput"
+      },
+      {
+        "id": "5234b4c3-15be-4fa0-8381-972ff2189157",
+        "name": "Normalizar evento",
+        "type": "n8n-nodes-base.code",
+        "typeVersion": 2,
+        "position": [
+          672,
+          0
+        ],
+        "parameters": {
+          "mode": "runOnceForAllItems",
+          "jsCode": "// Adaptador genérico de entrada: arma el callback sys.callback.v1 según inbound[<source>]\n//   event_id_path   : ruta del ID único del evento en el cuerpo, o lista de rutas que se unen con ':'\n//                     (p. ej. [\"data.id\", \"data.status\"]); si falta, se usa el sha256 del cuerpo\n//   event_type_path : ruta del tipo de evento en el cuerpo\n//   event_type      : tipo fijo (si no hay event_type_path)\n//   event_type_map  : tipo del proveedor → tipo normalizado del puerto\n//   payload_map     : campo normalizado → ruta en el cuerpo (si falta, se entrega el cuerpo completo)\n//   status_field / status_map : normalización del estado, igual que en la salida\nconst w = $('Leer solicitud').first().json;\nconst chk = $json.chk || {};\nconst cfg = chk.settings || {};\nconst b = w.body || {};\nconst get = (obj, path) => String(path).split('.').reduce((a, k) => {\n  if (a === undefined || a === null) return undefined;\n  const m = k.match(/^(.*)\\[(\\d+)\\]$/);\n  return m ? (m[1] ? a[m[1]] : a)?.[Number(m[2])] : a[k];\n}, obj);\nconst eventId = Array.isArray(cfg.event_id_path) ? cfg.event_id_path.map(p => get(b, p) ?? '').join(':') : (cfg.event_id_path ? get(b, cfg.event_id_path) : null);\nconst rawType = cfg.event_type_path ? get(b, cfg.event_type_path) : cfg.event_type;\nconst eventType = (cfg.event_type_map || {})[rawType] || rawType || 'unmapped';\nlet payload = b;\nif (cfg.payload_map) { payload = {}; for (const [k, p] of Object.entries(cfg.payload_map)) payload[k] = get(b, p) ?? null; }\nif (cfg.status_field && cfg.status_map && payload && typeof payload === 'object') {\n  const raw = payload[cfg.status_field];\n  payload.provider_status = raw ?? null;\n  payload[cfg.status_field] = cfg.status_map[raw] ?? cfg.status_map['*'] ?? 'unknown';\n}\nreturn [{ json: { source: w.source, external_event_id: String(eventId ?? chk.body_sha256), event_type: eventType, signature_valid: chk.signature_valid === true, payload, envelope: {} } }];"
+        }
+      },
+      {
+        "id": "5ae08823-b981-4c78-a643-34f8a95d65fd",
+        "name": "Entregar a SYS.03",
+        "type": "n8n-nodes-base.executeWorkflow",
+        "typeVersion": 1.3,
+        "position": [
+          896,
+          0
+        ],
+        "parameters": {
+          "mode": "each",
+          "source": "database",
+          "workflowId": {
+            "__rl": true,
+            "mode": "id",
+            "value": "utnQfoflAlLrlVVx"
+          },
+          "options": {
+            "waitForSubWorkflow": true
+          }
+        },
+        "onError": "continueRegularOutput"
+      },
+      {
+        "id": "5117e89c-2283-4457-bb1a-e1683b9b3234",
+        "name": "Responder",
+        "type": "n8n-nodes-base.respondToWebhook",
+        "typeVersion": 1.5,
+        "position": [
+          1120,
+          0
+        ],
+        "parameters": {
+          "respondWith": "text",
+          "responseBody": "ok",
+          "options": {
+            "responseCode": "={{ $input.all().some(i => i.json.error != null && i.json.status === undefined && i.json.r === undefined && i.json.inbox_id === undefined) ? 500 : 200 }}"
+          }
+        },
+        "executeOnce": true
+      },
+      {
+        "id": "3ed8ee1a-f3ad-4f8b-880f-025b6e9bbc83",
+        "name": "Responder error",
+        "type": "n8n-nodes-base.respondToWebhook",
+        "typeVersion": 1.5,
+        "position": [
+          672,
+          192
+        ],
+        "parameters": {
+          "respondWith": "text",
+          "responseBody": "retry",
+          "options": {
+            "responseCode": 500
+          }
+        },
+        "executeOnce": true
+      }
+    ],
+    "connections": {
+      "Webhook generico": {
+        "main": [
+          [
+            {
+              "node": "Leer solicitud",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Leer solicitud": {
+        "main": [
+          [
+            {
+              "node": "Verificar firma",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Verificar firma": {
+        "main": [
+          [
+            {
+              "node": "Normalizar evento",
+              "type": "main",
+              "index": 0
+            }
+          ],
+          [
+            {
+              "node": "Responder error",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Normalizar evento": {
+        "main": [
+          [
+            {
+              "node": "Entregar a SYS.03",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Entregar a SYS.03": {
+        "main": [
+          [
+            {
+              "node": "Responder",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      }
+    },
+    "nodeGroups": [],
+    "authors": "Fabian Bocanegra (via MCP)",
+    "name": "Fix H-L2-01: 500 solo si la entrega falló",
+    "description": "Updated nodes: Responder",
+    "autosaved": false,
+    "createdAt": "2026-10-03T16:31:32.463Z",
+    "updatedAt": "2026-10-03T16:31:32.463Z"
+  }
+}
