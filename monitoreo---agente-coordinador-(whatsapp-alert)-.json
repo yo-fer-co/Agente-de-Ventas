@@ -1,0 +1,462 @@
+{
+  "id": "AO8sHzPMq9tADXXd",
+  "name": "Monitoreo - Agente Coordinador (WhatsApp Alert)",
+  "active": true,
+  "activeVersionId": "1dfe1e8f-5f39-47c2-88f7-81a4209aed29",
+  "createdAt": "2026-08-26T03:07:27.174Z",
+  "updatedAt": "2026-08-26T03:09:20.570Z",
+  "isArchived": false,
+  "versionId": "1dfe1e8f-5f39-47c2-88f7-81a4209aed29",
+  "triggerCount": 1,
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {}
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.1,
+      "position": [
+        -912,
+        48
+      ],
+      "id": "2c2f5368-259a-4d56-985a-d8c1020b6fab",
+      "name": "Ejecutar Daily 9 AM"
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        -720,
+        48
+      ],
+      "id": "87c257f7-7f4c-4fa8-81ff-e5517f062586",
+      "name": "Crear mensaje de test"
+    },
+    {
+      "parameters": {
+        "operation": "send",
+        "phoneNumberId": "900258723180080",
+        "recipientPhoneNumber": "573228521626",
+        "textBody": "Test Agente",
+        "additionalFields": {}
+      },
+      "type": "n8n-nodes-base.whatsApp",
+      "typeVersion": 1,
+      "position": [
+        -528,
+        48
+      ],
+      "id": "3cdf2afa-21a3-4457-a1b6-98fc75043380",
+      "name": "Enviar mensaje de prueba al Agente",
+      "webhookId": "61f6220a-06c6-4d69-8305-8f95febcab46",
+      "credentials": {
+        "whatsAppApi": {
+          "id": "uxjDDXCt5mDphQ1e",
+          "name": "WhatsApp_BW:Dalia_sendMessage"
+        }
+      }
+    },
+    {
+      "parameters": {},
+      "type": "n8n-nodes-base.wait",
+      "typeVersion": 1.1,
+      "position": [
+        -320,
+        48
+      ],
+      "id": "f013fb45-b8d3-425d-9e61-ee5097a7e1e2",
+      "name": "Esperar respuesta (30s)",
+      "webhookId": "1e83ada0-f191-489d-9141-1edef338c528"
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        64,
+        128
+      ],
+      "id": "cf4f9000-2aec-4193-af80-deff9daf68b4",
+      "name": "Mensaje Error"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "leftValue": "={{ $json !== null && typeof $json === 'object' ? 'OK' : 'FAIL' }}",
+              "rightValue": "OK",
+              "operator": {
+                "type": "string",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [
+        -144,
+        48
+      ],
+      "id": "86a2aa5d-e3d2-4a15-ab58-5a9bc633f04f",
+      "name": "Hubo respuesta?"
+    },
+    {
+      "parameters": {
+        "operation": "send",
+        "phoneNumberId": "992551847276777",
+        "recipientPhoneNumber": "573183779152",
+        "textBody": "El agente de pruebas no esta funcionando",
+        "additionalFields": {}
+      },
+      "type": "n8n-nodes-base.whatsApp",
+      "typeVersion": 1,
+      "position": [
+        240,
+        128
+      ],
+      "id": "fce6844a-a696-4f80-9552-ba406dc57a27",
+      "name": "Notificar ERROR",
+      "webhookId": "e6460db2-4248-471b-9d5c-30596e0bd707",
+      "credentials": {
+        "whatsAppApi": {
+          "id": "VkoCC1dvkFgJX0Kc",
+          "name": "Pruebas nuevo numero enviar mensaje"
+        }
+      }
+    }
+  ],
+  "connections": {
+    "Ejecutar Daily 9 AM": {
+      "main": [
+        [
+          {
+            "node": "Crear mensaje de test",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Crear mensaje de test": {
+      "main": [
+        [
+          {
+            "node": "Enviar mensaje de prueba al Agente",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Enviar mensaje de prueba al Agente": {
+      "main": [
+        [
+          {
+            "node": "Esperar respuesta (30s)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Esperar respuesta (30s)": {
+      "main": [
+        [
+          {
+            "node": "Hubo respuesta?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Hubo respuesta?": {
+      "main": [
+        [],
+        [
+          {
+            "node": "Mensaje Error",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Mensaje Error": {
+      "main": [
+        [
+          {
+            "node": "Notificar ERROR",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "nodeGroups": [],
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate",
+    "availableInMCP": false
+  },
+  "staticData": {
+    "node:Ejecutar Daily 9 AM": {
+      "recurrenceRules": [
+        null
+      ],
+      "recurrenceRuleSignatures": [
+        null
+      ]
+    }
+  },
+  "pinData": {},
+  "meta": null,
+  "tags": [],
+  "shared": [
+    {
+      "role": "workflow:owner",
+      "workflowId": "AO8sHzPMq9tADXXd",
+      "projectId": "8h8pwWGcWlnGEym3",
+      "createdAt": "2026-08-26T03:07:27.175Z",
+      "updatedAt": "2026-08-26T03:07:27.175Z"
+    }
+  ],
+  "activeVersion": {
+    "versionId": "1dfe1e8f-5f39-47c2-88f7-81a4209aed29",
+    "workflowId": "AO8sHzPMq9tADXXd",
+    "nodes": [
+      {
+        "parameters": {
+          "rule": {
+            "interval": [
+              {}
+            ]
+          }
+        },
+        "type": "n8n-nodes-base.scheduleTrigger",
+        "typeVersion": 1.1,
+        "position": [
+          -912,
+          48
+        ],
+        "id": "2c2f5368-259a-4d56-985a-d8c1020b6fab",
+        "name": "Ejecutar Daily 9 AM"
+      },
+      {
+        "parameters": {
+          "options": {}
+        },
+        "type": "n8n-nodes-base.set",
+        "typeVersion": 3.4,
+        "position": [
+          -720,
+          48
+        ],
+        "id": "87c257f7-7f4c-4fa8-81ff-e5517f062586",
+        "name": "Crear mensaje de test"
+      },
+      {
+        "parameters": {
+          "operation": "send",
+          "phoneNumberId": "900258723180080",
+          "recipientPhoneNumber": "573228521626",
+          "textBody": "Test Agente",
+          "additionalFields": {}
+        },
+        "type": "n8n-nodes-base.whatsApp",
+        "typeVersion": 1,
+        "position": [
+          -528,
+          48
+        ],
+        "id": "3cdf2afa-21a3-4457-a1b6-98fc75043380",
+        "name": "Enviar mensaje de prueba al Agente",
+        "webhookId": "61f6220a-06c6-4d69-8305-8f95febcab46",
+        "credentials": {
+          "whatsAppApi": {
+            "id": "uxjDDXCt5mDphQ1e",
+            "name": "WhatsApp_BW:Dalia_sendMessage"
+          }
+        }
+      },
+      {
+        "parameters": {},
+        "type": "n8n-nodes-base.wait",
+        "typeVersion": 1.1,
+        "position": [
+          -320,
+          48
+        ],
+        "id": "f013fb45-b8d3-425d-9e61-ee5097a7e1e2",
+        "name": "Esperar respuesta (30s)",
+        "webhookId": "1e83ada0-f191-489d-9141-1edef338c528"
+      },
+      {
+        "parameters": {
+          "options": {}
+        },
+        "type": "n8n-nodes-base.set",
+        "typeVersion": 3.4,
+        "position": [
+          64,
+          128
+        ],
+        "id": "cf4f9000-2aec-4193-af80-deff9daf68b4",
+        "name": "Mensaje Error"
+      },
+      {
+        "parameters": {
+          "conditions": {
+            "options": {
+              "caseSensitive": true,
+              "leftValue": "",
+              "typeValidation": "strict",
+              "version": 2
+            },
+            "conditions": [
+              {
+                "leftValue": "={{ $json !== null && typeof $json === 'object' ? 'OK' : 'FAIL' }}",
+                "rightValue": "OK",
+                "operator": {
+                  "type": "string",
+                  "operation": "equals"
+                }
+              }
+            ],
+            "combinator": "and"
+          },
+          "options": {}
+        },
+        "type": "n8n-nodes-base.if",
+        "typeVersion": 2,
+        "position": [
+          -144,
+          48
+        ],
+        "id": "86a2aa5d-e3d2-4a15-ab58-5a9bc633f04f",
+        "name": "Hubo respuesta?"
+      },
+      {
+        "parameters": {
+          "operation": "send",
+          "phoneNumberId": "992551847276777",
+          "recipientPhoneNumber": "573183779152",
+          "textBody": "El agente de pruebas no esta funcionando",
+          "additionalFields": {}
+        },
+        "type": "n8n-nodes-base.whatsApp",
+        "typeVersion": 1,
+        "position": [
+          240,
+          128
+        ],
+        "id": "fce6844a-a696-4f80-9552-ba406dc57a27",
+        "name": "Notificar ERROR",
+        "webhookId": "e6460db2-4248-471b-9d5c-30596e0bd707",
+        "credentials": {
+          "whatsAppApi": {
+            "id": "VkoCC1dvkFgJX0Kc",
+            "name": "Pruebas nuevo numero enviar mensaje"
+          }
+        }
+      }
+    ],
+    "connections": {
+      "Ejecutar Daily 9 AM": {
+        "main": [
+          [
+            {
+              "node": "Crear mensaje de test",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Crear mensaje de test": {
+        "main": [
+          [
+            {
+              "node": "Enviar mensaje de prueba al Agente",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Enviar mensaje de prueba al Agente": {
+        "main": [
+          [
+            {
+              "node": "Esperar respuesta (30s)",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Esperar respuesta (30s)": {
+        "main": [
+          [
+            {
+              "node": "Hubo respuesta?",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Hubo respuesta?": {
+        "main": [
+          [],
+          [
+            {
+              "node": "Mensaje Error",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Mensaje Error": {
+        "main": [
+          [
+            {
+              "node": "Notificar ERROR",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      }
+    },
+    "nodeGroups": [],
+    "authors": "Kmilo Guerrero",
+    "name": "Version 1dfe1e8f",
+    "description": "",
+    "autosaved": false,
+    "createdAt": "2026-08-26T03:09:20.571Z",
+    "updatedAt": "2026-08-26T03:09:22.000Z"
+  }
+}
