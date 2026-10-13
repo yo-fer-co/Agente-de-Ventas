@@ -1,0 +1,157 @@
+{
+  "id": "e1lHZFJmp1VtqTzt",
+  "name": "DALIA_M8_Error_Logger",
+  "active": false,
+  "activeVersionId": null,
+  "createdAt": "2026-05-25T16:49:25.972Z",
+  "updatedAt": "2026-06-09T16:30:05.000Z",
+  "isArchived": true,
+  "versionId": "d3cfb029-d72b-493e-9cce-8718dadef9ee",
+  "triggerCount": 0,
+  "nodes": [
+    {
+      "parameters": {
+        "jsCode": "function clean(value) {\n if (value === null || value === undefined) return '';\n return String(value).trim();\n}\n\nfunction pick(...values) {\n for (const value of values) {\n   const cleaned = clean(value);\n   if (cleaned) return cleaned;\n }\n return '';\n}\n\nfunction inferModule(workflowName) {\n const name = clean(workflowName).toUpperCase();\n\n if (name.includes('M1')) return 'M1';\n if (name.includes('M2')) return 'M2';\n if (name.includes('M3')) return 'M3';\n if (name.includes('M4')) return 'M4';\n if (name.includes('M5')) return 'M5';\n if (name.includes('M6')) return 'M6';\n if (name.includes('M7')) return 'M7';\n if (name.includes('M8')) return 'M8';\n\n return 'SYSTEM';\n}\n\nconst input = items[0]?.json || {};\n\nconst error = input.error || {};\nconst execution = input.execution || {};\nconst workflow = input.workflow || {};\nconst node = input.node || {};\n\nconst workflowName = pick(\n workflow.name,\n input.workflowName,\n error.workflow,\n error.workflowName\n);\n\nconst nodeName = pick(\n node.name,\n input.nodeName,\n error.node,\n error.nodeName,\n execution.lastNodeExecuted\n);\n\nconst errorMessage = pick(\n error.message,\n error.errorMessage,\n input.errorMessage,\n input.message\n);\n\nconst errorCode = pick(\n error.code,\n error.error_code,\n input.errorCode,\n 'system_unhandled_workflow_error'\n);\n\nconst executionId = pick(\n execution.id,\n input.executionId\n);\n\nconst module = inferModule(workflowName);\n\nreturn [\n {\n   json: {\n     global_workflow_error: {\n       module,\n       workflow_name: workflowName || 'unknown_workflow',\n       node_name: nodeName || 'unknown_node',\n       execution_id: executionId,\n       error_code: errorCode,\n       error_message: errorMessage || 'Unhandled workflow error',\n       raw_error: input,\n       detected_at: new Date().toISOString()\n     }\n   }\n }\n];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        208,
+        0
+      ],
+      "id": "ed185e4b-59b5-4c28-9902-52f9cdb1c347",
+      "name": "Normalize Global Workflow Error"
+    },
+    {
+      "parameters": {
+        "jsCode": "function makeEventId(prefix = 'evt_error') {\n return `${prefix}_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;\n}\n\nconst input = items[0]?.json || {};\nconst err = input.global_workflow_error || {};\n\nconst event = {\n schema_version: 'dalia.m8.event_request.v1',\n event: {\n   event_id: makeEventId('evt_global_error'),\n   event_name: 'error',\n   event_type: 'error',\n   module: err.module || 'SYSTEM',\n   status: 'error',\n   level: 'ERROR',\n   timestamp: new Date().toISOString(),\n\n   trace: {\n     conversation_id: '',\n     session_id: '',\n     parent_event_id: ''\n   },\n\n   context: {\n     business_id: 'business_demo',\n     environment: 'demo',\n     channel: '',\n     user_id: ''\n   },\n\n   correlation: {\n     message_id: '',\n     transaction_id: '',\n     handoff_id: '',\n     correlation_id: err.execution_id || '',\n     trace_id: err.execution_id || ''\n   },\n\n   payload: {\n     error_source: 'global_error_trigger',\n     execution_id: err.execution_id || '',\n     workflow_name: err.workflow_name || '',\n     node_name: err.node_name || '',\n     recoverable: false\n   },\n\n   error: {\n     error_code: err.error_code || 'system_unhandled_workflow_error',\n     error_message: err.error_message || 'Unhandled workflow error',\n     error_node: err.node_name || '',\n     error_workflow: err.workflow_name || ''\n   },\n\n   metadata: {\n     raw_error_available: Boolean(err.raw_error),\n     detected_at: err.detected_at || new Date().toISOString()\n   }\n }\n};\n\nreturn [\n {\n   json: {\n     m8_event_request: event\n   }\n }\n];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        416,
+        0
+      ],
+      "id": "5c3116cc-43c4-4745-9f32-05bf7c53737e",
+      "name": "Build M8 Event - Global Error"
+    },
+    {
+      "parameters": {
+        "workflowId": {
+          "__rl": true,
+          "value": "sGL1OJ3lklD6wBu0",
+          "mode": "list",
+          "cachedResultUrl": "/workflow/sGL1OJ3lklD6wBu0",
+          "cachedResultName": "Agente de Ventas - TEST — M8 Observability"
+        },
+        "workflowInputs": {
+          "mappingMode": "defineBelow",
+          "value": {},
+          "matchingColumns": [],
+          "schema": [],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": true
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.executeWorkflow",
+      "typeVersion": 1.3,
+      "position": [
+        624,
+        0
+      ],
+      "id": "d206b875-ef27-4ccf-affb-916d7476ca00",
+      "name": "Execute M8 Observability Service",
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "jsCode": "const input = items[0]?.json || {};\n\nreturn [\n {\n   json: {\n     schema_version: 'dalia.m8.error_logger_result.v1',\n     success: true,\n     result_type: 'global_error_processed',\n     m8_result: input,\n     processed_at: new Date().toISOString()\n   }\n }\n];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        832,
+        0
+      ],
+      "id": "6e4cf353-4187-481b-bc2c-8ac392e32378",
+      "name": "Return Error Logger Result"
+    },
+    {
+      "parameters": {},
+      "type": "n8n-nodes-base.errorTrigger",
+      "typeVersion": 1,
+      "position": [
+        0,
+        0
+      ],
+      "id": "cf061fa3-587d-4f24-b3e9-54ae553598c3",
+      "name": "Error Trigger"
+    }
+  ],
+  "connections": {
+    "Normalize Global Workflow Error": {
+      "main": [
+        [
+          {
+            "node": "Build M8 Event - Global Error",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Build M8 Event - Global Error": {
+      "main": [
+        [
+          {
+            "node": "Execute M8 Observability Service",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Execute M8 Observability Service": {
+      "main": [
+        [
+          {
+            "node": "Return Error Logger Result",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Error Trigger": {
+      "main": [
+        [
+          {
+            "node": "Normalize Global Workflow Error",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "nodeGroups": [],
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate"
+  },
+  "staticData": null,
+  "pinData": {},
+  "meta": null,
+  "tags": [],
+  "shared": [
+    {
+      "role": "workflow:owner",
+      "workflowId": "e1lHZFJmp1VtqTzt",
+      "projectId": "tRHCC8ts4mkRGXGn",
+      "createdAt": "2026-05-25T16:49:25.975Z",
+      "updatedAt": "2026-05-25T16:49:25.975Z"
+    }
+  ],
+  "activeVersion": null
+}
