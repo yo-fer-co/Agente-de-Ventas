@@ -1,0 +1,172 @@
+{
+  "id": "ZpuqPHK9l0bLDgGg",
+  "name": "DALIA_SYS.04_Mantenimiento",
+  "active": true,
+  "activeVersionId": "d6657456-bc3c-4de6-85d3-5ad09cc0e3e3",
+  "createdAt": "2026-10-03T01:56:45.722Z",
+  "updatedAt": "2026-10-03T16:46:51.318Z",
+  "isArchived": false,
+  "versionId": "d6657456-bc3c-4de6-85d3-5ad09cc0e3e3",
+  "triggerCount": 1,
+  "nodes": [
+    {
+      "id": "d4b3e467-0ae7-45f3-abf3-f82bbd85017d",
+      "name": "Diario 03:10",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.4,
+      "position": [
+        0,
+        0
+      ],
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "days",
+              "daysInterval": 1,
+              "triggerAtHour": 3,
+              "triggerAtMinute": 10
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "c2d635cb-f0c5-4345-8e91-ea176f08601e",
+      "name": "Ejecutar mantenimiento",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.7,
+      "position": [
+        224,
+        0
+      ],
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "select dalia.sys_run_maintenance() as report;"
+      },
+      "credentials": {
+        "postgres": {
+          "id": "HfCgVAjUygK1vrkU",
+          "name": "DALIA dev Supabase"
+        }
+      }
+    }
+  ],
+  "connections": {
+    "Diario 03:10": {
+      "main": [
+        [
+          {
+            "node": "Ejecutar mantenimiento",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "nodeGroups": [],
+  "settings": {
+    "executionOrder": "v1",
+    "availableInMCP": true,
+    "errorWorkflow": "cjjQno2MxMTT3Icc",
+    "timezone": "America/Bogota",
+    "saveManualExecutions": true,
+    "saveDataErrorExecution": "all",
+    "saveDataSuccessExecution": "all",
+    "callerPolicy": "workflowsFromSameOwner"
+  },
+  "staticData": {
+    "node:Diario 03:10": {
+      "recurrenceRules": [
+        null
+      ],
+      "recurrenceRuleSignatures": [
+        null
+      ]
+    }
+  },
+  "pinData": null,
+  "meta": {
+    "aiBuilderAssisted": true,
+    "builderVariant": "mcp"
+  },
+  "tags": [],
+  "shared": [
+    {
+      "role": "workflow:owner",
+      "workflowId": "ZpuqPHK9l0bLDgGg",
+      "projectId": "tRHCC8ts4mkRGXGn",
+      "createdAt": "2026-10-09T21:09:17.753Z",
+      "updatedAt": "2026-10-09T21:09:17.753Z"
+    }
+  ],
+  "activeVersion": {
+    "versionId": "d6657456-bc3c-4de6-85d3-5ad09cc0e3e3",
+    "workflowId": "ZpuqPHK9l0bLDgGg",
+    "nodes": [
+      {
+        "id": "d4b3e467-0ae7-45f3-abf3-f82bbd85017d",
+        "name": "Diario 03:10",
+        "type": "n8n-nodes-base.scheduleTrigger",
+        "typeVersion": 1.4,
+        "position": [
+          0,
+          0
+        ],
+        "parameters": {
+          "rule": {
+            "interval": [
+              {
+                "field": "days",
+                "daysInterval": 1,
+                "triggerAtHour": 3,
+                "triggerAtMinute": 10
+              }
+            ]
+          }
+        }
+      },
+      {
+        "id": "c2d635cb-f0c5-4345-8e91-ea176f08601e",
+        "name": "Ejecutar mantenimiento",
+        "type": "n8n-nodes-base.postgres",
+        "typeVersion": 2.7,
+        "position": [
+          224,
+          0
+        ],
+        "parameters": {
+          "operation": "executeQuery",
+          "query": "select dalia.sys_run_maintenance() as report;"
+        },
+        "credentials": {
+          "postgres": {
+            "id": "HfCgVAjUygK1vrkU",
+            "name": "DALIA dev Supabase"
+          }
+        }
+      }
+    ],
+    "connections": {
+      "Diario 03:10": {
+        "main": [
+          [
+            {
+              "node": "Ejecutar mantenimiento",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      }
+    },
+    "nodeGroups": [],
+    "authors": "Fabian Bocanegra (via MCP)",
+    "name": "DALIA v1.0 lote 1 · instalación DEV",
+    "description": "Created with 2 nodes: Diario 03:10, Ejecutar mantenimiento",
+    "autosaved": false,
+    "createdAt": "2026-10-03T01:56:45.726Z",
+    "updatedAt": "2026-10-03T01:56:45.726Z"
+  }
+}
