@@ -1,0 +1,816 @@
+{
+  "id": "Ee1esji0c3v5xFSD",
+  "name": "Envia historial a Qdrant (PROD)",
+  "active": false,
+  "activeVersionId": null,
+  "createdAt": "2026-02-25T22:55:53.192Z",
+  "updatedAt": "2026-03-06T03:12:54.000Z",
+  "isArchived": true,
+  "versionId": "d5bf8688-5932-457a-af45-beccb9f845de",
+  "triggerCount": 1,
+  "nodes": [
+    {
+      "parameters": {
+        "options": {}
+      },
+      "type": "n8n-nodes-base.splitInBatches",
+      "typeVersion": 3,
+      "position": [
+        464,
+        -80
+      ],
+      "id": "5539a304-77c3-48ab-8471-868cd3d8698f",
+      "name": "Loop Over Items"
+    },
+    {
+      "parameters": {},
+      "type": "@n8n/n8n-nodes-langchain.toolThink",
+      "typeVersion": 1.1,
+      "position": [
+        1216,
+        144
+      ],
+      "id": "0e63d599-9ad1-4086-8349-bc40f9aa9d8b",
+      "name": "Think"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "27f204a6-6bdb-47e8-8e40-6a298b2d3b83",
+              "name": "texto",
+              "value": "={{ $('Agente de analisis').item.json.output }}",
+              "type": "string"
+            },
+            {
+              "id": "d4118ab4-cffa-4591-bfd4-5d7413a7e1e4",
+              "name": "data",
+              "value": "={{ $json.data[0].embedding }}",
+              "type": "array"
+            },
+            {
+              "id": "0dc322cd-2a52-4781-ab94-ab49e1eb6f87",
+              "name": "user_id",
+              "value": "={{ $('Loop Over Items').item.json.id }}",
+              "type": "number"
+            },
+            {
+              "id": "d2b2b3b0-2242-435a-a3b4-6887419caa65",
+              "name": "timestamp",
+              "value": "={{ $('toma filas por id y fecha').first().json.fecha }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        1824,
+        -64
+      ],
+      "id": "e21bef0f-1b57-4811-bf1a-12b86ff99d5d",
+      "name": "Edit Fields1"
+    },
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "triggerAtHour": 1
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.3,
+      "position": [
+        -256,
+        -80
+      ],
+      "id": "fd4306d3-3d53-4588-b231-1dafec3fd8a1",
+      "name": "Trigger tiempo"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Obtenemos la fecha de hoy y le restamos 1 día\nconst ayer = $today.minus({ days: 1 });\n\n// Formateamos como DD/MM/YYYY (ej: 19/11/2025)\n// Si tu Excel usa solo 2 dígitos para el año (25), usa 'dd/MM/yy'\nconst fechaFormateada = ayer.toFormat('dd/MM/yyyy'); \n\nreturn {\n  fecha_ayer: fechaFormateada\n};"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -96,
+        -80
+      ],
+      "id": "e2145053-34f6-493f-a9d4-85a4e5a24ac1",
+      "name": "Fecha ayer"
+    },
+    {
+      "parameters": {
+        "documentId": {
+          "__rl": true,
+          "value": "170WMmO1HEBNEPc_c0j4U-DIb5ur_eIFOQdYTq4l6PdA",
+          "mode": "list",
+          "cachedResultName": "Historial Baby's World Prod",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/170WMmO1HEBNEPc_c0j4U-DIb5ur_eIFOQdYTq4l6PdA/edit?usp=drivesdk"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "gid=0",
+          "mode": "list",
+          "cachedResultName": "Hoja 1",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1BBigXd9cM014ZVimnIvaXCcIVYuoHFDSq2ndYbWqAk8/edit#gid=0"
+        },
+        "filtersUI": {
+          "values": [
+            {
+              "lookupColumn": "fecha",
+              "lookupValue": "={{ $json.fecha_ayer }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [
+        64,
+        -80
+      ],
+      "id": "e1af9e73-2e24-48b0-943b-56ecd80db5e3",
+      "name": "Toma las filas de la fecha",
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "Pf0TYy2joLTmqt2C",
+          "name": "Google Sheets account 3"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "fieldsToSummarize": {
+          "values": [
+            {
+              "field": "id"
+            }
+          ]
+        },
+        "fieldsToSplitBy": "id",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.summarize",
+      "typeVersion": 1.1,
+      "position": [
+        256,
+        -80
+      ],
+      "id": "226f41ca-4335-4c8f-a161-5ff922446226",
+      "name": "organiza la cantidad por id"
+    },
+    {
+      "parameters": {
+        "documentId": {
+          "__rl": true,
+          "value": "170WMmO1HEBNEPc_c0j4U-DIb5ur_eIFOQdYTq4l6PdA",
+          "mode": "list",
+          "cachedResultName": "Historial Baby's World Prod",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/170WMmO1HEBNEPc_c0j4U-DIb5ur_eIFOQdYTq4l6PdA/edit?usp=drivesdk"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "gid=0",
+          "mode": "list",
+          "cachedResultName": "Hoja 1",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1BBigXd9cM014ZVimnIvaXCcIVYuoHFDSq2ndYbWqAk8/edit#gid=0"
+        },
+        "filtersUI": {
+          "values": [
+            {
+              "lookupColumn": "id",
+              "lookupValue": "={{ $node[\"Loop Over Items\"].json.id }}"
+            },
+            {
+              "lookupColumn": "fecha",
+              "lookupValue": "={{ $('Fecha ayer').item.json.fecha_ayer }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [
+        640,
+        -64
+      ],
+      "id": "d2e6e252-2ca5-40d2-ad55-66809edd583a",
+      "name": "toma filas por id y fecha",
+      "executeOnce": true,
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "Pf0TYy2joLTmqt2C",
+          "name": "Google Sheets account 3"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "fieldsToAggregate": {
+          "fieldToAggregate": [
+            {
+              "fieldToAggregate": "mensaje",
+              "renameField": true,
+              "outputFieldName": "historial"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.aggregate",
+      "typeVersion": 1,
+      "position": [
+        816,
+        -64
+      ],
+      "id": "0dec4c69-4bb2-4893-8237-a0d3a41d99c3",
+      "name": "Une mensajes por id"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.openai.com/v1/embeddings",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "openAiApi",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ { \"input\": $('Agente de analisis').item.json.output, \"model\": \"text-embedding-ada-002\" } }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        1664,
+        -64
+      ],
+      "id": "4dd99dd7-8776-4702-b143-023b0ac62c0e",
+      "name": "Embeddings",
+      "credentials": {
+        "qdrantApi": {
+          "id": "ZYv8vdr6tkTS4jYz",
+          "name": "QdrantApi account 3"
+        },
+        "openAiApi": {
+          "id": "LPsWoB91jlNHqeNc",
+          "name": "OpenAi_BW_Prod"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "// Loop over input items and add a new field called 'myNewField' to the JSON of each one\nfunction generateUUID() {\n  // genera UUID manualmente\n  return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) {\n    const r = Math.random() * 16 | 0;\n    const v = c === 'x' ? r : (r & 0x3 | 0x8);\n    return v.toString(16);\n  });\n}\n\nreturn [{\n  json: {\n    id: generateUUID(),\n    vector: $input.first().json.data,\n    user_id: $input.first().json.user_id,\n    timestap:$input.first().json.timestamp\n  }\n}];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        2000,
+        -64
+      ],
+      "id": "57efd4dd-0ee1-4719-99d6-6cf35fa567eb",
+      "name": "Preparar para qdrant"
+    },
+    {
+      "parameters": {
+        "method": "PUT",
+        "url": "={{ $vars.QDRANT_API_URL }}/collections/BabysWorld_Clientes/points",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "qdrantApi",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{\n{\n  points: [\n    {\n      id: $json.id ?? undefined,\n      vector: $json.vector,\n      payload: {\n          user_id: Number($json.user_id    ?? $json.user_id   ?? 0),\n          timestamp: $json.timestap\n      }\n    }\n  ]\n}\n}}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        2208,
+        -64
+      ],
+      "id": "81ec9cca-a327-44dd-a95f-9c2c6c49cd31",
+      "name": "Enviar a qdrant",
+      "credentials": {
+        "qdrantApi": {
+          "id": "ZYv8vdr6tkTS4jYz",
+          "name": "QdrantApi account 3"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "documentId": {
+          "__rl": true,
+          "value": "170WMmO1HEBNEPc_c0j4U-DIb5ur_eIFOQdYTq4l6PdA",
+          "mode": "list",
+          "cachedResultName": "Historial Baby's World Prod",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/170WMmO1HEBNEPc_c0j4U-DIb5ur_eIFOQdYTq4l6PdA/edit?usp=drivesdk"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "gid=0",
+          "mode": "list",
+          "cachedResultName": "Hoja 1",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/170WMmO1HEBNEPc_c0j4U-DIb5ur_eIFOQdYTq4l6PdA/edit#gid=0"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [
+        816,
+        -272
+      ],
+      "id": "dcb51f9a-1bae-43a2-a30b-7ccfd6612164",
+      "name": "Trae todas las filas",
+      "executeOnce": true,
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "Pf0TYy2joLTmqt2C",
+          "name": "Google Sheets account 3"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "c2e51c48-07a0-4732-bd66-b47fab2f484e",
+              "leftValue": "={{ DateTime.fromFormat($json[\"fecha\"], \"d/M/yyyy\").toMillis() }}",
+              "rightValue": "={{ DateTime.fromFormat($(\"Fecha 3 dias antes\").item.json[\"fecha_borrar\"], \"dd/MM/yyyy\").toMillis() }}",
+              "operator": {
+                "type": "number",
+                "operation": "lte"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "looseTypeValidation": true,
+        "options": {}
+      },
+      "type": "n8n-nodes-base.filter",
+      "typeVersion": 2.3,
+      "position": [
+        1008,
+        -272
+      ],
+      "id": "dd64bb05-74d8-4991-be8f-dda8ecc2d2f5",
+      "name": "Separa los que se deben borrar"
+    },
+    {
+      "parameters": {
+        "sortFieldsUi": {
+          "sortField": [
+            {
+              "fieldName": "row_number",
+              "order": "descending"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.sort",
+      "typeVersion": 1,
+      "position": [
+        1200,
+        -272
+      ],
+      "id": "498c714a-898a-469e-b4be-c54f3cd66d1c",
+      "name": "Organiza las filas a borrar"
+    },
+    {
+      "parameters": {
+        "operation": "delete",
+        "documentId": {
+          "__rl": true,
+          "value": "170WMmO1HEBNEPc_c0j4U-DIb5ur_eIFOQdYTq4l6PdA",
+          "mode": "list",
+          "cachedResultName": "Historial Baby's World Prod",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/170WMmO1HEBNEPc_c0j4U-DIb5ur_eIFOQdYTq4l6PdA/edit?usp=drivesdk"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "gid=0",
+          "mode": "list",
+          "cachedResultName": "Hoja 1",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1Q624fkYOAPklph6BMVpd4tDEKeU7Qqzj3BUnhKSvSv0/edit#gid=0"
+        },
+        "startIndex": "={{ $json.row_number }}"
+      },
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [
+        1392,
+        -272
+      ],
+      "id": "62b0d617-cf3b-4eeb-9929-4f74cb1561af",
+      "name": "Borrar las filas",
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "Pf0TYy2joLTmqt2C",
+          "name": "Google Sheets account 3"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "=Actúa como un analista de datos experto. Tu objetivo es procesar la conversación adjunta entre el asistente virtual 'Dalia' y un cliente para extraer la siguiente estructura:\n\nDATOS BÁSICOS: Extrae nombre, edad, dirección y ciudad. (Si no aparecen, escribe 'No proporcionado').\n\nPRODUCTOS: Identifica qué productos fueron:\n\nConsultados (solo preguntó).\n\nCotizados (preguntó precio o pidió presupuesto).\n\nComprados (confirmó la adquisición).\n\nANÁLISIS SENTIMENTAL: Describe el tono del cliente durante la charla (ej: interesado, frustrado, satisfecho).\n\nCONVERSACIÓN A ANALIZAR: {{ $json.historial.join('\\n') }}\n\nResponde únicamente con el objeto JSON válido adicionando los campos que miden el volumen de información procesada.\n\nEjemplo de salida:\n\nJSON\n{ \n  \"mensaje\": \"este diseño me gusta\", \n  \"completion_tokens\": 123, //tokens de salida usados\n  \"prompt_tokens\": 456, //tokens de entrada usados\n  \"total_tokens\": 579 //suma de los tokens usados\n  \"model_name\": \"model name\"\n  \"ai_response\": \"ai response\" //la respuesta del modelo\n}",
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 3.1,
+      "position": [
+        1008,
+        -64
+      ],
+      "id": "7bebd96b-0802-4b22-9a4d-a3d187d5f140",
+      "name": "Agente de analisis"
+    },
+    {
+      "parameters": {
+        "model": {
+          "__rl": true,
+          "mode": "list",
+          "value": "gpt-4.1-mini"
+        },
+        "builtInTools": {},
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatOpenAi",
+      "typeVersion": 1.3,
+      "position": [
+        944,
+        144
+      ],
+      "id": "0880feec-68fe-47ba-942e-e0c46f046aaf",
+      "name": "Modelo de chat",
+      "credentials": {
+        "openAiApi": {
+          "id": "LPsWoB91jlNHqeNc",
+          "name": "OpenAi_BW_Prod"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "sessionIdType": "customKey",
+        "sessionKey": "={{ $('Loop Over Items').item.json.id }}"
+      },
+      "type": "@n8n/n8n-nodes-langchain.memoryBufferWindow",
+      "typeVersion": 1.3,
+      "position": [
+        1088,
+        144
+      ],
+      "id": "a2b29d5a-eb9a-4e94-8f2f-fbdc26ab26d0",
+      "name": "Memoria"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Obtenemos la fecha de hoy y le restamos 2 dias\nconst ayer = $today.minus({ days: 3 });\n\n// Formateamos como DD/MM/YYYY (ej: 19/11/2025)\n// Si tu Excel usa solo 2 dígitos para el año (25), usa 'dd/MM/yy'\nconst fechaFormateada = ayer.toFormat('dd/MM/yyyy'); \n\nreturn {\n  fecha_borrar: fechaFormateada\n};"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        640,
+        -272
+      ],
+      "id": "cad0690f-1c95-412b-a945-60c847e63a0b",
+      "name": "Fecha 3 dias antes"
+    },
+    {
+      "parameters": {
+        "jsCode": "const tokenUsage = JSON.parse($('Agente de analisis').item.json.output);\nconst now = Date.now();\n\nreturn {\n  process_id: \"coordinating_agent\",\n  model_name: tokenUsage.model_name,\n  prompt_tokens: tokenUsage.prompt_tokens,\n  completion_tokens: tokenUsage.completion_tokens,\n  total_tokens: tokenUsage.total_tokens,\n  ai_response: tokenUsage.ai_response,\n  completed_at: now,\n  created_at: now,\n  environment: 'ist'\n};"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1280,
+        -64
+      ],
+      "id": "8a988052-57c9-4f57-9de5-0f1ee0d05336",
+      "name": "build_token_usage_dto"
+    },
+    {
+      "parameters": {
+        "workflowId": {
+          "__rl": true,
+          "value": "tcaP6eeFBs9mshHK",
+          "mode": "list",
+          "cachedResultUrl": "/workflow/tcaP6eeFBs9mshHK",
+          "cachedResultName": "Babys World — ai_usage_log (PROD)"
+        },
+        "workflowInputs": {
+          "mappingMode": "passThrough",
+          "value": {},
+          "matchingColumns": [],
+          "schema": [],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": true
+        },
+        "mode": "each",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.executeWorkflow",
+      "typeVersion": 1.3,
+      "position": [
+        1472,
+        -64
+      ],
+      "id": "d6444b56-cf3c-475a-96e1-26fdc97ffed0",
+      "name": "Call 'ai_usage_log (PROD)'"
+    }
+  ],
+  "connections": {
+    "Loop Over Items": {
+      "main": [
+        [
+          {
+            "node": "Fecha 3 dias antes",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "toma filas por id y fecha",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Think": {
+      "ai_tool": [
+        [
+          {
+            "node": "Agente de analisis",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Edit Fields1": {
+      "main": [
+        [
+          {
+            "node": "Preparar para qdrant",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Trigger tiempo": {
+      "main": [
+        [
+          {
+            "node": "Fecha ayer",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Fecha ayer": {
+      "main": [
+        [
+          {
+            "node": "Toma las filas de la fecha",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Toma las filas de la fecha": {
+      "main": [
+        [
+          {
+            "node": "organiza la cantidad por id",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "organiza la cantidad por id": {
+      "main": [
+        [
+          {
+            "node": "Loop Over Items",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "toma filas por id y fecha": {
+      "main": [
+        [
+          {
+            "node": "Une mensajes por id",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Une mensajes por id": {
+      "main": [
+        [
+          {
+            "node": "Agente de analisis",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Embeddings": {
+      "main": [
+        [
+          {
+            "node": "Edit Fields1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Preparar para qdrant": {
+      "main": [
+        [
+          {
+            "node": "Enviar a qdrant",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Enviar a qdrant": {
+      "main": [
+        [
+          {
+            "node": "Loop Over Items",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Trae todas las filas": {
+      "main": [
+        [
+          {
+            "node": "Separa los que se deben borrar",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Separa los que se deben borrar": {
+      "main": [
+        [
+          {
+            "node": "Organiza las filas a borrar",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Organiza las filas a borrar": {
+      "main": [
+        [
+          {
+            "node": "Borrar las filas",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Agente de analisis": {
+      "main": [
+        [
+          {
+            "node": "build_token_usage_dto",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Modelo de chat": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "Agente de analisis",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Memoria": {
+      "ai_memory": [
+        [
+          {
+            "node": "Agente de analisis",
+            "type": "ai_memory",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Fecha 3 dias antes": {
+      "main": [
+        [
+          {
+            "node": "Trae todas las filas",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "build_token_usage_dto": {
+      "main": [
+        [
+          {
+            "node": "Call 'ai_usage_log (PROD)'",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Call 'ai_usage_log (PROD)'": {
+      "main": [
+        [
+          {
+            "node": "Embeddings",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "nodeGroups": [],
+  "settings": {
+    "executionOrder": "v1",
+    "availableInMCP": false,
+    "timeSavedMode": "fixed",
+    "callerPolicy": "workflowsFromSameOwner",
+    "errorWorkflow": "GZN4CJ6QgYxm77J7"
+  },
+  "staticData": {
+    "node:Trigger tiempo": {
+      "recurrenceRules": []
+    }
+  },
+  "pinData": {},
+  "meta": {
+    "templateCredsSetupCompleted": true
+  },
+  "tags": [
+    {
+      "id": "2nDb4zfpAXOj9Pvx",
+      "name": "env:prod",
+      "createdAt": "2026-02-25T21:45:46.330Z",
+      "updatedAt": "2026-02-25T21:45:46.330Z"
+    }
+  ],
+  "shared": [
+    {
+      "role": "workflow:owner",
+      "workflowId": "Ee1esji0c3v5xFSD",
+      "projectId": "8h8pwWGcWlnGEym3",
+      "createdAt": "2026-02-25T22:55:53.196Z",
+      "updatedAt": "2026-02-25T22:55:53.196Z"
+    }
+  ],
+  "activeVersion": null
+}
