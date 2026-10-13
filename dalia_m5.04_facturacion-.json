@@ -1,0 +1,1531 @@
+{
+  "id": "oLGcMTLOoLWeg2JT",
+  "name": "DALIA_M5.04_Facturacion",
+  "active": true,
+  "activeVersionId": "96445069-41db-461a-ab4e-d1369a48f070",
+  "createdAt": "2026-10-05T20:00:11.469Z",
+  "updatedAt": "2026-10-05T20:03:25.981Z",
+  "isArchived": false,
+  "versionId": "96445069-41db-461a-ab4e-d1369a48f070",
+  "triggerCount": 0,
+  "nodes": [
+    {
+      "id": "dec0cdf2-a4d1-4cdb-9fa3-a2328fdede82",
+      "name": "Entrada",
+      "type": "n8n-nodes-base.executeWorkflowTrigger",
+      "typeVersion": 1.2,
+      "position": [
+        0,
+        560
+      ],
+      "parameters": {
+        "inputSource": "passthrough"
+      }
+    },
+    {
+      "id": "1452aa6d-fad3-4af1-b92c-0cda3571b581",
+      "name": "Tipo",
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 3.2,
+      "position": [
+        224,
+        528
+      ],
+      "parameters": {
+        "rules": {
+          "values": [
+            {
+              "outputKey": "ejecutar",
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict"
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $json.type ?? \"m5.execute\" }}",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    },
+                    "rightValue": "m5.execute"
+                  },
+                  {
+                    "leftValue": "={{ $json.type ?? \"m5.execute\" }}",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    },
+                    "rightValue": "m5.invoice_op"
+                  }
+                ],
+                "combinator": "or"
+              }
+            },
+            {
+              "outputKey": "evento",
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict"
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $json.type ?? \"m5.execute\" }}",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    },
+                    "rightValue": "m5.invoice_event"
+                  }
+                ],
+                "combinator": "or"
+              }
+            },
+            {
+              "outputKey": "verificar",
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict"
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $json.type ?? \"m5.execute\" }}",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    },
+                    "rightValue": "m5.invoice_check"
+                  }
+                ],
+                "combinator": "or"
+              }
+            }
+          ]
+        },
+        "options": {
+          "fallbackOutput": "extra",
+          "renameFallbackOutput": "Desconocido"
+        }
+      }
+    },
+    {
+      "id": "c0b2d159-2f3f-42aa-a333-f95f1e264aa1",
+      "name": "Reclamar operacion",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.7,
+      "position": [
+        448,
+        80
+      ],
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "select dalia.m5_claim_operation($1::uuid) as c;",
+        "options": {
+          "queryReplacement": "={{ [ $json.payload?.operation_id ?? $json.operation_id ?? null ] }}"
+        }
+      },
+      "credentials": {
+        "postgres": {
+          "id": "HfCgVAjUygK1vrkU",
+          "name": "DALIA dev Supabase"
+        }
+      }
+    },
+    {
+      "id": "0c3f282f-3717-4a6b-a74a-081c27a01a92",
+      "name": "Puede ejecutar",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        672,
+        80
+      ],
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose"
+          },
+          "conditions": [
+            {
+              "leftValue": "={{ $json.c.ok === true }}",
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        }
+      }
+    },
+    {
+      "id": "26816bd1-940d-4ab2-8072-f550a7359576",
+      "name": "Preparar llamada",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        896,
+        0
+      ],
+      "parameters": {
+        "mode": "manual",
+        "includeOtherFields": false,
+        "assignments": {
+          "assignments": [
+            {
+              "id": "p1",
+              "name": "port",
+              "value": "={{ $json.c.port_request.port }}",
+              "type": "string"
+            },
+            {
+              "id": "p2",
+              "name": "operation",
+              "value": "={{ $json.c.port_request.operation }}",
+              "type": "string"
+            },
+            {
+              "id": "p3",
+              "name": "input",
+              "value": "={{ $json.c.port_request.input }}",
+              "type": "object"
+            },
+            {
+              "id": "p4",
+              "name": "envelope",
+              "value": "={{ $json.c.port_request.envelope ?? {} }}",
+              "type": "object"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "627b82fb-3331-4eb5-a08a-7731246ad760",
+      "name": "Facturacion por INT.port",
+      "type": "n8n-nodes-base.executeWorkflow",
+      "typeVersion": 1.3,
+      "position": [
+        1120,
+        0
+      ],
+      "parameters": {
+        "mode": "each",
+        "source": "database",
+        "workflowId": {
+          "__rl": true,
+          "mode": "id",
+          "value": "5gbpWhv0zIA8bZ0w"
+        },
+        "options": {
+          "waitForSubWorkflow": true
+        }
+      }
+    },
+    {
+      "id": "3f3e84f4-54c1-4697-804b-5fcb1dfc7251",
+      "name": "Registrar intento",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.7,
+      "position": [
+        1344,
+        0
+      ],
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "select dalia.m5_record_attempt($1::uuid, $2::jsonb) as result;",
+        "options": {
+          "queryReplacement": "={{ [ $(\"Reclamar operacion\").first().json.c.operation_id, JSON.stringify($json) ] }}"
+        }
+      },
+      "credentials": {
+        "postgres": {
+          "id": "HfCgVAjUygK1vrkU",
+          "name": "DALIA dev Supabase"
+        }
+      }
+    },
+    {
+      "id": "ab2caadf-e312-4215-a7e4-4123ee473b97",
+      "name": "Es job",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        1568,
+        272
+      ],
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose"
+          },
+          "conditions": [
+            {
+              "leftValue": "={{ !!$(\"Entrada\").first().json.job_id }}",
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        }
+      }
+    },
+    {
+      "id": "e250e9c6-c74f-47a0-a1cb-b205b8899468",
+      "name": "Aplicar evento",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.7,
+      "position": [
+        1344,
+        320
+      ],
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "select dalia.m5_apply_invoice_event($1::jsonb, 'webhook') as result;",
+        "options": {
+          "queryReplacement": "={{ [ JSON.stringify($json.payload ?? {}) ] }}"
+        }
+      },
+      "credentials": {
+        "postgres": {
+          "id": "HfCgVAjUygK1vrkU",
+          "name": "DALIA dev Supabase"
+        }
+      },
+      "onError": "continueErrorOutput"
+    },
+    {
+      "id": "1c254ac1-32b3-4dda-95a1-35e3a333c4bf",
+      "name": "Paso de consulta de factura",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.7,
+      "position": [
+        448,
+        656
+      ],
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "select dalia.m5_invoice_check_step($1::uuid) as step;",
+        "options": {
+          "queryReplacement": "={{ [ $json.payload?.transaction_id ?? null ] }}"
+        }
+      },
+      "credentials": {
+        "postgres": {
+          "id": "HfCgVAjUygK1vrkU",
+          "name": "DALIA dev Supabase"
+        }
+      },
+      "onError": "continueErrorOutput"
+    },
+    {
+      "id": "edd43036-941d-4b4f-aa7d-1aebb6ad7b8d",
+      "name": "Consultar consulta de factura",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        672,
+        576
+      ],
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose"
+          },
+          "conditions": [
+            {
+              "leftValue": "={{ $json.step.action === \"port\" }}",
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        }
+      }
+    },
+    {
+      "id": "f043cc8a-f2cd-45b8-8f13-f8f58c0ffb22",
+      "name": "Preparar consulta de consulta de factura",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        896,
+        512
+      ],
+      "parameters": {
+        "mode": "manual",
+        "includeOtherFields": false,
+        "assignments": {
+          "assignments": [
+            {
+              "id": "p1",
+              "name": "port",
+              "value": "={{ $json.step.port_request.port }}",
+              "type": "string"
+            },
+            {
+              "id": "p2",
+              "name": "operation",
+              "value": "={{ $json.step.port_request.operation }}",
+              "type": "string"
+            },
+            {
+              "id": "p3",
+              "name": "input",
+              "value": "={{ $json.step.port_request.input }}",
+              "type": "object"
+            },
+            {
+              "id": "p4",
+              "name": "envelope",
+              "value": "={{ $json.step.port_request.envelope ?? {} }}",
+              "type": "object"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "e22a0988-81d2-4298-ac0c-fcacfc6ab87d",
+      "name": "Estado de la factura por INT.port",
+      "type": "n8n-nodes-base.executeWorkflow",
+      "typeVersion": 1.3,
+      "position": [
+        1120,
+        512
+      ],
+      "parameters": {
+        "mode": "each",
+        "source": "database",
+        "workflowId": {
+          "__rl": true,
+          "mode": "id",
+          "value": "5gbpWhv0zIA8bZ0w"
+        },
+        "options": {
+          "waitForSubWorkflow": true
+        }
+      }
+    },
+    {
+      "id": "12db5b28-ad92-4ba6-bc1a-accd9b383546",
+      "name": "Aplicar consulta de factura",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.7,
+      "position": [
+        1344,
+        512
+      ],
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "select dalia.m5_apply_invoice_check($1::uuid, $2::jsonb) as result;",
+        "options": {
+          "queryReplacement": "={{ [ $(\"Paso de consulta de factura\").first().json.step.transaction_id, JSON.stringify($json) ] }}"
+        }
+      },
+      "credentials": {
+        "postgres": {
+          "id": "HfCgVAjUygK1vrkU",
+          "name": "DALIA dev Supabase"
+        }
+      },
+      "onError": "continueErrorOutput"
+    },
+    {
+      "id": "92732362-9470-4a8f-a9d3-237f47b902f0",
+      "name": "Fallar job (tipo desconocido)",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.7,
+      "position": [
+        448,
+        848
+      ],
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "select dalia.sys_fail_job($1::uuid, $2::jsonb, false) as job_status;",
+        "options": {
+          "queryReplacement": "={{ [ $(\"Entrada\").first().json.job_id, JSON.stringify({ code: \"UNKNOWN_JOB_TYPE\", message: $(\"Entrada\").first().json.type }) ] }}"
+        }
+      },
+      "credentials": {
+        "postgres": {
+          "id": "HfCgVAjUygK1vrkU",
+          "name": "DALIA dev Supabase"
+        }
+      }
+    },
+    {
+      "id": "1152f526-bb4d-4e7a-b735-6caa18c9de8d",
+      "name": "Completar job",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.7,
+      "position": [
+        1792,
+        224
+      ],
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "select dalia.sys_complete_job($1::uuid, $2::jsonb) as job_status;",
+        "options": {
+          "queryReplacement": "={{ [ $(\"Entrada\").first().json.job_id, JSON.stringify($json.result ?? $json.c ?? $json.step ?? {}) ] }}"
+        }
+      },
+      "credentials": {
+        "postgres": {
+          "id": "HfCgVAjUygK1vrkU",
+          "name": "DALIA dev Supabase"
+        }
+      }
+    },
+    {
+      "id": "97efb774-29e8-44d4-a61e-7d0eed60b558",
+      "name": "Salida",
+      "type": "n8n-nodes-base.noOp",
+      "typeVersion": 1,
+      "position": [
+        1792,
+        416
+      ],
+      "parameters": {},
+      "notes": "H-L9-02: sin job, el resultado sale por la salida 0 hacia quien llamó"
+    },
+    {
+      "id": "8541474a-5225-4a61-a4cc-0fd7822127a3",
+      "name": "Fallar job (reintentable)",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.7,
+      "position": [
+        1568,
+        608
+      ],
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "select dalia.sys_fail_job($1::uuid, $2::jsonb, true) as job_status;",
+        "options": {
+          "queryReplacement": "={{ [ $(\"Entrada\").first().json.job_id, JSON.stringify({ code: \"HANDLER_ERROR\", message: $json.error?.message ?? $json.error ?? \"reintentar\" }) ] }}"
+        }
+      },
+      "credentials": {
+        "postgres": {
+          "id": "HfCgVAjUygK1vrkU",
+          "name": "DALIA dev Supabase"
+        }
+      }
+    }
+  ],
+  "connections": {
+    "Entrada": {
+      "main": [
+        [
+          {
+            "node": "Tipo",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Tipo": {
+      "main": [
+        [
+          {
+            "node": "Reclamar operacion",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Aplicar evento",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Paso de consulta de factura",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Fallar job (tipo desconocido)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Reclamar operacion": {
+      "main": [
+        [
+          {
+            "node": "Puede ejecutar",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Puede ejecutar": {
+      "main": [
+        [
+          {
+            "node": "Preparar llamada",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Es job",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Preparar llamada": {
+      "main": [
+        [
+          {
+            "node": "Facturacion por INT.port",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Facturacion por INT.port": {
+      "main": [
+        [
+          {
+            "node": "Registrar intento",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Registrar intento": {
+      "main": [
+        [
+          {
+            "node": "Es job",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Es job": {
+      "main": [
+        [
+          {
+            "node": "Completar job",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Salida",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Aplicar evento": {
+      "main": [
+        [
+          {
+            "node": "Es job",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Fallar job (reintentable)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Paso de consulta de factura": {
+      "main": [
+        [
+          {
+            "node": "Consultar consulta de factura",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Fallar job (reintentable)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Consultar consulta de factura": {
+      "main": [
+        [
+          {
+            "node": "Preparar consulta de consulta de factura",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Es job",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Preparar consulta de consulta de factura": {
+      "main": [
+        [
+          {
+            "node": "Estado de la factura por INT.port",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Estado de la factura por INT.port": {
+      "main": [
+        [
+          {
+            "node": "Aplicar consulta de factura",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Aplicar consulta de factura": {
+      "main": [
+        [
+          {
+            "node": "Es job",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Fallar job (reintentable)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "nodeGroups": [],
+  "settings": {
+    "executionOrder": "v1",
+    "availableInMCP": true,
+    "errorWorkflow": "cjjQno2MxMTT3Icc",
+    "timezone": "America/Bogota",
+    "saveDataSuccessExecution": "none",
+    "callerPolicy": "workflowsFromSameOwner"
+  },
+  "staticData": null,
+  "pinData": null,
+  "meta": {
+    "aiBuilderAssisted": true,
+    "builderVariant": "mcp"
+  },
+  "tags": [],
+  "shared": [
+    {
+      "role": "workflow:owner",
+      "workflowId": "oLGcMTLOoLWeg2JT",
+      "projectId": "tRHCC8ts4mkRGXGn",
+      "createdAt": "2026-10-09T21:09:17.836Z",
+      "updatedAt": "2026-10-09T21:09:17.836Z"
+    }
+  ],
+  "activeVersion": {
+    "versionId": "96445069-41db-461a-ab4e-d1369a48f070",
+    "workflowId": "oLGcMTLOoLWeg2JT",
+    "nodes": [
+      {
+        "id": "dec0cdf2-a4d1-4cdb-9fa3-a2328fdede82",
+        "name": "Entrada",
+        "type": "n8n-nodes-base.executeWorkflowTrigger",
+        "typeVersion": 1.2,
+        "position": [
+          0,
+          560
+        ],
+        "parameters": {
+          "inputSource": "passthrough"
+        }
+      },
+      {
+        "id": "1452aa6d-fad3-4af1-b92c-0cda3571b581",
+        "name": "Tipo",
+        "type": "n8n-nodes-base.switch",
+        "typeVersion": 3.2,
+        "position": [
+          224,
+          528
+        ],
+        "parameters": {
+          "rules": {
+            "values": [
+              {
+                "outputKey": "ejecutar",
+                "conditions": {
+                  "options": {
+                    "caseSensitive": true,
+                    "leftValue": "",
+                    "typeValidation": "strict"
+                  },
+                  "conditions": [
+                    {
+                      "leftValue": "={{ $json.type ?? \"m5.execute\" }}",
+                      "operator": {
+                        "type": "string",
+                        "operation": "equals"
+                      },
+                      "rightValue": "m5.execute"
+                    },
+                    {
+                      "leftValue": "={{ $json.type ?? \"m5.execute\" }}",
+                      "operator": {
+                        "type": "string",
+                        "operation": "equals"
+                      },
+                      "rightValue": "m5.invoice_op"
+                    }
+                  ],
+                  "combinator": "or"
+                }
+              },
+              {
+                "outputKey": "evento",
+                "conditions": {
+                  "options": {
+                    "caseSensitive": true,
+                    "leftValue": "",
+                    "typeValidation": "strict"
+                  },
+                  "conditions": [
+                    {
+                      "leftValue": "={{ $json.type ?? \"m5.execute\" }}",
+                      "operator": {
+                        "type": "string",
+                        "operation": "equals"
+                      },
+                      "rightValue": "m5.invoice_event"
+                    }
+                  ],
+                  "combinator": "or"
+                }
+              },
+              {
+                "outputKey": "verificar",
+                "conditions": {
+                  "options": {
+                    "caseSensitive": true,
+                    "leftValue": "",
+                    "typeValidation": "strict"
+                  },
+                  "conditions": [
+                    {
+                      "leftValue": "={{ $json.type ?? \"m5.execute\" }}",
+                      "operator": {
+                        "type": "string",
+                        "operation": "equals"
+                      },
+                      "rightValue": "m5.invoice_check"
+                    }
+                  ],
+                  "combinator": "or"
+                }
+              }
+            ]
+          },
+          "options": {
+            "fallbackOutput": "extra",
+            "renameFallbackOutput": "Desconocido"
+          }
+        }
+      },
+      {
+        "id": "c0b2d159-2f3f-42aa-a333-f95f1e264aa1",
+        "name": "Reclamar operacion",
+        "type": "n8n-nodes-base.postgres",
+        "typeVersion": 2.7,
+        "position": [
+          448,
+          80
+        ],
+        "parameters": {
+          "operation": "executeQuery",
+          "query": "select dalia.m5_claim_operation($1::uuid) as c;",
+          "options": {
+            "queryReplacement": "={{ [ $json.payload?.operation_id ?? $json.operation_id ?? null ] }}"
+          }
+        },
+        "credentials": {
+          "postgres": {
+            "id": "HfCgVAjUygK1vrkU",
+            "name": "DALIA dev Supabase"
+          }
+        }
+      },
+      {
+        "id": "0c3f282f-3717-4a6b-a74a-081c27a01a92",
+        "name": "Puede ejecutar",
+        "type": "n8n-nodes-base.if",
+        "typeVersion": 2.2,
+        "position": [
+          672,
+          80
+        ],
+        "parameters": {
+          "conditions": {
+            "options": {
+              "caseSensitive": true,
+              "leftValue": "",
+              "typeValidation": "loose"
+            },
+            "conditions": [
+              {
+                "leftValue": "={{ $json.c.ok === true }}",
+                "operator": {
+                  "type": "boolean",
+                  "operation": "true",
+                  "singleValue": true
+                }
+              }
+            ],
+            "combinator": "and"
+          }
+        }
+      },
+      {
+        "id": "26816bd1-940d-4ab2-8072-f550a7359576",
+        "name": "Preparar llamada",
+        "type": "n8n-nodes-base.set",
+        "typeVersion": 3.4,
+        "position": [
+          896,
+          0
+        ],
+        "parameters": {
+          "mode": "manual",
+          "includeOtherFields": false,
+          "assignments": {
+            "assignments": [
+              {
+                "id": "p1",
+                "name": "port",
+                "value": "={{ $json.c.port_request.port }}",
+                "type": "string"
+              },
+              {
+                "id": "p2",
+                "name": "operation",
+                "value": "={{ $json.c.port_request.operation }}",
+                "type": "string"
+              },
+              {
+                "id": "p3",
+                "name": "input",
+                "value": "={{ $json.c.port_request.input }}",
+                "type": "object"
+              },
+              {
+                "id": "p4",
+                "name": "envelope",
+                "value": "={{ $json.c.port_request.envelope ?? {} }}",
+                "type": "object"
+              }
+            ]
+          }
+        }
+      },
+      {
+        "id": "627b82fb-3331-4eb5-a08a-7731246ad760",
+        "name": "Facturacion por INT.port",
+        "type": "n8n-nodes-base.executeWorkflow",
+        "typeVersion": 1.3,
+        "position": [
+          1120,
+          0
+        ],
+        "parameters": {
+          "mode": "each",
+          "source": "database",
+          "workflowId": {
+            "__rl": true,
+            "mode": "id",
+            "value": "5gbpWhv0zIA8bZ0w"
+          },
+          "options": {
+            "waitForSubWorkflow": true
+          }
+        }
+      },
+      {
+        "id": "3f3e84f4-54c1-4697-804b-5fcb1dfc7251",
+        "name": "Registrar intento",
+        "type": "n8n-nodes-base.postgres",
+        "typeVersion": 2.7,
+        "position": [
+          1344,
+          0
+        ],
+        "parameters": {
+          "operation": "executeQuery",
+          "query": "select dalia.m5_record_attempt($1::uuid, $2::jsonb) as result;",
+          "options": {
+            "queryReplacement": "={{ [ $(\"Reclamar operacion\").first().json.c.operation_id, JSON.stringify($json) ] }}"
+          }
+        },
+        "credentials": {
+          "postgres": {
+            "id": "HfCgVAjUygK1vrkU",
+            "name": "DALIA dev Supabase"
+          }
+        }
+      },
+      {
+        "id": "ab2caadf-e312-4215-a7e4-4123ee473b97",
+        "name": "Es job",
+        "type": "n8n-nodes-base.if",
+        "typeVersion": 2.2,
+        "position": [
+          1568,
+          272
+        ],
+        "parameters": {
+          "conditions": {
+            "options": {
+              "caseSensitive": true,
+              "leftValue": "",
+              "typeValidation": "loose"
+            },
+            "conditions": [
+              {
+                "leftValue": "={{ !!$(\"Entrada\").first().json.job_id }}",
+                "operator": {
+                  "type": "boolean",
+                  "operation": "true",
+                  "singleValue": true
+                }
+              }
+            ],
+            "combinator": "and"
+          }
+        }
+      },
+      {
+        "id": "e250e9c6-c74f-47a0-a1cb-b205b8899468",
+        "name": "Aplicar evento",
+        "type": "n8n-nodes-base.postgres",
+        "typeVersion": 2.7,
+        "position": [
+          1344,
+          320
+        ],
+        "parameters": {
+          "operation": "executeQuery",
+          "query": "select dalia.m5_apply_invoice_event($1::jsonb, 'webhook') as result;",
+          "options": {
+            "queryReplacement": "={{ [ JSON.stringify($json.payload ?? {}) ] }}"
+          }
+        },
+        "credentials": {
+          "postgres": {
+            "id": "HfCgVAjUygK1vrkU",
+            "name": "DALIA dev Supabase"
+          }
+        },
+        "onError": "continueErrorOutput"
+      },
+      {
+        "id": "1c254ac1-32b3-4dda-95a1-35e3a333c4bf",
+        "name": "Paso de consulta de factura",
+        "type": "n8n-nodes-base.postgres",
+        "typeVersion": 2.7,
+        "position": [
+          448,
+          656
+        ],
+        "parameters": {
+          "operation": "executeQuery",
+          "query": "select dalia.m5_invoice_check_step($1::uuid) as step;",
+          "options": {
+            "queryReplacement": "={{ [ $json.payload?.transaction_id ?? null ] }}"
+          }
+        },
+        "credentials": {
+          "postgres": {
+            "id": "HfCgVAjUygK1vrkU",
+            "name": "DALIA dev Supabase"
+          }
+        },
+        "onError": "continueErrorOutput"
+      },
+      {
+        "id": "edd43036-941d-4b4f-aa7d-1aebb6ad7b8d",
+        "name": "Consultar consulta de factura",
+        "type": "n8n-nodes-base.if",
+        "typeVersion": 2.2,
+        "position": [
+          672,
+          576
+        ],
+        "parameters": {
+          "conditions": {
+            "options": {
+              "caseSensitive": true,
+              "leftValue": "",
+              "typeValidation": "loose"
+            },
+            "conditions": [
+              {
+                "leftValue": "={{ $json.step.action === \"port\" }}",
+                "operator": {
+                  "type": "boolean",
+                  "operation": "true",
+                  "singleValue": true
+                }
+              }
+            ],
+            "combinator": "and"
+          }
+        }
+      },
+      {
+        "id": "f043cc8a-f2cd-45b8-8f13-f8f58c0ffb22",
+        "name": "Preparar consulta de consulta de factura",
+        "type": "n8n-nodes-base.set",
+        "typeVersion": 3.4,
+        "position": [
+          896,
+          512
+        ],
+        "parameters": {
+          "mode": "manual",
+          "includeOtherFields": false,
+          "assignments": {
+            "assignments": [
+              {
+                "id": "p1",
+                "name": "port",
+                "value": "={{ $json.step.port_request.port }}",
+                "type": "string"
+              },
+              {
+                "id": "p2",
+                "name": "operation",
+                "value": "={{ $json.step.port_request.operation }}",
+                "type": "string"
+              },
+              {
+                "id": "p3",
+                "name": "input",
+                "value": "={{ $json.step.port_request.input }}",
+                "type": "object"
+              },
+              {
+                "id": "p4",
+                "name": "envelope",
+                "value": "={{ $json.step.port_request.envelope ?? {} }}",
+                "type": "object"
+              }
+            ]
+          }
+        }
+      },
+      {
+        "id": "e22a0988-81d2-4298-ac0c-fcacfc6ab87d",
+        "name": "Estado de la factura por INT.port",
+        "type": "n8n-nodes-base.executeWorkflow",
+        "typeVersion": 1.3,
+        "position": [
+          1120,
+          512
+        ],
+        "parameters": {
+          "mode": "each",
+          "source": "database",
+          "workflowId": {
+            "__rl": true,
+            "mode": "id",
+            "value": "5gbpWhv0zIA8bZ0w"
+          },
+          "options": {
+            "waitForSubWorkflow": true
+          }
+        }
+      },
+      {
+        "id": "12db5b28-ad92-4ba6-bc1a-accd9b383546",
+        "name": "Aplicar consulta de factura",
+        "type": "n8n-nodes-base.postgres",
+        "typeVersion": 2.7,
+        "position": [
+          1344,
+          512
+        ],
+        "parameters": {
+          "operation": "executeQuery",
+          "query": "select dalia.m5_apply_invoice_check($1::uuid, $2::jsonb) as result;",
+          "options": {
+            "queryReplacement": "={{ [ $(\"Paso de consulta de factura\").first().json.step.transaction_id, JSON.stringify($json) ] }}"
+          }
+        },
+        "credentials": {
+          "postgres": {
+            "id": "HfCgVAjUygK1vrkU",
+            "name": "DALIA dev Supabase"
+          }
+        },
+        "onError": "continueErrorOutput"
+      },
+      {
+        "id": "92732362-9470-4a8f-a9d3-237f47b902f0",
+        "name": "Fallar job (tipo desconocido)",
+        "type": "n8n-nodes-base.postgres",
+        "typeVersion": 2.7,
+        "position": [
+          448,
+          848
+        ],
+        "parameters": {
+          "operation": "executeQuery",
+          "query": "select dalia.sys_fail_job($1::uuid, $2::jsonb, false) as job_status;",
+          "options": {
+            "queryReplacement": "={{ [ $(\"Entrada\").first().json.job_id, JSON.stringify({ code: \"UNKNOWN_JOB_TYPE\", message: $(\"Entrada\").first().json.type }) ] }}"
+          }
+        },
+        "credentials": {
+          "postgres": {
+            "id": "HfCgVAjUygK1vrkU",
+            "name": "DALIA dev Supabase"
+          }
+        }
+      },
+      {
+        "id": "1152f526-bb4d-4e7a-b735-6caa18c9de8d",
+        "name": "Completar job",
+        "type": "n8n-nodes-base.postgres",
+        "typeVersion": 2.7,
+        "position": [
+          1792,
+          224
+        ],
+        "parameters": {
+          "operation": "executeQuery",
+          "query": "select dalia.sys_complete_job($1::uuid, $2::jsonb) as job_status;",
+          "options": {
+            "queryReplacement": "={{ [ $(\"Entrada\").first().json.job_id, JSON.stringify($json.result ?? $json.c ?? $json.step ?? {}) ] }}"
+          }
+        },
+        "credentials": {
+          "postgres": {
+            "id": "HfCgVAjUygK1vrkU",
+            "name": "DALIA dev Supabase"
+          }
+        }
+      },
+      {
+        "id": "97efb774-29e8-44d4-a61e-7d0eed60b558",
+        "name": "Salida",
+        "type": "n8n-nodes-base.noOp",
+        "typeVersion": 1,
+        "position": [
+          1792,
+          416
+        ],
+        "parameters": {},
+        "notes": "H-L9-02: sin job, el resultado sale por la salida 0 hacia quien llamó"
+      },
+      {
+        "id": "8541474a-5225-4a61-a4cc-0fd7822127a3",
+        "name": "Fallar job (reintentable)",
+        "type": "n8n-nodes-base.postgres",
+        "typeVersion": 2.7,
+        "position": [
+          1568,
+          608
+        ],
+        "parameters": {
+          "operation": "executeQuery",
+          "query": "select dalia.sys_fail_job($1::uuid, $2::jsonb, true) as job_status;",
+          "options": {
+            "queryReplacement": "={{ [ $(\"Entrada\").first().json.job_id, JSON.stringify({ code: \"HANDLER_ERROR\", message: $json.error?.message ?? $json.error ?? \"reintentar\" }) ] }}"
+          }
+        },
+        "credentials": {
+          "postgres": {
+            "id": "HfCgVAjUygK1vrkU",
+            "name": "DALIA dev Supabase"
+          }
+        }
+      }
+    ],
+    "connections": {
+      "Entrada": {
+        "main": [
+          [
+            {
+              "node": "Tipo",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Tipo": {
+        "main": [
+          [
+            {
+              "node": "Reclamar operacion",
+              "type": "main",
+              "index": 0
+            }
+          ],
+          [
+            {
+              "node": "Aplicar evento",
+              "type": "main",
+              "index": 0
+            }
+          ],
+          [
+            {
+              "node": "Paso de consulta de factura",
+              "type": "main",
+              "index": 0
+            }
+          ],
+          [
+            {
+              "node": "Fallar job (tipo desconocido)",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Reclamar operacion": {
+        "main": [
+          [
+            {
+              "node": "Puede ejecutar",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Puede ejecutar": {
+        "main": [
+          [
+            {
+              "node": "Preparar llamada",
+              "type": "main",
+              "index": 0
+            }
+          ],
+          [
+            {
+              "node": "Es job",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Preparar llamada": {
+        "main": [
+          [
+            {
+              "node": "Facturacion por INT.port",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Facturacion por INT.port": {
+        "main": [
+          [
+            {
+              "node": "Registrar intento",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Registrar intento": {
+        "main": [
+          [
+            {
+              "node": "Es job",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Es job": {
+        "main": [
+          [
+            {
+              "node": "Completar job",
+              "type": "main",
+              "index": 0
+            }
+          ],
+          [
+            {
+              "node": "Salida",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Aplicar evento": {
+        "main": [
+          [
+            {
+              "node": "Es job",
+              "type": "main",
+              "index": 0
+            }
+          ],
+          [
+            {
+              "node": "Fallar job (reintentable)",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Paso de consulta de factura": {
+        "main": [
+          [
+            {
+              "node": "Consultar consulta de factura",
+              "type": "main",
+              "index": 0
+            }
+          ],
+          [
+            {
+              "node": "Fallar job (reintentable)",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Consultar consulta de factura": {
+        "main": [
+          [
+            {
+              "node": "Preparar consulta de consulta de factura",
+              "type": "main",
+              "index": 0
+            }
+          ],
+          [
+            {
+              "node": "Es job",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Preparar consulta de consulta de factura": {
+        "main": [
+          [
+            {
+              "node": "Estado de la factura por INT.port",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Estado de la factura por INT.port": {
+        "main": [
+          [
+            {
+              "node": "Aplicar consulta de factura",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Aplicar consulta de factura": {
+        "main": [
+          [
+            {
+              "node": "Es job",
+              "type": "main",
+              "index": 0
+            }
+          ],
+          [
+            {
+              "node": "Fallar job (reintentable)",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      }
+    },
+    "nodeGroups": [],
+    "authors": "Fabian Bocanegra (via MCP)",
+    "name": "Lote 10: M5.04 facturación",
+    "description": "Created with 18 nodes: Entrada, Tipo, Reclamar operacion, Puede ejecutar, Preparar llamada and 13 more",
+    "autosaved": false,
+    "createdAt": "2026-10-05T20:00:11.472Z",
+    "updatedAt": "2026-10-05T20:00:11.472Z"
+  }
+}
