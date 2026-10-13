@@ -1,0 +1,150 @@
+{
+  "id": "jf3ypCPaHLiIRIIJ",
+  "name": "Resultados agente pruebas",
+  "active": false,
+  "activeVersionId": null,
+  "createdAt": "2026-06-18T20:08:36.866Z",
+  "updatedAt": "2026-06-23T17:39:06.652Z",
+  "isArchived": false,
+  "versionId": "37007a28-0228-49c2-896d-44fadf897e63",
+  "triggerCount": 0,
+  "nodes": [
+    {
+      "parameters": {},
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [
+        0,
+        0
+      ],
+      "id": "8c85e625-9a31-4f85-bcc1-c45e204ff870",
+      "name": "When clicking ‘Execute workflow’"
+    },
+    {
+      "parameters": {
+        "documentId": {
+          "__rl": true,
+          "value": "1HYEmkf9lJbiSFwc3nLGP5pdOMWnSdMPWj5DEkLTSE3o",
+          "mode": "list",
+          "cachedResultName": "pruebas agente",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1HYEmkf9lJbiSFwc3nLGP5pdOMWnSdMPWj5DEkLTSE3o/edit?usp=drivesdk"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "gid=0",
+          "mode": "list",
+          "cachedResultName": "Logs_Conversacion",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1HYEmkf9lJbiSFwc3nLGP5pdOMWnSdMPWj5DEkLTSE3o/edit#gid=0"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [
+        208,
+        0
+      ],
+      "id": "efeabdaa-8f72-448e-825c-8614a91d9674",
+      "name": "Get row(s) in sheet",
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "Pf0TYy2joLTmqt2C",
+          "name": "Google Sheets account 3"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "let items = $input.all();\nlet currentId = null;\n\n// Primera pasada: buscar el primer ID que aparezca para asignárselo a los mensajes iniciales (ej. fila 2)\nfor (let item of items) {\n  if (item.json['ID Caso']) {\n    currentId = item.json['ID Caso'];\n    break;\n  }\n}\n\n// Segunda pasada: rellenar hacia abajo\nfor (let item of items) {\n  if (item.json['ID Caso']) {\n    currentId = item.json['ID Caso']; // Actualiza el ID si encuentra uno nuevo\n  } else {\n    item.json['ID Caso'] = currentId; // Si está vacío, le pone el ID actual\n  }\n  \n  // Opcional: pre-formatear el texto para que sea más fácil de leer para la IA\n  item.json['Linea_Chat'] = item.json['agente'] + \": \" + item.json['mensaje'];\n}\n\nreturn items;"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        416,
+        0
+      ],
+      "id": "be268f2e-e4a2-474b-901d-f4915bfd6c51",
+      "name": "Code in JavaScript"
+    },
+    {
+      "parameters": {
+        "fieldsToSummarize": {
+          "values": [
+            {
+              "aggregation": "concatenate",
+              "field": "Linea_Chat",
+              "separateBy": "\n"
+            }
+          ]
+        },
+        "fieldsToSplitBy": "ID Caso",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.summarize",
+      "typeVersion": 1.1,
+      "position": [
+        624,
+        0
+      ],
+      "id": "c95cf19e-4669-4f7e-938a-83cc26c6f0e8",
+      "name": "Summarize"
+    }
+  ],
+  "connections": {
+    "When clicking ‘Execute workflow’": {
+      "main": [
+        [
+          {
+            "node": "Get row(s) in sheet",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get row(s) in sheet": {
+      "main": [
+        [
+          {
+            "node": "Code in JavaScript",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code in JavaScript": {
+      "main": [
+        [
+          {
+            "node": "Summarize",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "nodeGroups": [],
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate",
+    "availableInMCP": false
+  },
+  "staticData": null,
+  "pinData": {},
+  "meta": {
+    "templateCredsSetupCompleted": true
+  },
+  "tags": [],
+  "shared": [
+    {
+      "role": "workflow:owner",
+      "workflowId": "jf3ypCPaHLiIRIIJ",
+      "projectId": "8h8pwWGcWlnGEym3",
+      "createdAt": "2026-06-18T20:08:36.872Z",
+      "updatedAt": "2026-06-18T20:08:36.872Z"
+    }
+  ],
+  "activeVersion": null
+}
