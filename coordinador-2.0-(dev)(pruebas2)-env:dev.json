@@ -1,0 +1,3537 @@
+{
+  "id": "LkHPDVDdWot2qaqe",
+  "name": "Coordinador 2.0 (DEV)(pruebas2)",
+  "active": false,
+  "activeVersionId": null,
+  "createdAt": "2026-04-07T18:19:35.570Z",
+  "updatedAt": "2026-05-28T00:15:03.000Z",
+  "isArchived": true,
+  "versionId": "dd68b4d5-b9f8-4e95-88ff-009f9fb51a0d",
+  "triggerCount": 0,
+  "nodes": [
+    {
+      "parameters": {
+        "resource": "media",
+        "operation": "mediaUrlGet",
+        "mediaGetId": "={{ $json.audio.id }}"
+      },
+      "type": "n8n-nodes-base.whatsApp",
+      "typeVersion": 1,
+      "position": [
+        2080,
+        304
+      ],
+      "id": "a2c473bf-dad3-47cd-9e83-b839fcfa339d",
+      "name": "Recibir Audios",
+      "webhookId": "31113622-e9d5-4f2a-8a70-16cc17407fa0",
+      "credentials": {
+        "whatsAppApi": {
+          "id": "VkoCC1dvkFgJX0Kc",
+          "name": "Pruebas nuevo numero enviar mensaje"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "resource": "audio",
+        "operation": "transcribe",
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.openAi",
+      "typeVersion": 1.8,
+      "position": [
+        2480,
+        304
+      ],
+      "id": "5c7422d6-e75d-4ff2-8296-d30178802597",
+      "name": "Transcribir Audios",
+      "credentials": {
+        "openAiApi": {
+          "id": "zACGOxtwAjrFvDag",
+          "name": "OpenAi_YoEco_DEV"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "url": "={{ $json.url }}",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "whatsAppApi",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        2272,
+        304
+      ],
+      "id": "d3f1ce5c-7942-4663-ac49-8ad9ab062cee",
+      "name": "Descarga de audios",
+      "credentials": {
+        "whatsAppApi": {
+          "id": "VkoCC1dvkFgJX0Kc",
+          "name": "Pruebas nuevo numero enviar mensaje"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "5a68a177-3501-4ea6-95cb-cabc6f6b82ca",
+              "name": "texto",
+              "value": "={{ $('Json parse').item.json.text.body }}",
+              "type": "string"
+            },
+            {
+              "id": "b3e7886a-954a-4558-b90d-4d91849e374f",
+              "name": "timestamp",
+              "value": "={{ $('Json parse').item.json.timestamp }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        2400,
+        96
+      ],
+      "id": "a91c0466-404b-4412-b0fa-5d24a76cc0dc",
+      "name": "Recibir Texto"
+    },
+    {
+      "parameters": {
+        "resource": "media",
+        "operation": "mediaUrlGet",
+        "mediaGetId": "={{ $json.image.id }}"
+      },
+      "type": "n8n-nodes-base.whatsApp",
+      "typeVersion": 1,
+      "position": [
+        2080,
+        576
+      ],
+      "id": "6a708538-2c07-4713-b311-0bd3cf8e7cd5",
+      "name": "Recibir imagen",
+      "webhookId": "89a60dce-526f-4be4-a399-6b24f67f68b7",
+      "credentials": {
+        "whatsAppApi": {
+          "id": "VkoCC1dvkFgJX0Kc",
+          "name": "Pruebas nuevo numero enviar mensaje"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "url": "={{ $json.url }}",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "whatsAppApi",
+        "options": {
+          "response": {
+            "response": {
+              "responseFormat": "file"
+            }
+          }
+        }
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        2288,
+        576
+      ],
+      "id": "e072976e-11f1-42ed-8e72-0dc81c6124e0",
+      "name": "Descarga de imagen",
+      "credentials": {
+        "whatsAppApi": {
+          "id": "VkoCC1dvkFgJX0Kc",
+          "name": "Pruebas nuevo numero enviar mensaje"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "Aqui tienes una imagen enviada por el usuario. Describe la imagen y Transcribe cualquier texto visible",
+        "messages": {
+          "messageValues": [
+            {
+              "type": "HumanMessagePromptTemplate",
+              "messageType": "imageBinary"
+            }
+          ]
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.chainLlm",
+      "typeVersion": 1.6,
+      "position": [
+        2480,
+        576
+      ],
+      "id": "c528f37d-abcb-410c-893c-6a8108f7c04b",
+      "name": "Leer y transcribir la imagen"
+    },
+    {
+      "parameters": {
+        "rules": {
+          "values": [
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 2
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $json.text.body }}",
+                    "rightValue": "",
+                    "operator": {
+                      "type": "string",
+                      "operation": "exists",
+                      "singleValue": true
+                    },
+                    "id": "333b4f7e-b853-4a4f-9b0a-1b2cfc08b5ff"
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "texto  "
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 2
+                },
+                "conditions": [
+                  {
+                    "id": "d8afee67-2bff-466b-b25d-3a702de759e7",
+                    "leftValue": "={{ $json.type == 'audio' && Boolean($json.audio) }}",
+                    "rightValue": "",
+                    "operator": {
+                      "type": "boolean",
+                      "operation": "true",
+                      "singleValue": true
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "Voz"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 2
+                },
+                "conditions": [
+                  {
+                    "id": "95458589-f1ca-44cb-b397-f6ef6a6c2b28",
+                    "leftValue": "={{ $json.type == 'image' && Boolean($json.image) }}",
+                    "rightValue": "",
+                    "operator": {
+                      "type": "boolean",
+                      "operation": "true",
+                      "singleValue": true
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "Imagen"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 2
+                },
+                "conditions": [
+                  {
+                    "id": "e9c4a696-8a8d-42c5-8796-522672fbcdf5",
+                    "leftValue": "={{ $json.type == 'image' && Boolean($json.image) }}",
+                    "rightValue": "order",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals",
+                      "name": "filter.operator.equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "Order"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 3.2,
+      "position": [
+        1584,
+        288
+      ],
+      "id": "0c7ec374-fd82-4d51-91f4-7e4a097e552a",
+      "name": "Switch1"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "9f3939d0-c3d6-4c0d-b070-daef29717fab",
+              "name": "message",
+              "value": "={{ $json.text }}{{ $json.texto }}{{ $json.imageText }}",
+              "type": "string"
+            },
+            {
+              "id": "94b90034-7588-4430-b99e-d81780a145cc",
+              "name": "ID del usuario",
+              "value": "={{ $('When Executed by Another Workflow').item.json.mensaje[0].contact.wa_id }}",
+              "type": "string"
+            },
+            {
+              "id": "5ff1f290-7961-4c5a-8357-286c14c1ea7a",
+              "name": "message_id",
+              "value": "={{ $('When Executed by Another Workflow').item.json.mensaje[0].message.id }}",
+              "type": "string"
+            },
+            {
+              "id": "c5ea5a03-291f-4889-99dc-00fd1e283553",
+              "name": "timestamp",
+              "value": "={{ $('Json parse').item.json.timestamp }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        2816,
+        304
+      ],
+      "id": "ef5b4979-f911-455f-8322-03b60b59b50f",
+      "name": "Convertir entrada"
+    },
+    {
+      "parameters": {
+        "model": {
+          "__rl": true,
+          "value": "gpt-4o-mini",
+          "mode": "list",
+          "cachedResultName": "gpt-4o-mini"
+        },
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatOpenAi",
+      "typeVersion": 1.2,
+      "position": [
+        2480,
+        768
+      ],
+      "id": "5a985b6a-d3fa-4388-a8b9-14d486912eeb",
+      "name": "Modelo De Chat1",
+      "credentials": {
+        "openAiApi": {
+          "id": "zACGOxtwAjrFvDag",
+          "name": "OpenAi_YoEco_DEV"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "push",
+        "list": "={{ $('set Fields').item.json.message.from }}_buffer",
+        "messageData": "={{ JSON.stringify($('set Fields').item.json.message) }}",
+        "tail": true
+      },
+      "type": "n8n-nodes-base.redis",
+      "typeVersion": 1,
+      "position": [
+        272,
+        592
+      ],
+      "id": "c62e7ed0-2c31-490b-89a0-30170ce96d7c",
+      "name": "Push message buffer",
+      "credentials": {
+        "redis": {
+          "id": "vvDNllRciufwcwFo",
+          "name": "Redis account 2"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "get",
+        "propertyName": "message",
+        "key": "={{ $('set Fields').item.json.message.from }}_buffer",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.redis",
+      "typeVersion": 1,
+      "position": [
+        496,
+        592
+      ],
+      "id": "f6e29a70-de4f-4dbb-bdd7-5f94359e076c",
+      "name": "Get message buffer",
+      "credentials": {
+        "redis": {
+          "id": "vvDNllRciufwcwFo",
+          "name": "Redis account 2"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "rules": {
+          "values": [
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 2
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ JSON.parse($json.message?.last()).from.toString()}}",
+                    "rightValue": "={{ $('set Fields').item.json.message.from.toString() }}",
+                    "operator": {
+                      "type": "string",
+                      "operation": "notEquals"
+                    },
+                    "id": "64dcd87d-3aa5-4580-8e64-36bcae2eb5dd"
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "No hacer nada"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 2
+                },
+                "conditions": [
+                  {
+                    "id": "8f900d0c-69fa-4d9d-ab5f-a29ac29ab944",
+                    "leftValue": "={{  new Date(Number(JSON.parse($json.message?.last()).timestamp) * 1000).toISOString() }}",
+                    "rightValue": "={{  $now.minus(10, 'seconds') }}",
+                    "operator": {
+                      "type": "dateTime",
+                      "operation": "before"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "Seguir"
+            }
+          ]
+        },
+        "options": {
+          "fallbackOutput": "extra",
+          "renameFallbackOutput": "Esperar"
+        }
+      },
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 3.2,
+      "position": [
+        720,
+        416
+      ],
+      "id": "0ecc2218-4992-4acf-85af-bc74eafd2ad5",
+      "name": "Switch"
+    },
+    {
+      "parameters": {},
+      "type": "n8n-nodes-base.wait",
+      "typeVersion": 1.1,
+      "position": [
+        944,
+        688
+      ],
+      "id": "8987a3e6-2bff-42e1-abf2-78f90ad5bcbe",
+      "name": "Wait",
+      "webhookId": "721d3e27-f2d0-4ec8-9e2e-c704bf2472ea"
+    },
+    {
+      "parameters": {},
+      "type": "n8n-nodes-base.noOp",
+      "typeVersion": 1,
+      "position": [
+        976,
+        272
+      ],
+      "id": "1a674074-2307-42cf-bd84-76fb374111ab",
+      "name": "No Operation, do nothing"
+    },
+    {
+      "parameters": {
+        "operation": "delete",
+        "key": "={{ $('set Fields').item.json.message.from }}_buffer"
+      },
+      "type": "n8n-nodes-base.redis",
+      "typeVersion": 1,
+      "position": [
+        976,
+        432
+      ],
+      "id": "9ff54ef9-2dcc-49ca-b45d-254bc96675f1",
+      "name": "Delete message buffer",
+      "credentials": {
+        "redis": {
+          "id": "vvDNllRciufwcwFo",
+          "name": "Redis account 2"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "fieldToSplitOut": "message",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.splitOut",
+      "typeVersion": 1,
+      "position": [
+        1184,
+        432
+      ],
+      "id": "02a39964-cba0-4b60-9220-353530c16556",
+      "name": "Split Out1"
+    },
+    {
+      "parameters": {
+        "mode": "raw",
+        "jsonOutput": "={{ JSON.parse($json.message)}}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        1392,
+        432
+      ],
+      "id": "118ca860-ba2d-4944-abc6-ff04ff70b64c",
+      "name": "Json parse"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "8c482fe8-7b1d-488d-80cc-9b908b977713",
+              "name": "message",
+              "value": "={{ $json.mensaje[0].message }}",
+              "type": "object"
+            },
+            {
+              "id": "b5ed225b-ca80-4991-b2e2-c76e3c62e621",
+              "name": "contact",
+              "value": "={{ $json.mensaje[0].contact }}",
+              "type": "object"
+            },
+            {
+              "id": "e2c24649-df67-4f4e-a79f-cabc956f17ab",
+              "name": "metadata",
+              "value": "={{ $json.mensaje[0].contact.metadata }}",
+              "type": "object"
+            },
+            {
+              "id": "b0e7d9cb-7ef1-4b68-b462-e4c65c54c537",
+              "name": "context_id",
+              "value": "={{ $json.mensaje[0].contact.context_id }}",
+              "type": "string"
+            },
+            {
+              "id": "c5ffb120-678a-4867-8678-86ecf258f726",
+              "name": "environment",
+              "value": "dev",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        -848,
+        480
+      ],
+      "id": "e1f120e8-7478-48af-afdd-04132a250544",
+      "name": "set Fields"
+    },
+    {
+      "parameters": {
+        "sortFieldsUi": {
+          "sortField": [
+            {
+              "fieldName": "timestamp"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.sort",
+      "typeVersion": 1,
+      "position": [
+        3072,
+        304
+      ],
+      "id": "d4dd02b0-84f6-49a9-b251-0a22e51255cc",
+      "name": "Sort"
+    },
+    {
+      "parameters": {
+        "fieldsToAggregate": {
+          "fieldToAggregate": [
+            {
+              "fieldToAggregate": "message"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.aggregate",
+      "typeVersion": 1,
+      "position": [
+        3328,
+        304
+      ],
+      "id": "1d660b8c-c5de-4d2f-959b-44bdcf0b8fc0",
+      "name": "Aggregate"
+    },
+    {
+      "parameters": {
+        "content": "## SubWorkflow logica mensajes en memoria concurrencia\n**",
+        "height": 448,
+        "width": 1344
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [
+        224,
+        384
+      ],
+      "typeVersion": 1,
+      "id": "c6e7ce5a-6da4-44bd-b0f2-92f55b069cb3",
+      "name": "Sticky Note"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "35fd5cbb-a799-435f-89cf-3d0465432fbc",
+              "leftValue": "={{ $json.message }}",
+              "rightValue": "",
+              "operator": {
+                "type": "object",
+                "operation": "notEmpty",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        -624,
+        480
+      ],
+      "id": "8295ca3a-0148-4d47-8c42-6b6164ab934a",
+      "name": "Validacion de mensaje"
+    },
+    {
+      "parameters": {},
+      "type": "n8n-nodes-base.noOp",
+      "typeVersion": 1,
+      "position": [
+        -400,
+        800
+      ],
+      "id": "ff729f51-5ba9-4e04-bc64-68a7b872e51c",
+      "name": "No Operation, do nothing1"
+    },
+    {
+      "parameters": {
+        "model": {
+          "__rl": true,
+          "mode": "list",
+          "value": "gpt-4.1-mini"
+        },
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatOpenAi",
+      "typeVersion": 1.2,
+      "position": [
+        5088,
+        528
+      ],
+      "id": "a1eb29ec-b64e-44bf-823d-ef5d31c4a397",
+      "name": "OpenAI Chat Model",
+      "retryOnFail": true,
+      "credentials": {
+        "openAiApi": {
+          "id": "zACGOxtwAjrFvDag",
+          "name": "OpenAi_YoEco_DEV"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "sessionIdType": "customKey",
+        "sessionKey": "={{ $('When Executed by Another Workflow').item.json.mensaje[0].contact.wa_id }}"
+      },
+      "type": "@n8n/n8n-nodes-langchain.memoryBufferWindow",
+      "typeVersion": 1.3,
+      "position": [
+        5232,
+        528
+      ],
+      "id": "01f13324-2542-4ff7-8dc3-80088be9b857",
+      "name": "Simple Memory2"
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "=Eres un agente maestro cuyo único rol es clasificar la intención de los mensajes que recibes y redirigirlos al workflow adecuado.\n\nEl mensaje es: \"{{ $('Unificacion mensaje').item.json.message }}\"\nEl ID del usuario es: \"{{ $('set Fields').item.json.message.from }}\"\n\n**Instrucciones Generales:**\n1.  **Utiliza siempre la herramienta \"Think\"** antes de dar una respuesta final para procesar la información.\n2.  **No debes responder al usuario final.** Tu única tarea es generar un JSON con la clasificación.\n3.  El JSON de salida debe tener las siguientes claves:\n    -   `destino`: Indica el workflow al que se debe enviar el mensaje. Solo puede ser:\n        -   \"Agente Asesor\"\n        -   \"Agente de Ventas\"\n    -   `mensaje`: El texto original que recibiste del usuario.\n    -   `id_usuario`: El ID del usuario que envió el mensaje.\n    -   `completion_tokens`: Número de tokens de salida usados (integer).\n    -   `prompt_tokens`: Número de tokens de entrada usados (integer).\n    -   `total_tokens`: Suma de los tokens usados (integer).\n    -   `model_name`: Nombre del modelo de IA utilizado (string).\n    -   `ai_response`: La respuesta cruda o resultado directo del modelo antes de ser parseado (string).\n\n**Reglas de Clasificación (Prioridad de arriba hacia abajo):**\n\n**1. Agente de Ventas:**\n   Clasifica como \"Agente de Ventas\" única y exclusivamente si se cumple alguna de estas condiciones:\n   -   **Palabras Clave de Intención Directa de Compra (individual):** El usuario utiliza exactamente o variaciones directas de:\n        -   \"este diseño me gusta\"\n        -   \"este me gusta\"\n        -   \"como puedo comprar este\"\n        -   \"quiero comprar este\"\n        -   \"dame el link de pago\"\n        -   \"quiero pagar\"\n   -   **Acción de Pago Explícita:** El usuario pide un link de pago, cuenta bancaria, QR o entrega datos de envío/facturación.\n   -   **Solicitud de Humano Directa:** El usuario pide explícitamente hablar con una persona o asesor real.\n   Adicional, si el mensaje indica que el cliente es de una ciudad fuera de la ciudad de Bogota DC o Colombia\n  Ubicación Nacional (Colombia, fuera de Bogotá DC):\n    Palabras clave: Medellín, Cali, Barranquilla, Bucaramanga, Cartagena, Pereira, Manizales, Neiva, Villavicencio, Ibagué, Cúcuta, Pasto, Armenia, Santa Marta, Valledupar, Montería.\n    Frases indicativas:\n        \"Hacen envíos a [Ciudad]\"\n        \"¿Llegan hasta [Ciudad]?\"\n        \"Estoy en el departamento de...\"\n        \"¿Cuánto cuesta el envío a...?\n  Ubicación Internacional (Fuera de Colombia):\n    Palabras clave: México, Chile, Ecuador, Perú, España, USA, Estados Unidos, Panamá, Argentina.\n    Indicadores de prefijo telefónico: Si el número de contacto detectado no inicia por +57.\n    Frases indicativas:\n        \"¿Están disponibles en [País]?\"\n        \"¿Hacen envíos internacionales?\"\n        \"Quiero comprar desde [País]\"\n\n   Adicional, si el mensaje indica claramente una intención relacionada con compras al por mayor, distribución, colaboración con proveedores o solicitudes de negocio a gran escala.\n   Palabras clave o frases indicativas:\n   - \"precio al por mayor\", \"precios mayoristas\", \"comprar al por mayor\"\n   - \"distribuidor\", \"distribuir\", \"ser distribuidor\"\n   - \"cotización para negocio\", \"cotización para empresa\"\n   - \"soy proveedor\", \"somos proveedores\", \"propuesta de proveedor\"\n   - \"venta por volumen\", \"compra en cantidad\"\n   - \"colaboración comercial\", \"alianza estratégica\"\n   - \"negocio B2B\"\n   - \"catálogo para negocios\", \"lista de precios para empresas\"\n\n**2. Agente Asesor:**\n   Clasifica como \"Agente Asesor\" para cualquier otro caso que NO haya sido clasificado en las categorías anteriores. Esto incluye:\n   -   Consultas generales, dudas sobre materiales, precios o características de productos/servicios, consultas de stock.\n   -   Solicitudes de información, aclaración de dudas.\n   -   Preguntas sobre la disponibilidad de un producto, tallas, colores.\n   -   Mencionar categorías de productos sin intención explícita de compra o negocio (ej: \"busco cunas\", \"tienes coches para bebé\").\n   -   Expresiones de interés genéricas que no incluyan las palabras clave de \"Agente de Ventas\" (ej: \"estoy interesado en un coche\", \"quiero una silla de auto\").\n   -   Cualquier mensaje que no cumpla con los criterios específicos de las otras dos categorías.\n\n**Restricciones de Salida:**\n-   No generes explicaciones adicionales antes o después del JSON.\n-   Responde únicamente con el objeto JSON válido.\n\n**Ejemplo de Salida Esperada:**\n```json\n{\n  \"destino\": \"Agente Asesor\",\n  \"mensaje\": \"Quisiera información sobre precios mayoristas para la pañalera, soy distribuidor.\",\n  \"id_usuario\": \"1234567890\",\n}\n```",
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 2.2,
+      "position": [
+        5216,
+        320
+      ],
+      "id": "487435a9-0d15-493b-ae4e-8f150babd6df",
+      "name": "Agente Coordinador"
+    },
+    {
+      "parameters": {
+        "workflowId": {
+          "__rl": true,
+          "value": "=hqA57BTMb2cQjfqg",
+          "mode": "id",
+          "cachedResultUrl": "/workflow/=hqA57BTMb2cQjfqg"
+        },
+        "workflowInputs": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "session_id": "={{ JSON.parse($('Agente Coordinador').item.json.output).id_usuario }}",
+            "message": "={{ JSON.parse($('Agente Coordinador').item.json.output).mensaje }}",
+            "tipo_mensaje": "={{ $('Redireccionamiento').item.json.message_type }}",
+            "environment": "={{ $('set Fields').item.json.environment }}"
+          },
+          "matchingColumns": [],
+          "schema": [
+            {
+              "id": "session_id",
+              "displayName": "session_id",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string",
+              "removed": false
+            },
+            {
+              "id": "message",
+              "displayName": "message",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string",
+              "removed": false
+            },
+            {
+              "id": "tipo_mensaje",
+              "displayName": "tipo_mensaje",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string",
+              "removed": false
+            },
+            {
+              "id": "environment",
+              "displayName": "environment",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string",
+              "removed": false
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": true
+        },
+        "options": {
+          "waitForSubWorkflow": false
+        }
+      },
+      "type": "n8n-nodes-base.executeWorkflow",
+      "typeVersion": 1.2,
+      "position": [
+        7312,
+        368
+      ],
+      "id": "09a10926-f7e6-4ba5-920f-c9e4f40f6855",
+      "name": "Execute Asesor"
+    },
+    {
+      "parameters": {},
+      "type": "@n8n/n8n-nodes-langchain.toolThink",
+      "typeVersion": 1.1,
+      "position": [
+        5360,
+        528
+      ],
+      "id": "89ba8da3-e2fa-4575-9cf5-4de679060b43",
+      "name": "Think"
+    },
+    {
+      "parameters": {
+        "rules": {
+          "values": [
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 2
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ JSON.parse($('Agente Coordinador').item.json.output).destino.toLowerCase()}}",
+                    "rightValue": "agente asesor",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    },
+                    "id": "fc80e23d-1918-466f-849c-d7c19ffa0781"
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "Asesor"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 2
+                },
+                "conditions": [
+                  {
+                    "id": "9c25c477-2144-4355-a385-8fa27511d78c",
+                    "leftValue": "={{ JSON.parse($('Agente Coordinador').item.json.output).destino.toLowerCase() }}",
+                    "rightValue": "agente de ventas",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals",
+                      "name": "filter.operator.equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "Agente de Ventas"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 3.2,
+      "position": [
+        6720,
+        384
+      ],
+      "id": "e392ffd1-e2f3-4cb0-9868-fbc3d174ed23",
+      "name": "Redireccionamiento"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "bb27cc68-8023-4c57-8200-2050364f5dae",
+              "leftValue": "={{ $json.agent }}",
+              "rightValue": "",
+              "operator": {
+                "type": "string",
+                "operation": "notEmpty",
+                "singleValue": true
+              }
+            },
+            {
+              "id": "383ca2ff-8a5b-46a5-906a-78615adabac6",
+              "leftValue": "={{ $json.agent }}",
+              "rightValue": "\"Agente Ventas\"",
+              "operator": {
+                "type": "string",
+                "operation": "equals",
+                "name": "filter.operator.equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        6336,
+        144
+      ],
+      "id": "0c6ab440-4121-4be2-8796-d02fb15e1454",
+      "name": "Validación campo estado asesor"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "4274be55-d038-4914-98e9-a2f8f094ab9f",
+              "leftValue": "={{ $('set Fields').item.json.context_id }}",
+              "rightValue": "",
+              "operator": {
+                "type": "string",
+                "operation": "notEmpty",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        3664,
+        304
+      ],
+      "id": "46e17e76-d6e0-4e9d-acd4-64fbb9e1f33b",
+      "name": "Existe mensaje de contexto"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "aaf1aa2e-9a07-4b50-be2a-a33551ed3e4d",
+              "name": "mensaje",
+              "value": "={{ $json.message }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        4368,
+        208
+      ],
+      "id": "f6381048-3c8e-4683-95ae-6dcf46681ce0",
+      "name": "Obtiene mensaje contexto"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "4ceb5fe2-7f9b-4fac-99a2-3070ab97f7d2",
+              "leftValue": "={{ $('Recibir Mensaje').item.json.messages[0].context.referred_product }}",
+              "rightValue": "",
+              "operator": {
+                "type": "object",
+                "operation": "notEmpty",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        3920,
+        192
+      ],
+      "id": "165ef836-bbb1-4eb5-aa0f-181efeb4d7d6",
+      "name": "Contiene referencia de catalogo whatsapp"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "d0c8457d-32a3-4a94-b0e9-a5f79d3d0ab0",
+              "name": "producto",
+              "value": "={{ $json.data[0].name }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        4368,
+        -48
+      ],
+      "id": "f5738d34-f4b4-4f44-a8ec-97231b409707",
+      "name": "Obtiene nombre producto catalogo"
+    },
+    {
+      "parameters": {
+        "jsCode": "const initialMessage = $('Aggregate').item.json.message.join(\",\");\nlet contextMessage = \"\";\ntry {\n  contextMessage = $('Obtiene mensaje contexto').item.json.mensaje || \"\";\n} catch (e) {\n  contextMessage = \"\";\n}\n\nlet productCatalog = \"\";\ntry {\n  productCatalog = $('Obtiene nombre producto catalogo').item.json.producto || \"\";\n} catch (e) {\n  productCatalog = \"\";\n}\n\nreturn {\n  message: `${initialMessage} ${contextMessage} ${productCatalog}`.trim().replace(/\\s+/g, ' ')\n};"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        4912,
+        320
+      ],
+      "id": "dad1bc4e-8982-41d0-b05b-e508598411ab",
+      "name": "Unificacion mensaje"
+    },
+    {
+      "parameters": {
+        "content": "## Subworkflow validación contexto whatsapp\n** Cuando el usuario solicita información de productos y el agente envía imágenes, el usuario puede hacer reply a la imagen y solicitar la descripción\n** Por otro lado si el usuario solicita información de un producto del catálogo de whatsapp no hay contexto por tal motivo debemos buscar la info en el api de meta por el id del producto",
+        "height": 656,
+        "width": 1216
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [
+        3504,
+        -176
+      ],
+      "typeVersion": 1,
+      "id": "03a9489e-fb64-402d-9aa6-d2b437512d10",
+      "name": "Sticky Note1"
+    },
+    {
+      "parameters": {
+        "workflowId": {
+          "__rl": true,
+          "value": "={{ $('set Fields').item.json.environment == 'dev' ? $vars.FLOW_AI_USAGE_LOG_DEV : $vars.FLOW_AI_USAGE_LOG_PROD }}",
+          "mode": "id",
+          "cachedResultUrl": "/workflow/=%7B%7B%20$('set%20Fields').item.json.environment%20==%20'dev'%20%3F%20$vars.FLOW_AI_USAGE_LOG_DEV%20:%20$vars.FLOW_AI_USAGE_LOG_PROD%20%7D%7D"
+        },
+        "workflowInputs": {
+          "mappingMode": "passThrough",
+          "value": {},
+          "matchingColumns": [],
+          "schema": [
+            {
+              "id": "process_id",
+              "displayName": "process_id",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string",
+              "removed": false
+            },
+            {
+              "id": "model_name",
+              "displayName": "model_name",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string",
+              "removed": false
+            },
+            {
+              "id": "prompt_tokens",
+              "displayName": "prompt_tokens",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "number",
+              "removed": false
+            },
+            {
+              "id": "completion_tokens",
+              "displayName": "completion_tokens",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "number",
+              "removed": false
+            },
+            {
+              "id": "total_tokens",
+              "displayName": "total_tokens",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "number",
+              "removed": false
+            },
+            {
+              "id": "ai_response",
+              "displayName": "ai_response",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string",
+              "removed": false
+            },
+            {
+              "id": "completed_at",
+              "displayName": "completed_at",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "number",
+              "removed": false
+            },
+            {
+              "id": "created_at",
+              "displayName": "created_at",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "number",
+              "removed": false
+            },
+            {
+              "id": "environment",
+              "displayName": "environment",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string",
+              "removed": false
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": true
+        },
+        "mode": "each",
+        "options": {
+          "waitForSubWorkflow": false
+        }
+      },
+      "type": "n8n-nodes-base.executeWorkflow",
+      "typeVersion": 1.3,
+      "position": [
+        5760,
+        -80
+      ],
+      "id": "3250dfd2-bd0c-4d95-92cb-9336aaac7ccc",
+      "name": "Call 'ai_usage_log'"
+    },
+    {
+      "parameters": {
+        "jsCode": "return {\n  json: {\n    // $execution.id es una variable global de n8n que trae el ID único de esta corrida\n    execution_id: $execution.id, \n    // Mantenemos tu variable de entorno que vi en tu JSON anterior\n    environment: $('set Fields').item.json.environment || 'dev' \n  }\n};"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        5520,
+        -80
+      ],
+      "id": "98e67f31-3a35-4df8-b805-84b1160e5852",
+      "name": "build_token_usage_dto"
+    },
+    {
+      "parameters": {
+        "model": {
+          "__rl": true,
+          "mode": "list",
+          "value": "gpt-4.1-mini"
+        },
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatOpenAi",
+      "typeVersion": 1.2,
+      "position": [
+        6720,
+        256
+      ],
+      "id": "b12aa86e-3e89-423e-8caf-c8ea664afe08",
+      "name": "OpenAI Chat Model1",
+      "credentials": {
+        "openAiApi": {
+          "id": "zACGOxtwAjrFvDag",
+          "name": "OpenAi_YoEco_DEV"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "text": "={{ $node[\"Convertir entrada\"].json[\"message\"] }}",
+        "attributes": {
+          "attributes": [
+            {
+              "name": "nombre",
+              "description": "El nombre completo de la persona en el mensaje, si está presente. Si no se menciona ningún nombre, devuelve una cadena vacía (o déjalo nulo). Nunca pongas aquí el nombre de un producto, marca, empresa o tienda. Si el mensaje solo habla de productos, deja este campo vacío / nulo."
+            },
+            {
+              "name": "producto_interes",
+              "description": "Identifica el nombre del producto o servicio por el cual el usuario está preguntando. Si no se menciona ninguno, devuelve 'no especificado'."
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.informationExtractor",
+      "typeVersion": 1.2,
+      "position": [
+        6720,
+        80
+      ],
+      "id": "31486031-8484-4fcc-8f54-30ee27e5a4a5",
+      "name": "Extractor de informacion para leads"
+    },
+    {
+      "parameters": {
+        "operation": "appendOrUpdate",
+        "documentId": {
+          "__rl": true,
+          "value": "12q0bQoQoJxYTuqCc9YcNxBXMV7Kt8a9spNW1XXjp3vc",
+          "mode": "list",
+          "cachedResultName": "Lead",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/12q0bQoQoJxYTuqCc9YcNxBXMV7Kt8a9spNW1XXjp3vc/edit?usp=drivesdk"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "gid=0",
+          "mode": "list",
+          "cachedResultName": "Hoja 1",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/12q0bQoQoJxYTuqCc9YcNxBXMV7Kt8a9spNW1XXjp3vc/edit#gid=0"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "Fecha": "={{ $now.format('dd/MM/yyyy hh:mm:ss') }}",
+            "Nombre": "={{ $('Recibir Mensaje').item.json.contacts[0].profile.name }}",
+            "Telefono": "={{ $('Recibir Mensaje').item.json.messages[0].from }}",
+            "interes_asesor": "=si",
+            "interes_producto": "={{ $('Extractor de informacion para leads').item.json.output.producto_interes }}"
+          },
+          "matchingColumns": [
+            "Telefono"
+          ],
+          "schema": [
+            {
+              "id": "Nombre",
+              "displayName": "Nombre",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "Telefono",
+              "displayName": "Telefono",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "Fecha",
+              "displayName": "Fecha",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "interes_asesor",
+              "displayName": "interes_asesor",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "interes_producto",
+              "displayName": "interes_producto",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [
+        7088,
+        80
+      ],
+      "id": "17dbe7bc-5b40-4348-8e08-fb864dbcbe7d",
+      "name": "Actualizar o llenar informacion de leads",
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "Pf0TYy2joLTmqt2C",
+          "name": "Google Sheets account 3"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "workflowId": {
+          "__rl": true,
+          "value": "={{ $('set Fields').item.json.environment == 'dev' ? $vars.FLOW_REDIRECCIONAMIENTO_A_HUMANO_DEV : $vars.FLOW_REDIRECCIONAMIENTO_A_HUMANO_PROD }}",
+          "mode": "id",
+          "cachedResultUrl": "/workflow/=%7B%7B%20$('set%20Fields').item.json.environment%20==%20'dev'%20%3F%20$vars.FLOW_REDIRECCIONAMIENTO_A_HUMANO_DEV%20:%20$vars.FLOW_REDIRECCIONAMIENTO_A_HUMANO_PROD%20%7D%7D"
+        },
+        "workflowInputs": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "session_id": "={{ $('Recibir Mensaje').item.json.messages[0].from }}",
+            "user_type": "seller",
+            "message": "={{ $('set Fields').item.json.message.text.body }}",
+            "phone_to_message": "={{  $('get_message_user_by_context').item.json.session_id.toString() || '' }}",
+            "seller_name": "={{ $('search_phone_in_table_sellers').item.json.nombre }}",
+            "channel": "={{ $('search_phone_in_table_sellers').item.json.canal }}",
+            "environment": "={{ $('set Fields').item.json.environment }}"
+          },
+          "matchingColumns": [],
+          "schema": [
+            {
+              "id": "session_id",
+              "displayName": "session_id",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string"
+            },
+            {
+              "id": "user_type",
+              "displayName": "user_type",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string"
+            },
+            {
+              "id": "message",
+              "displayName": "message",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string"
+            },
+            {
+              "id": "phone_to_message",
+              "displayName": "phone_to_message",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string"
+            },
+            {
+              "id": "seller_name",
+              "displayName": "seller_name",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string",
+              "removed": false
+            },
+            {
+              "id": "context_relation_whatsapp",
+              "displayName": "context_relation_whatsapp",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string",
+              "removed": false
+            },
+            {
+              "id": "channel",
+              "displayName": "channel",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string",
+              "removed": false
+            },
+            {
+              "id": "environment",
+              "displayName": "environment",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string",
+              "removed": false
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": true
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.executeWorkflow",
+      "typeVersion": 1.3,
+      "position": [
+        1824,
+        -160
+      ],
+      "id": "b5951b77-71f1-4db5-839d-bea69532be12",
+      "name": "Call 'Redireccionamiento a humano (DEV)'",
+      "executeOnce": true
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "4274be55-d038-4914-98e9-a2f8f094ab9f",
+              "leftValue": "={{ $('set Fields').item.json.context_id }}",
+              "rightValue": "",
+              "operator": {
+                "type": "string",
+                "operation": "notEmpty",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        16,
+        128
+      ],
+      "id": "8b28592a-e7b8-40c2-910c-dcf05f07ef18",
+      "name": "Existe mensaje de contexto1"
+    },
+    {
+      "parameters": {
+        "workflowId": {
+          "__rl": true,
+          "value": "={{ $('set Fields').item.json.environment == 'dev' ? $vars.FLOW_REDIRECCIONAMIENTO_A_HUMANO_DEV : $vars.FLOW_REDIRECCIONAMIENTO_A_HUMANO_PROD }}",
+          "mode": "id",
+          "cachedResultUrl": "/workflow/=%7B%7B%20$('set%20Fields').item.json.environment%20==%20'dev'%20%3F%20$vars.FLOW_REDIRECCIONAMIENTO_A_HUMANO_DEV%20:%20$vars.FLOW_REDIRECCIONAMIENTO_A_HUMANO_PROD%20%7D%7D"
+        },
+        "workflowInputs": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "session_id": "={{ JSON.parse($('Agente Coordinador').item.json.output).id_usuario }}",
+            "user_type": "user",
+            "message": "={{ $('Unificacion mensaje').item.json.message }}",
+            "phone_to_message": "={{ $('set Fields').item.json.message.from }}",
+            "context_relation_whatsapp": "={{ $('Recibir Mensaje').item.json.messages[0].id }}",
+            "channel": "whatsapp",
+            "environment": "={{ $('set Fields').item.json.environment }}"
+          },
+          "matchingColumns": [],
+          "schema": [
+            {
+              "id": "session_id",
+              "displayName": "session_id",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string"
+            },
+            {
+              "id": "user_type",
+              "displayName": "user_type",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string"
+            },
+            {
+              "id": "message",
+              "displayName": "message",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string"
+            },
+            {
+              "id": "phone_to_message",
+              "displayName": "phone_to_message",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string"
+            },
+            {
+              "id": "seller_name",
+              "displayName": "seller_name",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string",
+              "removed": false
+            },
+            {
+              "id": "context_relation_whatsapp",
+              "displayName": "context_relation_whatsapp",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string",
+              "removed": false
+            },
+            {
+              "id": "channel",
+              "displayName": "channel",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string",
+              "removed": false
+            },
+            {
+              "id": "environment",
+              "displayName": "environment",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string",
+              "removed": false
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": true
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.executeWorkflow",
+      "typeVersion": 1.3,
+      "position": [
+        8432,
+        -64
+      ],
+      "id": "51533e12-a261-40b7-93e6-b75400dd9513",
+      "name": "Call 'Redireccionamiento a humano (DEV)'1"
+    },
+    {
+      "parameters": {
+        "workflowId": {
+          "__rl": true,
+          "value": "={{ $('set Fields').item.json.environment == 'dev' ? $vars.FLOW_GUARDAR_HISTORIAL_DEV : $vars.FLOW_GUARDAR_HISTORIAL_PROD }}",
+          "mode": "id",
+          "cachedResultUrl": "/workflow/=%7B%7B%20$('set%20Fields').item.json.environment%20==%20'dev'%20%3F%20$vars.FLOW_GUARDAR_HISTORIAL_DEV%20:%20$vars.FLOW_GUARDAR_HISTORIAL_PROD%20%7D%7D"
+        },
+        "workflowInputs": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "rol": "cliente",
+            "mensaje": "={{ $('When Executed by Another Workflow').item.json.mensaje[0].message.text.body || $('When Executed by Another Workflow').item.json.messages[0]?.image?.caption || 'sin_mensaje' }}",
+            "context_id_whatsapp": "={{ $('When Executed by Another Workflow').item.json.mensaje[0].message.id }}",
+            "channel": "whatsapp",
+            "id": "={{ $('When Executed by Another Workflow').item.json.mensaje[0].contact.wa_id.toString()}}"
+          },
+          "matchingColumns": [],
+          "schema": [
+            {
+              "id": "id",
+              "displayName": "id",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string",
+              "removed": false
+            },
+            {
+              "id": "rol",
+              "displayName": "rol",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string",
+              "removed": false
+            },
+            {
+              "id": "mensaje",
+              "displayName": "mensaje",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string",
+              "removed": false
+            },
+            {
+              "id": "context_id_whatsapp",
+              "displayName": "context_id_whatsapp",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string",
+              "removed": false
+            },
+            {
+              "id": "context_relation_whatsapp",
+              "displayName": "context_relation_whatsapp",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string",
+              "removed": false
+            },
+            {
+              "id": "channel",
+              "displayName": "channel",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string",
+              "removed": false
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": true
+        },
+        "mode": "each",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.executeWorkflow",
+      "typeVersion": 1.3,
+      "position": [
+        64,
+        592
+      ],
+      "id": "c7f58774-127e-4b63-8d8e-2258f36289d0",
+      "name": "guardar historial",
+      "executeOnce": true
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "aaf1aa2e-9a07-4b50-be2a-a33551ed3e4d",
+              "name": "mensaje",
+              "value": "={{ $json.message }}",
+              "type": "string"
+            },
+            {
+              "id": "311e7f7d-33bd-4274-9e36-794e233a1899",
+              "name": "id",
+              "value": "={{ $json.id }}",
+              "type": "string"
+            },
+            {
+              "id": "54454e9f-534c-4c3d-978a-6a00fced2b6e",
+              "name": "context_relation_whatsapp",
+              "value": "={{ $json.context_relation }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        496,
+        16
+      ],
+      "id": "e8831e2a-5a8d-4f97-9d5c-04f7a332f30b",
+      "name": "get_id_user_by_context"
+    },
+    {
+      "parameters": {
+        "operation": "get",
+        "dataTableId": {
+          "__rl": true,
+          "value": "sa8DggzNdCoAt5RC",
+          "mode": "list",
+          "cachedResultName": "configurations",
+          "cachedResultUrl": "/projects/8h8pwWGcWlnGEym3/datatables/sa8DggzNdCoAt5RC"
+        },
+        "filters": {
+          "conditions": [
+            {
+              "keyName": "key_name",
+              "keyValue": "operation_start"
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.dataTable",
+      "typeVersion": 1.1,
+      "position": [
+        7344,
+        80
+      ],
+      "id": "e1d774d5-fc78-4a96-af35-e6efc5b1f3d2",
+      "name": "get_start_operation"
+    },
+    {
+      "parameters": {
+        "operation": "get",
+        "dataTableId": {
+          "__rl": true,
+          "value": "sa8DggzNdCoAt5RC",
+          "mode": "list",
+          "cachedResultName": "configurations",
+          "cachedResultUrl": "/projects/8h8pwWGcWlnGEym3/datatables/sa8DggzNdCoAt5RC"
+        },
+        "filters": {
+          "conditions": [
+            {
+              "keyName": "key_name",
+              "keyValue": "operation_end"
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.dataTable",
+      "typeVersion": 1.1,
+      "position": [
+        7600,
+        80
+      ],
+      "id": "00112c81-8e3e-4ac2-9da2-9f050984abe7",
+      "name": "get_end_operation"
+    },
+    {
+      "parameters": {
+        "jsCode": "const init = $('get_start_operation').first().json.value;\nconst end = $('get_end_operation').first().json.value;\nconst now = $now.hour\nif (now >= init && now <= end){\n  return [{ json: { open: true, hora_actual: now } }];\n} else {\n  return [{ json: { open: false, hora_actual: now } }];\n}"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        7872,
+        80
+      ],
+      "id": "f6953ce3-82ba-4a3a-a8e1-01c1d215e94a",
+      "name": "get_business_hour"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "fe2663e7-31c1-45b7-ab71-5c1a732cdffc",
+              "leftValue": "={{ $json.open }}",
+              "rightValue": false,
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        8128,
+        80
+      ],
+      "id": "55af3caf-f500-4abc-afab-ac61a184573f",
+      "name": "is_it_open"
+    },
+    {
+      "parameters": {
+        "operation": "get",
+        "tableId": "={{ 'babys_world_' + $('set Fields').item.json.environment + '_chat_history' }}",
+        "filters": {
+          "conditions": [
+            {
+              "keyName": "=context_id",
+              "keyValue": "={{ $('set Fields').item.json.context_id }}"
+            },
+            {
+              "keyName": "=channel",
+              "keyValue": "whatsapp"
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.supabase",
+      "typeVersion": 1,
+      "position": [
+        256,
+        16
+      ],
+      "id": "a08ef7ab-1fd9-4a84-ab98-e7ec6084a043",
+      "name": "get_context_message",
+      "alwaysOutputData": true,
+      "credentials": {
+        "supabaseApi": {
+          "id": "dtKFPWrXh0HZEyUt",
+          "name": "clients_database"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "get",
+        "tableId": "={{ 'babys_world_' + $('set Fields').item.json.environment + '_chat_history' }}",
+        "filters": {
+          "conditions": [
+            {
+              "keyName": "=context_id",
+              "keyValue": "={{ $('set Fields').item.json.context_id }}"
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.supabase",
+      "typeVersion": 1,
+      "position": [
+        4144,
+        208
+      ],
+      "id": "d075bca2-5405-47e4-a3ab-1f017ab1eddf",
+      "name": "get_context_message1",
+      "credentials": {
+        "supabaseApi": {
+          "id": "dtKFPWrXh0HZEyUt",
+          "name": "clients_database"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "get",
+        "tableId": "={{ 'babys_world_' + $('set Fields').item.json.environment + '_chat_history' }}",
+        "filters": {
+          "conditions": [
+            {
+              "keyName": "=context_id",
+              "keyValue": "={{ $json.context_relation_whatsapp }}"
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.supabase",
+      "typeVersion": 1,
+      "position": [
+        720,
+        16
+      ],
+      "id": "3eeb613b-21e6-4740-96a2-666fff0c15ae",
+      "name": "get_message_user_by_context",
+      "credentials": {
+        "supabaseApi": {
+          "id": "dtKFPWrXh0HZEyUt",
+          "name": "clients_database"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "get",
+        "dataTableId": {
+          "__rl": true,
+          "value": "=sellers_{{ $('set Fields').item.json.environment }}",
+          "mode": "name"
+        },
+        "filters": {
+          "conditions": [
+            {
+              "keyName": "=whatsapp_id",
+              "condition": "=eq",
+              "keyValue": "={{ $('set Fields').item.json.contact.wa_id }}"
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.dataTable",
+      "typeVersion": 1.1,
+      "position": [
+        -416,
+        336
+      ],
+      "id": "dd3d8b76-4082-4530-8409-30e807272751",
+      "name": "search_phone_in_table_sellers",
+      "alwaysOutputData": true
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "7628dce6-6d66-452e-96db-3ca876528e16",
+              "leftValue": "={{ $json.id }}",
+              "rightValue": "",
+              "operator": {
+                "type": "number",
+                "operation": "exists",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        -224,
+        336
+      ],
+      "id": "894b9381-7c93-490a-946d-ddaebcd24d36",
+      "name": "is_seller"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "3b053e71-ef1c-4c9f-bbc2-f795c0061304",
+              "leftValue": "={{ $json.seller_assigned }}",
+              "rightValue": "={{ $('search_phone_in_table_sellers').item.json.nombre }}",
+              "operator": {
+                "type": "string",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        1504,
+        32
+      ],
+      "id": "9b925ffc-03fe-403c-8d7d-2bc9ec499ea6",
+      "name": "is_the_same_seller"
+    },
+    {
+      "parameters": {
+        "workflowId": {
+          "__rl": true,
+          "value": "={{ $('set Fields').item.json.environment == 'dev' ? $vars.FLOW_ENVIO_MENSAJE_WHATSAPP_DEV : $vars.FLOW_ENVIO_MENSAJE_WHATSAPP_PROD }}",
+          "mode": "id",
+          "cachedResultUrl": "/workflow/=%7B%7B%20$('set%20Fields').item.json.environment%20==%20'dev'%20%3F%20$vars.FLOW_ENVIO_MENSAJE_WHATSAPP_DEV%20:%20$vars.FLOW_ENVIO_MENSAJE_WHATSAPP_PROD%20%7D%7D"
+        },
+        "workflowInputs": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "session_id": "={{ $('set Fields').item.json.contact.wa_id }}",
+            "text_body": "Hola👋 , te escribe Dalia. 🤖 Te informo que ya contamos con un asesor asignado para este proceso. Por el momento, no es necesario iniciar una nueva gestión para evitar duplicidad. ¡Agradecemos mucho su disposición y profesionalismo! ✨"
+          },
+          "matchingColumns": [],
+          "schema": [
+            {
+              "id": "session_id",
+              "displayName": "session_id",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string",
+              "removed": false
+            },
+            {
+              "id": "text_body",
+              "displayName": "text_body",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string",
+              "removed": false
+            },
+            {
+              "id": "caption",
+              "displayName": "caption",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string",
+              "removed": false
+            },
+            {
+              "id": "imagen no disponible",
+              "displayName": "imagen no disponible",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string",
+              "removed": false
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": true
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.executeWorkflow",
+      "typeVersion": 1.3,
+      "position": [
+        1824,
+        48
+      ],
+      "id": "b5437355-2d68-4e78-9dbe-6241c2cf88ee",
+      "name": "get_message_to_seller_info_user_attended"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "de828bbc-c0eb-43fc-8a6b-6d2e746c2e85",
+              "name": "session_id",
+              "value": "={{ $('Recibir Mensaje').item.json.contacts[0].wa_id }}",
+              "type": "string"
+            },
+            {
+              "id": "990edcb1-63d9-49f6-a3c9-c3689aaf2aba",
+              "name": "text_body",
+              "value": "Debes responder a un mensaje de usuario para enviar el mensaje",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        240,
+        224
+      ],
+      "id": "e7a3fb73-87a3-4e93-b4f9-52e6821acd93",
+      "name": "set_values_message_to_send"
+    },
+    {
+      "parameters": {
+        "workflowId": {
+          "__rl": true,
+          "value": "={{ $('set Fields').item.json.environment == 'dev' ? $vars.FLOW_ENVIO_MENSAJE_WHATSAPP_DEV : $vars.FLOW_ENVIO_MENSAJE_WHATSAPP_PROD }}",
+          "mode": "id",
+          "cachedResultUrl": "/workflow/=%7B%7B%20$('set%20Fields').item.json.environment%20==%20'dev'%20%3F%20$vars.FLOW_ENVIO_MENSAJE_WHATSAPP_DEV%20:%20$vars.FLOW_ENVIO_MENSAJE_WHATSAPP_PROD%20%7D%7D"
+        },
+        "workflowInputs": {
+          "mappingMode": "defineBelow",
+          "value": {},
+          "matchingColumns": [],
+          "schema": [],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": true
+        },
+        "options": {
+          "waitForSubWorkflow": false
+        }
+      },
+      "type": "n8n-nodes-base.executeWorkflow",
+      "typeVersion": 1.3,
+      "position": [
+        464,
+        224
+      ],
+      "id": "cce67f00-7d54-4f75-9194-b50d82cd7eab",
+      "name": "send_message_to_seller"
+    },
+    {
+      "parameters": {
+        "workflowId": {
+          "__rl": true,
+          "value": "={{ $('set Fields').item.json.environment == 'dev' ? $vars.FLOW_GUARDAR_HISTORIAL_DEV : $vars.FLOW_GUARDAR_HISTORIAL_PROD }}",
+          "mode": "id",
+          "cachedResultUrl": "/workflow/=%7B%7B%20$('set%20Fields').item.json.environment%20==%20'dev'%20%3F%20$vars.FLOW_GUARDAR_HISTORIAL_DEV%20:%20$vars.FLOW_GUARDAR_HISTORIAL_PROD%20%7D%7D"
+        },
+        "workflowInputs": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "id": "={{ $('Recibir Mensaje').item.json.contacts[0].wa_id }}",
+            "rol": "vendedor",
+            "mensaje": "={{ $('Recibir Mensaje').item.json.messages[0]?.text?.body || $('Recibir Mensaje').item.json.messages[0]?.image?.caption || 'sin_mensaje' }}",
+            "context_id_whatsapp": "={{ $('Recibir Mensaje').item.json.messages[0].id }}",
+            "channel": "whatsapp"
+          },
+          "matchingColumns": [],
+          "schema": [
+            {
+              "id": "id",
+              "displayName": "id",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string",
+              "removed": false
+            },
+            {
+              "id": "rol",
+              "displayName": "rol",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string",
+              "removed": false
+            },
+            {
+              "id": "mensaje",
+              "displayName": "mensaje",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string",
+              "removed": false
+            },
+            {
+              "id": "context_id_whatsapp",
+              "displayName": "context_id_whatsapp",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string",
+              "removed": false
+            },
+            {
+              "id": "context_relation_whatsapp",
+              "displayName": "context_relation_whatsapp",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string",
+              "removed": false
+            },
+            {
+              "id": "channel",
+              "displayName": "channel",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string",
+              "removed": false
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": true
+        },
+        "mode": "each",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.executeWorkflow",
+      "typeVersion": 1.3,
+      "position": [
+        672,
+        224
+      ],
+      "id": "016d6d46-c084-4681-9eb3-0a44051bd058",
+      "name": "save_history_loggin_seller",
+      "executeOnce": true
+    },
+    {
+      "parameters": {
+        "operation": "get",
+        "tableId": "={{ 'babys_world_' + $('set Fields').item.json.environment + '_session_chat' }}",
+        "filters": {
+          "conditions": [
+            {
+              "keyName": "=session_id",
+              "keyValue": "={{ $json.session_id.toString() }}"
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.supabase",
+      "typeVersion": 1,
+      "position": [
+        944,
+        16
+      ],
+      "id": "9cb8f955-0eaa-47fc-b77b-6e886b6db3eb",
+      "name": "get_seller_if_is_attended",
+      "credentials": {
+        "supabaseApi": {
+          "id": "dtKFPWrXh0HZEyUt",
+          "name": "clients_database"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "get",
+        "tableId": "={{ 'babys_world_' + $('set Fields').item.json.environment + '_session_chat' }}",
+        "filters": {
+          "conditions": [
+            {
+              "keyName": "=session_id",
+              "keyValue": "={{ $('Sort').first().json['ID del usuario'] }}"
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.supabase",
+      "typeVersion": 1,
+      "position": [
+        5616,
+        320
+      ],
+      "id": "5e715c4c-5911-4192-a5d1-0ca61154a5f2",
+      "name": "get_user_session_chat",
+      "alwaysOutputData": true,
+      "credentials": {
+        "supabaseApi": {
+          "id": "dtKFPWrXh0HZEyUt",
+          "name": "clients_database"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "576b8daf-af5a-4691-8c96-3d01d1b00af8",
+              "leftValue": "={{ $json.session_id }}",
+              "rightValue": "",
+              "operator": {
+                "type": "string",
+                "operation": "notEmpty",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        5856,
+        320
+      ],
+      "id": "d3245c6f-626f-4a66-9a0f-e41c3b63198a",
+      "name": "user_exists"
+    },
+    {
+      "parameters": {
+        "operation": "update",
+        "tableId": "={{ 'babys_world_' + $('set Fields').item.json.environment + '_session_chat' }}",
+        "filters": {
+          "conditions": [
+            {
+              "keyName": "=session_id",
+              "condition": "=eq",
+              "keyValue": "={{ $('Sort').first().json['ID del usuario'] }}"
+            }
+          ]
+        },
+        "fieldsUi": {
+          "fieldValues": [
+            {
+              "fieldId": "=message_type",
+              "fieldValue": "Conversacion existente"
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.supabase",
+      "typeVersion": 1,
+      "position": [
+        6064,
+        144
+      ],
+      "id": "4f521373-8bac-4adc-b5f0-c6543ba6360b",
+      "name": "update_type_message_user",
+      "credentials": {
+        "supabaseApi": {
+          "id": "dtKFPWrXh0HZEyUt",
+          "name": "clients_database"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "tableId": "={{ 'babys_world_' + $('set Fields').item.json.environment + '_session_chat' }}",
+        "fieldsUi": {
+          "fieldValues": [
+            {
+              "fieldId": "=session_id",
+              "fieldValue": "={{ $('set Fields').item.json.message.from }}"
+            },
+            {
+              "fieldId": "=message_type",
+              "fieldValue": "Primer mensaje"
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.supabase",
+      "typeVersion": 1,
+      "position": [
+        6080,
+        384
+      ],
+      "id": "fc9fed0b-01b3-4ad5-8c1f-b54d9bc89d08",
+      "name": "insert_user_into_session_chat",
+      "credentials": {
+        "supabaseApi": {
+          "id": "dtKFPWrXh0HZEyUt",
+          "name": "clients_database"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "update",
+        "tableId": "={{ 'babys_world_' + $('set Fields').item.json.environment + '_session_chat' }}",
+        "filters": {
+          "conditions": [
+            {
+              "keyName": "=session_id",
+              "condition": "=eq",
+              "keyValue": "={{ $('Sort').first().json['ID del usuario'] }}"
+            }
+          ]
+        },
+        "fieldsUi": {
+          "fieldValues": [
+            {
+              "fieldId": "=agent",
+              "fieldValue": "\"Agente Asesor\""
+            },
+            {
+              "fieldId": "=message_type",
+              "fieldValue": "={{ $json.message_type }}"
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.supabase",
+      "typeVersion": 1,
+      "position": [
+        7040,
+        368
+      ],
+      "id": "7a3cbe1e-7d3c-4948-b438-5609110fdaee",
+      "name": "update_agent_type_redirect_user",
+      "alwaysOutputData": true,
+      "credentials": {
+        "supabaseApi": {
+          "id": "dtKFPWrXh0HZEyUt",
+          "name": "clients_database"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "update",
+        "tableId": "={{ 'babys_world_' + $('set Fields').item.json.environment + '_session_chat' }}",
+        "filters": {
+          "conditions": [
+            {
+              "keyName": "=session_id",
+              "condition": "eq",
+              "keyValue": "={{ $json.session_id }}"
+            }
+          ]
+        },
+        "fieldsUi": {
+          "fieldValues": [
+            {
+              "fieldId": "=agent",
+              "fieldValue": "\"Agente Ventas\""
+            },
+            {
+              "fieldId": "=status",
+              "fieldValue": "Pendiente"
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.supabase",
+      "typeVersion": 1,
+      "position": [
+        6912,
+        560
+      ],
+      "id": "8dd79704-c147-47e3-812d-b93a1ce918f8",
+      "name": "update_status_pending_user_session",
+      "alwaysOutputData": true,
+      "credentials": {
+        "supabaseApi": {
+          "id": "dtKFPWrXh0HZEyUt",
+          "name": "clients_database"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "1d8a4b30-d038-478f-aa26-19a45cedb661",
+              "leftValue": "={{ $json.status }}",
+              "rightValue": "Pendiente",
+              "operator": {
+                "type": "string",
+                "operation": "equals",
+                "name": "filter.operator.equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        1152,
+        16
+      ],
+      "id": "6bd99c7f-703f-495a-81fa-c58002803817",
+      "name": "is_user_pending"
+    },
+    {
+      "parameters": {
+        "url": "https://graph.facebook.com/v19.0/1240023434887387/products",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "whatsAppApi",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            {
+              "name": "fields",
+              "value": "id,name,description,price,retailer_id,image_url"
+            },
+            {
+              "name": "filter",
+              "value": "={\"retailer_id\":{\"eq\":\"{{ $('Recibir Mensaje').item.json.messages[0].context.referred_product.product_retailer_id }}\"}}"
+            }
+          ]
+        },
+        "sendBody": true,
+        "contentType": "form-urlencoded",
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "fields",
+              "value": "id,name,description,price,retailer_id,image_url"
+            },
+            {
+              "name": "access_token",
+              "value": "<TU_ACCESS_TOKEN>"
+            },
+            {
+              "name": "filter",
+              "value": "{\"retailer_id\":{\"eq\":\"47600755245270\"}}"
+            }
+          ]
+        },
+        "options": {
+          "redirect": {
+            "redirect": {}
+          }
+        }
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.3,
+      "position": [
+        4160,
+        -48
+      ],
+      "id": "098261c3-242f-4dfe-8691-4932c9487ac9",
+      "name": "Obtiene producto catalogo whatsapp",
+      "credentials": {
+        "whatsAppApi": {
+          "id": "lpKIYVYHeBXazZLj",
+          "name": "Catalog_BW"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "inputSource": "passthrough"
+      },
+      "type": "n8n-nodes-base.executeWorkflowTrigger",
+      "typeVersion": 1.1,
+      "position": [
+        -1040,
+        480
+      ],
+      "id": "55862edf-eea3-48ea-a95e-77f897f66567",
+      "name": "When Executed by Another Workflow"
+    },
+    {
+      "parameters": {
+        "workflowId": {
+          "__rl": true,
+          "value": "hqA57BTMb2cQjfqg",
+          "mode": "list",
+          "cachedResultUrl": "/workflow/hqA57BTMb2cQjfqg",
+          "cachedResultName": "Babys World — Agente Asesor (DEV)(pruebas2)"
+        },
+        "workflowInputs": {
+          "mappingMode": "defineBelow",
+          "value": {},
+          "matchingColumns": [],
+          "schema": [
+            {
+              "id": "session_id",
+              "displayName": "session_id",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string",
+              "removed": false
+            },
+            {
+              "id": "message",
+              "displayName": "message",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string",
+              "removed": false
+            },
+            {
+              "id": "tipo_mensaje",
+              "displayName": "tipo_mensaje",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string",
+              "removed": false
+            },
+            {
+              "id": "environment",
+              "displayName": "environment",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string",
+              "removed": false
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": true
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.executeWorkflow",
+      "typeVersion": 1.3,
+      "position": [
+        8432,
+        160
+      ],
+      "id": "8a3f0547-ebad-4f11-bcfa-588f549ca723",
+      "name": "Call 'Agente Asesor (DEV)(pruebas2)'"
+    }
+  ],
+  "connections": {
+    "Recibir Audios": {
+      "main": [
+        [
+          {
+            "node": "Descarga de audios",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Transcribir Audios": {
+      "main": [
+        [
+          {
+            "node": "Convertir entrada",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Descarga de audios": {
+      "main": [
+        [
+          {
+            "node": "Transcribir Audios",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Recibir Texto": {
+      "main": [
+        [
+          {
+            "node": "Convertir entrada",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Recibir imagen": {
+      "main": [
+        [
+          {
+            "node": "Descarga de imagen",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Descarga de imagen": {
+      "main": [
+        [
+          {
+            "node": "Leer y transcribir la imagen",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Leer y transcribir la imagen": {
+      "main": [
+        [
+          {
+            "node": "Convertir entrada",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Switch1": {
+      "main": [
+        [
+          {
+            "node": "Recibir Texto",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Recibir Audios",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Recibir imagen",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        []
+      ]
+    },
+    "Convertir entrada": {
+      "main": [
+        [
+          {
+            "node": "Sort",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Modelo De Chat1": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "Leer y transcribir la imagen",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Push message buffer": {
+      "main": [
+        [
+          {
+            "node": "Get message buffer",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get message buffer": {
+      "main": [
+        [
+          {
+            "node": "Switch",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Switch": {
+      "main": [
+        [
+          {
+            "node": "No Operation, do nothing",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Delete message buffer",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Wait",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Wait": {
+      "main": [
+        [
+          {
+            "node": "Get message buffer",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Delete message buffer": {
+      "main": [
+        [
+          {
+            "node": "Split Out1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Split Out1": {
+      "main": [
+        [
+          {
+            "node": "Json parse",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "set Fields": {
+      "main": [
+        [
+          {
+            "node": "Validacion de mensaje",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Json parse": {
+      "main": [
+        [
+          {
+            "node": "Switch1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Sort": {
+      "main": [
+        [
+          {
+            "node": "Aggregate",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Aggregate": {
+      "main": [
+        [
+          {
+            "node": "Existe mensaje de contexto",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Validacion de mensaje": {
+      "main": [
+        [
+          {
+            "node": "search_phone_in_table_sellers",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "No Operation, do nothing1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "OpenAI Chat Model": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "Agente Coordinador",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Simple Memory2": {
+      "ai_memory": [
+        [
+          {
+            "node": "Agente Coordinador",
+            "type": "ai_memory",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Agente Coordinador": {
+      "main": [
+        [
+          {
+            "node": "build_token_usage_dto",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "get_user_session_chat",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Think": {
+      "ai_tool": [
+        [
+          {
+            "node": "Agente Coordinador",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Redireccionamiento": {
+      "main": [
+        [
+          {
+            "node": "update_agent_type_redirect_user",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "update_status_pending_user_session",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Validación campo estado asesor": {
+      "main": [
+        [
+          {
+            "node": "Extractor de informacion para leads",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Redireccionamiento",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Existe mensaje de contexto": {
+      "main": [
+        [
+          {
+            "node": "Contiene referencia de catalogo whatsapp",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Unificacion mensaje",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Obtiene mensaje contexto": {
+      "main": [
+        [
+          {
+            "node": "Unificacion mensaje",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Contiene referencia de catalogo whatsapp": {
+      "main": [
+        [
+          {
+            "node": "Obtiene producto catalogo whatsapp",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "get_context_message1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Obtiene nombre producto catalogo": {
+      "main": [
+        [
+          {
+            "node": "Unificacion mensaje",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Unificacion mensaje": {
+      "main": [
+        [
+          {
+            "node": "Agente Coordinador",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "build_token_usage_dto": {
+      "main": [
+        [
+          {
+            "node": "Call 'ai_usage_log'",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "OpenAI Chat Model1": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "Extractor de informacion para leads",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Extractor de informacion para leads": {
+      "main": [
+        [
+          {
+            "node": "Actualizar o llenar informacion de leads",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Actualizar o llenar informacion de leads": {
+      "main": [
+        [
+          {
+            "node": "get_start_operation",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Existe mensaje de contexto1": {
+      "main": [
+        [
+          {
+            "node": "get_context_message",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "set_values_message_to_send",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "guardar historial": {
+      "main": [
+        [
+          {
+            "node": "Push message buffer",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "get_id_user_by_context": {
+      "main": [
+        [
+          {
+            "node": "get_message_user_by_context",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "get_start_operation": {
+      "main": [
+        [
+          {
+            "node": "get_end_operation",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "get_end_operation": {
+      "main": [
+        [
+          {
+            "node": "get_business_hour",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "get_business_hour": {
+      "main": [
+        [
+          {
+            "node": "is_it_open",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "is_it_open": {
+      "main": [
+        [
+          {
+            "node": "Call 'Redireccionamiento a humano (DEV)'1",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Call 'Agente Asesor (DEV)(pruebas2)'",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "get_context_message": {
+      "main": [
+        [
+          {
+            "node": "get_id_user_by_context",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "get_context_message1": {
+      "main": [
+        [
+          {
+            "node": "Obtiene mensaje contexto",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "get_message_user_by_context": {
+      "main": [
+        [
+          {
+            "node": "get_seller_if_is_attended",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "search_phone_in_table_sellers": {
+      "main": [
+        [
+          {
+            "node": "is_seller",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "is_seller": {
+      "main": [
+        [
+          {
+            "node": "Existe mensaje de contexto1",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "guardar historial",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "is_the_same_seller": {
+      "main": [
+        [
+          {
+            "node": "Call 'Redireccionamiento a humano (DEV)'",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "get_message_to_seller_info_user_attended",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "set_values_message_to_send": {
+      "main": [
+        [
+          {
+            "node": "send_message_to_seller",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "send_message_to_seller": {
+      "main": [
+        [
+          {
+            "node": "save_history_loggin_seller",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "get_seller_if_is_attended": {
+      "main": [
+        [
+          {
+            "node": "is_user_pending",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "get_user_session_chat": {
+      "main": [
+        [
+          {
+            "node": "user_exists",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "user_exists": {
+      "main": [
+        [
+          {
+            "node": "update_type_message_user",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "insert_user_into_session_chat",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "update_type_message_user": {
+      "main": [
+        [
+          {
+            "node": "Validación campo estado asesor",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "insert_user_into_session_chat": {
+      "main": [
+        [
+          {
+            "node": "Redireccionamiento",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "update_agent_type_redirect_user": {
+      "main": [
+        [
+          {
+            "node": "Execute Asesor",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "update_status_pending_user_session": {
+      "main": [
+        [
+          {
+            "node": "Extractor de informacion para leads",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "is_user_pending": {
+      "main": [
+        [
+          {
+            "node": "Call 'Redireccionamiento a humano (DEV)'",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "is_the_same_seller",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Obtiene producto catalogo whatsapp": {
+      "main": [
+        [
+          {
+            "node": "Obtiene nombre producto catalogo",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "When Executed by Another Workflow": {
+      "main": [
+        [
+          {
+            "node": "set Fields",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "nodeGroups": [],
+  "settings": {
+    "executionOrder": "v1",
+    "callerPolicy": "workflowsFromSameOwner",
+    "errorWorkflow": "5j9hfL5IlhLCpydB",
+    "availableInMCP": false,
+    "binaryMode": "separate"
+  },
+  "staticData": null,
+  "pinData": {
+    "When Executed by Another Workflow": [
+      {
+        "json": {
+          "mensaje": [
+            {
+              "message": {
+                "from": 572222222222,
+                "id": "1776292862582_5euvqt",
+                "timestamp": "1776292862",
+                "text": {
+                  "body": "Hola, gracias por tus consejos, pero confieso que no tengo mucha paciencia para esta búsqueda. Me gustaría algo que sea cómodo y seguro para mi nieto, pero no me importa si ocupa un poquito más de espacio mientras sea práctico. ¿Tienes algún modelo específico que recomiendes? También quisiera saber cómo hago para comprarlo, si hay un link de pago o algo así. ¡Gracias! 😊"
+                },
+                "type": "text"
+              },
+              "contact": {
+                "profile": {
+                  "name": "AI Test Client"
+                },
+                "wa_id": 573337062951,
+                "metadata": {
+                  "display_phone_number": "573337062951",
+                  "phone_number_id": "900258723180080"
+                },
+                "context_id": null
+              }
+            }
+          ],
+          "incoming_message": "Hola, gracias por tus consejos, pero confieso que no tengo mucha paciencia para esta búsqueda. Me gustaría algo que sea cómodo y seguro para mi nieto, pero no me importa si ocupa un poquito más de espacio mientras sea práctico. ¿Tienes algún modelo específico que recomiendes? También quisiera saber cómo hago para comprarlo, si hay un link de pago o algo así. ¡Gracias! 😊"
+        },
+        "pairedItem": {
+          "item": 0
+        }
+      }
+    ]
+  },
+  "meta": {
+    "templateCredsSetupCompleted": true
+  },
+  "tags": [
+    {
+      "id": "6e1haF3pXukz6KVf",
+      "name": "env:dev",
+      "createdAt": "2025-05-27T01:29:25.680Z",
+      "updatedAt": "2026-02-11T00:17:23.837Z"
+    }
+  ],
+  "shared": [
+    {
+      "role": "workflow:owner",
+      "workflowId": "LkHPDVDdWot2qaqe",
+      "projectId": "8h8pwWGcWlnGEym3",
+      "createdAt": "2026-04-07T18:19:35.574Z",
+      "updatedAt": "2026-04-07T18:19:35.574Z"
+    }
+  ],
+  "activeVersion": null
+}
