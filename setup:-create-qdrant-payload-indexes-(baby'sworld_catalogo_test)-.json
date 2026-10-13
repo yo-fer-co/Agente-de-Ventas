@@ -1,0 +1,392 @@
+{
+  "id": "mC5KxnKwcO9WV5fW",
+  "name": "Setup: Create Qdrant Payload Indexes (Baby'sWorld_Catalogo_Test)",
+  "active": false,
+  "activeVersionId": null,
+  "createdAt": "2026-09-29T22:11:54.565Z",
+  "updatedAt": "2026-09-29T22:11:57.940Z",
+  "isArchived": false,
+  "versionId": "1f0f128b-a4da-4aca-b8e8-319b3cf63504",
+  "triggerCount": 0,
+  "nodes": [
+    {
+      "parameters": {
+        "content": "## Setup: Create Qdrant Payload Indexes (Baby'sWorld_Catalogo_Test)\n\nWorkflow de UNA SOLA VEZ, no un listener -- no tiene webhook ni se activa. Se ejecuta manualmente (boton 'Test workflow' / 'Execute workflow' en n8n) UNA vez y ya.\n\nACTUALIZADO (2026-08-14, ejecucion 91674): fallo con '404 - Not found: Collection `Baby'sWorld_Catalogo_Test` doesn't exist!' -- crear un indice no crea la coleccion; hay que crear la coleccion primero. Se agregaron 2 nodos al inicio:\n1. Qdrant_Get_Collection_Info (GET, solo lectura): lee la config real de vectores (size + distance) de la coleccion de PRODUCCION 'BabysWorld_Catalogo', sin tocarla.\n2. Qdrant_Create_Test_Collection (PUT): crea 'Baby'sWorld_Catalogo_Test' con exactamente esa misma config de vectores -- asi los embeddings (1536 dims, text-embedding-ada-002) encajan.\n\nMotivo original (ejecucion 91637, 2026-08-13): 'Find_Orphaned_Variants' -> 'Qdrant_Scroll_Existing_Points' en Product_Management fallo con:\n400 - \"Index required but not found for 'product_id' of one of the following types: [integer]. Help: Create an index for this key or use a different filter.\"\n\nEsta instancia de Qdrant Cloud exige un indice explicito sobre cualquier campo del payload que se use en un filtro (scroll o delete), aunque el campo ya exista en todos los puntos. Sin este indice, TODO filtro por 'product_id' falla con este mismo error -- esto incluye no solo la limpieza de variantes huerfanas, sino tambien 'Subflow: Delete Qdrant Point' (borrado de producto completo via products/delete), que usa el mismo tipo de filtro.\n\nOrden: Get_Collection_Info -> Create_Test_Collection -> Create_Index_Product_Id -> Create_Index_Variant_Id. Una vez corrido, no hace falta repetirlo -- coleccion e indices quedan permanentemente en Qdrant.\n\nACTUALIZADO (2026-08-19): las ejecuciones 91894, 91895 y 91908 volvieron a fallar con el mismo 400 - \"Index required but not found for product_id\" contra Baby'sWorld_Catalogo_Test -- el indice que este mismo workflow habia creado el 2026-08-14 ya no estaba (lo mas probable: la coleccion de pruebas se borro y se recreo en algun momento entre medio, lo que borra tambien sus indices; el error confirma que la coleccion SI existe, solo que sin el indice, ya que si la coleccion no existiera el error seria 404, no este 400). Fix: se marco el nodo Qdrant_Create_Test_Collection con continueOnFail=true (onError: continueRegularOutput), asi el workflow queda seguro de re-ejecutar las veces que haga falta -- si la coleccion ya existe, el PUT de creacion falla con 409 pero ya no corta la cadena, y los dos nodos de creacion de indice se ejecutan igual (crear un indice que ya existe tambien es una operacion segura/idempotente en Qdrant). Hay que volver a importar y ejecutar este workflow una vez mas para restaurar los indices.\n\nACTUALIZADO (2026-08-25): se agregaron 3 indices de texto (field_schema: 'text') necesarios para que 'Catalogo Qdrant (DEV)' pueda filtrar por categoria/nombre/descripcion contra el esquema plano nuevo: product_type (antes metadata.categoria), title (antes metadata.titulo), descripcion (ya se llamaba igual, solo le faltaba el indice). Sin estos 3 indices, esas 3 ramas de busqueda (por categoria, por nombre de producto, por descripcion) fallarian con el mismo error 400 'Index required' que ya se resolvio para product_id/variant_id en la seccion 10/11 del plan. Orden final: Get_Collection_Info -> Create_Test_Collection -> Create_Index_Product_Id -> Create_Index_Variant_Id -> Create_Index_Product_Type -> Create_Index_Title -> Create_Index_Descripcion.\n\nACTUALIZADO (2026-08-25): se agrego un 4to indice de texto, 'collections' -- campo nuevo en el payload (ver Product_Management / Subflow: Get Shopify Product Collections, seccion 17 del plan), que reemplaza a product_type como fuente real de 'categoria' en 'Catalogo Qdrant (DEV)'. Sin este indice, la busqueda por categoria fallaria con el mismo 400 'Index required' que las otras. Orden final: Get_Collection_Info -> Create_Test_Collection -> Create_Index_Product_Id -> Create_Index_Variant_Id -> Create_Index_Product_Type -> Create_Index_Title -> Create_Index_Descripcion -> Create_Index_Collections.\n\nACTUALIZADO (2026-09-29): se agrego Qdrant_Create_Index_Sku (keyword) al final de la cadena, para que el filtro exacto por 'sku' no falle con 'Index required'.",
+        "height": 620,
+        "width": 560,
+        "color": 4
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        -224,
+        -288
+      ],
+      "id": "1f03e9bf-486a-4bb0-b249-434ae77f5c8c",
+      "name": "Sticky_Setup_Note"
+    },
+    {
+      "parameters": {},
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [
+        432,
+        240
+      ],
+      "id": "41b8cedb-d9de-4228-a7f5-a3e109881397",
+      "name": "When clicking ‘Execute workflow’"
+    },
+    {
+      "parameters": {
+        "method": "PUT",
+        "url": "https://1537c683-48da-4631-ab76-ad698b6b9881.us-east-1-0.aws.cloud.qdrant.io:6333/collections/Baby'sWorld_Catalogo_Test/index",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "qdrantApi",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ { field_name: 'product_id', field_schema: 'integer' } }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        1168,
+        176
+      ],
+      "id": "cc5c2a62-ef48-429e-8a8f-c9eb92bfd7f1",
+      "name": "Qdrant_Create_Index_Product_Id",
+      "credentials": {
+        "qdrantApi": {
+          "id": "ZYv8vdr6tkTS4jYz",
+          "name": "QdrantApi account 3"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "method": "PUT",
+        "url": "https://1537c683-48da-4631-ab76-ad698b6b9881.us-east-1-0.aws.cloud.qdrant.io:6333/collections/Baby'sWorld_Catalogo_Test/index",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "qdrantApi",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ { field_name: 'variant_id', field_schema: 'integer' } }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        1408,
+        176
+      ],
+      "id": "cc260dde-06fd-4afa-97c8-da1d6e6f7c76",
+      "name": "Qdrant_Create_Index_Variant_Id",
+      "credentials": {
+        "qdrantApi": {
+          "id": "ZYv8vdr6tkTS4jYz",
+          "name": "QdrantApi account 3"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "url": "https://1537c683-48da-4631-ab76-ad698b6b9881.us-east-1-0.aws.cloud.qdrant.io:6333/collections/BabysWorld_Catalogo",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "qdrantApi",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        688,
+        176
+      ],
+      "id": "484de72e-0f9c-4a6e-9f28-9a7bccaae5d9",
+      "name": "Qdrant_Get_Collection_Info",
+      "credentials": {
+        "qdrantApi": {
+          "id": "ZYv8vdr6tkTS4jYz",
+          "name": "QdrantApi account 3"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "method": "PUT",
+        "url": "https://1537c683-48da-4631-ab76-ad698b6b9881.us-east-1-0.aws.cloud.qdrant.io:6333/collections/Baby'sWorld_Catalogo_Test",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "qdrantApi",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ { vectors: $json.result.config.params.vectors } }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        928,
+        176
+      ],
+      "id": "440e958c-9230-469b-af29-553d67d6a958",
+      "name": "Qdrant_Create_Test_Collection",
+      "credentials": {
+        "qdrantApi": {
+          "id": "ZYv8vdr6tkTS4jYz",
+          "name": "QdrantApi account 3"
+        }
+      },
+      "continueOnFail": true,
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "method": "PUT",
+        "url": "https://1537c683-48da-4631-ab76-ad698b6b9881.us-east-1-0.aws.cloud.qdrant.io:6333/collections/Baby'sWorld_Catalogo_Test/index",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "qdrantApi",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ { field_name: 'product_type', field_schema: 'text' } }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        1648,
+        176
+      ],
+      "id": "5f365911-9c3a-4509-9f14-86ec63e49ffa",
+      "name": "Qdrant_Create_Index_Product_Type",
+      "credentials": {
+        "qdrantApi": {
+          "id": "ZYv8vdr6tkTS4jYz",
+          "name": "QdrantApi account 3"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "method": "PUT",
+        "url": "https://1537c683-48da-4631-ab76-ad698b6b9881.us-east-1-0.aws.cloud.qdrant.io:6333/collections/Baby'sWorld_Catalogo_Test/index",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "qdrantApi",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ { field_name: 'title', field_schema: 'text' } }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        1888,
+        176
+      ],
+      "id": "2b87ed05-cc24-4592-b9b6-4e5de013fcfe",
+      "name": "Qdrant_Create_Index_Title",
+      "credentials": {
+        "qdrantApi": {
+          "id": "ZYv8vdr6tkTS4jYz",
+          "name": "QdrantApi account 3"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "method": "PUT",
+        "url": "https://1537c683-48da-4631-ab76-ad698b6b9881.us-east-1-0.aws.cloud.qdrant.io:6333/collections/Baby'sWorld_Catalogo_Test/index",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "qdrantApi",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ { field_name: 'descripcion', field_schema: 'text' } }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        2128,
+        176
+      ],
+      "id": "ae3e4041-0bc7-4dc9-a8c9-090af92d90bd",
+      "name": "Qdrant_Create_Index_Descripcion",
+      "credentials": {
+        "qdrantApi": {
+          "id": "ZYv8vdr6tkTS4jYz",
+          "name": "QdrantApi account 3"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "method": "PUT",
+        "url": "https://1537c683-48da-4631-ab76-ad698b6b9881.us-east-1-0.aws.cloud.qdrant.io:6333/collections/Baby'sWorld_Catalogo_Test/index",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "qdrantApi",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ { field_name: 'collections', field_schema: 'text' } }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        2368,
+        176
+      ],
+      "id": "603397bd-3e7b-4bba-a22b-0d4844359498",
+      "name": "Qdrant_Create_Index_Collections",
+      "credentials": {
+        "qdrantApi": {
+          "id": "ZYv8vdr6tkTS4jYz",
+          "name": "QdrantApi account 3"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "method": "PUT",
+        "url": "https://1537c683-48da-4631-ab76-ad698b6b9881.us-east-1-0.aws.cloud.qdrant.io:6333/collections/Baby'sWorld_Catalogo_Test/index",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "qdrantApi",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ { field_name: 'sku', field_schema: 'keyword' } }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        2624,
+        176
+      ],
+      "id": "9484d457-f520-4096-a725-1ee485fd9dd5",
+      "name": "Qdrant_Create_Index_Sku",
+      "credentials": {
+        "qdrantApi": {
+          "id": "ZYv8vdr6tkTS4jYz",
+          "name": "QdrantApi account 3"
+        }
+      }
+    }
+  ],
+  "connections": {
+    "When clicking ‘Execute workflow’": {
+      "main": [
+        [
+          {
+            "node": "Qdrant_Get_Collection_Info",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Qdrant_Create_Index_Product_Id": {
+      "main": [
+        [
+          {
+            "node": "Qdrant_Create_Index_Variant_Id",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Qdrant_Get_Collection_Info": {
+      "main": [
+        [
+          {
+            "node": "Qdrant_Create_Test_Collection",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Qdrant_Create_Test_Collection": {
+      "main": [
+        [
+          {
+            "node": "Qdrant_Create_Index_Product_Id",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Qdrant_Create_Index_Variant_Id": {
+      "main": [
+        [
+          {
+            "node": "Qdrant_Create_Index_Product_Type",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Qdrant_Create_Index_Product_Type": {
+      "main": [
+        [
+          {
+            "node": "Qdrant_Create_Index_Title",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Qdrant_Create_Index_Title": {
+      "main": [
+        [
+          {
+            "node": "Qdrant_Create_Index_Descripcion",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Qdrant_Create_Index_Descripcion": {
+      "main": [
+        [
+          {
+            "node": "Qdrant_Create_Index_Collections",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Qdrant_Create_Index_Collections": {
+      "main": [
+        [
+          {
+            "node": "Qdrant_Create_Index_Sku",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "nodeGroups": [],
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate"
+  },
+  "staticData": null,
+  "pinData": {},
+  "meta": null,
+  "tags": [],
+  "shared": [
+    {
+      "role": "workflow:owner",
+      "workflowId": "mC5KxnKwcO9WV5fW",
+      "projectId": "8h8pwWGcWlnGEym3",
+      "createdAt": "2026-09-29T22:11:54.567Z",
+      "updatedAt": "2026-09-29T22:11:54.567Z"
+    }
+  ],
+  "activeVersion": null
+}
