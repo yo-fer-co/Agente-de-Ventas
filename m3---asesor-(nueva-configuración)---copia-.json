@@ -1,0 +1,392 @@
+{
+  "id": "atyLIw2sxAgitLYD",
+  "name": "M3 - Asesor (nueva configuración) - copia",
+  "active": false,
+  "activeVersionId": null,
+  "createdAt": "2026-05-08T19:24:19.760Z",
+  "updatedAt": "2026-05-14T16:50:11.000Z",
+  "isArchived": true,
+  "versionId": "d82ff73b-2d92-491c-b4f0-70ef2f276b87",
+  "triggerCount": 0,
+  "nodes": [
+    {
+      "parameters": {
+        "mode": "load",
+        "qdrantCollection": {
+          "__rl": true,
+          "value": "YoEco_Catalogo_DEMO",
+          "mode": "list",
+          "cachedResultName": "YoEco_Catalogo_DEMO"
+        },
+        "prompt": "={{ [ $('Build Advisor Request').item.json.advisor_request.user_message, $('Build Advisor Request').item.json.advisor_request.intent, $('Build Advisor Request').item.json.advisor_request.category_candidate, $('Build Advisor Request').item.json.advisor_request.product_candidate, $('Build Advisor Request').item.json.advisor_request.preference ].filter(Boolean).join(' ') }}",
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.vectorStoreQdrant",
+      "typeVersion": 1.3,
+      "position": [
+        16,
+        -64
+      ],
+      "id": "7ed505fd-fad1-4762-838f-6c8e6490da1c",
+      "name": "Retrieve Catalog Context",
+      "credentials": {
+        "qdrantApi": {
+          "id": "9oUogOvtDqsTDKBQ",
+          "name": "QdrantApi TEST"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "mode": "load",
+        "qdrantCollection": {
+          "__rl": true,
+          "value": "YoEco_Business_DEMO",
+          "mode": "list",
+          "cachedResultName": "YoEco_Business_DEMO"
+        },
+        "prompt": "=={{ $('Build Advisor Request').item.json.advisor_request.user_message }}",
+        "topK": 2,
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.vectorStoreQdrant",
+      "typeVersion": 1.3,
+      "position": [
+        288,
+        -64
+      ],
+      "id": "301af441-9aee-4e90-9103-8c20803903a9",
+      "name": "Retrieve Knowledge Context",
+      "credentials": {
+        "qdrantApi": {
+          "id": "9oUogOvtDqsTDKBQ",
+          "name": "QdrantApi TEST"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.embeddingsOpenAi",
+      "typeVersion": 1.2,
+      "position": [
+        16,
+        128
+      ],
+      "id": "53aaa732-f522-43ee-b6f1-81e41e1648d6",
+      "name": "Embeddings OpenAI",
+      "credentials": {
+        "openAiApi": {
+          "id": "CxN1M3GiHPXWR4gx",
+          "name": "OpenAi TEST"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.embeddingsOpenAi",
+      "typeVersion": 1.2,
+      "position": [
+        288,
+        144
+      ],
+      "id": "c09c60ce-41d7-430f-aa8a-56209d83b8d0",
+      "name": "Embeddings OpenAI1",
+      "credentials": {
+        "openAiApi": {
+          "id": "CxN1M3GiHPXWR4gx",
+          "name": "OpenAi TEST"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "functionCode": "// Validate incoming M2 payload. Add custom logic here.\nreturn items;"
+      },
+      "id": "c65aebae-ced8-446c-8b0e-b37f1bddc16d",
+      "name": "Validate M2 Input",
+      "type": "n8n-nodes-base.function",
+      "typeVersion": 1,
+      "position": [
+        -672,
+        -64
+      ]
+    },
+    {
+      "parameters": {
+        "inputSource": "passthrough"
+      },
+      "type": "n8n-nodes-base.executeWorkflowTrigger",
+      "typeVersion": 1.1,
+      "position": [
+        -864,
+        -64
+      ],
+      "id": "3cebda7d-edea-4595-a9fb-d088b440c9b0",
+      "name": "When Executed by Another Workflow"
+    },
+    {
+      "parameters": {
+        "jsCode": "// 1. Traemos la configuración y lo que pidió el usuario\nconst request = $('Build Advisor Request').first().json.advisor_request;\nconst config = $('Load M3 Config').first().json;\n\n// 2. Traemos los productos de Qdrant (Nodo 5) de forma segura\nlet catalogItems = [];\ntry {\n    // Busca los resultados, si vienen dentro de 'metadata' o en la raíz\n    catalogItems = $('Retrieve Catalog Context').all().map(item => item.json.metadata || item.json);\n} catch (e) {\n    // Si no encontró nada, no pasa nada, se queda vacío\n}\n\n// 3. Traemos el conocimiento de Qdrant (Nodo 6) de forma segura\nlet knowledgeItems = [];\ntry {\n    knowledgeItems = $('Retrieve Knowledge Context').all().map(item => item.json.metadata || item.json);\n} catch (e) {}\n\n// 4. Formateamos el catálogo en texto fácil de leer para la IA\nlet catalogText = \"No se encontraron productos relevantes en el catálogo para esta consulta.\";\nif (catalogItems.length > 0) {\n    catalogText = catalogItems.map(item => \n        `- Producto: ${item.titulo || item.name || 'Sin nombre'}\\n  Precio: $${item.precio || item.price || 'N/A'}\\n  Stock: ${item.stock || 'Consultar'}\\n  Desc: ${item.descripcion || item.description || 'Sin descripción'}`\n    ).join('\\n\\n');\n}\n\n// 5. Formateamos el conocimiento (FAQs) en texto para la IA\nlet knowledgeText = \"No se requiere información adicional de políticas para esta consulta.\";\nif (knowledgeItems.length > 0) {\n    knowledgeText = knowledgeItems.map(item => \n        `- Info: ${item.respuesta || item.contenido || item.pageContent || item.text || 'Dato interno'}`\n    ).join('\\n\\n');\n}\n\n// 6. Construimos el mega-contexto final y se lo mandamos a la IA\nreturn {\n    json: {\n        advisor_context: {\n            user_intent: request.intent,\n            mode: request.mode,\n            commercial_stage: request.commercial_stage,\n            user_message: request.user_message,\n            extracted_entities: {\n                product: request.product_candidate,\n                category: request.category_candidate,\n                city: request.city\n            },\n            available_catalog: catalogText,\n            business_knowledge: knowledgeText,\n            system_config: config\n        }\n    }\n};"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        640,
+        -64
+      ],
+      "id": "7ee2a396-c039-4056-8053-267a445dfcc7",
+      "name": "Build Advisor Context"
+    },
+    {
+      "parameters": {
+        "functionCode": "// Transform M2 decision into advisor request.\nreturn items;"
+      },
+      "id": "533dc5cf-a4cd-4b2b-91f7-13141329861e",
+      "name": "Build Advisor Request2",
+      "type": "n8n-nodes-base.function",
+      "typeVersion": 1,
+      "position": [
+        -272,
+        -64
+      ]
+    },
+    {
+      "parameters": {
+        "keepOnlySet": true,
+        "values": {
+          "string": [
+            {
+              "name": "advisor_config",
+              "value": "{  \"advisor_name\": \"DALIA\",  \"mode\": \"demo_lite\",  \"language\": \"es\",  \"tone\": {    \"style\": \"natural, cálido, claro y comercial\",    \"principles\": [      \"acompañar antes que vender\",      \"responder de forma breve\",      \"guiar al cliente con una pregunta útil\",      \"usar lenguaje sencillo\",      \"mantener foco comercial\"    ],    \"avoid\": [      \"presionar al cliente\",      \"responder con bloques largos\",      \"hablar como sistema técnico\",      \"mencionar módulos internos\",      \"mencionar herramientas, RAG, Qdrant, n8n o workflows\"    ],    \"max_sentences\": 6,    \"ask_one_question_at_end\": true  },  \"catalog_rules\": {    \"strict_catalog_mode\": true,    \"only_use_demo_catalog\": true,    \"do_not_invent_products\": true,    \"do_not_invent_prices\": true,    \"do_not_invent_stock\": true,    \"do_not_show_sku_to_customer\": true,    \"catalog_is_source_of_truth\": true  },  \"business_rules\": {    \"guide_to_purchase\": true,    \"do_not_execute_purchase\": true,    \"do_not_generate_orders\": true,    \"do_not_process_payments\": true,    \"do_not_handoff_directly\": true,    \"suggest_handoff_when_needed\": true  },  \"fallback_rules\": {    \"if_no_catalog_match\": \"No tengo ese producto dentro del catálogo demo disponible. Puedo ayudarte a revisar las opciones que sí están cargadas.\",    \"if_insufficient_info\": \"Para orientarte mejor, ¿me cuentas qué tipo de producto estás buscando?\",    \"if_invalid_input\": \"No pude entender bien tu solicitud. ¿Me puedes contar qué producto o categoría estás buscando?\"  },  \"output_schema\": \"dalia.m3.advisor_response.v1\" }"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "64d75f88-048a-4731-a54a-eea2f7c2b7c1",
+      "name": "Load M3 Config2",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 1,
+      "position": [
+        -464,
+        -64
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "return {\n  json: {\n    advisor_request: {\n      mode: \"recommendation\",\n      user_message: \"busco una silla para mi bebé\",\n      intent: \"product_search\",\n      commercial_stage: \"consideration\",\n      category_candidate: \"silla\",\n      product_candidate: null,\n      preference: null,\n      city: null,\n      quantity: null\n    }\n  }\n};"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -256,
+        192
+      ],
+      "id": "49c28633-0167-469d-932a-c471a49505ba",
+      "name": "Build Advisor Request"
+    },
+    {
+      "parameters": {
+        "jsCode": "return {\n  json: {\n    advisor_name: \"DALIA\",\n    mode: \"demo_lite\",\n    language: \"es\"\n  }\n};"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -496,
+        192
+      ],
+      "id": "80b93f3e-f98c-4933-80d1-f5fbbfa60f29",
+      "name": "Load M3 Config"
+    },
+    {
+      "parameters": {
+        "resource": "completion",
+        "model": "gpt-3.5-turbo",
+        "prompt": "",
+        "responseType": "json"
+      },
+      "id": "4f27fee7-396c-4718-a357-3fd728b0354c",
+      "name": "LLM Advisor",
+      "type": "n8n-nodes-base.openai",
+      "typeVersion": 1,
+      "position": [
+        864,
+        -64
+      ]
+    },
+    {
+      "parameters": {
+        "functionCode": "// Normalize response from LLM into M3 output schema.\nreturn items;"
+      },
+      "id": "1622d9fa-1e3c-4afe-9479-35c02644b3e1",
+      "name": "Normalize Advisor Response",
+      "type": "n8n-nodes-base.function",
+      "typeVersion": 1,
+      "position": [
+        1152,
+        -64
+      ]
+    },
+    {
+      "parameters": {
+        "functionCode": "// Apply guardrails to ensure compliance with catalog and demo rules.\nreturn items;"
+      },
+      "id": "93394c9f-687e-4fb0-9e50-8f94faef7b62",
+      "name": "Validate Guardrails",
+      "type": "n8n-nodes-base.function",
+      "typeVersion": 1,
+      "position": [
+        1456,
+        -64
+      ]
+    },
+    {
+      "parameters": {
+        "functionCode": "// Construct outputs for M7 (messaging), M4 (memory) and M8 (logging).\nreturn items;"
+      },
+      "id": "17de9653-33f9-425e-bdd3-d7e51e422d01",
+      "name": "Build Outputs",
+      "type": "n8n-nodes-base.function",
+      "typeVersion": 1,
+      "position": [
+        1760,
+        -64
+      ]
+    }
+  ],
+  "connections": {
+    "Retrieve Catalog Context": {
+      "main": [
+        [
+          {
+            "node": "Retrieve Knowledge Context",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Embeddings OpenAI": {
+      "ai_embedding": [
+        [
+          {
+            "node": "Retrieve Catalog Context",
+            "type": "ai_embedding",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Embeddings OpenAI1": {
+      "ai_embedding": [
+        [
+          {
+            "node": "Retrieve Knowledge Context",
+            "type": "ai_embedding",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Validate M2 Input": {
+      "main": [
+        [
+          {
+            "node": "Load M3 Config2",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "When Executed by Another Workflow": {
+      "main": [
+        [
+          {
+            "node": "Validate M2 Input",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Retrieve Knowledge Context": {
+      "main": [
+        [
+          {
+            "node": "Build Advisor Context",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Build Advisor Request": {
+      "main": [
+        [
+          {
+            "node": "Retrieve Catalog Context",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Load M3 Config": {
+      "main": [
+        [
+          {
+            "node": "Build Advisor Request",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Normalize Advisor Response": {
+      "main": [
+        [
+          {
+            "node": "Validate Guardrails",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Validate Guardrails": {
+      "main": [
+        [
+          {
+            "node": "Build Outputs",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "nodeGroups": [],
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate"
+  },
+  "staticData": null,
+  "pinData": {},
+  "meta": null,
+  "tags": [],
+  "shared": [
+    {
+      "role": "workflow:owner",
+      "workflowId": "atyLIw2sxAgitLYD",
+      "projectId": "tRHCC8ts4mkRGXGn",
+      "createdAt": "2026-05-08T19:24:19.764Z",
+      "updatedAt": "2026-05-08T19:24:19.764Z"
+    }
+  ],
+  "activeVersion": null
+}
