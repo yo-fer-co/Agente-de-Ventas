@@ -1,0 +1,1006 @@
+{
+  "id": "W64Nazq98jdMAbsW",
+  "name": "DALIA_M9.05_Recuperar_conocimiento",
+  "active": true,
+  "activeVersionId": "b5893dc0-ec5e-4308-b73b-f74188c8d2a1",
+  "createdAt": "2026-10-04T03:17:57.854Z",
+  "updatedAt": "2026-10-04T03:18:19.900Z",
+  "isArchived": false,
+  "versionId": "b5893dc0-ec5e-4308-b73b-f74188c8d2a1",
+  "triggerCount": 0,
+  "nodes": [
+    {
+      "id": "2b6da0a8-3ac2-4de2-aa88-005ea2396069",
+      "name": "Solicitud de recuperacion",
+      "type": "n8n-nodes-base.executeWorkflowTrigger",
+      "typeVersion": 1.2,
+      "position": [
+        0,
+        224
+      ],
+      "parameters": {
+        "inputSource": "passthrough"
+      }
+    },
+    {
+      "id": "a5b2f4c2-b03c-4576-b713-ee0d16d203d6",
+      "name": "Preparar consulta",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.7,
+      "position": [
+        224,
+        224
+      ],
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "select dalia.m9_search_request($1, $2::jsonb, $3, $4::int, $5::jsonb, $6) as req;",
+        "options": {
+          "queryReplacement": "={{ [ $json.query, JSON.stringify($json.collections ?? [\"business\",\"products\"]), $json.assignment_key ?? null, $json.limit ?? null, JSON.stringify($json.filters ?? {}), $json.purpose ?? \"advise\" ] }}"
+        }
+      },
+      "credentials": {
+        "postgres": {
+          "id": "HfCgVAjUygK1vrkU",
+          "name": "DALIA dev Supabase"
+        }
+      },
+      "onError": "continueErrorOutput"
+    },
+    {
+      "id": "2b9009ab-cd5d-45d8-a7f3-94ae67aca01d",
+      "name": "Hay release activa",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        448,
+        128
+      ],
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose"
+          },
+          "conditions": [
+            {
+              "leftValue": "={{ $json.req.status === \"ready\" }}",
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        }
+      }
+    },
+    {
+      "id": "3ec6ff8c-7be6-4ad0-9dea-936559efaecd",
+      "name": "Preparar embedding",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        672,
+        48
+      ],
+      "parameters": {
+        "mode": "manual",
+        "includeOtherFields": false,
+        "assignments": {
+          "assignments": [
+            {
+              "id": "p1",
+              "name": "port",
+              "value": "={{ $json.req.embed_request.port }}",
+              "type": "string"
+            },
+            {
+              "id": "p2",
+              "name": "operation",
+              "value": "={{ $json.req.embed_request.operation }}",
+              "type": "string"
+            },
+            {
+              "id": "p3",
+              "name": "input",
+              "value": "={{ $json.req.embed_request.input }}",
+              "type": "object"
+            },
+            {
+              "id": "p4",
+              "name": "envelope",
+              "value": "={{ $(\"Solicitud de recuperacion\").first().json.envelope ?? {} }}",
+              "type": "object"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "21959486-fe20-4ff7-b6df-cc4ea139ab8f",
+      "name": "Embedding de la consulta",
+      "type": "n8n-nodes-base.executeWorkflow",
+      "typeVersion": 1.3,
+      "position": [
+        896,
+        48
+      ],
+      "parameters": {
+        "mode": "each",
+        "source": "database",
+        "workflowId": {
+          "__rl": true,
+          "mode": "id",
+          "value": "5gbpWhv0zIA8bZ0w"
+        },
+        "options": {
+          "waitForSubWorkflow": true
+        }
+      }
+    },
+    {
+      "id": "5067a268-63c4-49c9-a852-9aeb59435ee8",
+      "name": "Armar busquedas",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.7,
+      "position": [
+        1120,
+        48
+      ],
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "select collection_key, port_request from dalia.m9_search_build($1::jsonb, $2::jsonb);",
+        "options": {
+          "queryReplacement": "={{ [ JSON.stringify($(\"Preparar consulta\").first().json.req), JSON.stringify($json) ] }}"
+        }
+      },
+      "credentials": {
+        "postgres": {
+          "id": "HfCgVAjUygK1vrkU",
+          "name": "DALIA dev Supabase"
+        }
+      },
+      "alwaysOutputData": true
+    },
+    {
+      "id": "6160268b-4a07-43a6-8c94-16cefe57fedf",
+      "name": "Hay busquedas",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        1344,
+        48
+      ],
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose"
+          },
+          "conditions": [
+            {
+              "leftValue": "={{ !!$json.port_request }}",
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        }
+      }
+    },
+    {
+      "id": "c370342c-1766-418c-a486-7ca1dae5a24e",
+      "name": "Preparar busqueda",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        1568,
+        0
+      ],
+      "parameters": {
+        "mode": "manual",
+        "includeOtherFields": false,
+        "assignments": {
+          "assignments": [
+            {
+              "id": "p1",
+              "name": "port",
+              "value": "={{ $json.port_request.port }}",
+              "type": "string"
+            },
+            {
+              "id": "p2",
+              "name": "operation",
+              "value": "={{ $json.port_request.operation }}",
+              "type": "string"
+            },
+            {
+              "id": "p3",
+              "name": "input",
+              "value": "={{ $json.port_request.input }}",
+              "type": "object"
+            },
+            {
+              "id": "p4",
+              "name": "envelope",
+              "value": "={{ $(\"Solicitud de recuperacion\").first().json.envelope ?? {} }}",
+              "type": "object"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "9919c275-82be-4fc0-a509-449a99cefa16",
+      "name": "Buscar en Qdrant",
+      "type": "n8n-nodes-base.executeWorkflow",
+      "typeVersion": 1.3,
+      "position": [
+        1792,
+        0
+      ],
+      "parameters": {
+        "mode": "each",
+        "source": "database",
+        "workflowId": {
+          "__rl": true,
+          "mode": "id",
+          "value": "5gbpWhv0zIA8bZ0w"
+        },
+        "options": {
+          "waitForSubWorkflow": true
+        }
+      }
+    },
+    {
+      "id": "f569dc00-737e-4ef9-a63b-254b6f04cf2d",
+      "name": "Agrupar resultados",
+      "type": "n8n-nodes-base.aggregate",
+      "typeVersion": 1,
+      "position": [
+        2016,
+        0
+      ],
+      "parameters": {
+        "aggregate": "aggregateAllItemData",
+        "destinationFieldName": "results"
+      }
+    },
+    {
+      "id": "6aacc966-7738-4c21-a4bc-91faec04def0",
+      "name": "Validar evidencia",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.7,
+      "position": [
+        2240,
+        128
+      ],
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "select dalia.m9_search_result($1::jsonb, $2::jsonb, $3::jsonb) as result;",
+        "options": {
+          "queryReplacement": "={{ [ JSON.stringify($(\"Preparar consulta\").first().json.req), JSON.stringify($json.results ?? []), JSON.stringify($(\"Solicitud de recuperacion\").first().json.envelope ?? {}) ] }}"
+        }
+      },
+      "credentials": {
+        "postgres": {
+          "id": "HfCgVAjUygK1vrkU",
+          "name": "DALIA dev Supabase"
+        }
+      }
+    },
+    {
+      "id": "f7261749-a4fd-41c6-8efe-1ba6c54ddf00",
+      "name": "Sin busquedas",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        1568,
+        224
+      ],
+      "parameters": {
+        "mode": "manual",
+        "includeOtherFields": false,
+        "assignments": {
+          "assignments": [
+            {
+              "id": "s1",
+              "name": "results",
+              "value": "={{ [] }}",
+              "type": "array"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "eb196956-7318-4af4-bd47-f90d7fadb974",
+      "name": "Solicitud invalida",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        448,
+        320
+      ],
+      "parameters": {
+        "mode": "manual",
+        "includeOtherFields": false,
+        "assignments": {
+          "assignments": [
+            {
+              "id": "i1",
+              "name": "result",
+              "value": "={{ { status: \"invalid\", evidence: [], error: $json.error?.message ?? $json.error ?? \"solicitud inválida\" } }}",
+              "type": "object"
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "connections": {
+    "Solicitud de recuperacion": {
+      "main": [
+        [
+          {
+            "node": "Preparar consulta",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Preparar consulta": {
+      "main": [
+        [
+          {
+            "node": "Hay release activa",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Solicitud invalida",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Hay release activa": {
+      "main": [
+        [
+          {
+            "node": "Preparar embedding",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Sin busquedas",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Preparar embedding": {
+      "main": [
+        [
+          {
+            "node": "Embedding de la consulta",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Embedding de la consulta": {
+      "main": [
+        [
+          {
+            "node": "Armar busquedas",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Armar busquedas": {
+      "main": [
+        [
+          {
+            "node": "Hay busquedas",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Hay busquedas": {
+      "main": [
+        [
+          {
+            "node": "Preparar busqueda",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Sin busquedas",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Preparar busqueda": {
+      "main": [
+        [
+          {
+            "node": "Buscar en Qdrant",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Buscar en Qdrant": {
+      "main": [
+        [
+          {
+            "node": "Agrupar resultados",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Agrupar resultados": {
+      "main": [
+        [
+          {
+            "node": "Validar evidencia",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Sin busquedas": {
+      "main": [
+        [
+          {
+            "node": "Validar evidencia",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "nodeGroups": [],
+  "settings": {
+    "executionOrder": "v1",
+    "availableInMCP": true,
+    "errorWorkflow": "cjjQno2MxMTT3Icc",
+    "timezone": "America/Bogota",
+    "callerPolicy": "workflowsFromSameOwner"
+  },
+  "staticData": null,
+  "pinData": null,
+  "meta": {
+    "aiBuilderAssisted": true,
+    "builderVariant": "mcp"
+  },
+  "tags": [],
+  "shared": [
+    {
+      "role": "workflow:owner",
+      "workflowId": "W64Nazq98jdMAbsW",
+      "projectId": "tRHCC8ts4mkRGXGn",
+      "createdAt": "2026-10-09T21:09:17.798Z",
+      "updatedAt": "2026-10-09T21:09:17.798Z"
+    }
+  ],
+  "activeVersion": {
+    "versionId": "b5893dc0-ec5e-4308-b73b-f74188c8d2a1",
+    "workflowId": "W64Nazq98jdMAbsW",
+    "nodes": [
+      {
+        "id": "2b6da0a8-3ac2-4de2-aa88-005ea2396069",
+        "name": "Solicitud de recuperacion",
+        "type": "n8n-nodes-base.executeWorkflowTrigger",
+        "typeVersion": 1.2,
+        "position": [
+          0,
+          224
+        ],
+        "parameters": {
+          "inputSource": "passthrough"
+        }
+      },
+      {
+        "id": "a5b2f4c2-b03c-4576-b713-ee0d16d203d6",
+        "name": "Preparar consulta",
+        "type": "n8n-nodes-base.postgres",
+        "typeVersion": 2.7,
+        "position": [
+          224,
+          224
+        ],
+        "parameters": {
+          "operation": "executeQuery",
+          "query": "select dalia.m9_search_request($1, $2::jsonb, $3, $4::int, $5::jsonb, $6) as req;",
+          "options": {
+            "queryReplacement": "={{ [ $json.query, JSON.stringify($json.collections ?? [\"business\",\"products\"]), $json.assignment_key ?? null, $json.limit ?? null, JSON.stringify($json.filters ?? {}), $json.purpose ?? \"advise\" ] }}"
+          }
+        },
+        "credentials": {
+          "postgres": {
+            "id": "HfCgVAjUygK1vrkU",
+            "name": "DALIA dev Supabase"
+          }
+        },
+        "onError": "continueErrorOutput"
+      },
+      {
+        "id": "2b9009ab-cd5d-45d8-a7f3-94ae67aca01d",
+        "name": "Hay release activa",
+        "type": "n8n-nodes-base.if",
+        "typeVersion": 2.2,
+        "position": [
+          448,
+          128
+        ],
+        "parameters": {
+          "conditions": {
+            "options": {
+              "caseSensitive": true,
+              "leftValue": "",
+              "typeValidation": "loose"
+            },
+            "conditions": [
+              {
+                "leftValue": "={{ $json.req.status === \"ready\" }}",
+                "operator": {
+                  "type": "boolean",
+                  "operation": "true",
+                  "singleValue": true
+                }
+              }
+            ],
+            "combinator": "and"
+          }
+        }
+      },
+      {
+        "id": "3ec6ff8c-7be6-4ad0-9dea-936559efaecd",
+        "name": "Preparar embedding",
+        "type": "n8n-nodes-base.set",
+        "typeVersion": 3.4,
+        "position": [
+          672,
+          48
+        ],
+        "parameters": {
+          "mode": "manual",
+          "includeOtherFields": false,
+          "assignments": {
+            "assignments": [
+              {
+                "id": "p1",
+                "name": "port",
+                "value": "={{ $json.req.embed_request.port }}",
+                "type": "string"
+              },
+              {
+                "id": "p2",
+                "name": "operation",
+                "value": "={{ $json.req.embed_request.operation }}",
+                "type": "string"
+              },
+              {
+                "id": "p3",
+                "name": "input",
+                "value": "={{ $json.req.embed_request.input }}",
+                "type": "object"
+              },
+              {
+                "id": "p4",
+                "name": "envelope",
+                "value": "={{ $(\"Solicitud de recuperacion\").first().json.envelope ?? {} }}",
+                "type": "object"
+              }
+            ]
+          }
+        }
+      },
+      {
+        "id": "21959486-fe20-4ff7-b6df-cc4ea139ab8f",
+        "name": "Embedding de la consulta",
+        "type": "n8n-nodes-base.executeWorkflow",
+        "typeVersion": 1.3,
+        "position": [
+          896,
+          48
+        ],
+        "parameters": {
+          "mode": "each",
+          "source": "database",
+          "workflowId": {
+            "__rl": true,
+            "mode": "id",
+            "value": "5gbpWhv0zIA8bZ0w"
+          },
+          "options": {
+            "waitForSubWorkflow": true
+          }
+        }
+      },
+      {
+        "id": "5067a268-63c4-49c9-a852-9aeb59435ee8",
+        "name": "Armar busquedas",
+        "type": "n8n-nodes-base.postgres",
+        "typeVersion": 2.7,
+        "position": [
+          1120,
+          48
+        ],
+        "parameters": {
+          "operation": "executeQuery",
+          "query": "select collection_key, port_request from dalia.m9_search_build($1::jsonb, $2::jsonb);",
+          "options": {
+            "queryReplacement": "={{ [ JSON.stringify($(\"Preparar consulta\").first().json.req), JSON.stringify($json) ] }}"
+          }
+        },
+        "credentials": {
+          "postgres": {
+            "id": "HfCgVAjUygK1vrkU",
+            "name": "DALIA dev Supabase"
+          }
+        },
+        "alwaysOutputData": true
+      },
+      {
+        "id": "6160268b-4a07-43a6-8c94-16cefe57fedf",
+        "name": "Hay busquedas",
+        "type": "n8n-nodes-base.if",
+        "typeVersion": 2.2,
+        "position": [
+          1344,
+          48
+        ],
+        "parameters": {
+          "conditions": {
+            "options": {
+              "caseSensitive": true,
+              "leftValue": "",
+              "typeValidation": "loose"
+            },
+            "conditions": [
+              {
+                "leftValue": "={{ !!$json.port_request }}",
+                "operator": {
+                  "type": "boolean",
+                  "operation": "true",
+                  "singleValue": true
+                }
+              }
+            ],
+            "combinator": "and"
+          }
+        }
+      },
+      {
+        "id": "c370342c-1766-418c-a486-7ca1dae5a24e",
+        "name": "Preparar busqueda",
+        "type": "n8n-nodes-base.set",
+        "typeVersion": 3.4,
+        "position": [
+          1568,
+          0
+        ],
+        "parameters": {
+          "mode": "manual",
+          "includeOtherFields": false,
+          "assignments": {
+            "assignments": [
+              {
+                "id": "p1",
+                "name": "port",
+                "value": "={{ $json.port_request.port }}",
+                "type": "string"
+              },
+              {
+                "id": "p2",
+                "name": "operation",
+                "value": "={{ $json.port_request.operation }}",
+                "type": "string"
+              },
+              {
+                "id": "p3",
+                "name": "input",
+                "value": "={{ $json.port_request.input }}",
+                "type": "object"
+              },
+              {
+                "id": "p4",
+                "name": "envelope",
+                "value": "={{ $(\"Solicitud de recuperacion\").first().json.envelope ?? {} }}",
+                "type": "object"
+              }
+            ]
+          }
+        }
+      },
+      {
+        "id": "9919c275-82be-4fc0-a509-449a99cefa16",
+        "name": "Buscar en Qdrant",
+        "type": "n8n-nodes-base.executeWorkflow",
+        "typeVersion": 1.3,
+        "position": [
+          1792,
+          0
+        ],
+        "parameters": {
+          "mode": "each",
+          "source": "database",
+          "workflowId": {
+            "__rl": true,
+            "mode": "id",
+            "value": "5gbpWhv0zIA8bZ0w"
+          },
+          "options": {
+            "waitForSubWorkflow": true
+          }
+        }
+      },
+      {
+        "id": "f569dc00-737e-4ef9-a63b-254b6f04cf2d",
+        "name": "Agrupar resultados",
+        "type": "n8n-nodes-base.aggregate",
+        "typeVersion": 1,
+        "position": [
+          2016,
+          0
+        ],
+        "parameters": {
+          "aggregate": "aggregateAllItemData",
+          "destinationFieldName": "results"
+        }
+      },
+      {
+        "id": "6aacc966-7738-4c21-a4bc-91faec04def0",
+        "name": "Validar evidencia",
+        "type": "n8n-nodes-base.postgres",
+        "typeVersion": 2.7,
+        "position": [
+          2240,
+          128
+        ],
+        "parameters": {
+          "operation": "executeQuery",
+          "query": "select dalia.m9_search_result($1::jsonb, $2::jsonb, $3::jsonb) as result;",
+          "options": {
+            "queryReplacement": "={{ [ JSON.stringify($(\"Preparar consulta\").first().json.req), JSON.stringify($json.results ?? []), JSON.stringify($(\"Solicitud de recuperacion\").first().json.envelope ?? {}) ] }}"
+          }
+        },
+        "credentials": {
+          "postgres": {
+            "id": "HfCgVAjUygK1vrkU",
+            "name": "DALIA dev Supabase"
+          }
+        }
+      },
+      {
+        "id": "f7261749-a4fd-41c6-8efe-1ba6c54ddf00",
+        "name": "Sin busquedas",
+        "type": "n8n-nodes-base.set",
+        "typeVersion": 3.4,
+        "position": [
+          1568,
+          224
+        ],
+        "parameters": {
+          "mode": "manual",
+          "includeOtherFields": false,
+          "assignments": {
+            "assignments": [
+              {
+                "id": "s1",
+                "name": "results",
+                "value": "={{ [] }}",
+                "type": "array"
+              }
+            ]
+          }
+        }
+      },
+      {
+        "id": "eb196956-7318-4af4-bd47-f90d7fadb974",
+        "name": "Solicitud invalida",
+        "type": "n8n-nodes-base.set",
+        "typeVersion": 3.4,
+        "position": [
+          448,
+          320
+        ],
+        "parameters": {
+          "mode": "manual",
+          "includeOtherFields": false,
+          "assignments": {
+            "assignments": [
+              {
+                "id": "i1",
+                "name": "result",
+                "value": "={{ { status: \"invalid\", evidence: [], error: $json.error?.message ?? $json.error ?? \"solicitud inválida\" } }}",
+                "type": "object"
+              }
+            ]
+          }
+        }
+      }
+    ],
+    "connections": {
+      "Solicitud de recuperacion": {
+        "main": [
+          [
+            {
+              "node": "Preparar consulta",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Preparar consulta": {
+        "main": [
+          [
+            {
+              "node": "Hay release activa",
+              "type": "main",
+              "index": 0
+            }
+          ],
+          [
+            {
+              "node": "Solicitud invalida",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Hay release activa": {
+        "main": [
+          [
+            {
+              "node": "Preparar embedding",
+              "type": "main",
+              "index": 0
+            }
+          ],
+          [
+            {
+              "node": "Sin busquedas",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Preparar embedding": {
+        "main": [
+          [
+            {
+              "node": "Embedding de la consulta",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Embedding de la consulta": {
+        "main": [
+          [
+            {
+              "node": "Armar busquedas",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Armar busquedas": {
+        "main": [
+          [
+            {
+              "node": "Hay busquedas",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Hay busquedas": {
+        "main": [
+          [
+            {
+              "node": "Preparar busqueda",
+              "type": "main",
+              "index": 0
+            }
+          ],
+          [
+            {
+              "node": "Sin busquedas",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Preparar busqueda": {
+        "main": [
+          [
+            {
+              "node": "Buscar en Qdrant",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Buscar en Qdrant": {
+        "main": [
+          [
+            {
+              "node": "Agrupar resultados",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Agrupar resultados": {
+        "main": [
+          [
+            {
+              "node": "Validar evidencia",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Sin busquedas": {
+        "main": [
+          [
+            {
+              "node": "Validar evidencia",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      }
+    },
+    "nodeGroups": [],
+    "authors": "Fabian Bocanegra (via MCP)",
+    "name": "Lote 5 M9: instalación inicial",
+    "description": "Created with 13 nodes: Solicitud de recuperacion, Preparar consulta, Hay release activa, Preparar embedding, Embedding de la consulta and 8 more",
+    "autosaved": false,
+    "createdAt": "2026-10-04T03:17:57.857Z",
+    "updatedAt": "2026-10-04T03:17:57.857Z"
+  }
+}
