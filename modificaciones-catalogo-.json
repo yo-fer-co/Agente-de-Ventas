@@ -1,0 +1,2847 @@
+{
+  "id": "SFRyWrkqZ5d84h1j",
+  "name": "Modificaciones Catalogo",
+  "active": true,
+  "activeVersionId": "f8682ffa-bbac-43af-bab8-1eb2fee43a0e",
+  "createdAt": "2026-01-07T20:41:53.407Z",
+  "updatedAt": "2026-10-07T04:05:59.963Z",
+  "isArchived": false,
+  "versionId": "f8682ffa-bbac-43af-bab8-1eb2fee43a0e",
+  "triggerCount": 1,
+  "nodes": [
+    {
+      "parameters": {},
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [
+        -432,
+        0
+      ],
+      "id": "1747b5f7-3c5a-41b1-a5a7-85d9a1f30dfa",
+      "name": "When clicking ‘Execute workflow’"
+    },
+    {
+      "parameters": {
+        "rules": {
+          "values": [
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 3
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $json.estado }}",
+                    "rightValue": "creado",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    },
+                    "id": "215fa2e5-ece6-4f42-a8a3-d943bc706724"
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "Creado"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 3
+                },
+                "conditions": [
+                  {
+                    "id": "95f85fa5-f1bb-49a4-befc-36be2c094bf0",
+                    "leftValue": "={{ $json.estado }}",
+                    "rightValue": "actualizado",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "Actualizado"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 3
+                },
+                "conditions": [
+                  {
+                    "id": "f4bc1be7-9005-491f-b669-5077a09e5a40",
+                    "leftValue": "={{ $json.estado }}",
+                    "rightValue": "eliminado",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "Eliminado"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 3.4,
+      "position": [
+        1184,
+        96
+      ],
+      "id": "5c3414e3-8263-40e1-abc0-abf772cf6207",
+      "name": "Switch"
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "type": "n8n-nodes-base.splitInBatches",
+      "typeVersion": 3,
+      "position": [
+        976,
+        0
+      ],
+      "id": "00667b75-cb19-43b6-b643-a5617bcc3b49",
+      "name": "Recorre cambios"
+    },
+    {
+      "parameters": {
+        "workflowId": {
+          "__rl": true,
+          "value": "QyHjZ6bZ1DQOo9NB",
+          "mode": "list",
+          "cachedResultUrl": "/workflow/QyHjZ6bZ1DQOo9NB",
+          "cachedResultName": "Babys World — Creacion carpetas catalogo"
+        },
+        "workflowInputs": {
+          "mappingMode": "defineBelow",
+          "value": {},
+          "matchingColumns": [],
+          "schema": [
+            {
+              "id": "producto",
+              "displayName": "producto",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string",
+              "removed": false
+            },
+            {
+              "id": "sku",
+              "displayName": "sku",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string",
+              "removed": false
+            },
+            {
+              "id": "estado",
+              "displayName": "estado",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string",
+              "removed": false
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": true
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.executeWorkflow",
+      "typeVersion": 1.3,
+      "position": [
+        1472,
+        -16
+      ],
+      "id": "bddddee5-d073-4fbf-b227-cd6374f0f044",
+      "name": "Call 'Creacion carpetas catalogo'"
+    },
+    {
+      "parameters": {
+        "workflowId": {
+          "__rl": true,
+          "value": "UGLiCnAllWoHZVXJ",
+          "mode": "list",
+          "cachedResultUrl": "/workflow/UGLiCnAllWoHZVXJ",
+          "cachedResultName": "Babys World — CreacionProductoShopify"
+        },
+        "workflowInputs": {
+          "mappingMode": "defineBelow",
+          "value": {},
+          "matchingColumns": [],
+          "schema": [
+            {
+              "id": "producto",
+              "displayName": "producto",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string",
+              "removed": false
+            },
+            {
+              "id": "sku",
+              "displayName": "sku",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string",
+              "removed": false
+            },
+            {
+              "id": "estado",
+              "displayName": "estado",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string",
+              "removed": false
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": true
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.executeWorkflow",
+      "typeVersion": 1.3,
+      "position": [
+        1872,
+        112
+      ],
+      "id": "70e0538f-9317-4e07-9bf9-7476ac281fe5",
+      "name": "Call 'CreacionProductoShopify'"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "99347549-7c35-4e8d-bf0a-840c8e48632b",
+              "name": "producto",
+              "value": "={{ $('Switch').item.json.producto }}",
+              "type": "string"
+            },
+            {
+              "id": "376c336b-652d-4b1b-9ed5-b117a08d932c",
+              "name": "sku",
+              "value": "={{ $('Switch').item.json.sku }}",
+              "type": "string"
+            },
+            {
+              "id": "9a0dbacb-cbb5-428f-9e28-44964938fc1a",
+              "name": "estado",
+              "value": "={{ $('Switch').item.json.estado }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        1664,
+        -16
+      ],
+      "id": "437030c3-bd85-4da8-a87d-6c0f8f7156f9",
+      "name": "Datos de envío workflow"
+    },
+    {
+      "parameters": {
+        "operation": "clear",
+        "documentId": {
+          "__rl": true,
+          "value": "1j_2SEqXpi42nChTp9Og4gOZiTOxWOdHL__9GaI2-HMM",
+          "mode": "list",
+          "cachedResultName": "Modificaciones catalogo",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1j_2SEqXpi42nChTp9Og4gOZiTOxWOdHL__9GaI2-HMM/edit?usp=drivesdk"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": 1522749382,
+          "mode": "list",
+          "cachedResultName": "plantilla_atributos_productos",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1j_2SEqXpi42nChTp9Og4gOZiTOxWOdHL__9GaI2-HMM/edit#gid=1522749382"
+        }
+      },
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [
+        1472,
+        -272
+      ],
+      "id": "1ae57193-08dc-48f2-a46c-17526615173d",
+      "name": "Elimina modificaciones",
+      "executeOnce": true,
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "Pf0TYy2joLTmqt2C",
+          "name": "Google Sheets account 3"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "workflowId": {
+          "__rl": true,
+          "value": "fyJkoSj1GZDKAyDb",
+          "mode": "list",
+          "cachedResultUrl": "/workflow/fyJkoSj1GZDKAyDb",
+          "cachedResultName": "Babys World — Flujo Catalogo En Qdrant"
+        },
+        "workflowInputs": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "producto": "={{ $('Switch').item.json.producto }}",
+            "sku": "={{ $('Switch').item.json.sku }}",
+            "estado": "={{ $('Switch').item.json.estado }}"
+          },
+          "matchingColumns": [],
+          "schema": [
+            {
+              "id": "producto",
+              "displayName": "producto",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string",
+              "removed": false
+            },
+            {
+              "id": "sku",
+              "displayName": "sku",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string",
+              "removed": false
+            },
+            {
+              "id": "estado",
+              "displayName": "estado",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string",
+              "removed": false
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": true
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.executeWorkflow",
+      "typeVersion": 1.3,
+      "position": [
+        2848,
+        288
+      ],
+      "id": "03c0d49b-aaaa-4962-b07f-a842fb358fc0",
+      "name": "Call 'Flujo Catalogo En Qdrant'"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "99347549-7c35-4e8d-bf0a-840c8e48632b",
+              "name": "producto",
+              "value": "={{ $('Switch').first().item.json.producto }}",
+              "type": "string"
+            },
+            {
+              "id": "376c336b-652d-4b1b-9ed5-b117a08d932c",
+              "name": "sku",
+              "value": "={{ $('Switch').first().item.json.sku }}",
+              "type": "string"
+            },
+            {
+              "id": "9a0dbacb-cbb5-428f-9e28-44964938fc1a",
+              "name": "estado",
+              "value": "={{ $('Switch').first().item.json.estado }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        2816,
+        80
+      ],
+      "id": "012d96db-db17-44b4-9219-a5d8a2db5035",
+      "name": "Datos de envío workflow Qdrant"
+    },
+    {
+      "parameters": {
+        "operation": "append",
+        "documentId": {
+          "__rl": true,
+          "value": "1j_2SEqXpi42nChTp9Og4gOZiTOxWOdHL__9GaI2-HMM",
+          "mode": "list",
+          "cachedResultName": "Modificaciones catalogo",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1j_2SEqXpi42nChTp9Og4gOZiTOxWOdHL__9GaI2-HMM/edit?usp=drivesdk"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": 1522749382,
+          "mode": "list",
+          "cachedResultName": "plantilla_atributos_productos",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1j_2SEqXpi42nChTp9Og4gOZiTOxWOdHL__9GaI2-HMM/edit#gid=1522749382"
+        },
+        "columns": {
+          "mappingMode": "autoMapInputData",
+          "value": {},
+          "matchingColumns": [],
+          "schema": [
+            {
+              "id": "SKU*",
+              "displayName": "SKU*",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Titulo*",
+              "displayName": "Titulo*",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Categoria*",
+              "displayName": "Categoria*",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Precio*",
+              "displayName": "Precio*",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Stock*",
+              "displayName": "Stock*",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Estado* (nuevo/usado)",
+              "displayName": "Estado* (nuevo/usado)",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "DescripcionBreve*",
+              "displayName": "DescripcionBreve*",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Posicion Imagen",
+              "displayName": "Posicion Imagen",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Peso(kg)*",
+              "displayName": "Peso(kg)*",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Talla",
+              "displayName": "Talla",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Largo(cm)*",
+              "displayName": "Largo(cm)*",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Ancho(cm)*",
+              "displayName": "Ancho(cm)*",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Alto(cm)*",
+              "displayName": "Alto(cm)*",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "RangoEdad",
+              "displayName": "RangoEdad",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Marca",
+              "displayName": "Marca",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Material",
+              "displayName": "Material",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Cuidados",
+              "displayName": "Cuidados",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "GarantiaDias",
+              "displayName": "GarantiaDias",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "02_Fotografia_Productos - Google Drive",
+              "displayName": "02_Fotografia_Productos - Google Drive",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "FotosURL(2)",
+              "displayName": "FotosURL(2)",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "FotosURL(3)",
+              "displayName": "FotosURL(3)",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "VideoURL",
+              "displayName": "VideoURL",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Notas",
+              "displayName": "Notas",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Color",
+              "displayName": "Color",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [
+        1904,
+        -272
+      ],
+      "id": "db777811-9d4a-4181-816d-60cdc2ed9d4d",
+      "name": "Actualiza modificaciones",
+      "executeOnce": false,
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "Pf0TYy2joLTmqt2C",
+          "name": "Google Sheets account 3"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "documentId": {
+          "__rl": true,
+          "value": "1j_2SEqXpi42nChTp9Og4gOZiTOxWOdHL__9GaI2-HMM",
+          "mode": "list",
+          "cachedResultName": "Modificaciones catalogo",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1j_2SEqXpi42nChTp9Og4gOZiTOxWOdHL__9GaI2-HMM/edit?usp=drivesdk"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": 1522749382,
+          "mode": "list",
+          "cachedResultName": "plantilla_atributos_productos",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1j_2SEqXpi42nChTp9Og4gOZiTOxWOdHL__9GaI2-HMM/edit#gid=1522749382"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [
+        240,
+        0
+      ],
+      "id": "922789a1-3292-4f5b-b607-dbc10164cba5",
+      "name": "Obtiene modificaciones",
+      "executeOnce": true,
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "Pf0TYy2joLTmqt2C",
+          "name": "Google Sheets account 3"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "documentId": {
+          "__rl": true,
+          "value": "1z3iO_NUqb9Se5x2q_7TxobJccftx3iRKD_AukhQdQrU",
+          "mode": "list",
+          "cachedResultName": "Levantamiento de atributos_Catálogo",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1z3iO_NUqb9Se5x2q_7TxobJccftx3iRKD_AukhQdQrU/edit?usp=drivesdk"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": 1522749382,
+          "mode": "list",
+          "cachedResultName": "plantilla_atributos_productos",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1z3iO_NUqb9Se5x2q_7TxobJccftx3iRKD_AukhQdQrU/edit#gid=1522749382"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [
+        -192,
+        0
+      ],
+      "id": "7b153a7a-d7bc-469a-a613-f4fb37f33bec",
+      "name": "Obtiene catalogo principal",
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "Pf0TYy2joLTmqt2C",
+          "name": "Google Sheets account 3"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const items = $input.all().map((item) => item.json);\n\nconst groupedItems = items.reduce((acc, item) => {\n  const category = item[\"Categoria*\"].toUpperCase();\n  const title = item[\"Titulo*\"].toUpperCase();\n  const description = item[\"DescripcionBreve*\"];\n  const amount = item[\"Precio*\"];\n  const size = item[\"Talla\"].toUpperCase().trim();\n  const color = item[\"Color\"].toUpperCase().trim();\n  const sku = item[\"SKU*\"];\n  const stock = item[\"Stock*\"];\n\n  if (!acc[category]) {\n    acc[category] = { categoria: category, productos: [] };\n  }\n\n  let product = acc[category].productos.find((prod) => prod.titulo === title);\n\n  if (!product) {\n    product = { titulo: title, descripcion: description, precio: amount, stock: stock,\n               coleccion: size !== \"\" ? \"Talla\" : color !== \"\" ? \"Color\" : \"Unica\",  skus: [] };\n    acc[category].productos.push(product);\n  }\n\n  product.skus.push({ titulo:sku, valor: size !== \"\" ? size : color !== \"\" ? color : \"Unica\" });\n\n  return acc;\n}, {});\n\nconst result = Object.values(groupedItems);\n\nreturn result.map((item) => ({ json: item }));\n"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        16,
+        0
+      ],
+      "id": "71119a42-d907-4b55-ba22-d4c409e2449f",
+      "name": "sanetiza catalogo principal"
+    },
+    {
+      "parameters": {
+        "jsCode": "const items = $input.all().map((item) => item.json);\n\nconst groupedItems = items.reduce((acc, item) => {\n  const category = item[\"Categoria*\"].toUpperCase();\n  const title = item[\"Titulo*\"].toUpperCase();\n  const description = item[\"DescripcionBreve*\"];\n  const amount = item[\"Precio*\"];\n  const size = item[\"Talla\"].toUpperCase().trim();\n  const color = item[\"Color\"].toUpperCase().trim();\n  const sku = item[\"SKU*\"];\n  const stock = item[\"Stock*\"];\n\n  if (!acc[category]) {\n    acc[category] = { categoria: category, productos: [] };\n  }\n\n  let product = acc[category].productos.find((prod) => prod.titulo === title);\n\n  if (!product) {\n    product = { titulo: title, descripcion: description, precio: amount, stock: stock, \n               coleccion: size !== \"\" ? \"Talla\" : color !== \"\" ? \"Color\" : \"Unica\",  skus: [] };\n    acc[category].productos.push(product);\n  }\n\n  product.skus.push({ titulo:sku, valor: size !== \"\" ? size : color !== \"\" ? color : \"Unica\" });\n\n  return acc;\n}, {});\n\nconst result = Object.values(groupedItems);\n\nreturn result.map((item) => ({ json: item }));\n"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        448,
+        0
+      ],
+      "id": "ced888c9-5c78-4a8c-b8bd-8c5febd7f3b7",
+      "name": "sanetiza modifiaciones"
+    },
+    {
+      "parameters": {
+        "jsCode": "const catalogoCambios = $('sanetiza catalogo principal').all();\nconst copiaSinCambios = $('sanetiza modifiaciones').all();\n\nconst reporte = [];\n\n// Helper para convertir la estructura anidada en un Mapa de Productos para búsqueda rápida\nconst crearMapaProductos = (data) => {\n  const mapa = {};\n  data.forEach(cat => {\n    cat.json.productos.forEach(prod => {\n      mapa[prod.titulo] = prod;\n    });\n  });\n  return mapa;\n};\n\nconst mapaCopia = crearMapaProductos(copiaSinCambios);\n\n// Recorrer el catálogo que tiene los posibles cambios\ncatalogoCambios.forEach(categoriaObj => {\n  categoriaObj.json.productos.forEach(prodNuevo => {\n    const tituloProd = prodNuevo.titulo;\n    const prodViejo = mapaCopia[tituloProd];\n\n    // --- CASO 1: PRODUCTO NO EXISTE (CREADO) ---\n    if (!prodViejo) {\n      prodNuevo.skus.forEach(sku => {\n        reporte.push({\n          producto: tituloProd,\n          sku: sku.titulo,\n          estado: \"creado\",\n          modificaciones: []\n        });\n      });\n      return;\n    }\n\n    // CASO 2: PRODUCTO EXISTE\n    prodNuevo.skus.forEach(skuNuevo => {\n      const skuId = skuNuevo.titulo;\n      const skuViejo = prodViejo.skus.find(s => s.titulo === skuId);\n      let modificaciones = [];\n\n      // A. Comparar propiedades básicas del producto\n      const camposBase = ['descripcion', 'precio', 'stock', 'coleccion'];\n      camposBase.forEach(campo => {\n        if (String(prodNuevo[campo]) !== String(prodViejo[campo])) {\n          modificaciones.push({\n            columna: campo.toUpperCase(),\n            previous: prodViejo[campo],\n            current: prodNuevo[campo]\n          });\n        }\n      });\n\n      // B. Comparar valores específicos del SKU (ej. el color/valor)\n      if (skuViejo) {\n        if (skuNuevo.valor !== skuViejo.valor) {\n          modificaciones.push({\n            columna: \"VALOR_SKU\",\n            previous: skuViejo.valor,\n            current: skuNuevo.valor\n          });\n        }\n        \n        // Si hubo cambios en base o en el SKU, marcar como actualizado\n        if (modificaciones.length > 0) {\n          reporte.push({\n            producto: tituloProd,\n            sku: skuId,\n            estado: \"actualizado\",\n            modificaciones: modificaciones\n          });\n        }\n      } else {\n        // C. SKU NUEVO dentro de un producto que ya existía\n        reporte.push({\n          producto: tituloProd,\n          sku: skuId,\n          estado: \"creado\",\n          modificaciones: []\n        });\n      }\n    });\n  });\n});\n\nreturn reporte;"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        656,
+        0
+      ],
+      "id": "6a6c962b-582a-4ab9-b454-76133e5f941e",
+      "name": "Crea array de modificaciones"
+    },
+    {
+      "parameters": {
+        "dataTableId": {
+          "__rl": true,
+          "value": "LzqFQSrwV8cOFPJG",
+          "mode": "list",
+          "cachedResultName": "catalog_updates",
+          "cachedResultUrl": "/projects/8h8pwWGcWlnGEym3/datatables/LzqFQSrwV8cOFPJG"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "changes": "={{ JSON.stringify($('Crea array de modificaciones').item.json) }}"
+          },
+          "matchingColumns": [
+            "changes"
+          ],
+          "schema": [
+            {
+              "id": "changes",
+              "displayName": "changes",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.dataTable",
+      "typeVersion": 1.1,
+      "position": [
+        1200,
+        -272
+      ],
+      "id": "7bbf19c2-2388-49db-bb1d-32fd25a28408",
+      "name": "Inserta registro de cambios"
+    },
+    {
+      "parameters": {
+        "documentId": {
+          "__rl": true,
+          "value": "1z3iO_NUqb9Se5x2q_7TxobJccftx3iRKD_AukhQdQrU",
+          "mode": "list",
+          "cachedResultName": "Levantamiento de atributos_Catálogo",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1z3iO_NUqb9Se5x2q_7TxobJccftx3iRKD_AukhQdQrU/edit?usp=drivesdk"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": 1522749382,
+          "mode": "list",
+          "cachedResultName": "plantilla_atributos_productos",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1z3iO_NUqb9Se5x2q_7TxobJccftx3iRKD_AukhQdQrU/edit#gid=1522749382"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [
+        1680,
+        -272
+      ],
+      "id": "52de246f-85ed-4947-95bc-419d780d4d4d",
+      "name": "Obtiene datos catalogo",
+      "executeOnce": true,
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "Pf0TYy2joLTmqt2C",
+          "name": "Google Sheets account 3"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "triggerAtHour": 11
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.3,
+      "position": [
+        -448,
+        224
+      ],
+      "id": "5e510f81-23bb-4e91-8b7f-f7de1a92bb43",
+      "name": "Schedule Trigger"
+    },
+    {
+      "parameters": {
+        "documentId": {
+          "__rl": true,
+          "value": "1z3iO_NUqb9Se5x2q_7TxobJccftx3iRKD_AukhQdQrU",
+          "mode": "list",
+          "cachedResultName": "Levantamiento de atributos_Catálogo",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1z3iO_NUqb9Se5x2q_7TxobJccftx3iRKD_AukhQdQrU/edit?usp=drivesdk"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": 1522749382,
+          "mode": "list",
+          "cachedResultName": "plantilla_atributos_productos",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1z3iO_NUqb9Se5x2q_7TxobJccftx3iRKD_AukhQdQrU/edit#gid=1522749382"
+        },
+        "filtersUI": {
+          "values": [
+            {
+              "lookupColumn": "SKU*",
+              "lookupValue": "={{ $('Switch').item.json.sku }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [
+        2080,
+        112
+      ],
+      "id": "ab44d8d9-8ef2-4360-8274-3de72307410c",
+      "name": "get_product",
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "Pf0TYy2joLTmqt2C",
+          "name": "Google Sheets account 3"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "appendOrUpdate",
+        "documentId": {
+          "__rl": true,
+          "value": "1j_2SEqXpi42nChTp9Og4gOZiTOxWOdHL__9GaI2-HMM",
+          "mode": "list",
+          "cachedResultName": "Modificaciones catalogo",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1j_2SEqXpi42nChTp9Og4gOZiTOxWOdHL__9GaI2-HMM/edit?usp=drivesdk"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": 1522749382,
+          "mode": "list",
+          "cachedResultName": "plantilla_atributos_productos",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1j_2SEqXpi42nChTp9Og4gOZiTOxWOdHL__9GaI2-HMM/edit#gid=1522749382"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "SKU*": "={{ $json['SKU*'] }}",
+            "Titulo*": "={{ $json['Titulo*'] }}",
+            "Categoria*": "={{ $json['Categoria*'] }}",
+            "Precio*": "={{ $json['Precio*'] }}",
+            "Stock*": "={{ $json['Stock*'] }}",
+            "Color": "={{ $json.Color }}"
+          },
+          "matchingColumns": [
+            "SKU*"
+          ],
+          "schema": [
+            {
+              "id": "SKU*",
+              "displayName": "SKU*",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "Titulo*",
+              "displayName": "Titulo*",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Categoria*",
+              "displayName": "Categoria*",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Precio*",
+              "displayName": "Precio*",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Stock*",
+              "displayName": "Stock*",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Estado* (nuevo/usado)",
+              "displayName": "Estado* (nuevo/usado)",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "DescripcionBreve*",
+              "displayName": "DescripcionBreve*",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Posicion Imagen",
+              "displayName": "Posicion Imagen",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Peso(kg)*",
+              "displayName": "Peso(kg)*",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Talla",
+              "displayName": "Talla",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Largo(cm)*",
+              "displayName": "Largo(cm)*",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Ancho(cm)*",
+              "displayName": "Ancho(cm)*",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Alto(cm)*",
+              "displayName": "Alto(cm)*",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "RangoEdad",
+              "displayName": "RangoEdad",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Marca",
+              "displayName": "Marca",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Material",
+              "displayName": "Material",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Cuidados",
+              "displayName": "Cuidados",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "GarantiaDias",
+              "displayName": "GarantiaDias",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "02_Fotografia_Productos - Google Drive",
+              "displayName": "02_Fotografia_Productos - Google Drive",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "FotosURL(2)",
+              "displayName": "FotosURL(2)",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "FotosURL(3)",
+              "displayName": "FotosURL(3)",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "VideoURL",
+              "displayName": "VideoURL",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Notas",
+              "displayName": "Notas",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Color",
+              "displayName": "Color",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [
+        2320,
+        144
+      ],
+      "id": "0818746d-221d-4b41-9975-445cbe707d9a",
+      "name": "update_Modificaciones_Catalogo",
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "Pf0TYy2joLTmqt2C",
+          "name": "Google Sheets account 3"
+        }
+      }
+    }
+  ],
+  "connections": {
+    "When clicking ‘Execute workflow’": {
+      "main": [
+        [
+          {
+            "node": "Obtiene catalogo principal",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Recorre cambios": {
+      "main": [
+        [],
+        [
+          {
+            "node": "Switch",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Switch": {
+      "main": [
+        [
+          {
+            "node": "Call 'Creacion carpetas catalogo'",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Call 'CreacionProductoShopify'",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Recorre cambios",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Call 'Creacion carpetas catalogo'": {
+      "main": [
+        [
+          {
+            "node": "Datos de envío workflow",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Datos de envío workflow": {
+      "main": [
+        [
+          {
+            "node": "Call 'CreacionProductoShopify'",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Call 'CreacionProductoShopify'": {
+      "main": [
+        [
+          {
+            "node": "get_product",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Elimina modificaciones": {
+      "main": [
+        [
+          {
+            "node": "Obtiene datos catalogo",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Call 'Flujo Catalogo En Qdrant'": {
+      "main": [
+        [
+          {
+            "node": "Recorre cambios",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Datos de envío workflow Qdrant": {
+      "main": [
+        [
+          {
+            "node": "Call 'Flujo Catalogo En Qdrant'",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Obtiene catalogo principal": {
+      "main": [
+        [
+          {
+            "node": "sanetiza catalogo principal",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Obtiene modificaciones": {
+      "main": [
+        [
+          {
+            "node": "sanetiza modifiaciones",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "sanetiza catalogo principal": {
+      "main": [
+        [
+          {
+            "node": "Obtiene modificaciones",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "sanetiza modifiaciones": {
+      "main": [
+        [
+          {
+            "node": "Crea array de modificaciones",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Crea array de modificaciones": {
+      "main": [
+        [
+          {
+            "node": "Recorre cambios",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Inserta registro de cambios": {
+      "main": [
+        [
+          {
+            "node": "Elimina modificaciones",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Obtiene datos catalogo": {
+      "main": [
+        [
+          {
+            "node": "Actualiza modificaciones",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Schedule Trigger": {
+      "main": [
+        [
+          {
+            "node": "Obtiene catalogo principal",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "get_product": {
+      "main": [
+        [
+          {
+            "node": "update_Modificaciones_Catalogo",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "update_Modificaciones_Catalogo": {
+      "main": [
+        [
+          {
+            "node": "Recorre cambios",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "nodeGroups": [],
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate"
+  },
+  "staticData": {
+    "node:Schedule Trigger": {
+      "recurrenceRules": [
+        null
+      ],
+      "recurrenceRuleSignatures": [
+        null
+      ]
+    }
+  },
+  "pinData": {},
+  "meta": {
+    "templateCredsSetupCompleted": true
+  },
+  "tags": [],
+  "shared": [
+    {
+      "role": "workflow:owner",
+      "workflowId": "SFRyWrkqZ5d84h1j",
+      "projectId": "8h8pwWGcWlnGEym3",
+      "createdAt": "2026-01-07T20:41:53.411Z",
+      "updatedAt": "2026-01-07T20:41:53.411Z"
+    }
+  ],
+  "activeVersion": {
+    "versionId": "f8682ffa-bbac-43af-bab8-1eb2fee43a0e",
+    "workflowId": "SFRyWrkqZ5d84h1j",
+    "nodes": [
+      {
+        "parameters": {},
+        "type": "n8n-nodes-base.manualTrigger",
+        "typeVersion": 1,
+        "position": [
+          -432,
+          0
+        ],
+        "id": "1747b5f7-3c5a-41b1-a5a7-85d9a1f30dfa",
+        "name": "When clicking ‘Execute workflow’"
+      },
+      {
+        "parameters": {
+          "rules": {
+            "values": [
+              {
+                "conditions": {
+                  "options": {
+                    "caseSensitive": true,
+                    "leftValue": "",
+                    "typeValidation": "strict",
+                    "version": 3
+                  },
+                  "conditions": [
+                    {
+                      "leftValue": "={{ $json.estado }}",
+                      "rightValue": "creado",
+                      "operator": {
+                        "type": "string",
+                        "operation": "equals"
+                      },
+                      "id": "215fa2e5-ece6-4f42-a8a3-d943bc706724"
+                    }
+                  ],
+                  "combinator": "and"
+                },
+                "renameOutput": true,
+                "outputKey": "Creado"
+              },
+              {
+                "conditions": {
+                  "options": {
+                    "caseSensitive": true,
+                    "leftValue": "",
+                    "typeValidation": "strict",
+                    "version": 3
+                  },
+                  "conditions": [
+                    {
+                      "id": "95f85fa5-f1bb-49a4-befc-36be2c094bf0",
+                      "leftValue": "={{ $json.estado }}",
+                      "rightValue": "actualizado",
+                      "operator": {
+                        "type": "string",
+                        "operation": "equals"
+                      }
+                    }
+                  ],
+                  "combinator": "and"
+                },
+                "renameOutput": true,
+                "outputKey": "Actualizado"
+              },
+              {
+                "conditions": {
+                  "options": {
+                    "caseSensitive": true,
+                    "leftValue": "",
+                    "typeValidation": "strict",
+                    "version": 3
+                  },
+                  "conditions": [
+                    {
+                      "id": "f4bc1be7-9005-491f-b669-5077a09e5a40",
+                      "leftValue": "={{ $json.estado }}",
+                      "rightValue": "eliminado",
+                      "operator": {
+                        "type": "string",
+                        "operation": "equals"
+                      }
+                    }
+                  ],
+                  "combinator": "and"
+                },
+                "renameOutput": true,
+                "outputKey": "Eliminado"
+              }
+            ]
+          },
+          "options": {}
+        },
+        "type": "n8n-nodes-base.switch",
+        "typeVersion": 3.4,
+        "position": [
+          1184,
+          96
+        ],
+        "id": "5c3414e3-8263-40e1-abc0-abf772cf6207",
+        "name": "Switch"
+      },
+      {
+        "parameters": {
+          "options": {}
+        },
+        "type": "n8n-nodes-base.splitInBatches",
+        "typeVersion": 3,
+        "position": [
+          976,
+          0
+        ],
+        "id": "00667b75-cb19-43b6-b643-a5617bcc3b49",
+        "name": "Recorre cambios"
+      },
+      {
+        "parameters": {
+          "workflowId": {
+            "__rl": true,
+            "value": "QyHjZ6bZ1DQOo9NB",
+            "mode": "list",
+            "cachedResultUrl": "/workflow/QyHjZ6bZ1DQOo9NB",
+            "cachedResultName": "Babys World — Creacion carpetas catalogo"
+          },
+          "workflowInputs": {
+            "mappingMode": "defineBelow",
+            "value": {},
+            "matchingColumns": [],
+            "schema": [
+              {
+                "id": "producto",
+                "displayName": "producto",
+                "required": false,
+                "defaultMatch": false,
+                "display": true,
+                "canBeUsedToMatch": true,
+                "type": "string",
+                "removed": false
+              },
+              {
+                "id": "sku",
+                "displayName": "sku",
+                "required": false,
+                "defaultMatch": false,
+                "display": true,
+                "canBeUsedToMatch": true,
+                "type": "string",
+                "removed": false
+              },
+              {
+                "id": "estado",
+                "displayName": "estado",
+                "required": false,
+                "defaultMatch": false,
+                "display": true,
+                "canBeUsedToMatch": true,
+                "type": "string",
+                "removed": false
+              }
+            ],
+            "attemptToConvertTypes": false,
+            "convertFieldsToString": true
+          },
+          "options": {}
+        },
+        "type": "n8n-nodes-base.executeWorkflow",
+        "typeVersion": 1.3,
+        "position": [
+          1472,
+          -16
+        ],
+        "id": "bddddee5-d073-4fbf-b227-cd6374f0f044",
+        "name": "Call 'Creacion carpetas catalogo'"
+      },
+      {
+        "parameters": {
+          "workflowId": {
+            "__rl": true,
+            "value": "UGLiCnAllWoHZVXJ",
+            "mode": "list",
+            "cachedResultUrl": "/workflow/UGLiCnAllWoHZVXJ",
+            "cachedResultName": "Babys World — CreacionProductoShopify"
+          },
+          "workflowInputs": {
+            "mappingMode": "defineBelow",
+            "value": {},
+            "matchingColumns": [],
+            "schema": [
+              {
+                "id": "producto",
+                "displayName": "producto",
+                "required": false,
+                "defaultMatch": false,
+                "display": true,
+                "canBeUsedToMatch": true,
+                "type": "string",
+                "removed": false
+              },
+              {
+                "id": "sku",
+                "displayName": "sku",
+                "required": false,
+                "defaultMatch": false,
+                "display": true,
+                "canBeUsedToMatch": true,
+                "type": "string",
+                "removed": false
+              },
+              {
+                "id": "estado",
+                "displayName": "estado",
+                "required": false,
+                "defaultMatch": false,
+                "display": true,
+                "canBeUsedToMatch": true,
+                "type": "string",
+                "removed": false
+              }
+            ],
+            "attemptToConvertTypes": false,
+            "convertFieldsToString": true
+          },
+          "options": {}
+        },
+        "type": "n8n-nodes-base.executeWorkflow",
+        "typeVersion": 1.3,
+        "position": [
+          1872,
+          112
+        ],
+        "id": "70e0538f-9317-4e07-9bf9-7476ac281fe5",
+        "name": "Call 'CreacionProductoShopify'"
+      },
+      {
+        "parameters": {
+          "assignments": {
+            "assignments": [
+              {
+                "id": "99347549-7c35-4e8d-bf0a-840c8e48632b",
+                "name": "producto",
+                "value": "={{ $('Switch').item.json.producto }}",
+                "type": "string"
+              },
+              {
+                "id": "376c336b-652d-4b1b-9ed5-b117a08d932c",
+                "name": "sku",
+                "value": "={{ $('Switch').item.json.sku }}",
+                "type": "string"
+              },
+              {
+                "id": "9a0dbacb-cbb5-428f-9e28-44964938fc1a",
+                "name": "estado",
+                "value": "={{ $('Switch').item.json.estado }}",
+                "type": "string"
+              }
+            ]
+          },
+          "options": {}
+        },
+        "type": "n8n-nodes-base.set",
+        "typeVersion": 3.4,
+        "position": [
+          1664,
+          -16
+        ],
+        "id": "437030c3-bd85-4da8-a87d-6c0f8f7156f9",
+        "name": "Datos de envío workflow"
+      },
+      {
+        "parameters": {
+          "operation": "clear",
+          "documentId": {
+            "__rl": true,
+            "value": "1j_2SEqXpi42nChTp9Og4gOZiTOxWOdHL__9GaI2-HMM",
+            "mode": "list",
+            "cachedResultName": "Modificaciones catalogo",
+            "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1j_2SEqXpi42nChTp9Og4gOZiTOxWOdHL__9GaI2-HMM/edit?usp=drivesdk"
+          },
+          "sheetName": {
+            "__rl": true,
+            "value": 1522749382,
+            "mode": "list",
+            "cachedResultName": "plantilla_atributos_productos",
+            "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1j_2SEqXpi42nChTp9Og4gOZiTOxWOdHL__9GaI2-HMM/edit#gid=1522749382"
+          }
+        },
+        "type": "n8n-nodes-base.googleSheets",
+        "typeVersion": 4.7,
+        "position": [
+          1472,
+          -272
+        ],
+        "id": "1ae57193-08dc-48f2-a46c-17526615173d",
+        "name": "Elimina modificaciones",
+        "executeOnce": true,
+        "credentials": {
+          "googleSheetsOAuth2Api": {
+            "id": "Pf0TYy2joLTmqt2C",
+            "name": "Google Sheets account 3"
+          }
+        }
+      },
+      {
+        "parameters": {
+          "workflowId": {
+            "__rl": true,
+            "value": "fyJkoSj1GZDKAyDb",
+            "mode": "list",
+            "cachedResultUrl": "/workflow/fyJkoSj1GZDKAyDb",
+            "cachedResultName": "Babys World — Flujo Catalogo En Qdrant"
+          },
+          "workflowInputs": {
+            "mappingMode": "defineBelow",
+            "value": {
+              "producto": "={{ $('Switch').item.json.producto }}",
+              "sku": "={{ $('Switch').item.json.sku }}",
+              "estado": "={{ $('Switch').item.json.estado }}"
+            },
+            "matchingColumns": [],
+            "schema": [
+              {
+                "id": "producto",
+                "displayName": "producto",
+                "required": false,
+                "defaultMatch": false,
+                "display": true,
+                "canBeUsedToMatch": true,
+                "type": "string",
+                "removed": false
+              },
+              {
+                "id": "sku",
+                "displayName": "sku",
+                "required": false,
+                "defaultMatch": false,
+                "display": true,
+                "canBeUsedToMatch": true,
+                "type": "string",
+                "removed": false
+              },
+              {
+                "id": "estado",
+                "displayName": "estado",
+                "required": false,
+                "defaultMatch": false,
+                "display": true,
+                "canBeUsedToMatch": true,
+                "type": "string",
+                "removed": false
+              }
+            ],
+            "attemptToConvertTypes": false,
+            "convertFieldsToString": true
+          },
+          "options": {}
+        },
+        "type": "n8n-nodes-base.executeWorkflow",
+        "typeVersion": 1.3,
+        "position": [
+          2848,
+          288
+        ],
+        "id": "03c0d49b-aaaa-4962-b07f-a842fb358fc0",
+        "name": "Call 'Flujo Catalogo En Qdrant'"
+      },
+      {
+        "parameters": {
+          "assignments": {
+            "assignments": [
+              {
+                "id": "99347549-7c35-4e8d-bf0a-840c8e48632b",
+                "name": "producto",
+                "value": "={{ $('Switch').first().item.json.producto }}",
+                "type": "string"
+              },
+              {
+                "id": "376c336b-652d-4b1b-9ed5-b117a08d932c",
+                "name": "sku",
+                "value": "={{ $('Switch').first().item.json.sku }}",
+                "type": "string"
+              },
+              {
+                "id": "9a0dbacb-cbb5-428f-9e28-44964938fc1a",
+                "name": "estado",
+                "value": "={{ $('Switch').first().item.json.estado }}",
+                "type": "string"
+              }
+            ]
+          },
+          "options": {}
+        },
+        "type": "n8n-nodes-base.set",
+        "typeVersion": 3.4,
+        "position": [
+          2816,
+          80
+        ],
+        "id": "012d96db-db17-44b4-9219-a5d8a2db5035",
+        "name": "Datos de envío workflow Qdrant"
+      },
+      {
+        "parameters": {
+          "operation": "append",
+          "documentId": {
+            "__rl": true,
+            "value": "1j_2SEqXpi42nChTp9Og4gOZiTOxWOdHL__9GaI2-HMM",
+            "mode": "list",
+            "cachedResultName": "Modificaciones catalogo",
+            "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1j_2SEqXpi42nChTp9Og4gOZiTOxWOdHL__9GaI2-HMM/edit?usp=drivesdk"
+          },
+          "sheetName": {
+            "__rl": true,
+            "value": 1522749382,
+            "mode": "list",
+            "cachedResultName": "plantilla_atributos_productos",
+            "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1j_2SEqXpi42nChTp9Og4gOZiTOxWOdHL__9GaI2-HMM/edit#gid=1522749382"
+          },
+          "columns": {
+            "mappingMode": "autoMapInputData",
+            "value": {},
+            "matchingColumns": [],
+            "schema": [
+              {
+                "id": "SKU*",
+                "displayName": "SKU*",
+                "required": false,
+                "defaultMatch": false,
+                "display": true,
+                "type": "string",
+                "canBeUsedToMatch": true
+              },
+              {
+                "id": "Titulo*",
+                "displayName": "Titulo*",
+                "required": false,
+                "defaultMatch": false,
+                "display": true,
+                "type": "string",
+                "canBeUsedToMatch": true
+              },
+              {
+                "id": "Categoria*",
+                "displayName": "Categoria*",
+                "required": false,
+                "defaultMatch": false,
+                "display": true,
+                "type": "string",
+                "canBeUsedToMatch": true
+              },
+              {
+                "id": "Precio*",
+                "displayName": "Precio*",
+                "required": false,
+                "defaultMatch": false,
+                "display": true,
+                "type": "string",
+                "canBeUsedToMatch": true
+              },
+              {
+                "id": "Stock*",
+                "displayName": "Stock*",
+                "required": false,
+                "defaultMatch": false,
+                "display": true,
+                "type": "string",
+                "canBeUsedToMatch": true
+              },
+              {
+                "id": "Estado* (nuevo/usado)",
+                "displayName": "Estado* (nuevo/usado)",
+                "required": false,
+                "defaultMatch": false,
+                "display": true,
+                "type": "string",
+                "canBeUsedToMatch": true
+              },
+              {
+                "id": "DescripcionBreve*",
+                "displayName": "DescripcionBreve*",
+                "required": false,
+                "defaultMatch": false,
+                "display": true,
+                "type": "string",
+                "canBeUsedToMatch": true
+              },
+              {
+                "id": "Posicion Imagen",
+                "displayName": "Posicion Imagen",
+                "required": false,
+                "defaultMatch": false,
+                "display": true,
+                "type": "string",
+                "canBeUsedToMatch": true
+              },
+              {
+                "id": "Peso(kg)*",
+                "displayName": "Peso(kg)*",
+                "required": false,
+                "defaultMatch": false,
+                "display": true,
+                "type": "string",
+                "canBeUsedToMatch": true
+              },
+              {
+                "id": "Talla",
+                "displayName": "Talla",
+                "required": false,
+                "defaultMatch": false,
+                "display": true,
+                "type": "string",
+                "canBeUsedToMatch": true
+              },
+              {
+                "id": "Largo(cm)*",
+                "displayName": "Largo(cm)*",
+                "required": false,
+                "defaultMatch": false,
+                "display": true,
+                "type": "string",
+                "canBeUsedToMatch": true
+              },
+              {
+                "id": "Ancho(cm)*",
+                "displayName": "Ancho(cm)*",
+                "required": false,
+                "defaultMatch": false,
+                "display": true,
+                "type": "string",
+                "canBeUsedToMatch": true
+              },
+              {
+                "id": "Alto(cm)*",
+                "displayName": "Alto(cm)*",
+                "required": false,
+                "defaultMatch": false,
+                "display": true,
+                "type": "string",
+                "canBeUsedToMatch": true
+              },
+              {
+                "id": "RangoEdad",
+                "displayName": "RangoEdad",
+                "required": false,
+                "defaultMatch": false,
+                "display": true,
+                "type": "string",
+                "canBeUsedToMatch": true
+              },
+              {
+                "id": "Marca",
+                "displayName": "Marca",
+                "required": false,
+                "defaultMatch": false,
+                "display": true,
+                "type": "string",
+                "canBeUsedToMatch": true
+              },
+              {
+                "id": "Material",
+                "displayName": "Material",
+                "required": false,
+                "defaultMatch": false,
+                "display": true,
+                "type": "string",
+                "canBeUsedToMatch": true
+              },
+              {
+                "id": "Cuidados",
+                "displayName": "Cuidados",
+                "required": false,
+                "defaultMatch": false,
+                "display": true,
+                "type": "string",
+                "canBeUsedToMatch": true
+              },
+              {
+                "id": "GarantiaDias",
+                "displayName": "GarantiaDias",
+                "required": false,
+                "defaultMatch": false,
+                "display": true,
+                "type": "string",
+                "canBeUsedToMatch": true
+              },
+              {
+                "id": "02_Fotografia_Productos - Google Drive",
+                "displayName": "02_Fotografia_Productos - Google Drive",
+                "required": false,
+                "defaultMatch": false,
+                "display": true,
+                "type": "string",
+                "canBeUsedToMatch": true
+              },
+              {
+                "id": "FotosURL(2)",
+                "displayName": "FotosURL(2)",
+                "required": false,
+                "defaultMatch": false,
+                "display": true,
+                "type": "string",
+                "canBeUsedToMatch": true
+              },
+              {
+                "id": "FotosURL(3)",
+                "displayName": "FotosURL(3)",
+                "required": false,
+                "defaultMatch": false,
+                "display": true,
+                "type": "string",
+                "canBeUsedToMatch": true
+              },
+              {
+                "id": "VideoURL",
+                "displayName": "VideoURL",
+                "required": false,
+                "defaultMatch": false,
+                "display": true,
+                "type": "string",
+                "canBeUsedToMatch": true
+              },
+              {
+                "id": "Notas",
+                "displayName": "Notas",
+                "required": false,
+                "defaultMatch": false,
+                "display": true,
+                "type": "string",
+                "canBeUsedToMatch": true
+              },
+              {
+                "id": "Color",
+                "displayName": "Color",
+                "required": false,
+                "defaultMatch": false,
+                "display": true,
+                "type": "string",
+                "canBeUsedToMatch": true
+              }
+            ],
+            "attemptToConvertTypes": false,
+            "convertFieldsToString": false
+          },
+          "options": {}
+        },
+        "type": "n8n-nodes-base.googleSheets",
+        "typeVersion": 4.7,
+        "position": [
+          1904,
+          -272
+        ],
+        "id": "db777811-9d4a-4181-816d-60cdc2ed9d4d",
+        "name": "Actualiza modificaciones",
+        "executeOnce": false,
+        "credentials": {
+          "googleSheetsOAuth2Api": {
+            "id": "Pf0TYy2joLTmqt2C",
+            "name": "Google Sheets account 3"
+          }
+        }
+      },
+      {
+        "parameters": {
+          "documentId": {
+            "__rl": true,
+            "value": "1j_2SEqXpi42nChTp9Og4gOZiTOxWOdHL__9GaI2-HMM",
+            "mode": "list",
+            "cachedResultName": "Modificaciones catalogo",
+            "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1j_2SEqXpi42nChTp9Og4gOZiTOxWOdHL__9GaI2-HMM/edit?usp=drivesdk"
+          },
+          "sheetName": {
+            "__rl": true,
+            "value": 1522749382,
+            "mode": "list",
+            "cachedResultName": "plantilla_atributos_productos",
+            "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1j_2SEqXpi42nChTp9Og4gOZiTOxWOdHL__9GaI2-HMM/edit#gid=1522749382"
+          },
+          "options": {}
+        },
+        "type": "n8n-nodes-base.googleSheets",
+        "typeVersion": 4.7,
+        "position": [
+          240,
+          0
+        ],
+        "id": "922789a1-3292-4f5b-b607-dbc10164cba5",
+        "name": "Obtiene modificaciones",
+        "executeOnce": true,
+        "credentials": {
+          "googleSheetsOAuth2Api": {
+            "id": "Pf0TYy2joLTmqt2C",
+            "name": "Google Sheets account 3"
+          }
+        }
+      },
+      {
+        "parameters": {
+          "documentId": {
+            "__rl": true,
+            "value": "1z3iO_NUqb9Se5x2q_7TxobJccftx3iRKD_AukhQdQrU",
+            "mode": "list",
+            "cachedResultName": "Levantamiento de atributos_Catálogo",
+            "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1z3iO_NUqb9Se5x2q_7TxobJccftx3iRKD_AukhQdQrU/edit?usp=drivesdk"
+          },
+          "sheetName": {
+            "__rl": true,
+            "value": 1522749382,
+            "mode": "list",
+            "cachedResultName": "plantilla_atributos_productos",
+            "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1z3iO_NUqb9Se5x2q_7TxobJccftx3iRKD_AukhQdQrU/edit#gid=1522749382"
+          },
+          "options": {}
+        },
+        "type": "n8n-nodes-base.googleSheets",
+        "typeVersion": 4.7,
+        "position": [
+          -192,
+          0
+        ],
+        "id": "7b153a7a-d7bc-469a-a613-f4fb37f33bec",
+        "name": "Obtiene catalogo principal",
+        "credentials": {
+          "googleSheetsOAuth2Api": {
+            "id": "Pf0TYy2joLTmqt2C",
+            "name": "Google Sheets account 3"
+          }
+        }
+      },
+      {
+        "parameters": {
+          "jsCode": "const items = $input.all().map((item) => item.json);\n\nconst groupedItems = items.reduce((acc, item) => {\n  const category = item[\"Categoria*\"].toUpperCase();\n  const title = item[\"Titulo*\"].toUpperCase();\n  const description = item[\"DescripcionBreve*\"];\n  const amount = item[\"Precio*\"];\n  const size = item[\"Talla\"].toUpperCase().trim();\n  const color = item[\"Color\"].toUpperCase().trim();\n  const sku = item[\"SKU*\"];\n  const stock = item[\"Stock*\"];\n\n  if (!acc[category]) {\n    acc[category] = { categoria: category, productos: [] };\n  }\n\n  let product = acc[category].productos.find((prod) => prod.titulo === title);\n\n  if (!product) {\n    product = { titulo: title, descripcion: description, precio: amount, stock: stock,\n               coleccion: size !== \"\" ? \"Talla\" : color !== \"\" ? \"Color\" : \"Unica\",  skus: [] };\n    acc[category].productos.push(product);\n  }\n\n  product.skus.push({ titulo:sku, valor: size !== \"\" ? size : color !== \"\" ? color : \"Unica\" });\n\n  return acc;\n}, {});\n\nconst result = Object.values(groupedItems);\n\nreturn result.map((item) => ({ json: item }));\n"
+        },
+        "type": "n8n-nodes-base.code",
+        "typeVersion": 2,
+        "position": [
+          16,
+          0
+        ],
+        "id": "71119a42-d907-4b55-ba22-d4c409e2449f",
+        "name": "sanetiza catalogo principal"
+      },
+      {
+        "parameters": {
+          "jsCode": "const items = $input.all().map((item) => item.json);\n\nconst groupedItems = items.reduce((acc, item) => {\n  const category = item[\"Categoria*\"].toUpperCase();\n  const title = item[\"Titulo*\"].toUpperCase();\n  const description = item[\"DescripcionBreve*\"];\n  const amount = item[\"Precio*\"];\n  const size = item[\"Talla\"].toUpperCase().trim();\n  const color = item[\"Color\"].toUpperCase().trim();\n  const sku = item[\"SKU*\"];\n  const stock = item[\"Stock*\"];\n\n  if (!acc[category]) {\n    acc[category] = { categoria: category, productos: [] };\n  }\n\n  let product = acc[category].productos.find((prod) => prod.titulo === title);\n\n  if (!product) {\n    product = { titulo: title, descripcion: description, precio: amount, stock: stock, \n               coleccion: size !== \"\" ? \"Talla\" : color !== \"\" ? \"Color\" : \"Unica\",  skus: [] };\n    acc[category].productos.push(product);\n  }\n\n  product.skus.push({ titulo:sku, valor: size !== \"\" ? size : color !== \"\" ? color : \"Unica\" });\n\n  return acc;\n}, {});\n\nconst result = Object.values(groupedItems);\n\nreturn result.map((item) => ({ json: item }));\n"
+        },
+        "type": "n8n-nodes-base.code",
+        "typeVersion": 2,
+        "position": [
+          448,
+          0
+        ],
+        "id": "ced888c9-5c78-4a8c-b8bd-8c5febd7f3b7",
+        "name": "sanetiza modifiaciones"
+      },
+      {
+        "parameters": {
+          "jsCode": "const catalogoCambios = $('sanetiza catalogo principal').all();\nconst copiaSinCambios = $('sanetiza modifiaciones').all();\n\nconst reporte = [];\n\n// Helper para convertir la estructura anidada en un Mapa de Productos para búsqueda rápida\nconst crearMapaProductos = (data) => {\n  const mapa = {};\n  data.forEach(cat => {\n    cat.json.productos.forEach(prod => {\n      mapa[prod.titulo] = prod;\n    });\n  });\n  return mapa;\n};\n\nconst mapaCopia = crearMapaProductos(copiaSinCambios);\n\n// Recorrer el catálogo que tiene los posibles cambios\ncatalogoCambios.forEach(categoriaObj => {\n  categoriaObj.json.productos.forEach(prodNuevo => {\n    const tituloProd = prodNuevo.titulo;\n    const prodViejo = mapaCopia[tituloProd];\n\n    // --- CASO 1: PRODUCTO NO EXISTE (CREADO) ---\n    if (!prodViejo) {\n      prodNuevo.skus.forEach(sku => {\n        reporte.push({\n          producto: tituloProd,\n          sku: sku.titulo,\n          estado: \"creado\",\n          modificaciones: []\n        });\n      });\n      return;\n    }\n\n    // CASO 2: PRODUCTO EXISTE\n    prodNuevo.skus.forEach(skuNuevo => {\n      const skuId = skuNuevo.titulo;\n      const skuViejo = prodViejo.skus.find(s => s.titulo === skuId);\n      let modificaciones = [];\n\n      // A. Comparar propiedades básicas del producto\n      const camposBase = ['descripcion', 'precio', 'stock', 'coleccion'];\n      camposBase.forEach(campo => {\n        if (String(prodNuevo[campo]) !== String(prodViejo[campo])) {\n          modificaciones.push({\n            columna: campo.toUpperCase(),\n            previous: prodViejo[campo],\n            current: prodNuevo[campo]\n          });\n        }\n      });\n\n      // B. Comparar valores específicos del SKU (ej. el color/valor)\n      if (skuViejo) {\n        if (skuNuevo.valor !== skuViejo.valor) {\n          modificaciones.push({\n            columna: \"VALOR_SKU\",\n            previous: skuViejo.valor,\n            current: skuNuevo.valor\n          });\n        }\n        \n        // Si hubo cambios en base o en el SKU, marcar como actualizado\n        if (modificaciones.length > 0) {\n          reporte.push({\n            producto: tituloProd,\n            sku: skuId,\n            estado: \"actualizado\",\n            modificaciones: modificaciones\n          });\n        }\n      } else {\n        // C. SKU NUEVO dentro de un producto que ya existía\n        reporte.push({\n          producto: tituloProd,\n          sku: skuId,\n          estado: \"creado\",\n          modificaciones: []\n        });\n      }\n    });\n  });\n});\n\nreturn reporte;"
+        },
+        "type": "n8n-nodes-base.code",
+        "typeVersion": 2,
+        "position": [
+          656,
+          0
+        ],
+        "id": "6a6c962b-582a-4ab9-b454-76133e5f941e",
+        "name": "Crea array de modificaciones"
+      },
+      {
+        "parameters": {
+          "dataTableId": {
+            "__rl": true,
+            "value": "LzqFQSrwV8cOFPJG",
+            "mode": "list",
+            "cachedResultName": "catalog_updates",
+            "cachedResultUrl": "/projects/8h8pwWGcWlnGEym3/datatables/LzqFQSrwV8cOFPJG"
+          },
+          "columns": {
+            "mappingMode": "defineBelow",
+            "value": {
+              "changes": "={{ JSON.stringify($('Crea array de modificaciones').item.json) }}"
+            },
+            "matchingColumns": [
+              "changes"
+            ],
+            "schema": [
+              {
+                "id": "changes",
+                "displayName": "changes",
+                "required": false,
+                "defaultMatch": false,
+                "display": true,
+                "type": "string",
+                "readOnly": false,
+                "removed": false
+              }
+            ],
+            "attemptToConvertTypes": false,
+            "convertFieldsToString": false
+          },
+          "options": {}
+        },
+        "type": "n8n-nodes-base.dataTable",
+        "typeVersion": 1.1,
+        "position": [
+          1200,
+          -272
+        ],
+        "id": "7bbf19c2-2388-49db-bb1d-32fd25a28408",
+        "name": "Inserta registro de cambios"
+      },
+      {
+        "parameters": {
+          "documentId": {
+            "__rl": true,
+            "value": "1z3iO_NUqb9Se5x2q_7TxobJccftx3iRKD_AukhQdQrU",
+            "mode": "list",
+            "cachedResultName": "Levantamiento de atributos_Catálogo",
+            "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1z3iO_NUqb9Se5x2q_7TxobJccftx3iRKD_AukhQdQrU/edit?usp=drivesdk"
+          },
+          "sheetName": {
+            "__rl": true,
+            "value": 1522749382,
+            "mode": "list",
+            "cachedResultName": "plantilla_atributos_productos",
+            "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1z3iO_NUqb9Se5x2q_7TxobJccftx3iRKD_AukhQdQrU/edit#gid=1522749382"
+          },
+          "options": {}
+        },
+        "type": "n8n-nodes-base.googleSheets",
+        "typeVersion": 4.7,
+        "position": [
+          1680,
+          -272
+        ],
+        "id": "52de246f-85ed-4947-95bc-419d780d4d4d",
+        "name": "Obtiene datos catalogo",
+        "executeOnce": true,
+        "credentials": {
+          "googleSheetsOAuth2Api": {
+            "id": "Pf0TYy2joLTmqt2C",
+            "name": "Google Sheets account 3"
+          }
+        }
+      },
+      {
+        "parameters": {
+          "rule": {
+            "interval": [
+              {
+                "triggerAtHour": 11
+              }
+            ]
+          }
+        },
+        "type": "n8n-nodes-base.scheduleTrigger",
+        "typeVersion": 1.3,
+        "position": [
+          -448,
+          224
+        ],
+        "id": "5e510f81-23bb-4e91-8b7f-f7de1a92bb43",
+        "name": "Schedule Trigger"
+      },
+      {
+        "parameters": {
+          "documentId": {
+            "__rl": true,
+            "value": "1z3iO_NUqb9Se5x2q_7TxobJccftx3iRKD_AukhQdQrU",
+            "mode": "list",
+            "cachedResultName": "Levantamiento de atributos_Catálogo",
+            "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1z3iO_NUqb9Se5x2q_7TxobJccftx3iRKD_AukhQdQrU/edit?usp=drivesdk"
+          },
+          "sheetName": {
+            "__rl": true,
+            "value": 1522749382,
+            "mode": "list",
+            "cachedResultName": "plantilla_atributos_productos",
+            "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1z3iO_NUqb9Se5x2q_7TxobJccftx3iRKD_AukhQdQrU/edit#gid=1522749382"
+          },
+          "filtersUI": {
+            "values": [
+              {
+                "lookupColumn": "SKU*",
+                "lookupValue": "={{ $('Switch').item.json.sku }}"
+              }
+            ]
+          },
+          "options": {}
+        },
+        "type": "n8n-nodes-base.googleSheets",
+        "typeVersion": 4.7,
+        "position": [
+          2080,
+          112
+        ],
+        "id": "ab44d8d9-8ef2-4360-8274-3de72307410c",
+        "name": "get_product",
+        "credentials": {
+          "googleSheetsOAuth2Api": {
+            "id": "Pf0TYy2joLTmqt2C",
+            "name": "Google Sheets account 3"
+          }
+        }
+      },
+      {
+        "parameters": {
+          "operation": "appendOrUpdate",
+          "documentId": {
+            "__rl": true,
+            "value": "1j_2SEqXpi42nChTp9Og4gOZiTOxWOdHL__9GaI2-HMM",
+            "mode": "list",
+            "cachedResultName": "Modificaciones catalogo",
+            "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1j_2SEqXpi42nChTp9Og4gOZiTOxWOdHL__9GaI2-HMM/edit?usp=drivesdk"
+          },
+          "sheetName": {
+            "__rl": true,
+            "value": 1522749382,
+            "mode": "list",
+            "cachedResultName": "plantilla_atributos_productos",
+            "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1j_2SEqXpi42nChTp9Og4gOZiTOxWOdHL__9GaI2-HMM/edit#gid=1522749382"
+          },
+          "columns": {
+            "mappingMode": "defineBelow",
+            "value": {
+              "SKU*": "={{ $json['SKU*'] }}",
+              "Titulo*": "={{ $json['Titulo*'] }}",
+              "Categoria*": "={{ $json['Categoria*'] }}",
+              "Precio*": "={{ $json['Precio*'] }}",
+              "Stock*": "={{ $json['Stock*'] }}",
+              "Color": "={{ $json.Color }}"
+            },
+            "matchingColumns": [
+              "SKU*"
+            ],
+            "schema": [
+              {
+                "id": "SKU*",
+                "displayName": "SKU*",
+                "required": false,
+                "defaultMatch": false,
+                "display": true,
+                "type": "string",
+                "canBeUsedToMatch": true,
+                "removed": false
+              },
+              {
+                "id": "Titulo*",
+                "displayName": "Titulo*",
+                "required": false,
+                "defaultMatch": false,
+                "display": true,
+                "type": "string",
+                "canBeUsedToMatch": true
+              },
+              {
+                "id": "Categoria*",
+                "displayName": "Categoria*",
+                "required": false,
+                "defaultMatch": false,
+                "display": true,
+                "type": "string",
+                "canBeUsedToMatch": true
+              },
+              {
+                "id": "Precio*",
+                "displayName": "Precio*",
+                "required": false,
+                "defaultMatch": false,
+                "display": true,
+                "type": "string",
+                "canBeUsedToMatch": true
+              },
+              {
+                "id": "Stock*",
+                "displayName": "Stock*",
+                "required": false,
+                "defaultMatch": false,
+                "display": true,
+                "type": "string",
+                "canBeUsedToMatch": true
+              },
+              {
+                "id": "Estado* (nuevo/usado)",
+                "displayName": "Estado* (nuevo/usado)",
+                "required": false,
+                "defaultMatch": false,
+                "display": true,
+                "type": "string",
+                "canBeUsedToMatch": true
+              },
+              {
+                "id": "DescripcionBreve*",
+                "displayName": "DescripcionBreve*",
+                "required": false,
+                "defaultMatch": false,
+                "display": true,
+                "type": "string",
+                "canBeUsedToMatch": true
+              },
+              {
+                "id": "Posicion Imagen",
+                "displayName": "Posicion Imagen",
+                "required": false,
+                "defaultMatch": false,
+                "display": true,
+                "type": "string",
+                "canBeUsedToMatch": true
+              },
+              {
+                "id": "Peso(kg)*",
+                "displayName": "Peso(kg)*",
+                "required": false,
+                "defaultMatch": false,
+                "display": true,
+                "type": "string",
+                "canBeUsedToMatch": true
+              },
+              {
+                "id": "Talla",
+                "displayName": "Talla",
+                "required": false,
+                "defaultMatch": false,
+                "display": true,
+                "type": "string",
+                "canBeUsedToMatch": true
+              },
+              {
+                "id": "Largo(cm)*",
+                "displayName": "Largo(cm)*",
+                "required": false,
+                "defaultMatch": false,
+                "display": true,
+                "type": "string",
+                "canBeUsedToMatch": true
+              },
+              {
+                "id": "Ancho(cm)*",
+                "displayName": "Ancho(cm)*",
+                "required": false,
+                "defaultMatch": false,
+                "display": true,
+                "type": "string",
+                "canBeUsedToMatch": true
+              },
+              {
+                "id": "Alto(cm)*",
+                "displayName": "Alto(cm)*",
+                "required": false,
+                "defaultMatch": false,
+                "display": true,
+                "type": "string",
+                "canBeUsedToMatch": true
+              },
+              {
+                "id": "RangoEdad",
+                "displayName": "RangoEdad",
+                "required": false,
+                "defaultMatch": false,
+                "display": true,
+                "type": "string",
+                "canBeUsedToMatch": true
+              },
+              {
+                "id": "Marca",
+                "displayName": "Marca",
+                "required": false,
+                "defaultMatch": false,
+                "display": true,
+                "type": "string",
+                "canBeUsedToMatch": true
+              },
+              {
+                "id": "Material",
+                "displayName": "Material",
+                "required": false,
+                "defaultMatch": false,
+                "display": true,
+                "type": "string",
+                "canBeUsedToMatch": true
+              },
+              {
+                "id": "Cuidados",
+                "displayName": "Cuidados",
+                "required": false,
+                "defaultMatch": false,
+                "display": true,
+                "type": "string",
+                "canBeUsedToMatch": true
+              },
+              {
+                "id": "GarantiaDias",
+                "displayName": "GarantiaDias",
+                "required": false,
+                "defaultMatch": false,
+                "display": true,
+                "type": "string",
+                "canBeUsedToMatch": true
+              },
+              {
+                "id": "02_Fotografia_Productos - Google Drive",
+                "displayName": "02_Fotografia_Productos - Google Drive",
+                "required": false,
+                "defaultMatch": false,
+                "display": true,
+                "type": "string",
+                "canBeUsedToMatch": true
+              },
+              {
+                "id": "FotosURL(2)",
+                "displayName": "FotosURL(2)",
+                "required": false,
+                "defaultMatch": false,
+                "display": true,
+                "type": "string",
+                "canBeUsedToMatch": true
+              },
+              {
+                "id": "FotosURL(3)",
+                "displayName": "FotosURL(3)",
+                "required": false,
+                "defaultMatch": false,
+                "display": true,
+                "type": "string",
+                "canBeUsedToMatch": true
+              },
+              {
+                "id": "VideoURL",
+                "displayName": "VideoURL",
+                "required": false,
+                "defaultMatch": false,
+                "display": true,
+                "type": "string",
+                "canBeUsedToMatch": true
+              },
+              {
+                "id": "Notas",
+                "displayName": "Notas",
+                "required": false,
+                "defaultMatch": false,
+                "display": true,
+                "type": "string",
+                "canBeUsedToMatch": true
+              },
+              {
+                "id": "Color",
+                "displayName": "Color",
+                "required": false,
+                "defaultMatch": false,
+                "display": true,
+                "type": "string",
+                "canBeUsedToMatch": true
+              }
+            ],
+            "attemptToConvertTypes": false,
+            "convertFieldsToString": false
+          },
+          "options": {}
+        },
+        "type": "n8n-nodes-base.googleSheets",
+        "typeVersion": 4.7,
+        "position": [
+          2320,
+          144
+        ],
+        "id": "0818746d-221d-4b41-9975-445cbe707d9a",
+        "name": "update_Modificaciones_Catalogo",
+        "credentials": {
+          "googleSheetsOAuth2Api": {
+            "id": "Pf0TYy2joLTmqt2C",
+            "name": "Google Sheets account 3"
+          }
+        }
+      }
+    ],
+    "connections": {
+      "When clicking ‘Execute workflow’": {
+        "main": [
+          [
+            {
+              "node": "Obtiene catalogo principal",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Recorre cambios": {
+        "main": [
+          [],
+          [
+            {
+              "node": "Switch",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Switch": {
+        "main": [
+          [
+            {
+              "node": "Call 'Creacion carpetas catalogo'",
+              "type": "main",
+              "index": 0
+            }
+          ],
+          [
+            {
+              "node": "Call 'CreacionProductoShopify'",
+              "type": "main",
+              "index": 0
+            }
+          ],
+          [
+            {
+              "node": "Recorre cambios",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Call 'Creacion carpetas catalogo'": {
+        "main": [
+          [
+            {
+              "node": "Datos de envío workflow",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Datos de envío workflow": {
+        "main": [
+          [
+            {
+              "node": "Call 'CreacionProductoShopify'",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Call 'CreacionProductoShopify'": {
+        "main": [
+          [
+            {
+              "node": "get_product",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Elimina modificaciones": {
+        "main": [
+          [
+            {
+              "node": "Obtiene datos catalogo",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Call 'Flujo Catalogo En Qdrant'": {
+        "main": [
+          [
+            {
+              "node": "Recorre cambios",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Datos de envío workflow Qdrant": {
+        "main": [
+          [
+            {
+              "node": "Call 'Flujo Catalogo En Qdrant'",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Obtiene catalogo principal": {
+        "main": [
+          [
+            {
+              "node": "sanetiza catalogo principal",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Obtiene modificaciones": {
+        "main": [
+          [
+            {
+              "node": "sanetiza modifiaciones",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "sanetiza catalogo principal": {
+        "main": [
+          [
+            {
+              "node": "Obtiene modificaciones",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "sanetiza modifiaciones": {
+        "main": [
+          [
+            {
+              "node": "Crea array de modificaciones",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Crea array de modificaciones": {
+        "main": [
+          [
+            {
+              "node": "Recorre cambios",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Inserta registro de cambios": {
+        "main": [
+          [
+            {
+              "node": "Elimina modificaciones",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Obtiene datos catalogo": {
+        "main": [
+          [
+            {
+              "node": "Actualiza modificaciones",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Schedule Trigger": {
+        "main": [
+          [
+            {
+              "node": "Obtiene catalogo principal",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "get_product": {
+        "main": [
+          [
+            {
+              "node": "update_Modificaciones_Catalogo",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "update_Modificaciones_Catalogo": {
+        "main": [
+          [
+            {
+              "node": "Recorre cambios",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      }
+    },
+    "nodeGroups": [],
+    "authors": "Kmilo Guerrero",
+    "name": "Version f8682ffa",
+    "description": "",
+    "autosaved": true,
+    "createdAt": "2026-10-07T04:05:59.965Z",
+    "updatedAt": "2026-10-07T05:03:45.000Z"
+  }
+}
