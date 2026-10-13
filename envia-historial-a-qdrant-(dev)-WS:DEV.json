@@ -1,0 +1,1038 @@
+{
+  "id": "87RN2sEdSzl-0XDkZwz8x",
+  "name": "Envia historial a Qdrant (DEV)",
+  "active": true,
+  "activeVersionId": "636a84fd-1cd2-4ae3-a98c-3dddb4aa25e0",
+  "createdAt": "2026-01-26T19:03:58.268Z",
+  "updatedAt": "2026-04-23T16:41:32.847Z",
+  "isArchived": false,
+  "versionId": "636a84fd-1cd2-4ae3-a98c-3dddb4aa25e0",
+  "triggerCount": 1,
+  "nodes": [
+    {
+      "parameters": {
+        "options": {}
+      },
+      "type": "n8n-nodes-base.splitInBatches",
+      "typeVersion": 3,
+      "position": [
+        1376,
+        -80
+      ],
+      "id": "0df49528-e552-4f09-b276-dcc03c21fa1e",
+      "name": "Loop Over Items"
+    },
+    {
+      "parameters": {},
+      "type": "@n8n/n8n-nodes-langchain.toolThink",
+      "typeVersion": 1.1,
+      "position": [
+        1920,
+        144
+      ],
+      "id": "9df585c2-b867-48ed-9d36-2b7a2734d1fa",
+      "name": "Think"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "27f204a6-6bdb-47e8-8e40-6a298b2d3b83",
+              "name": "texto",
+              "value": "={{ $('Agente de analisis').item.json.output }}",
+              "type": "string"
+            },
+            {
+              "id": "d4118ab4-cffa-4591-bfd4-5d7413a7e1e4",
+              "name": "data",
+              "value": "={{ $json.data[0].embedding }}",
+              "type": "array"
+            },
+            {
+              "id": "0dc322cd-2a52-4781-ab94-ab49e1eb6f87",
+              "name": "user_id",
+              "value": "={{ $('Loop Over Items').item.json.session_id }}",
+              "type": "number"
+            },
+            {
+              "id": "d2b2b3b0-2242-435a-a3b4-6887419caa65",
+              "name": "timestamp",
+              "value": "={{ $now.minus(2, 'days') }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        2528,
+        -64
+      ],
+      "id": "2aebaba8-bf77-4ed3-bf6f-5ee9c1277d8b",
+      "name": "Edit Fields1"
+    },
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "triggerAtHour": 1
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.3,
+      "position": [
+        720,
+        -80
+      ],
+      "id": "c314b9fa-67ed-4d58-8813-5a157d329dcc",
+      "name": "Trigger tiempo"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.openai.com/v1/embeddings",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "openAiApi",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ { \"input\": $('Agente de analisis').item.json.output, \"model\": \"text-embedding-ada-002\" } }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        2352,
+        -64
+      ],
+      "id": "c95dd8e9-3feb-484b-9d0e-523d7da80269",
+      "name": "Embeddings",
+      "credentials": {
+        "qdrantApi": {
+          "id": "ZYv8vdr6tkTS4jYz",
+          "name": "QdrantApi account 3"
+        },
+        "openAiApi": {
+          "id": "zACGOxtwAjrFvDag",
+          "name": "OpenAi_YoEco_DEV"
+        }
+      },
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Loop over input items and add a new field called 'myNewField' to the JSON of each one\nfunction generateUUID() {\n  // genera UUID manualmente\n  return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) {\n    const r = Math.random() * 16 | 0;\n    const v = c === 'x' ? r : (r & 0x3 | 0x8);\n    return v.toString(16);\n  });\n}\n\nreturn [{\n  json: {\n    id: generateUUID(),\n    vector: $input.first().json.data,\n    user_id: $input.first().json.user_id,\n    timestap:$input.first().json.timestamp,\n    text: $input.first().json.texto\n  }\n}];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        2704,
+        -64
+      ],
+      "id": "11758a9f-94d9-40d7-9d0f-130366efcbff",
+      "name": "Preparar para qdrant"
+    },
+    {
+      "parameters": {
+        "method": "PUT",
+        "url": "https://1537c683-48da-4631-ab76-ad698b6b9881.us-east-1-0.aws.cloud.qdrant.io:6333/collections/BabysWorld_Clientes_TEST/points",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "qdrantApi",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{\n{\n  points: [\n    {\n      id: $json.id ?? undefined,\n      vector: $json.vector,\n      payload: {\n          user_id: Number($json.user_id    ?? $json.user_id   ?? 0),\n          text: $json.text,\n          timestamp: $json.timestap\n      }\n    }\n  ]\n}\n}}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        2912,
+        -64
+      ],
+      "id": "a3d14e68-5faf-457b-a49a-8793b2a082ec",
+      "name": "Enviar a qdrant",
+      "credentials": {
+        "qdrantApi": {
+          "id": "ZYv8vdr6tkTS4jYz",
+          "name": "QdrantApi account 3"
+        }
+      },
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "=Actúa como un analista de datos experto. Tu objetivo es procesar la conversación adjunta entre el asistente virtual 'Dalia' y un cliente para extraer la siguiente estructura:\n\nDATOS BÁSICOS: Extrae nombre, edad, dirección y ciudad. (Si no aparecen, escribe 'No proporcionado').\n\nPRODUCTOS: Identifica qué productos fueron:\n\nConsultados (solo preguntó).\n\nCotizados (preguntó precio o pidió presupuesto).\n\nComprados (confirmó la adquisición).\n\nANÁLISIS SENTIMENTAL: Describe el tono del cliente durante la charla (ej: interesado, frustrado, satisfecho).\n\nCONVERSACIÓN A ANALIZAR: {{ $json.messages }}\n",
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 3.1,
+      "position": [
+        1648,
+        -64
+      ],
+      "id": "9fa07895-131c-48e1-acd6-838b03ee28d8",
+      "name": "Agente de analisis"
+    },
+    {
+      "parameters": {
+        "model": {
+          "__rl": true,
+          "mode": "list",
+          "value": "gpt-4.1-mini"
+        },
+        "builtInTools": {},
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatOpenAi",
+      "typeVersion": 1.3,
+      "position": [
+        1648,
+        144
+      ],
+      "id": "9733d474-773e-4582-bbaa-6af780d178bb",
+      "name": "Modelo de chat",
+      "retryOnFail": true,
+      "credentials": {
+        "openAiApi": {
+          "id": "zACGOxtwAjrFvDag",
+          "name": "OpenAi_YoEco_DEV"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "sessionIdType": "customKey",
+        "sessionKey": "={{ $json.session_id }}"
+      },
+      "type": "@n8n/n8n-nodes-langchain.memoryBufferWindow",
+      "typeVersion": 1.3,
+      "position": [
+        1792,
+        144
+      ],
+      "id": "122b54d5-e372-4a26-9c9d-f583de1f6c26",
+      "name": "Memoria"
+    },
+    {
+      "parameters": {
+        "workflowId": {
+          "__rl": true,
+          "mode": "id",
+          "value": "={{ $json.execution_id }}",
+          "cachedResultName": "={{ $json.execution_id }}"
+        },
+        "workflowInputs": {
+          "mappingMode": "passThrough",
+          "value": {},
+          "matchingColumns": [],
+          "schema": [],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": true
+        },
+        "mode": "each",
+        "options": {
+          "waitForSubWorkflow": false
+        }
+      },
+      "type": "n8n-nodes-base.executeWorkflow",
+      "typeVersion": 1.3,
+      "position": [
+        2176,
+        -64
+      ],
+      "id": "59726e09-53b2-4fd8-a831-e44e49b9638e",
+      "name": "Call 'ai_usage_log'",
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Atrapamos la respuesta del agente\nconst outputAgente = $('Agente de analisis').item.json.output;\n\n// Atrapamos en qué \"vuelta\" del bucle estamos (0, 1, 2, 3...)\nconst runIndex = $('Agente de analisis').context.runIndex || 0;\n\nreturn {\n  execution_id: $execution.id,\n  run_index: runIndex,\n  ai_response: outputAgente,\n  environment: \"dev\" \n};"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1984,
+        -64
+      ],
+      "id": "5b06c8d6-7c89-40c9-ad8b-08f88e4934e3",
+      "name": "build_token_usage_dto",
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "operation": "get",
+        "tableId": "babys_world_dev_chat_history",
+        "filters": {
+          "conditions": [
+            {
+              "keyName": "create_date",
+              "keyValue": "={{ $now.format(\"yyyy-MM-dd\") }}"
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.supabase",
+      "typeVersion": 1,
+      "position": [
+        928,
+        -80
+      ],
+      "id": "1d171738-cefe-4907-b39a-2c8277c26ce7",
+      "name": "get_data_by_date",
+      "credentials": {
+        "supabaseApi": {
+          "id": "dtKFPWrXh0HZEyUt",
+          "name": "clients_database"
+        }
+      },
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "jsCode": "const items = $input.all();\n\n// Sort items by id\nitems.sort((a, b) => a?.json?.id - b?.json?.id);\n\n// Group items by session_id\nconst groupedItems = items.reduce((acc, item) => {\n  const sessionId = item?.json?.session_id;\n  if (!acc[sessionId]) {\n    acc[sessionId] = [];\n  }\n  acc[sessionId].push(item?.json?.message);\n  return acc;\n}, {});\n\n// Create result array\nconst result = Object.entries(groupedItems).map(([sessionId, messages]) => {\n  return {\n    json: {\n      session_id: sessionId,\n      messages: messages.join(\", \"),\n    },\n  };\n});\n\nreturn result;\n"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1120,
+        -80
+      ],
+      "id": "6e3a7ad8-7e8f-400f-a496-2ee9cc13cb65",
+      "name": "sanetize_data"
+    },
+    {
+      "parameters": {},
+      "type": "n8n-nodes-base.noOp",
+      "typeVersion": 1,
+      "position": [
+        1632,
+        -240
+      ],
+      "id": "01dd4be3-7ee0-4ca5-a96b-85f35f8fa6b7",
+      "name": "No Operation, do nothing"
+    }
+  ],
+  "connections": {
+    "Loop Over Items": {
+      "main": [
+        [
+          {
+            "node": "No Operation, do nothing",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Agente de analisis",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Think": {
+      "ai_tool": [
+        [
+          {
+            "node": "Agente de analisis",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Edit Fields1": {
+      "main": [
+        [
+          {
+            "node": "Preparar para qdrant",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Trigger tiempo": {
+      "main": [
+        [
+          {
+            "node": "get_data_by_date",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Embeddings": {
+      "main": [
+        [
+          {
+            "node": "Edit Fields1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Preparar para qdrant": {
+      "main": [
+        [
+          {
+            "node": "Enviar a qdrant",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Enviar a qdrant": {
+      "main": [
+        [
+          {
+            "node": "Loop Over Items",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Agente de analisis": {
+      "main": [
+        [
+          {
+            "node": "build_token_usage_dto",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Modelo de chat": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "Agente de analisis",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Memoria": {
+      "ai_memory": [
+        [
+          {
+            "node": "Agente de analisis",
+            "type": "ai_memory",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "build_token_usage_dto": {
+      "main": [
+        [
+          {
+            "node": "Call 'ai_usage_log'",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Call 'ai_usage_log'": {
+      "main": [
+        [
+          {
+            "node": "Embeddings",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "get_data_by_date": {
+      "main": [
+        [
+          {
+            "node": "sanetize_data",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "sanetize_data": {
+      "main": [
+        [
+          {
+            "node": "Loop Over Items",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "nodeGroups": [],
+  "settings": {
+    "executionOrder": "v1",
+    "availableInMCP": false,
+    "binaryMode": "separate"
+  },
+  "staticData": {
+    "node:Trigger tiempo": {
+      "recurrenceRules": [
+        null
+      ],
+      "recurrenceRuleSignatures": [
+        null
+      ]
+    }
+  },
+  "pinData": {
+    "Trigger tiempo": [
+      {
+        "json": {
+          "timestamp": "2026-04-10T12:22:43.988-05:00",
+          "Readable date": "April 10th 2026, 12:22:43 pm",
+          "Readable time": "12:22:43 pm",
+          "Day of week": "Friday",
+          "Year": "2026",
+          "Month": "April",
+          "Day of month": "10",
+          "Hour": "12",
+          "Minute": "22",
+          "Second": "43",
+          "Timezone": "America/Bogota (UTC-05:00)"
+        },
+        "pairedItem": {
+          "item": 0
+        }
+      }
+    ]
+  },
+  "meta": {
+    "templateCredsSetupCompleted": true
+  },
+  "tags": [
+    {
+      "id": "Ee7UUkr8nYxWXk9N",
+      "name": "WS:DEV",
+      "createdAt": "2026-01-31T17:49:48.865Z",
+      "updatedAt": "2026-02-11T00:16:08.248Z"
+    },
+    {
+      "id": "aoh40Hw1Lb9k0R8R",
+      "name": "WS:OPS",
+      "createdAt": "2026-01-31T17:49:39.081Z",
+      "updatedAt": "2026-02-11T00:16:15.424Z"
+    },
+    {
+      "id": "yeVKM38fTlGQH203",
+      "name": "Historial",
+      "createdAt": "2026-01-31T17:50:52.468Z",
+      "updatedAt": "2026-01-31T17:50:52.468Z"
+    }
+  ],
+  "shared": [
+    {
+      "role": "workflow:owner",
+      "workflowId": "87RN2sEdSzl-0XDkZwz8x",
+      "projectId": "8h8pwWGcWlnGEym3",
+      "createdAt": "2026-01-26T19:03:58.278Z",
+      "updatedAt": "2026-01-26T19:03:58.278Z"
+    }
+  ],
+  "activeVersion": {
+    "versionId": "636a84fd-1cd2-4ae3-a98c-3dddb4aa25e0",
+    "workflowId": "87RN2sEdSzl-0XDkZwz8x",
+    "nodes": [
+      {
+        "parameters": {
+          "options": {}
+        },
+        "type": "n8n-nodes-base.splitInBatches",
+        "typeVersion": 3,
+        "position": [
+          1376,
+          -80
+        ],
+        "id": "0df49528-e552-4f09-b276-dcc03c21fa1e",
+        "name": "Loop Over Items"
+      },
+      {
+        "parameters": {},
+        "type": "@n8n/n8n-nodes-langchain.toolThink",
+        "typeVersion": 1.1,
+        "position": [
+          1920,
+          144
+        ],
+        "id": "9df585c2-b867-48ed-9d36-2b7a2734d1fa",
+        "name": "Think"
+      },
+      {
+        "parameters": {
+          "assignments": {
+            "assignments": [
+              {
+                "id": "27f204a6-6bdb-47e8-8e40-6a298b2d3b83",
+                "name": "texto",
+                "value": "={{ $('Agente de analisis').item.json.output }}",
+                "type": "string"
+              },
+              {
+                "id": "d4118ab4-cffa-4591-bfd4-5d7413a7e1e4",
+                "name": "data",
+                "value": "={{ $json.data[0].embedding }}",
+                "type": "array"
+              },
+              {
+                "id": "0dc322cd-2a52-4781-ab94-ab49e1eb6f87",
+                "name": "user_id",
+                "value": "={{ $('Loop Over Items').item.json.session_id }}",
+                "type": "number"
+              },
+              {
+                "id": "d2b2b3b0-2242-435a-a3b4-6887419caa65",
+                "name": "timestamp",
+                "value": "={{ $now.minus(2, 'days') }}",
+                "type": "string"
+              }
+            ]
+          },
+          "options": {}
+        },
+        "type": "n8n-nodes-base.set",
+        "typeVersion": 3.4,
+        "position": [
+          2528,
+          -64
+        ],
+        "id": "2aebaba8-bf77-4ed3-bf6f-5ee9c1277d8b",
+        "name": "Edit Fields1"
+      },
+      {
+        "parameters": {
+          "rule": {
+            "interval": [
+              {
+                "triggerAtHour": 1
+              }
+            ]
+          }
+        },
+        "type": "n8n-nodes-base.scheduleTrigger",
+        "typeVersion": 1.3,
+        "position": [
+          720,
+          -80
+        ],
+        "id": "c314b9fa-67ed-4d58-8813-5a157d329dcc",
+        "name": "Trigger tiempo"
+      },
+      {
+        "parameters": {
+          "method": "POST",
+          "url": "https://api.openai.com/v1/embeddings",
+          "authentication": "predefinedCredentialType",
+          "nodeCredentialType": "openAiApi",
+          "sendBody": true,
+          "specifyBody": "json",
+          "jsonBody": "={{ { \"input\": $('Agente de analisis').item.json.output, \"model\": \"text-embedding-ada-002\" } }}",
+          "options": {}
+        },
+        "type": "n8n-nodes-base.httpRequest",
+        "typeVersion": 4.2,
+        "position": [
+          2352,
+          -64
+        ],
+        "id": "c95dd8e9-3feb-484b-9d0e-523d7da80269",
+        "name": "Embeddings",
+        "credentials": {
+          "qdrantApi": {
+            "id": "ZYv8vdr6tkTS4jYz",
+            "name": "QdrantApi account 3"
+          },
+          "openAiApi": {
+            "id": "zACGOxtwAjrFvDag",
+            "name": "OpenAi_YoEco_DEV"
+          }
+        },
+        "onError": "continueRegularOutput"
+      },
+      {
+        "parameters": {
+          "jsCode": "// Loop over input items and add a new field called 'myNewField' to the JSON of each one\nfunction generateUUID() {\n  // genera UUID manualmente\n  return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) {\n    const r = Math.random() * 16 | 0;\n    const v = c === 'x' ? r : (r & 0x3 | 0x8);\n    return v.toString(16);\n  });\n}\n\nreturn [{\n  json: {\n    id: generateUUID(),\n    vector: $input.first().json.data,\n    user_id: $input.first().json.user_id,\n    timestap:$input.first().json.timestamp,\n    text: $input.first().json.texto\n  }\n}];"
+        },
+        "type": "n8n-nodes-base.code",
+        "typeVersion": 2,
+        "position": [
+          2704,
+          -64
+        ],
+        "id": "11758a9f-94d9-40d7-9d0f-130366efcbff",
+        "name": "Preparar para qdrant"
+      },
+      {
+        "parameters": {
+          "method": "PUT",
+          "url": "https://1537c683-48da-4631-ab76-ad698b6b9881.us-east-1-0.aws.cloud.qdrant.io:6333/collections/BabysWorld_Clientes_TEST/points",
+          "authentication": "predefinedCredentialType",
+          "nodeCredentialType": "qdrantApi",
+          "sendBody": true,
+          "specifyBody": "json",
+          "jsonBody": "={{\n{\n  points: [\n    {\n      id: $json.id ?? undefined,\n      vector: $json.vector,\n      payload: {\n          user_id: Number($json.user_id    ?? $json.user_id   ?? 0),\n          text: $json.text,\n          timestamp: $json.timestap\n      }\n    }\n  ]\n}\n}}",
+          "options": {}
+        },
+        "type": "n8n-nodes-base.httpRequest",
+        "typeVersion": 4.2,
+        "position": [
+          2912,
+          -64
+        ],
+        "id": "a3d14e68-5faf-457b-a49a-8793b2a082ec",
+        "name": "Enviar a qdrant",
+        "credentials": {
+          "qdrantApi": {
+            "id": "ZYv8vdr6tkTS4jYz",
+            "name": "QdrantApi account 3"
+          }
+        },
+        "onError": "continueRegularOutput"
+      },
+      {
+        "parameters": {
+          "promptType": "define",
+          "text": "=Actúa como un analista de datos experto. Tu objetivo es procesar la conversación adjunta entre el asistente virtual 'Dalia' y un cliente para extraer la siguiente estructura:\n\nDATOS BÁSICOS: Extrae nombre, edad, dirección y ciudad. (Si no aparecen, escribe 'No proporcionado').\n\nPRODUCTOS: Identifica qué productos fueron:\n\nConsultados (solo preguntó).\n\nCotizados (preguntó precio o pidió presupuesto).\n\nComprados (confirmó la adquisición).\n\nANÁLISIS SENTIMENTAL: Describe el tono del cliente durante la charla (ej: interesado, frustrado, satisfecho).\n\nCONVERSACIÓN A ANALIZAR: {{ $json.messages }}\n",
+          "options": {}
+        },
+        "type": "@n8n/n8n-nodes-langchain.agent",
+        "typeVersion": 3.1,
+        "position": [
+          1648,
+          -64
+        ],
+        "id": "9fa07895-131c-48e1-acd6-838b03ee28d8",
+        "name": "Agente de analisis"
+      },
+      {
+        "parameters": {
+          "model": {
+            "__rl": true,
+            "mode": "list",
+            "value": "gpt-4.1-mini"
+          },
+          "builtInTools": {},
+          "options": {}
+        },
+        "type": "@n8n/n8n-nodes-langchain.lmChatOpenAi",
+        "typeVersion": 1.3,
+        "position": [
+          1648,
+          144
+        ],
+        "id": "9733d474-773e-4582-bbaa-6af780d178bb",
+        "name": "Modelo de chat",
+        "retryOnFail": true,
+        "credentials": {
+          "openAiApi": {
+            "id": "zACGOxtwAjrFvDag",
+            "name": "OpenAi_YoEco_DEV"
+          }
+        }
+      },
+      {
+        "parameters": {
+          "sessionIdType": "customKey",
+          "sessionKey": "={{ $json.session_id }}"
+        },
+        "type": "@n8n/n8n-nodes-langchain.memoryBufferWindow",
+        "typeVersion": 1.3,
+        "position": [
+          1792,
+          144
+        ],
+        "id": "122b54d5-e372-4a26-9c9d-f583de1f6c26",
+        "name": "Memoria"
+      },
+      {
+        "parameters": {
+          "workflowId": {
+            "__rl": true,
+            "mode": "id",
+            "value": "={{ $json.execution_id }}",
+            "cachedResultName": "={{ $json.execution_id }}"
+          },
+          "workflowInputs": {
+            "mappingMode": "passThrough",
+            "value": {},
+            "matchingColumns": [],
+            "schema": [],
+            "attemptToConvertTypes": false,
+            "convertFieldsToString": true
+          },
+          "mode": "each",
+          "options": {
+            "waitForSubWorkflow": false
+          }
+        },
+        "type": "n8n-nodes-base.executeWorkflow",
+        "typeVersion": 1.3,
+        "position": [
+          2176,
+          -64
+        ],
+        "id": "59726e09-53b2-4fd8-a831-e44e49b9638e",
+        "name": "Call 'ai_usage_log'",
+        "onError": "continueRegularOutput"
+      },
+      {
+        "parameters": {
+          "jsCode": "// Atrapamos la respuesta del agente\nconst outputAgente = $('Agente de analisis').item.json.output;\n\n// Atrapamos en qué \"vuelta\" del bucle estamos (0, 1, 2, 3...)\nconst runIndex = $('Agente de analisis').context.runIndex || 0;\n\nreturn {\n  execution_id: $execution.id,\n  run_index: runIndex,\n  ai_response: outputAgente,\n  environment: \"dev\" \n};"
+        },
+        "type": "n8n-nodes-base.code",
+        "typeVersion": 2,
+        "position": [
+          1984,
+          -64
+        ],
+        "id": "5b06c8d6-7c89-40c9-ad8b-08f88e4934e3",
+        "name": "build_token_usage_dto",
+        "onError": "continueRegularOutput"
+      },
+      {
+        "parameters": {
+          "operation": "get",
+          "tableId": "babys_world_dev_chat_history",
+          "filters": {
+            "conditions": [
+              {
+                "keyName": "create_date",
+                "keyValue": "={{ $now.format(\"yyyy-MM-dd\") }}"
+              }
+            ]
+          }
+        },
+        "type": "n8n-nodes-base.supabase",
+        "typeVersion": 1,
+        "position": [
+          928,
+          -80
+        ],
+        "id": "1d171738-cefe-4907-b39a-2c8277c26ce7",
+        "name": "get_data_by_date",
+        "credentials": {
+          "supabaseApi": {
+            "id": "dtKFPWrXh0HZEyUt",
+            "name": "clients_database"
+          }
+        },
+        "onError": "continueRegularOutput"
+      },
+      {
+        "parameters": {
+          "jsCode": "const items = $input.all();\n\n// Sort items by id\nitems.sort((a, b) => a?.json?.id - b?.json?.id);\n\n// Group items by session_id\nconst groupedItems = items.reduce((acc, item) => {\n  const sessionId = item?.json?.session_id;\n  if (!acc[sessionId]) {\n    acc[sessionId] = [];\n  }\n  acc[sessionId].push(item?.json?.message);\n  return acc;\n}, {});\n\n// Create result array\nconst result = Object.entries(groupedItems).map(([sessionId, messages]) => {\n  return {\n    json: {\n      session_id: sessionId,\n      messages: messages.join(\", \"),\n    },\n  };\n});\n\nreturn result;\n"
+        },
+        "type": "n8n-nodes-base.code",
+        "typeVersion": 2,
+        "position": [
+          1120,
+          -80
+        ],
+        "id": "6e3a7ad8-7e8f-400f-a496-2ee9cc13cb65",
+        "name": "sanetize_data"
+      },
+      {
+        "parameters": {},
+        "type": "n8n-nodes-base.noOp",
+        "typeVersion": 1,
+        "position": [
+          1632,
+          -240
+        ],
+        "id": "01dd4be3-7ee0-4ca5-a96b-85f35f8fa6b7",
+        "name": "No Operation, do nothing"
+      }
+    ],
+    "connections": {
+      "Loop Over Items": {
+        "main": [
+          [
+            {
+              "node": "No Operation, do nothing",
+              "type": "main",
+              "index": 0
+            }
+          ],
+          [
+            {
+              "node": "Agente de analisis",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Think": {
+        "ai_tool": [
+          [
+            {
+              "node": "Agente de analisis",
+              "type": "ai_tool",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Edit Fields1": {
+        "main": [
+          [
+            {
+              "node": "Preparar para qdrant",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Trigger tiempo": {
+        "main": [
+          [
+            {
+              "node": "get_data_by_date",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Embeddings": {
+        "main": [
+          [
+            {
+              "node": "Edit Fields1",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Preparar para qdrant": {
+        "main": [
+          [
+            {
+              "node": "Enviar a qdrant",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Enviar a qdrant": {
+        "main": [
+          [
+            {
+              "node": "Loop Over Items",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Agente de analisis": {
+        "main": [
+          [
+            {
+              "node": "build_token_usage_dto",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Modelo de chat": {
+        "ai_languageModel": [
+          [
+            {
+              "node": "Agente de analisis",
+              "type": "ai_languageModel",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Memoria": {
+        "ai_memory": [
+          [
+            {
+              "node": "Agente de analisis",
+              "type": "ai_memory",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "build_token_usage_dto": {
+        "main": [
+          [
+            {
+              "node": "Call 'ai_usage_log'",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Call 'ai_usage_log'": {
+        "main": [
+          [
+            {
+              "node": "Embeddings",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "get_data_by_date": {
+        "main": [
+          [
+            {
+              "node": "sanetize_data",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "sanetize_data": {
+        "main": [
+          [
+            {
+              "node": "Loop Over Items",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      }
+    },
+    "nodeGroups": [],
+    "authors": "Emmanuel Arevalo",
+    "name": "Version 636a84fd",
+    "description": "",
+    "autosaved": true,
+    "createdAt": "2026-04-23T16:41:32.848Z",
+    "updatedAt": "2026-04-23T16:41:42.000Z"
+  }
+}
