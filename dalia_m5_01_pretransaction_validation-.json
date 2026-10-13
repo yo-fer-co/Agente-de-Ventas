@@ -1,0 +1,33 @@
+{
+  "id": "BeOShywPaxKtFJX7",
+  "name": "DALIA_M5_01_Pretransaction_Validation",
+  "active": false,
+  "activeVersionId": null,
+  "createdAt": "2026-08-21T02:54:33.479Z",
+  "updatedAt": "2026-08-21T03:04:02.000Z",
+  "isArchived": true,
+  "versionId": "0b231e1d-bb80-4aee-9ddf-19189e68123f",
+  "triggerCount": 0,
+  "nodes": [],
+  "connections": {},
+  "nodeGroups": [],
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate",
+    "availableInMCP": false
+  },
+  "staticData": null,
+  "pinData": {},
+  "meta": null,
+  "tags": [],
+  "shared": [
+    {
+      "role": "workflow:owner",
+      "workflowId": "BeOShywPaxKtFJX7",
+      "projectId": "8h8pwWGcWlnGEym3",
+      "createdAt": "2026-08-21T02:54:33.482Z",
+      "updatedAt": "2026-08-21T02:54:33.482Z"
+    }
+  ],
+  "activeVersion": null
+}
