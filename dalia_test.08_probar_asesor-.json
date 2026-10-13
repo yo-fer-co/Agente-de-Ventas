@@ -1,0 +1,477 @@
+{
+  "id": "5tJyNWEYzBSzO6yd",
+  "name": "DALIA_TEST.08_Probar_asesor",
+  "active": false,
+  "activeVersionId": null,
+  "createdAt": "2026-10-04T14:09:11.929Z",
+  "updatedAt": "2026-10-08T00:11:00.237Z",
+  "isArchived": false,
+  "versionId": "60cd44e5-4998-4ebc-912b-043a81391b5f",
+  "triggerCount": 0,
+  "nodes": [
+    {
+      "id": "98ad8557-bb5d-403b-b322-b36c38169f77",
+      "name": "Probar asesor",
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [
+        0,
+        0
+      ],
+      "parameters": {}
+    },
+    {
+      "id": "8a129f61-80c8-4424-8137-94752f022708",
+      "name": "Datos de prueba",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        224,
+        0
+      ],
+      "parameters": {
+        "mode": "manual",
+        "includeOtherFields": false,
+        "assignments": {
+          "assignments": [
+            {
+              "id": "d1",
+              "name": "texto",
+              "value": "Me interesa el Kidilo H2D, ¿lo tienen en gris? Quiero comprar uno",
+              "type": "string"
+            },
+            {
+              "id": "d2",
+              "name": "kind_asesoria",
+              "value": "advise",
+              "type": "string"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "8d72970e-1298-4c29-b619-a095870775e1",
+      "name": "Turno de prueba",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        448,
+        0
+      ],
+      "parameters": {
+        "mode": "manual",
+        "includeOtherFields": false,
+        "assignments": {
+          "assignments": [
+            {
+              "id": "t1",
+              "name": "idempotency_key",
+              "value": "={{ \"test08-\" + $now.toMillis() }}",
+              "type": "string"
+            },
+            {
+              "id": "t2",
+              "name": "conversation_id",
+              "value": "test08",
+              "type": "string"
+            },
+            {
+              "id": "t3",
+              "name": "messages",
+              "value": "={{ [ { role: \"customer\", text: $json.texto } ] }}",
+              "type": "array"
+            },
+            {
+              "id": "t4",
+              "name": "envelope",
+              "value": "={{ { trace_id: \"test08-\" + $now.toMillis(), correlation_id: \"test08\" } }}",
+              "type": "object"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "82fd6198-39e5-4e86-be2b-07719f6a3ffb",
+      "name": "Llamar M3.01",
+      "type": "n8n-nodes-base.executeWorkflow",
+      "typeVersion": 1.3,
+      "position": [
+        672,
+        0
+      ],
+      "parameters": {
+        "mode": "each",
+        "source": "database",
+        "workflowId": {
+          "__rl": true,
+          "mode": "id",
+          "value": "jXWtcjviuuzNlhim"
+        },
+        "options": {
+          "waitForSubWorkflow": true
+        }
+      }
+    },
+    {
+      "id": "5e514e01-dd38-4193-b569-f02f48357750",
+      "name": "Solicitud de asesoria",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        896,
+        0
+      ],
+      "parameters": {
+        "mode": "manual",
+        "includeOtherFields": false,
+        "assignments": {
+          "assignments": [
+            {
+              "id": "a1",
+              "name": "kind",
+              "value": "={{ $(\"Datos de prueba\").first().json.kind_asesoria }}",
+              "type": "string"
+            },
+            {
+              "id": "a2",
+              "name": "idempotency_key",
+              "value": "={{ $(\"Turno de prueba\").first().json.idempotency_key + \"-a\" }}",
+              "type": "string"
+            },
+            {
+              "id": "a3",
+              "name": "conversation_id",
+              "value": "={{ $(\"Turno de prueba\").first().json.conversation_id }}",
+              "type": "string"
+            },
+            {
+              "id": "a4",
+              "name": "messages",
+              "value": "={{ $(\"Turno de prueba\").first().json.messages }}",
+              "type": "array"
+            },
+            {
+              "id": "a5",
+              "name": "interpretation",
+              "value": "={{ $(\"Llamar M3.01\").first().json.result.interpretation ?? null }}",
+              "type": "object"
+            },
+            {
+              "id": "a6",
+              "name": "envelope",
+              "value": "={{ $(\"Turno de prueba\").first().json.envelope }}",
+              "type": "object"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "f8983d52-ab78-4bb7-9fde-1a36a744cce8",
+      "name": "Llamar M3.02",
+      "type": "n8n-nodes-base.executeWorkflow",
+      "typeVersion": 1.3,
+      "position": [
+        1120,
+        0
+      ],
+      "parameters": {
+        "mode": "each",
+        "source": "database",
+        "workflowId": {
+          "__rl": true,
+          "mode": "id",
+          "value": "cIJW9FzCrXSD5OlM"
+        },
+        "options": {
+          "waitForSubWorkflow": true
+        }
+      }
+    },
+    {
+      "id": "f09f63d5-a805-4693-99d6-8255736dcfda",
+      "name": "Solicitud de borrador de pedido",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        1344,
+        0
+      ],
+      "parameters": {
+        "mode": "manual",
+        "includeOtherFields": false,
+        "assignments": {
+          "assignments": [
+            {
+              "id": "a1",
+              "name": "kind",
+              "value": "extract_order",
+              "type": "string"
+            },
+            {
+              "id": "a2",
+              "name": "idempotency_key",
+              "value": "={{ $(\"Turno de prueba\").first().json.idempotency_key + \"-e\" }}",
+              "type": "string"
+            },
+            {
+              "id": "a3",
+              "name": "conversation_id",
+              "value": "={{ $(\"Turno de prueba\").first().json.conversation_id }}",
+              "type": "string"
+            },
+            {
+              "id": "a4",
+              "name": "messages",
+              "value": "={{ $(\"Turno de prueba\").first().json.messages }}",
+              "type": "array"
+            },
+            {
+              "id": "a5",
+              "name": "interpretation",
+              "value": "={{ $(\"Llamar M3.01\").first().json.result.interpretation ?? null }}",
+              "type": "object"
+            },
+            {
+              "id": "a6",
+              "name": "envelope",
+              "value": "={{ $(\"Turno de prueba\").first().json.envelope }}",
+              "type": "object"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "6b1d95d2-2590-4229-ab80-268b84eb28e2",
+      "name": "Llamar M3.03 (pedido)",
+      "type": "n8n-nodes-base.executeWorkflow",
+      "typeVersion": 1.3,
+      "position": [
+        1568,
+        0
+      ],
+      "parameters": {
+        "mode": "each",
+        "source": "database",
+        "workflowId": {
+          "__rl": true,
+          "mode": "id",
+          "value": "xzFPZ492fyYSBT8l"
+        },
+        "options": {
+          "waitForSubWorkflow": true
+        }
+      }
+    },
+    {
+      "id": "8da5cdad-38f5-4739-b456-8d0a1ffdc2ef",
+      "name": "Solicitud de resumen",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        1792,
+        0
+      ],
+      "parameters": {
+        "mode": "manual",
+        "includeOtherFields": false,
+        "assignments": {
+          "assignments": [
+            {
+              "id": "a1",
+              "name": "kind",
+              "value": "summarize",
+              "type": "string"
+            },
+            {
+              "id": "a2",
+              "name": "idempotency_key",
+              "value": "={{ $(\"Turno de prueba\").first().json.idempotency_key + \"-s\" }}",
+              "type": "string"
+            },
+            {
+              "id": "a3",
+              "name": "conversation_id",
+              "value": "={{ $(\"Turno de prueba\").first().json.conversation_id }}",
+              "type": "string"
+            },
+            {
+              "id": "a4",
+              "name": "messages",
+              "value": "={{ $(\"Turno de prueba\").first().json.messages }}",
+              "type": "array"
+            },
+            {
+              "id": "a5",
+              "name": "interpretation",
+              "value": "={{ $(\"Llamar M3.01\").first().json.result.interpretation ?? null }}",
+              "type": "object"
+            },
+            {
+              "id": "a6",
+              "name": "envelope",
+              "value": "={{ $(\"Turno de prueba\").first().json.envelope }}",
+              "type": "object"
+            },
+            {
+              "id": "a7",
+              "name": "purpose",
+              "value": "handoff",
+              "type": "string"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "982088bc-a35e-45a0-9051-cd9ab238665d",
+      "name": "Llamar M3.03 (resumen)",
+      "type": "n8n-nodes-base.executeWorkflow",
+      "typeVersion": 1.3,
+      "position": [
+        2016,
+        0
+      ],
+      "parameters": {
+        "mode": "each",
+        "source": "database",
+        "workflowId": {
+          "__rl": true,
+          "mode": "id",
+          "value": "xzFPZ492fyYSBT8l"
+        },
+        "options": {
+          "waitForSubWorkflow": true
+        }
+      }
+    }
+  ],
+  "connections": {
+    "Probar asesor": {
+      "main": [
+        [
+          {
+            "node": "Datos de prueba",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Datos de prueba": {
+      "main": [
+        [
+          {
+            "node": "Turno de prueba",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Turno de prueba": {
+      "main": [
+        [
+          {
+            "node": "Llamar M3.01",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Llamar M3.01": {
+      "main": [
+        [
+          {
+            "node": "Solicitud de asesoria",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Solicitud de asesoria": {
+      "main": [
+        [
+          {
+            "node": "Llamar M3.02",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Llamar M3.02": {
+      "main": [
+        [
+          {
+            "node": "Solicitud de borrador de pedido",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Solicitud de borrador de pedido": {
+      "main": [
+        [
+          {
+            "node": "Llamar M3.03 (pedido)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Llamar M3.03 (pedido)": {
+      "main": [
+        [
+          {
+            "node": "Solicitud de resumen",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Solicitud de resumen": {
+      "main": [
+        [
+          {
+            "node": "Llamar M3.03 (resumen)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "nodeGroups": [],
+  "settings": {
+    "executionOrder": "v1",
+    "availableInMCP": true,
+    "timezone": "America/Bogota",
+    "callerPolicy": "workflowsFromSameOwner"
+  },
+  "staticData": null,
+  "pinData": null,
+  "meta": {
+    "aiBuilderAssisted": true,
+    "builderVariant": "mcp"
+  },
+  "tags": [],
+  "shared": [
+    {
+      "role": "workflow:owner",
+      "workflowId": "5tJyNWEYzBSzO6yd",
+      "projectId": "tRHCC8ts4mkRGXGn",
+      "createdAt": "2026-10-09T21:09:17.816Z",
+      "updatedAt": "2026-10-09T21:09:17.816Z"
+    }
+  ],
+  "activeVersion": null
+}
