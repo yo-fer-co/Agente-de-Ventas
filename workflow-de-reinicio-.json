@@ -1,0 +1,289 @@
+{
+  "id": "nwLdIwjEAPPfSKJx",
+  "name": "workflow de reinicio",
+  "active": false,
+  "activeVersionId": null,
+  "createdAt": "2025-12-16T00:55:04.546Z",
+  "updatedAt": "2025-12-16T19:16:03.000Z",
+  "isArchived": false,
+  "versionId": "685a91f3-693c-4b49-ae2f-ffaf7934dd0e",
+  "triggerCount": 1,
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "hours",
+              "hoursInterval": 12,
+              "triggerAtMinute": null
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [
+        -464,
+        -64
+      ],
+      "id": "6a0fe7dd-853c-4953-859f-424771e62b55",
+      "name": "Schedule Trigger"
+    },
+    {
+      "parameters": {
+        "operation": "deactivate",
+        "workflowId": {
+          "__rl": true,
+          "value": "kVjeiU5FwRz9KMW2",
+          "mode": "list",
+          "cachedResultName": "Coordinador (#kVjeiU5FwRz9KMW2)"
+        },
+        "requestOptions": {}
+      },
+      "type": "n8n-nodes-base.n8n",
+      "typeVersion": 1,
+      "position": [
+        -256,
+        -64
+      ],
+      "id": "502c382b-a52a-46fd-a572-d4e72b5dc4f4",
+      "name": "Deactivate a workflow",
+      "credentials": {
+        "n8nApi": {
+          "id": "AZG1Am7cleMDHzng",
+          "name": "n8n account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "activate",
+        "workflowId": {
+          "__rl": true,
+          "value": "kVjeiU5FwRz9KMW2",
+          "mode": "list",
+          "cachedResultName": "Coordinador (#kVjeiU5FwRz9KMW2)"
+        },
+        "requestOptions": {}
+      },
+      "type": "n8n-nodes-base.n8n",
+      "typeVersion": 1,
+      "position": [
+        -144,
+        -64
+      ],
+      "id": "d7fe3e50-f8d4-401c-89ec-b77bcd6ee320",
+      "name": "Activate a workflow",
+      "credentials": {
+        "n8nApi": {
+          "id": "AZG1Am7cleMDHzng",
+          "name": "n8n account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "deactivate",
+        "workflowId": {
+          "__rl": true,
+          "value": "0t1DvH1WQJJib4oR",
+          "mode": "list",
+          "cachedResultName": "Eliminacion De Datos Tabla (#0t1DvH1WQJJib4oR)"
+        },
+        "requestOptions": {}
+      },
+      "type": "n8n-nodes-base.n8n",
+      "typeVersion": 1,
+      "position": [
+        32,
+        -64
+      ],
+      "id": "79612ff0-a772-4761-828a-0e458f9b683c",
+      "name": "Deactivate a workflow1",
+      "credentials": {
+        "n8nApi": {
+          "id": "AZG1Am7cleMDHzng",
+          "name": "n8n account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "activate",
+        "workflowId": {
+          "__rl": true,
+          "value": "0t1DvH1WQJJib4oR",
+          "mode": "list",
+          "cachedResultName": "Eliminacion De Datos Tabla (#0t1DvH1WQJJib4oR)"
+        },
+        "requestOptions": {}
+      },
+      "type": "n8n-nodes-base.n8n",
+      "typeVersion": 1,
+      "position": [
+        144,
+        -64
+      ],
+      "id": "c16abfd6-622c-41d7-ba45-cc3395bdb8ae",
+      "name": "Activate a workflow1",
+      "credentials": {
+        "n8nApi": {
+          "id": "AZG1Am7cleMDHzng",
+          "name": "n8n account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "deactivate",
+        "workflowId": {
+          "__rl": true,
+          "value": "rbDnM48ISjyaWI75",
+          "mode": "list",
+          "cachedResultName": "Envio Conversacion DB (#rbDnM48ISjyaWI75)"
+        },
+        "requestOptions": {}
+      },
+      "type": "n8n-nodes-base.n8n",
+      "typeVersion": 1,
+      "position": [
+        304,
+        -64
+      ],
+      "id": "9b48d216-e150-4858-b3ec-a83e284be9a6",
+      "name": "Deactivate a workflow2",
+      "credentials": {
+        "n8nApi": {
+          "id": "AZG1Am7cleMDHzng",
+          "name": "n8n account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "activate",
+        "workflowId": {
+          "__rl": true,
+          "value": "rbDnM48ISjyaWI75",
+          "mode": "list",
+          "cachedResultName": "Envio Conversacion DB (#rbDnM48ISjyaWI75)"
+        },
+        "requestOptions": {}
+      },
+      "type": "n8n-nodes-base.n8n",
+      "typeVersion": 1,
+      "position": [
+        416,
+        -64
+      ],
+      "id": "86650d01-c4b5-4e17-8b71-46c9897d2bc4",
+      "name": "Activate a workflow2",
+      "credentials": {
+        "n8nApi": {
+          "id": "AZG1Am7cleMDHzng",
+          "name": "n8n account"
+        }
+      }
+    }
+  ],
+  "connections": {
+    "Schedule Trigger": {
+      "main": [
+        [
+          {
+            "node": "Deactivate a workflow",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Deactivate a workflow": {
+      "main": [
+        [
+          {
+            "node": "Activate a workflow",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Activate a workflow": {
+      "main": [
+        [
+          {
+            "node": "Deactivate a workflow1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Deactivate a workflow1": {
+      "main": [
+        [
+          {
+            "node": "Activate a workflow1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Activate a workflow1": {
+      "main": [
+        [
+          {
+            "node": "Deactivate a workflow2",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Deactivate a workflow2": {
+      "main": [
+        [
+          {
+            "node": "Activate a workflow2",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Activate a workflow2": {
+      "main": [
+        []
+      ]
+    }
+  },
+  "nodeGroups": [],
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "staticData": {
+    "node:Schedule Trigger": {
+      "recurrenceRules": [
+        12
+      ]
+    }
+  },
+  "pinData": {},
+  "meta": {
+    "templateCredsSetupCompleted": true
+  },
+  "tags": [],
+  "shared": [
+    {
+      "role": "workflow:owner",
+      "workflowId": "nwLdIwjEAPPfSKJx",
+      "projectId": "8h8pwWGcWlnGEym3",
+      "createdAt": "2025-12-16T00:55:04.548Z",
+      "updatedAt": "2025-12-16T00:55:04.548Z"
+    }
+  ],
+  "activeVersion": null
+}
