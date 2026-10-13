@@ -1,0 +1,127 @@
+{
+  "id": "yqt9cBwi0K9DQpwP",
+  "name": "M7 — Mensajería",
+  "active": false,
+  "activeVersionId": null,
+  "createdAt": "2026-05-12T19:34:30.799Z",
+  "updatedAt": "2026-05-26T22:23:29.000Z",
+  "isArchived": true,
+  "versionId": "bbdd4d88-d033-49a9-b3af-571d5e9da26b",
+  "triggerCount": 0,
+  "nodes": [
+    {
+      "parameters": {
+        "inputSource": "passthrough"
+      },
+      "type": "n8n-nodes-base.executeWorkflowTrigger",
+      "typeVersion": 1.1,
+      "position": [
+        0,
+        0
+      ],
+      "id": "c006cd3a-1a73-48f7-944e-8b57373b40b0",
+      "name": "When Executed by Another Workflow"
+    },
+    {
+      "parameters": {
+        "operation": "send",
+        "phoneNumberId": "1104496126080610",
+        "recipientPhoneNumber": "={{$json.channel.user_id.slice(-12) }}{{ $json.user_id }}",
+        "textBody": "={{ $json.message.replyText }}{{ $json.text }}",
+        "additionalFields": {}
+      },
+      "type": "n8n-nodes-base.whatsApp",
+      "typeVersion": 1.1,
+      "position": [
+        208,
+        0
+      ],
+      "id": "96fd18e2-4e92-49c1-861d-116454019f02",
+      "name": "Send message",
+      "webhookId": "b1b28103-d560-4925-81cf-5092340be921",
+      "credentials": {
+        "whatsAppApi": {
+          "id": "3lZ90gsbMgk8fR6e",
+          "name": "WhatsApp account 4"
+        }
+      }
+    }
+  ],
+  "connections": {
+    "When Executed by Another Workflow": {
+      "main": [
+        [
+          {
+            "node": "Send message",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "nodeGroups": [],
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate"
+  },
+  "staticData": null,
+  "pinData": {
+    "When Executed by Another Workflow": [
+      {
+        "json": {
+          "schema_version": "dalia.m3_to_m7.v1",
+          "trace": {
+            "event_id": "evt_1779641496058",
+            "conversation_id": "conv_wa_1104496126080610_573192563967",
+            "session_id": "wa_demo_1104496126080610_573192563967"
+          },
+          "channel": {
+            "name": "whatsapp",
+            "user_id": "wa_demo_1104496126080610_573192563967",
+            "display_name": "Em"
+          },
+          "message": {
+            "replyText": "¡Hola! Tenemos productos como cepillos de bambú en dos ediciones, soportes premium, kits de cuidado bucal y termos de bambú. ¿Te gustaría que te cuente más sobre alguna de estas opciones?",
+            "response_type": "discovery",
+            "next_step": "ask_clarification"
+          },
+          "presentation": {
+            "sendImage": false,
+            "image_mode": "none",
+            "image_candidates": []
+          },
+          "catalog": {
+            "used_catalog": false,
+            "matched": false,
+            "match_type": "product",
+            "items": []
+          },
+          "control": {
+            "can_continue": true,
+            "handoff_suggested": false,
+            "purchase_signal_detected": false,
+            "fallback_reason": null
+          }
+        },
+        "pairedItem": {
+          "item": 0
+        }
+      }
+    ]
+  },
+  "meta": {
+    "templateCredsSetupCompleted": true
+  },
+  "tags": [],
+  "shared": [
+    {
+      "role": "workflow:owner",
+      "workflowId": "yqt9cBwi0K9DQpwP",
+      "projectId": "tRHCC8ts4mkRGXGn",
+      "createdAt": "2026-05-12T19:34:30.801Z",
+      "updatedAt": "2026-05-12T19:34:30.801Z"
+    }
+  ],
+  "activeVersion": null
+}
