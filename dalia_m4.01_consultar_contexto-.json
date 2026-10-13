@@ -1,0 +1,930 @@
+{
+  "id": "Ys1IC6QH1dER3mJN",
+  "name": "DALIA_M4.01_Consultar_contexto",
+  "active": true,
+  "activeVersionId": "bca593ec-11e8-462c-838e-7db80319f892",
+  "createdAt": "2026-10-04T04:12:27.773Z",
+  "updatedAt": "2026-10-04T04:14:11.912Z",
+  "isArchived": false,
+  "versionId": "bca593ec-11e8-462c-838e-7db80319f892",
+  "triggerCount": 0,
+  "nodes": [
+    {
+      "id": "810ff8e8-5d7f-45e5-b6c3-155628e9bb45",
+      "name": "Solicitud de contexto",
+      "type": "n8n-nodes-base.executeWorkflowTrigger",
+      "typeVersion": 1.2,
+      "position": [
+        0,
+        224
+      ],
+      "parameters": {
+        "inputSource": "passthrough"
+      }
+    },
+    {
+      "id": "8df0f9d6-7009-4c63-9132-a3d6da46d2e3",
+      "name": "Preparar contexto",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.7,
+      "position": [
+        224,
+        224
+      ],
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "select dalia.m4_context_request($1::jsonb) as req;",
+        "options": {
+          "queryReplacement": "={{ [ JSON.stringify($json) ] }}"
+        }
+      },
+      "credentials": {
+        "postgres": {
+          "id": "HfCgVAjUygK1vrkU",
+          "name": "DALIA dev Supabase"
+        }
+      },
+      "onError": "continueErrorOutput"
+    },
+    {
+      "id": "cb769cbc-8cdf-4a9c-ba07-337252f28046",
+      "name": "Requiere busqueda semantica",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        448,
+        128
+      ],
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose"
+          },
+          "conditions": [
+            {
+              "leftValue": "={{ $json.req.semantic === true }}",
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        }
+      }
+    },
+    {
+      "id": "2eae3556-1d94-41c6-9392-f8ae87bcf191",
+      "name": "Preparar embedding",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        672,
+        48
+      ],
+      "parameters": {
+        "mode": "manual",
+        "includeOtherFields": false,
+        "assignments": {
+          "assignments": [
+            {
+              "id": "p1",
+              "name": "port",
+              "value": "={{ $json.req.embed_request.port }}",
+              "type": "string"
+            },
+            {
+              "id": "p2",
+              "name": "operation",
+              "value": "={{ $json.req.embed_request.operation }}",
+              "type": "string"
+            },
+            {
+              "id": "p3",
+              "name": "input",
+              "value": "={{ $json.req.embed_request.input }}",
+              "type": "object"
+            },
+            {
+              "id": "p4",
+              "name": "envelope",
+              "value": "={{ $(\"Solicitud de contexto\").first().json.envelope ?? {} }}",
+              "type": "object"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "0e3b41a6-cca8-44fc-9e7c-3b3168c2951a",
+      "name": "Embedding de la consulta",
+      "type": "n8n-nodes-base.executeWorkflow",
+      "typeVersion": 1.3,
+      "position": [
+        896,
+        48
+      ],
+      "parameters": {
+        "mode": "each",
+        "source": "database",
+        "workflowId": {
+          "__rl": true,
+          "mode": "id",
+          "value": "5gbpWhv0zIA8bZ0w"
+        },
+        "options": {
+          "waitForSubWorkflow": true
+        }
+      }
+    },
+    {
+      "id": "b53af9fb-c3ee-49d6-be6b-d2da3d0afabb",
+      "name": "Armar busqueda",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.7,
+      "position": [
+        1120,
+        48
+      ],
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "select dalia.m4_context_build_search($1::jsonb, $2::jsonb) as s;",
+        "options": {
+          "queryReplacement": "={{ [ JSON.stringify($(\"Preparar contexto\").first().json.req), JSON.stringify($json) ] }}"
+        }
+      },
+      "credentials": {
+        "postgres": {
+          "id": "HfCgVAjUygK1vrkU",
+          "name": "DALIA dev Supabase"
+        }
+      }
+    },
+    {
+      "id": "2df3ca6f-83b1-40e9-8b0e-df410b7b532a",
+      "name": "Hay busqueda",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        1344,
+        48
+      ],
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose"
+          },
+          "conditions": [
+            {
+              "leftValue": "={{ !!$json.s.search_request }}",
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        }
+      }
+    },
+    {
+      "id": "aac17829-72df-4351-a319-fe9ffdbacf8e",
+      "name": "Preparar busqueda",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        1568,
+        0
+      ],
+      "parameters": {
+        "mode": "manual",
+        "includeOtherFields": false,
+        "assignments": {
+          "assignments": [
+            {
+              "id": "p1",
+              "name": "port",
+              "value": "={{ $json.s.search_request.port }}",
+              "type": "string"
+            },
+            {
+              "id": "p2",
+              "name": "operation",
+              "value": "={{ $json.s.search_request.operation }}",
+              "type": "string"
+            },
+            {
+              "id": "p3",
+              "name": "input",
+              "value": "={{ $json.s.search_request.input }}",
+              "type": "object"
+            },
+            {
+              "id": "p4",
+              "name": "envelope",
+              "value": "={{ $(\"Solicitud de contexto\").first().json.envelope ?? {} }}",
+              "type": "object"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "7615662f-1e8d-4254-b85a-db2a0f66d875",
+      "name": "Buscar en Qdrant",
+      "type": "n8n-nodes-base.executeWorkflow",
+      "typeVersion": 1.3,
+      "position": [
+        1792,
+        0
+      ],
+      "parameters": {
+        "mode": "each",
+        "source": "database",
+        "workflowId": {
+          "__rl": true,
+          "mode": "id",
+          "value": "5gbpWhv0zIA8bZ0w"
+        },
+        "options": {
+          "waitForSubWorkflow": true
+        }
+      }
+    },
+    {
+      "id": "d614f37d-20ab-4e68-b839-4d5f1f924319",
+      "name": "Completar contexto",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.7,
+      "position": [
+        2016,
+        0
+      ],
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "select dalia.m4_context_result($1::jsonb, $2::jsonb, $3::jsonb) as result;",
+        "options": {
+          "queryReplacement": "={{ [ JSON.stringify($(\"Preparar contexto\").first().json.req), JSON.stringify($json), JSON.stringify($(\"Solicitud de contexto\").first().json.envelope ?? {}) ] }}"
+        }
+      },
+      "credentials": {
+        "postgres": {
+          "id": "HfCgVAjUygK1vrkU",
+          "name": "DALIA dev Supabase"
+        }
+      }
+    },
+    {
+      "id": "926a0e22-e818-4a7f-8f2a-d75d73a78400",
+      "name": "Completar sin busqueda",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.7,
+      "position": [
+        1568,
+        224
+      ],
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "select dalia.m4_context_result($1::jsonb, $2::jsonb, $3::jsonb) as result;",
+        "options": {
+          "queryReplacement": "={{ [ JSON.stringify($(\"Preparar contexto\").first().json.req), null, JSON.stringify($(\"Solicitud de contexto\").first().json.envelope ?? {}) ] }}"
+        }
+      },
+      "credentials": {
+        "postgres": {
+          "id": "HfCgVAjUygK1vrkU",
+          "name": "DALIA dev Supabase"
+        }
+      }
+    },
+    {
+      "id": "199b47ff-4e82-4928-9ddf-5911fa5ddca4",
+      "name": "Solicitud invalida",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        448,
+        320
+      ],
+      "parameters": {
+        "mode": "manual",
+        "includeOtherFields": false,
+        "assignments": {
+          "assignments": [
+            {
+              "id": "i1",
+              "name": "result",
+              "value": "={{ { status: \"invalid\", items: [], error: $json.error?.message ?? $json.error ?? \"solicitud inválida\" } }}",
+              "type": "object"
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "connections": {
+    "Solicitud de contexto": {
+      "main": [
+        [
+          {
+            "node": "Preparar contexto",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Preparar contexto": {
+      "main": [
+        [
+          {
+            "node": "Requiere busqueda semantica",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Solicitud invalida",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Requiere busqueda semantica": {
+      "main": [
+        [
+          {
+            "node": "Preparar embedding",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Completar sin busqueda",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Preparar embedding": {
+      "main": [
+        [
+          {
+            "node": "Embedding de la consulta",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Embedding de la consulta": {
+      "main": [
+        [
+          {
+            "node": "Armar busqueda",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Armar busqueda": {
+      "main": [
+        [
+          {
+            "node": "Hay busqueda",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Hay busqueda": {
+      "main": [
+        [
+          {
+            "node": "Preparar busqueda",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Completar sin busqueda",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Preparar busqueda": {
+      "main": [
+        [
+          {
+            "node": "Buscar en Qdrant",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Buscar en Qdrant": {
+      "main": [
+        [
+          {
+            "node": "Completar contexto",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "nodeGroups": [],
+  "settings": {
+    "executionOrder": "v1",
+    "availableInMCP": true,
+    "errorWorkflow": "cjjQno2MxMTT3Icc",
+    "timezone": "America/Bogota",
+    "callerPolicy": "workflowsFromSameOwner"
+  },
+  "staticData": null,
+  "pinData": null,
+  "meta": {
+    "aiBuilderAssisted": true,
+    "builderVariant": "mcp"
+  },
+  "tags": [],
+  "shared": [
+    {
+      "role": "workflow:owner",
+      "workflowId": "Ys1IC6QH1dER3mJN",
+      "projectId": "tRHCC8ts4mkRGXGn",
+      "createdAt": "2026-10-09T21:09:17.801Z",
+      "updatedAt": "2026-10-09T21:09:17.801Z"
+    }
+  ],
+  "activeVersion": {
+    "versionId": "bca593ec-11e8-462c-838e-7db80319f892",
+    "workflowId": "Ys1IC6QH1dER3mJN",
+    "nodes": [
+      {
+        "id": "810ff8e8-5d7f-45e5-b6c3-155628e9bb45",
+        "name": "Solicitud de contexto",
+        "type": "n8n-nodes-base.executeWorkflowTrigger",
+        "typeVersion": 1.2,
+        "position": [
+          0,
+          224
+        ],
+        "parameters": {
+          "inputSource": "passthrough"
+        }
+      },
+      {
+        "id": "8df0f9d6-7009-4c63-9132-a3d6da46d2e3",
+        "name": "Preparar contexto",
+        "type": "n8n-nodes-base.postgres",
+        "typeVersion": 2.7,
+        "position": [
+          224,
+          224
+        ],
+        "parameters": {
+          "operation": "executeQuery",
+          "query": "select dalia.m4_context_request($1::jsonb) as req;",
+          "options": {
+            "queryReplacement": "={{ [ JSON.stringify($json) ] }}"
+          }
+        },
+        "credentials": {
+          "postgres": {
+            "id": "HfCgVAjUygK1vrkU",
+            "name": "DALIA dev Supabase"
+          }
+        },
+        "onError": "continueErrorOutput"
+      },
+      {
+        "id": "cb769cbc-8cdf-4a9c-ba07-337252f28046",
+        "name": "Requiere busqueda semantica",
+        "type": "n8n-nodes-base.if",
+        "typeVersion": 2.2,
+        "position": [
+          448,
+          128
+        ],
+        "parameters": {
+          "conditions": {
+            "options": {
+              "caseSensitive": true,
+              "leftValue": "",
+              "typeValidation": "loose"
+            },
+            "conditions": [
+              {
+                "leftValue": "={{ $json.req.semantic === true }}",
+                "operator": {
+                  "type": "boolean",
+                  "operation": "true",
+                  "singleValue": true
+                }
+              }
+            ],
+            "combinator": "and"
+          }
+        }
+      },
+      {
+        "id": "2eae3556-1d94-41c6-9392-f8ae87bcf191",
+        "name": "Preparar embedding",
+        "type": "n8n-nodes-base.set",
+        "typeVersion": 3.4,
+        "position": [
+          672,
+          48
+        ],
+        "parameters": {
+          "mode": "manual",
+          "includeOtherFields": false,
+          "assignments": {
+            "assignments": [
+              {
+                "id": "p1",
+                "name": "port",
+                "value": "={{ $json.req.embed_request.port }}",
+                "type": "string"
+              },
+              {
+                "id": "p2",
+                "name": "operation",
+                "value": "={{ $json.req.embed_request.operation }}",
+                "type": "string"
+              },
+              {
+                "id": "p3",
+                "name": "input",
+                "value": "={{ $json.req.embed_request.input }}",
+                "type": "object"
+              },
+              {
+                "id": "p4",
+                "name": "envelope",
+                "value": "={{ $(\"Solicitud de contexto\").first().json.envelope ?? {} }}",
+                "type": "object"
+              }
+            ]
+          }
+        }
+      },
+      {
+        "id": "0e3b41a6-cca8-44fc-9e7c-3b3168c2951a",
+        "name": "Embedding de la consulta",
+        "type": "n8n-nodes-base.executeWorkflow",
+        "typeVersion": 1.3,
+        "position": [
+          896,
+          48
+        ],
+        "parameters": {
+          "mode": "each",
+          "source": "database",
+          "workflowId": {
+            "__rl": true,
+            "mode": "id",
+            "value": "5gbpWhv0zIA8bZ0w"
+          },
+          "options": {
+            "waitForSubWorkflow": true
+          }
+        }
+      },
+      {
+        "id": "b53af9fb-c3ee-49d6-be6b-d2da3d0afabb",
+        "name": "Armar busqueda",
+        "type": "n8n-nodes-base.postgres",
+        "typeVersion": 2.7,
+        "position": [
+          1120,
+          48
+        ],
+        "parameters": {
+          "operation": "executeQuery",
+          "query": "select dalia.m4_context_build_search($1::jsonb, $2::jsonb) as s;",
+          "options": {
+            "queryReplacement": "={{ [ JSON.stringify($(\"Preparar contexto\").first().json.req), JSON.stringify($json) ] }}"
+          }
+        },
+        "credentials": {
+          "postgres": {
+            "id": "HfCgVAjUygK1vrkU",
+            "name": "DALIA dev Supabase"
+          }
+        }
+      },
+      {
+        "id": "2df3ca6f-83b1-40e9-8b0e-df410b7b532a",
+        "name": "Hay busqueda",
+        "type": "n8n-nodes-base.if",
+        "typeVersion": 2.2,
+        "position": [
+          1344,
+          48
+        ],
+        "parameters": {
+          "conditions": {
+            "options": {
+              "caseSensitive": true,
+              "leftValue": "",
+              "typeValidation": "loose"
+            },
+            "conditions": [
+              {
+                "leftValue": "={{ !!$json.s.search_request }}",
+                "operator": {
+                  "type": "boolean",
+                  "operation": "true",
+                  "singleValue": true
+                }
+              }
+            ],
+            "combinator": "and"
+          }
+        }
+      },
+      {
+        "id": "aac17829-72df-4351-a319-fe9ffdbacf8e",
+        "name": "Preparar busqueda",
+        "type": "n8n-nodes-base.set",
+        "typeVersion": 3.4,
+        "position": [
+          1568,
+          0
+        ],
+        "parameters": {
+          "mode": "manual",
+          "includeOtherFields": false,
+          "assignments": {
+            "assignments": [
+              {
+                "id": "p1",
+                "name": "port",
+                "value": "={{ $json.s.search_request.port }}",
+                "type": "string"
+              },
+              {
+                "id": "p2",
+                "name": "operation",
+                "value": "={{ $json.s.search_request.operation }}",
+                "type": "string"
+              },
+              {
+                "id": "p3",
+                "name": "input",
+                "value": "={{ $json.s.search_request.input }}",
+                "type": "object"
+              },
+              {
+                "id": "p4",
+                "name": "envelope",
+                "value": "={{ $(\"Solicitud de contexto\").first().json.envelope ?? {} }}",
+                "type": "object"
+              }
+            ]
+          }
+        }
+      },
+      {
+        "id": "7615662f-1e8d-4254-b85a-db2a0f66d875",
+        "name": "Buscar en Qdrant",
+        "type": "n8n-nodes-base.executeWorkflow",
+        "typeVersion": 1.3,
+        "position": [
+          1792,
+          0
+        ],
+        "parameters": {
+          "mode": "each",
+          "source": "database",
+          "workflowId": {
+            "__rl": true,
+            "mode": "id",
+            "value": "5gbpWhv0zIA8bZ0w"
+          },
+          "options": {
+            "waitForSubWorkflow": true
+          }
+        }
+      },
+      {
+        "id": "d614f37d-20ab-4e68-b839-4d5f1f924319",
+        "name": "Completar contexto",
+        "type": "n8n-nodes-base.postgres",
+        "typeVersion": 2.7,
+        "position": [
+          2016,
+          0
+        ],
+        "parameters": {
+          "operation": "executeQuery",
+          "query": "select dalia.m4_context_result($1::jsonb, $2::jsonb, $3::jsonb) as result;",
+          "options": {
+            "queryReplacement": "={{ [ JSON.stringify($(\"Preparar contexto\").first().json.req), JSON.stringify($json), JSON.stringify($(\"Solicitud de contexto\").first().json.envelope ?? {}) ] }}"
+          }
+        },
+        "credentials": {
+          "postgres": {
+            "id": "HfCgVAjUygK1vrkU",
+            "name": "DALIA dev Supabase"
+          }
+        }
+      },
+      {
+        "id": "926a0e22-e818-4a7f-8f2a-d75d73a78400",
+        "name": "Completar sin busqueda",
+        "type": "n8n-nodes-base.postgres",
+        "typeVersion": 2.7,
+        "position": [
+          1568,
+          224
+        ],
+        "parameters": {
+          "operation": "executeQuery",
+          "query": "select dalia.m4_context_result($1::jsonb, $2::jsonb, $3::jsonb) as result;",
+          "options": {
+            "queryReplacement": "={{ [ JSON.stringify($(\"Preparar contexto\").first().json.req), null, JSON.stringify($(\"Solicitud de contexto\").first().json.envelope ?? {}) ] }}"
+          }
+        },
+        "credentials": {
+          "postgres": {
+            "id": "HfCgVAjUygK1vrkU",
+            "name": "DALIA dev Supabase"
+          }
+        }
+      },
+      {
+        "id": "199b47ff-4e82-4928-9ddf-5911fa5ddca4",
+        "name": "Solicitud invalida",
+        "type": "n8n-nodes-base.set",
+        "typeVersion": 3.4,
+        "position": [
+          448,
+          320
+        ],
+        "parameters": {
+          "mode": "manual",
+          "includeOtherFields": false,
+          "assignments": {
+            "assignments": [
+              {
+                "id": "i1",
+                "name": "result",
+                "value": "={{ { status: \"invalid\", items: [], error: $json.error?.message ?? $json.error ?? \"solicitud inválida\" } }}",
+                "type": "object"
+              }
+            ]
+          }
+        }
+      }
+    ],
+    "connections": {
+      "Solicitud de contexto": {
+        "main": [
+          [
+            {
+              "node": "Preparar contexto",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Preparar contexto": {
+        "main": [
+          [
+            {
+              "node": "Requiere busqueda semantica",
+              "type": "main",
+              "index": 0
+            }
+          ],
+          [
+            {
+              "node": "Solicitud invalida",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Requiere busqueda semantica": {
+        "main": [
+          [
+            {
+              "node": "Preparar embedding",
+              "type": "main",
+              "index": 0
+            }
+          ],
+          [
+            {
+              "node": "Completar sin busqueda",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Preparar embedding": {
+        "main": [
+          [
+            {
+              "node": "Embedding de la consulta",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Embedding de la consulta": {
+        "main": [
+          [
+            {
+              "node": "Armar busqueda",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Armar busqueda": {
+        "main": [
+          [
+            {
+              "node": "Hay busqueda",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Hay busqueda": {
+        "main": [
+          [
+            {
+              "node": "Preparar busqueda",
+              "type": "main",
+              "index": 0
+            }
+          ],
+          [
+            {
+              "node": "Completar sin busqueda",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Preparar busqueda": {
+        "main": [
+          [
+            {
+              "node": "Buscar en Qdrant",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Buscar en Qdrant": {
+        "main": [
+          [
+            {
+              "node": "Completar contexto",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      }
+    },
+    "nodeGroups": [],
+    "authors": "Fabian Bocanegra (via MCP)",
+    "name": "Lote 6 M4: instalación inicial",
+    "description": "Created with 12 nodes: Solicitud de contexto, Preparar contexto, Requiere busqueda semantica, Preparar embedding, Embedding de la consulta and 7 more",
+    "autosaved": false,
+    "createdAt": "2026-10-04T04:12:27.777Z",
+    "updatedAt": "2026-10-04T04:12:27.777Z"
+  }
+}
