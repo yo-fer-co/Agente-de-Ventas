@@ -1,0 +1,93 @@
+{
+  "id": "rT4NE5MOpO4mjZ79",
+  "name": "My workflow 6",
+  "active": false,
+  "activeVersionId": null,
+  "createdAt": "2025-10-30T20:54:27.394Z",
+  "updatedAt": "2025-11-01T03:00:30.000Z",
+  "isArchived": true,
+  "versionId": "287047a4-5828-4429-8a10-289ff15e5b73",
+  "triggerCount": 1,
+  "nodes": [
+    {
+      "parameters": {
+        "updates": [
+          "messages"
+        ],
+        "options": {}
+      },
+      "type": "n8n-nodes-base.whatsAppTrigger",
+      "typeVersion": 1,
+      "position": [
+        0,
+        0
+      ],
+      "id": "c6fbdcf7-32b1-4727-91e4-607f92de8684",
+      "name": "WhatsApp Trigger",
+      "webhookId": "ec229800-1ddf-4891-8952-2efff6496e3e",
+      "credentials": {
+        "whatsAppTriggerApi": {
+          "id": "99h3wr5LmsCIJEyB",
+          "name": "WhatsApp OAuth account 8"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "send",
+        "phoneNumberId": "816698168200279",
+        "recipientPhoneNumber": "+573108058407",
+        "textBody": "Hola",
+        "additionalFields": {}
+      },
+      "type": "n8n-nodes-base.whatsApp",
+      "typeVersion": 1,
+      "position": [
+        208,
+        0
+      ],
+      "id": "2b38094f-89fb-41b9-b2c8-84e2a5c8e0cb",
+      "name": "Send message",
+      "webhookId": "60471f4c-079e-474b-a59f-033be5f640f0",
+      "credentials": {
+        "whatsAppApi": {
+          "id": "iHkr3pR5oLrSBpeh",
+          "name": "WhatsApp account 4"
+        }
+      }
+    }
+  ],
+  "connections": {
+    "WhatsApp Trigger": {
+      "main": [
+        [
+          {
+            "node": "Send message",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "nodeGroups": [],
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "staticData": null,
+  "pinData": {},
+  "meta": {
+    "templateCredsSetupCompleted": true
+  },
+  "tags": [],
+  "shared": [
+    {
+      "role": "workflow:owner",
+      "workflowId": "rT4NE5MOpO4mjZ79",
+      "projectId": "8h8pwWGcWlnGEym3",
+      "createdAt": "2025-10-30T20:54:27.396Z",
+      "updatedAt": "2025-10-30T20:54:27.396Z"
+    }
+  ],
+  "activeVersion": null
+}
