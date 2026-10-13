@@ -1,0 +1,315 @@
+{
+  "id": "PTbCajv1e5AZI7vI",
+  "name": "DALIA_SYS.01_Despachador_de_jobs",
+  "active": true,
+  "activeVersionId": "8db06c22-460a-460f-b7c8-e27b48c7cd93",
+  "createdAt": "2026-10-03T01:55:30.946Z",
+  "updatedAt": "2026-10-07T22:26:09.430Z",
+  "isArchived": false,
+  "versionId": "8db06c22-460a-460f-b7c8-e27b48c7cd93",
+  "triggerCount": 1,
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {}
+          ]
+        }
+      },
+      "id": "6edc928f-9012-49b0-8442-4e51bfc8ce5f",
+      "name": "Diario 00:00 (DEV)",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.4,
+      "position": [
+        0,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "select * from dalia.sys_claim_jobs($1, null, null);",
+        "options": {
+          "queryReplacement": "={{ [ \"n8n-\" + $execution.id ] }}"
+        }
+      },
+      "id": "6bb9210a-ed88-4667-8ba5-4777cc80360c",
+      "name": "Reclamar jobs vencidos",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.7,
+      "position": [
+        224,
+        96
+      ],
+      "executeOnce": true,
+      "credentials": {
+        "postgres": {
+          "id": "HfCgVAjUygK1vrkU",
+          "name": "DALIA dev Supabase"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "workflowId": {
+          "__rl": true,
+          "mode": "id",
+          "value": "={{ $json.route_workflow_id }}"
+        },
+        "workflowInputs": {
+          "mappingMode": "defineBelow",
+          "value": {},
+          "matchingColumns": [],
+          "schema": [],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": true
+        },
+        "mode": "each",
+        "options": {
+          "waitForSubWorkflow": false
+        }
+      },
+      "id": "9cecf35a-0bbf-486c-bc35-693e61c4de21",
+      "name": "Despachar al workflow dueño",
+      "type": "n8n-nodes-base.executeWorkflow",
+      "typeVersion": 1.3,
+      "position": [
+        448,
+        96
+      ]
+    },
+    {
+      "parameters": {
+        "inputSource": "passthrough"
+      },
+      "id": "408ef977-473b-4c41-ad08-66e259f11e0c",
+      "name": "Empujon inmediato",
+      "type": "n8n-nodes-base.executeWorkflowTrigger",
+      "typeVersion": 1.2,
+      "position": [
+        0,
+        192
+      ]
+    }
+  ],
+  "connections": {
+    "Reclamar jobs vencidos": {
+      "main": [
+        [
+          {
+            "node": "Despachar al workflow dueño",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Empujon inmediato": {
+      "main": [
+        [
+          {
+            "node": "Reclamar jobs vencidos",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Diario 00:00 (DEV)": {
+      "main": [
+        [
+          {
+            "node": "Reclamar jobs vencidos",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "nodeGroups": [],
+  "settings": {
+    "executionOrder": "v1",
+    "availableInMCP": true,
+    "errorWorkflow": "cjjQno2MxMTT3Icc",
+    "timezone": "America/Bogota",
+    "saveManualExecutions": true,
+    "saveDataErrorExecution": "all",
+    "saveDataSuccessExecution": "none",
+    "callerPolicy": "workflowsFromSameOwner",
+    "binaryMode": "separate"
+  },
+  "staticData": {
+    "node:Cada minuto": {
+      "recurrenceRules": [
+        null
+      ],
+      "recurrenceRuleSignatures": [
+        null
+      ]
+    },
+    "node:Cada 10 minutos (DEV)": {
+      "recurrenceRules": [
+        null
+      ],
+      "recurrenceRuleSignatures": [
+        null
+      ]
+    },
+    "node:Diario 00:00 (DEV)": {
+      "recurrenceRules": [
+        null
+      ],
+      "recurrenceRuleSignatures": [
+        null
+      ]
+    }
+  },
+  "pinData": {},
+  "meta": {
+    "aiBuilderAssisted": true,
+    "builderVariant": "mcp"
+  },
+  "tags": [],
+  "shared": [
+    {
+      "role": "workflow:owner",
+      "workflowId": "PTbCajv1e5AZI7vI",
+      "projectId": "tRHCC8ts4mkRGXGn",
+      "createdAt": "2026-10-09T21:09:17.744Z",
+      "updatedAt": "2026-10-09T21:09:17.744Z"
+    }
+  ],
+  "activeVersion": {
+    "versionId": "8db06c22-460a-460f-b7c8-e27b48c7cd93",
+    "workflowId": "PTbCajv1e5AZI7vI",
+    "nodes": [
+      {
+        "parameters": {
+          "rule": {
+            "interval": [
+              {}
+            ]
+          }
+        },
+        "id": "6edc928f-9012-49b0-8442-4e51bfc8ce5f",
+        "name": "Diario 00:00 (DEV)",
+        "type": "n8n-nodes-base.scheduleTrigger",
+        "typeVersion": 1.4,
+        "position": [
+          0,
+          0
+        ]
+      },
+      {
+        "parameters": {
+          "operation": "executeQuery",
+          "query": "select * from dalia.sys_claim_jobs($1, null, null);",
+          "options": {
+            "queryReplacement": "={{ [ \"n8n-\" + $execution.id ] }}"
+          }
+        },
+        "id": "6bb9210a-ed88-4667-8ba5-4777cc80360c",
+        "name": "Reclamar jobs vencidos",
+        "type": "n8n-nodes-base.postgres",
+        "typeVersion": 2.7,
+        "position": [
+          224,
+          96
+        ],
+        "executeOnce": true,
+        "credentials": {
+          "postgres": {
+            "id": "HfCgVAjUygK1vrkU",
+            "name": "DALIA dev Supabase"
+          }
+        }
+      },
+      {
+        "parameters": {
+          "workflowId": {
+            "__rl": true,
+            "mode": "id",
+            "value": "={{ $json.route_workflow_id }}"
+          },
+          "workflowInputs": {
+            "mappingMode": "defineBelow",
+            "value": {},
+            "matchingColumns": [],
+            "schema": [],
+            "attemptToConvertTypes": false,
+            "convertFieldsToString": true
+          },
+          "mode": "each",
+          "options": {
+            "waitForSubWorkflow": false
+          }
+        },
+        "id": "9cecf35a-0bbf-486c-bc35-693e61c4de21",
+        "name": "Despachar al workflow dueño",
+        "type": "n8n-nodes-base.executeWorkflow",
+        "typeVersion": 1.3,
+        "position": [
+          448,
+          96
+        ]
+      },
+      {
+        "parameters": {
+          "inputSource": "passthrough"
+        },
+        "id": "408ef977-473b-4c41-ad08-66e259f11e0c",
+        "name": "Empujon inmediato",
+        "type": "n8n-nodes-base.executeWorkflowTrigger",
+        "typeVersion": 1.2,
+        "position": [
+          0,
+          192
+        ]
+      }
+    ],
+    "connections": {
+      "Reclamar jobs vencidos": {
+        "main": [
+          [
+            {
+              "node": "Despachar al workflow dueño",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Empujon inmediato": {
+        "main": [
+          [
+            {
+              "node": "Reclamar jobs vencidos",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Diario 00:00 (DEV)": {
+        "main": [
+          [
+            {
+              "node": "Reclamar jobs vencidos",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      }
+    },
+    "nodeGroups": [],
+    "authors": "Fabian Bocanegra (via MCP)",
+    "name": "DEV: nombre y descripción acordes al horario diario",
+    "description": "Decisión del usuario 2026-10-07: en DEV SYS.01 corre una vez al día (00:00 Bogotá). Sin cambios en el horario; solo nombre del nodo y descripción.",
+    "autosaved": false,
+    "createdAt": "2026-10-07T22:26:09.431Z",
+    "updatedAt": "2026-10-07T22:26:09.431Z"
+  }
+}
