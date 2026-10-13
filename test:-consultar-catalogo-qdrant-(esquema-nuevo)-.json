@@ -1,0 +1,771 @@
+{
+  "id": "BfRbWDxe15OGamp6",
+  "name": "Test: Consultar Catalogo Qdrant (Esquema Nuevo)",
+  "active": false,
+  "activeVersionId": null,
+  "createdAt": "2026-09-03T22:37:35.817Z",
+  "updatedAt": "2026-09-08T13:05:57.280Z",
+  "isArchived": false,
+  "versionId": "1dfee5ac-3c38-4714-9e26-64b09e3f1cab",
+  "triggerCount": 0,
+  "nodes": [
+    {
+      "parameters": {
+        "content": "## Test: Consultar Catalogo Qdrant (simula 'Catalogo Qdrant (DEV)' tal cual esta hoy)\n\nIMPORTANTE (actualizado 2026-09-08): este workflow ya NO prueba el esquema plano nuevo. Es un CLON funcional exacto de la logica LIVE, sin modificar, de 'Catalogo Qdrant (DEV)' (aRJCOVZWZxrRZu3p) -- los 4 caminos (tipo: productos / categoria / producto / fallback semantico) filtran y leen por las mismas rutas ANIDADAS que usa DEV hoy: metadata.categoria, metadata.titulo, metadata.descripcion, y el destructuring final 'const { titulo, categoria, precio, stock, descripcion, Color, sku } = item.payload?.metadata;' -- SIN null-guard, replicando a proposito la fragilidad de DEV (si un punto no tiene 'metadata' esto lanza TypeError, igual que en produccion).\n\nMotivo del cambio: la seccion 21 del plan agrego un dual-write en Product_Management -> Build_Catalog_Entries que espeja pageContent + metadata.{sku,titulo,categoria,precio,stock,descripcion,Color} DENTRO del payload plano nuevo, para que 'Catalogo Qdrant (DEV)' siga funcionando SIN modificarlo mientras se termina de probar el resto del pipeline. Este workflow es la forma de validar esa apuesta: si el dual-write esta bien escrito y los 3 indices anidados (metadata.categoria/titulo/descripcion, ver 'Setup: Create Qdrant Metadata Indexes (Dual-Write)') estan creados, los 4 caminos de aca abajo deberian devolver resultados correctos leyendo SOLO el espejo -- exactamente lo que hara DEV real cuando se le pase trafico, sin haber tocado una sola linea de DEV todavia.\n\nOmitido a proposito: la busqueda en Google Drive de la carpeta de categoria (nodos 'Obtiene id categoria drive' / 'Datos categoria' en DEV) no esta replicada aca -- es ortogonal a validar que la busqueda/agrupacion en Qdrant funcione, y no vale la pena duplicar esa dependencia en un workflow de prueba desechable.\n\nEste workflow NO modifica 'Catalogo Qdrant (DEV)': es una copia de prueba, standalone. Usa la misma coleccion (Baby'sWorld_Catalogo_Test), y las mismas credenciales Qdrant ('Qdrant account' / qdrantRestApi) y OpenAI ('OpenAi_YoEco_DEV') que usa DEV en produccion -- solo lectura, no escribe ni borra nada en Qdrant.\n\nComo usarlo: editar los valores en el nodo 'Set_Tipo_Valor' (tipo: productos|categoria|producto, valor: el texto de busqueda) y ejecutar manualmente. El resultado final de cada camino queda en el ultimo nodo de su rama (Agrupa_Categorias / Agrupa_Productos_Categoria / Agrupa_Productos1 / Sanetiza_Respuesta_Qdrant). Si un camino lanza TypeError leyendo 'metadata', significa que el punto consultado en Qdrant NO tiene el espejo poblado (dual-write no aplicado todavia a ese producto, o el import/ejecucion de Product_Management pendiente).",
+        "height": 480,
+        "width": 620,
+        "color": 4
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        1424,
+        64
+      ],
+      "id": "61390471-a0ff-45ab-92dd-6cffc95159a6",
+      "name": "Sticky_Note",
+      "height": 720,
+      "width": 780
+    },
+    {
+      "parameters": {},
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [
+        1696,
+        848
+      ],
+      "id": "29c0af03-9fa7-48b7-9025-abd186e9e995",
+      "name": "Manual_Trigger"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "997bde93-cc60-4f1d-bb7b-380d02a7907f",
+              "name": "tipo",
+              "value": "producto",
+              "type": "string"
+            },
+            {
+              "id": "893d6d32-e0be-43da-ab7d-4d89b0c98300",
+              "name": "valor",
+              "value": "Producto test",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        1936,
+        848
+      ],
+      "id": "ad75617f-c412-41b5-8071-4a98d71529d3",
+      "name": "Set_Tipo_Valor"
+    },
+    {
+      "parameters": {
+        "rules": {
+          "values": [
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 3
+                },
+                "conditions": [
+                  {
+                    "id": "af3ee845-b2cf-4968-9a9d-b011ba3951d3",
+                    "leftValue": "={{ $json.tipo }}",
+                    "rightValue": "productos",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "Obtiene Categorias"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 3
+                },
+                "conditions": [
+                  {
+                    "id": "43d5d8e1-7839-444e-aebc-214bf4eb2b80",
+                    "leftValue": "={{ $json.tipo }}",
+                    "rightValue": "categoria",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "Busca por categoria"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 3
+                },
+                "conditions": [
+                  {
+                    "id": "a7f39771-f910-48f0-948e-341c000d723b",
+                    "leftValue": "={{ $json.tipo }}",
+                    "rightValue": "producto",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "Busca por producto"
+            }
+          ]
+        },
+        "options": {
+          "fallbackOutput": "extra"
+        }
+      },
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 3.2,
+      "position": [
+        2208,
+        848
+      ],
+      "id": "35acf8ad-3b4d-4b8a-8ddf-4b7b279fab42",
+      "name": "Switch"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "3a9670b0-ef14-4aee-9bfb-07b100e9d5b3",
+              "name": "error",
+              "value": "=tipo '{{ $json.tipo }}' no reconocido. Usar: productos | categoria | producto",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        2528,
+        1168
+      ],
+      "id": "4372a55d-c435-4c13-bee6-46299b0540e3",
+      "name": "Tipo_No_Reconocido"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $vars.QDRANT_API_URL }}/collections/Baby'sWorld_Catalogo_Test/points/scroll",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "qdrantRestApi",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"limit\": 100,\n  \"with_payload\": true,\n  \"with_vector\": false\n}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        2528,
+        528
+      ],
+      "id": "e7acce9b-2003-4702-8bfa-e365aaaa3f3a",
+      "name": "Obtiene_Productos_Qdrant",
+      "credentials": {
+        "qdrantRestApi": {
+          "id": "yKO7TRGHxcRYZx0a",
+          "name": "Qdrant account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "// AJUSTADO (2026-09-08): copia literal de 'Agrupa categorias' en 'Catalogo Qdrant (DEV)' --\n// lee item.payload.metadata.categoria (esquema viejo), NO item.payload.collections.\n// Objetivo: simular exactamente lo que hace el flujo real hoy (sin modificarlo), para\n// validar si el espejo pageContent/metadata agregado en Product_Management (seccion 21\n// del plan, dual-write) alcanza para que 'Catalogo Qdrant (DEV)' funcione tal cual esta.\nconst items = $input.first().json.result.points\n\nconst categorias = items.reduce((acc, item) => {\n  const rawCategory = item.payload?.metadata?.categoria?.trim();\n\n  if (rawCategory) {\n    const pascalCased = rawCategory\n      .toLowerCase()\n      .split(' ')\n      .filter(word => word.length > 0)\n      .map(word => \n        word.charAt(0).toUpperCase() + word.slice(1)\n      )\n      .join('');\n\n    if (!acc.includes(pascalCased)) {\n      acc.push(pascalCased);\n    }\n  }\n  \n  return acc;\n}, []);\n\nreturn { items: categorias, tipo: \"Categoria\" };\n"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        2800,
+        528
+      ],
+      "id": "3f42ac68-ffd9-468c-b2ed-4c3f96316dea",
+      "name": "Agrupa_Categorias"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $vars.QDRANT_API_URL }}/collections/Baby'sWorld_Catalogo_Test/points/scroll",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "qdrantRestApi",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"filter\": {\n    \"must\": [\n      {\n        \"key\": \"metadata.categoria\",\n        \"match\": {\n          \"text\": \"{{ $('Set_Tipo_Valor').item.json.valor.toUpperCase() }}\"\n        }\n      }\n    ]\n  },\n  \"limit\": 30,\n  \"with_payload\": true\n}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        2528,
+        768
+      ],
+      "id": "39957cb7-3e0f-46be-980a-5f14861d929e",
+      "name": "Obtiene_Productos_Por_Categoria",
+      "credentials": {
+        "qdrantRestApi": {
+          "id": "yKO7TRGHxcRYZx0a",
+          "name": "Qdrant account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "20697bb3-710d-4346-aded-c1199c4fe7fd",
+              "leftValue": "={{ $json.result.points }}",
+              "rightValue": "",
+              "operator": {
+                "type": "array",
+                "operation": "notEmpty",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [
+        2800,
+        768
+      ],
+      "id": "1d3210b5-cb55-41cd-8a68-e4136014dc57",
+      "name": "If_Categoria_Encontrada"
+    },
+    {
+      "parameters": {
+        "jsCode": "// AJUSTADO (2026-09-08): copia literal de 'Agrupa productos' en 'Catalogo Qdrant (DEV)' --\n// lee item.payload.metadata.{titulo,categoria} (esquema viejo). NOTA: se omite deliberadamente\n// el paso de Google Drive ('Obtiene id categoria drive' / 'Datos categoria') que el flujo real\n// intercala aqui -- es una busqueda de carpeta por nombre de categoria, no afecta el resultado\n// de la busqueda en Qdrant ni requiere credenciales de Drive para validar el contrato de datos.\nconst items = $('Obtiene_Productos_Por_Categoria').first().json.result.points;\n\nconst group = items.reduce((acc, item) => {\n  const titulo = item.payload?.metadata?.titulo?.trim();\n  const categoria = item.payload?.metadata?.categoria?.trim() || \"Sin Categoría\";\n\n  if (titulo) {\n    if (!acc[categoria]) {\n      acc[categoria] = {\n        categoria: categoria,\n        productos: []\n      };\n    }\n\n    const isDuplicate = acc[categoria].productos.some(p => p.titulo === titulo);\n\n    if (!isDuplicate) {\n      acc[categoria].productos.push({ titulo });\n    }\n  }\n\n  return acc;\n}, {});\n\nreturn Object.values(group);\n"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        3088,
+        688
+      ],
+      "id": "9b63ab23-1ec8-4b52-93e3-4d12fb7cae63",
+      "name": "Agrupa_Productos_Categoria"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "67bf3025-6376-4791-a2bf-dd8584af8133",
+              "name": "mensaje",
+              "value": "=No se encontraron productos para la categoria '{{ $('Set_Tipo_Valor').item.json.valor }}'",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        3088,
+        848
+      ],
+      "id": "98c420b0-ca19-49c5-a05c-8038e943ee50",
+      "name": "Sin_Resultados_Categoria"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "d136aded-52c6-453b-9b23-dc3110863eb0",
+              "name": "productos",
+              "value": "={{ $json.valor }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        2528,
+        1008
+      ],
+      "id": "f4af3672-4958-45de-b4ab-d3ee29c4a3ff",
+      "name": "Datos_Productos"
+    },
+    {
+      "parameters": {
+        "jsCode": "// AJUSTADO (2026-09-08): copia literal de 'Crea json busqueda' en 'Catalogo Qdrant (DEV)' --\n// filtra por \"metadata.titulo\" (esquema viejo) con el texto en mayusculas, tal cual el flujo real.\nconst items = $input.all();\nconst products = items[0]?.json?.productos.split(\",\");\n\nconst result = products.map((product) => {\n  return {\n    filter: {\n      must: [\n        {\n          key: \"metadata.titulo\",\n          match: {\n            text: product.toUpperCase(),\n          },\n        },\n      ],\n    },\n    limit: 30,\n    with_payload: true,\n  };\n});\n\nreturn result;\n"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        2800,
+        1008
+      ],
+      "id": "86f2b611-1097-4c2b-aa3b-96e12157c6b6",
+      "name": "Crea_Json_Busqueda"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $vars.QDRANT_API_URL }}/collections/Baby'sWorld_Catalogo_Test/points/scroll",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "qdrantRestApi",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify($json) }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        3088,
+        1008
+      ],
+      "id": "26daab3b-4712-45ed-8af2-05b7fc24a509",
+      "name": "Obtiene_Producto_Por_Nombre",
+      "credentials": {
+        "qdrantRestApi": {
+          "id": "yKO7TRGHxcRYZx0a",
+          "name": "Qdrant account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "1d6c6654-f290-4000-85bb-1f3a81067505",
+              "leftValue": "={{ $json.result.points }}",
+              "rightValue": "",
+              "operator": {
+                "type": "array",
+                "operation": "notEmpty",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [
+        3360,
+        1008
+      ],
+      "id": "0171d64b-f216-4c05-9824-f75a73f827f5",
+      "name": "Se_Encontro_Producto"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $vars.QDRANT_API_URL }}/collections/Baby'sWorld_Catalogo_Test/points/scroll",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "qdrantRestApi",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"filter\": {\n    \"must\": [\n      {\n        \"key\": \"metadata.descripcion\",\n        \"match\": {\n          \"text\": \"{{ $('Set_Tipo_Valor').item.json.valor }}\"\n        }\n      }\n    ]\n  },\n  \"limit\": 30,\n  \"with_payload\": true\n}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        3648,
+        1136
+      ],
+      "id": "8c24a579-39be-45a0-b582-110e166dbc67",
+      "name": "Obtiene_Producto_Por_Descripcion",
+      "credentials": {
+        "qdrantRestApi": {
+          "id": "yKO7TRGHxcRYZx0a",
+          "name": "Qdrant account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "67c784d6-4fc6-4ee7-a638-efdb1f1ef11d",
+              "leftValue": "={{ $json.result.points }}",
+              "rightValue": "",
+              "operator": {
+                "type": "array",
+                "operation": "notEmpty",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [
+        3920,
+        1136
+      ],
+      "id": "3c6a6bc6-e6ee-41df-b758-c41ab94f8b23",
+      "name": "Se_Encontro_Producto_Por_Descripcion"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.openai.com/v1/embeddings",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "openAiApi",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ { \"input\": $('Set_Tipo_Valor').item.json.valor, \"model\": \"text-embedding-ada-002\" } }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        4208,
+        1280
+      ],
+      "id": "00ecc12d-cae4-4059-bcba-4c414daff3d0",
+      "name": "Embeding_Text",
+      "credentials": {
+        "openAiApi": {
+          "id": "zACGOxtwAjrFvDag",
+          "name": "OpenAi_YoEco_DEV"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $vars.QDRANT_API_URL }}/collections/Baby'sWorld_Catalogo_Test/points/search",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "qdrantRestApi",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n    \"vector\": [{{ $json.data[0].embedding }}], \n    \"limit\": 5,\n    \"with_payload\": true,\n    \"score_threshold\": 0.80\n }",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        4480,
+        1280
+      ],
+      "id": "b324bbc3-bb9b-4de3-8e81-e9ed05ca75c2",
+      "name": "Search_Qdrant",
+      "credentials": {
+        "qdrantRestApi": {
+          "id": "yKO7TRGHxcRYZx0a",
+          "name": "Qdrant account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "// AJUSTADO (2026-09-08): copia literal de 'Agrupa productos1' en 'Catalogo Qdrant (DEV)' --\n// destructura directo de item.payload.metadata SIN guarda de null (igual que el flujo real).\n// Esto es intencional: si un punto no tiene 'metadata' (por ejemplo, uno viejo escrito antes\n// del dual-write de la seccion 21), este nodo va a fallar con un TypeError -- exactamente lo\n// mismo que le pasaria a 'Catalogo Qdrant (DEV)' hoy. Replicar el bug/comportamiento tal cual\n// es el punto de esta prueba: confirmar si el dual-write resuelve el problema de raiz.\nconst items = $input.first().json.result.points\n\nconst group = items.reduce((acc, item) => {\n const { titulo, categoria, precio, stock, descripcion, Color, sku } = item.payload?.metadata;\n  const colores = {\n    color : Color,\n    sku: sku\n  }\n\n  if (titulo) {\n    if (!acc[categoria]) {\n      acc[categoria] = {\n        categoria: categoria,\n        productos: []\n      };\n    }\n\n   const existingProduct = acc[categoria].productos.find(p => p.titulo === titulo);\n\n    if (!existingProduct) {\n      acc[categoria].productos.push({ \n        titulo : titulo,\n        colores: [colores],\n        precio: precio,\n        descripcion: descripcion,\n        stock: stock\n      });\n    } else {\n      existingProduct.colores.push(colores);\n    }\n  }\n\n  return acc;\n}, {});\n\nreturn Object.values(group);\n"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        4208,
+        816
+      ],
+      "id": "35c60730-dbc0-4a63-bdd1-1a10df6b1153",
+      "name": "Agrupa_Productos1"
+    },
+    {
+      "parameters": {
+        "jsCode": "// AJUSTADO (2026-09-08): copia literal de 'sanetiza respuesta Qdrant' en 'Catalogo Qdrant (DEV)' --\n// 'search' devuelve result como array de puntos directamente (a diferencia de 'scroll', que usa\n// result.points), y destructura de item.payload.metadata SIN guarda de null, igual que el flujo real.\nconst items = $input.first().json.result\n\nconst group = items.reduce((acc, item) => {\n const { titulo, categoria, precio, stock, descripcion, Color, sku } = item.payload?.metadata;\n  const colores = {\n    color : Color,\n    sku: sku\n  }\n\n  if (titulo) {\n    if (!acc[categoria]) {\n      acc[categoria] = {\n        categoria: categoria,\n        productos: []\n      };\n    }\n\n     const existingProduct = acc[categoria].productos.find(p => p.titulo === titulo);\n\n    if (!existingProduct) {\n      acc[categoria].productos.push({ \n        titulo : titulo,\n        colores: [colores],\n        precio: precio,\n        descripcion: descripcion,\n        stock: stock\n      });\n    } else {\n      existingProduct.colores.push(colores);\n    }\n  }\n\n  return acc;\n}, {});\n\nreturn Object.values(group);\n"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        4768,
+        1280
+      ],
+      "id": "0afe2042-1a2a-4ccb-bdf2-487d62a06fcd",
+      "name": "Sanetiza_Respuesta_Qdrant"
+    }
+  ],
+  "connections": {
+    "Switch": {
+      "main": [
+        [
+          {
+            "node": "Obtiene_Productos_Qdrant",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Obtiene_Productos_Por_Categoria",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Datos_Productos",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Tipo_No_Reconocido",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Obtiene_Productos_Qdrant": {
+      "main": [
+        [
+          {
+            "node": "Agrupa_Categorias",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Obtiene_Productos_Por_Categoria": {
+      "main": [
+        [
+          {
+            "node": "If_Categoria_Encontrada",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "If_Categoria_Encontrada": {
+      "main": [
+        [
+          {
+            "node": "Agrupa_Productos_Categoria",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Sin_Resultados_Categoria",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Datos_Productos": {
+      "main": [
+        [
+          {
+            "node": "Crea_Json_Busqueda",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Crea_Json_Busqueda": {
+      "main": [
+        [
+          {
+            "node": "Obtiene_Producto_Por_Nombre",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Obtiene_Producto_Por_Nombre": {
+      "main": [
+        [
+          {
+            "node": "Se_Encontro_Producto",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Se_Encontro_Producto": {
+      "main": [
+        [
+          {
+            "node": "Agrupa_Productos1",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Obtiene_Producto_Por_Descripcion",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Obtiene_Producto_Por_Descripcion": {
+      "main": [
+        [
+          {
+            "node": "Se_Encontro_Producto_Por_Descripcion",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Se_Encontro_Producto_Por_Descripcion": {
+      "main": [
+        [
+          {
+            "node": "Agrupa_Productos1",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Embeding_Text",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Embeding_Text": {
+      "main": [
+        [
+          {
+            "node": "Search_Qdrant",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Search_Qdrant": {
+      "main": [
+        [
+          {
+            "node": "Sanetiza_Respuesta_Qdrant",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Manual_Trigger": {
+      "main": [
+        [
+          {
+            "node": "Set_Tipo_Valor",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Set_Tipo_Valor": {
+      "main": [
+        [
+          {
+            "node": "Switch",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "nodeGroups": [],
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate"
+  },
+  "staticData": null,
+  "pinData": {},
+  "meta": null,
+  "tags": [],
+  "shared": [
+    {
+      "role": "workflow:owner",
+      "workflowId": "BfRbWDxe15OGamp6",
+      "projectId": "8h8pwWGcWlnGEym3",
+      "createdAt": "2026-09-03T22:37:35.819Z",
+      "updatedAt": "2026-09-03T22:37:35.819Z"
+    }
+  ],
+  "activeVersion": null
+}
