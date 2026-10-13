@@ -1,0 +1,2485 @@
+{
+  "id": "JQFFTw7GiYPatV9b",
+  "name": "Coordinador 2.0 (PROD)",
+  "active": false,
+  "activeVersionId": null,
+  "createdAt": "2026-02-25T22:39:37.490Z",
+  "updatedAt": "2026-03-06T02:30:54.000Z",
+  "isArchived": true,
+  "versionId": "5a1bc852-b02d-4fd1-a0d1-95c93d961b0d",
+  "triggerCount": 1,
+  "nodes": [
+    {
+      "parameters": {
+        "resource": "media",
+        "operation": "mediaUrlGet",
+        "mediaGetId": "={{ $json.audio.id }}"
+      },
+      "type": "n8n-nodes-base.whatsApp",
+      "typeVersion": 1,
+      "position": [
+        1808,
+        304
+      ],
+      "id": "87c741d7-78c1-4c60-98e5-e59b2926cbf2",
+      "name": "Recibir Audios",
+      "webhookId": "de51b66f-6a7f-4fd2-8ea6-6b4cfabba7a7",
+      "credentials": {
+        "whatsAppApi": {
+          "id": "uxjDDXCt5mDphQ1e",
+          "name": "WhatsApp_BW:Dalia_sendMessage"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "resource": "audio",
+        "operation": "transcribe",
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.openAi",
+      "typeVersion": 1.8,
+      "position": [
+        2320,
+        304
+      ],
+      "id": "91ffab1a-848e-434a-b351-2aa71c37aac3",
+      "name": "Transcribir Audios",
+      "credentials": {
+        "openAiApi": {
+          "id": "LPsWoB91jlNHqeNc",
+          "name": "OpenAi_BW_Prod"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "url": "={{ $json.url }}",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "whatsAppApi",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        2032,
+        304
+      ],
+      "id": "e9b382ac-9264-4bb2-9f43-2ddc1630f8b5",
+      "name": "Descarga de audios",
+      "credentials": {
+        "whatsAppApi": {
+          "id": "uxjDDXCt5mDphQ1e",
+          "name": "WhatsApp_BW:Dalia_sendMessage"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "5a68a177-3501-4ea6-95cb-cabc6f6b82ca",
+              "name": "texto",
+              "value": "={{ $('Json parse').item.json.text.body }}",
+              "type": "string"
+            },
+            {
+              "id": "b3e7886a-954a-4558-b90d-4d91849e374f",
+              "name": "timestamp",
+              "value": "={{ $('Json parse').item.json.timestamp }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        2320,
+        112
+      ],
+      "id": "73eabbeb-f457-44ab-8ddf-e6e773fc5972",
+      "name": "Recibir Texto"
+    },
+    {
+      "parameters": {
+        "resource": "media",
+        "operation": "mediaUrlGet",
+        "mediaGetId": "={{ $json.image.id }}"
+      },
+      "type": "n8n-nodes-base.whatsApp",
+      "typeVersion": 1,
+      "position": [
+        1808,
+        656
+      ],
+      "id": "6058b226-8db8-450c-b44c-218deac41c32",
+      "name": "Recibir imagen",
+      "webhookId": "d89cab0c-d53c-4f3b-bb0b-b56cf79b6b8c",
+      "credentials": {
+        "whatsAppApi": {
+          "id": "uxjDDXCt5mDphQ1e",
+          "name": "WhatsApp_BW:Dalia_sendMessage"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "url": "={{ $json.url }}",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "whatsAppApi",
+        "options": {
+          "response": {
+            "response": {
+              "responseFormat": "file"
+            }
+          }
+        }
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        2032,
+        656
+      ],
+      "id": "39dfb3ee-e533-404f-8b4e-92aa4dec25e0",
+      "name": "Descarga de imagen",
+      "credentials": {
+        "whatsAppApi": {
+          "id": "uxjDDXCt5mDphQ1e",
+          "name": "WhatsApp_BW:Dalia_sendMessage"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "Aqui tienes una imagen enviada por el usuario. Describe la imagen y Transcribe cualquier texto visible",
+        "messages": {
+          "messageValues": [
+            {
+              "type": "HumanMessagePromptTemplate",
+              "messageType": "imageBinary"
+            }
+          ]
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.chainLlm",
+      "typeVersion": 1.6,
+      "position": [
+        2256,
+        656
+      ],
+      "id": "9c5e3292-55d2-4ddd-b4a5-c5b170a402ff",
+      "name": "Leer y transcribir la imagen"
+    },
+    {
+      "parameters": {
+        "rules": {
+          "values": [
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 2
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $json.text.body }}",
+                    "rightValue": "",
+                    "operator": {
+                      "type": "string",
+                      "operation": "exists",
+                      "singleValue": true
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "texto  "
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 2
+                },
+                "conditions": [
+                  {
+                    "id": "d8afee67-2bff-466b-b25d-3a702de759e7",
+                    "leftValue": "={{ $json.type == 'audio' && Boolean($json.audio) }}",
+                    "rightValue": "",
+                    "operator": {
+                      "type": "boolean",
+                      "operation": "true",
+                      "singleValue": true
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "Voz"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 2
+                },
+                "conditions": [
+                  {
+                    "id": "95458589-f1ca-44cb-b397-f6ef6a6c2b28",
+                    "leftValue": "={{ $json.type == 'image' && Boolean($json.image) }}",
+                    "rightValue": "",
+                    "operator": {
+                      "type": "boolean",
+                      "operation": "true",
+                      "singleValue": true
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "Imagen"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 3.2,
+      "position": [
+        1584,
+        288
+      ],
+      "id": "072651e6-09bb-4eb6-859e-5984d91344ba",
+      "name": "Switch1"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "9f3939d0-c3d6-4c0d-b070-daef29717fab",
+              "name": "message",
+              "value": "={{ $json.text }}{{ $json.texto }}{{ $json.imageText }}",
+              "type": "string"
+            },
+            {
+              "id": "94b90034-7588-4430-b99e-d81780a145cc",
+              "name": "ID del usuario",
+              "value": "={{ $('Recibir Mensaje').item.json.contacts[0].wa_id }}",
+              "type": "string"
+            },
+            {
+              "id": "5ff1f290-7961-4c5a-8357-286c14c1ea7a",
+              "name": "message_id",
+              "value": "={{ $('Recibir Mensaje').item.json.messages[0].id }}",
+              "type": "string"
+            },
+            {
+              "id": "c5ea5a03-291f-4889-99dc-00fd1e283553",
+              "name": "timestamp",
+              "value": "={{ $('Json parse').item.json.timestamp }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        2640,
+        288
+      ],
+      "id": "81c7e51d-80ce-4deb-90f1-ab800bdc33fb",
+      "name": "Convertir entrada"
+    },
+    {
+      "parameters": {
+        "model": {
+          "__rl": true,
+          "value": "gpt-4o-mini",
+          "mode": "list",
+          "cachedResultName": "gpt-4o-mini"
+        },
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatOpenAi",
+      "typeVersion": 1.2,
+      "position": [
+        2272,
+        880
+      ],
+      "id": "bd9c5140-6faf-4bc1-9baa-c9dd32667b78",
+      "name": "Modelo De Chat1",
+      "credentials": {
+        "openAiApi": {
+          "id": "LPsWoB91jlNHqeNc",
+          "name": "OpenAi_BW_Prod"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "push",
+        "list": "={{ $('set Fields').item.json.message.from }}_buffer",
+        "messageData": "={{ JSON.stringify($('set Fields').item.json.message) }}",
+        "tail": true
+      },
+      "type": "n8n-nodes-base.redis",
+      "typeVersion": 1,
+      "position": [
+        272,
+        384
+      ],
+      "id": "e5424da8-2083-4e36-8973-32e3b32f313c",
+      "name": "Push message buffer",
+      "credentials": {
+        "redis": {
+          "id": "vvDNllRciufwcwFo",
+          "name": "Redis account 2"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "get",
+        "propertyName": "message",
+        "key": "={{ $('set Fields').item.json.message.from }}_buffer",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.redis",
+      "typeVersion": 1,
+      "position": [
+        496,
+        384
+      ],
+      "id": "285bfe88-411e-49f6-85af-fdbfcc9a6ace",
+      "name": "Get message buffer",
+      "credentials": {
+        "redis": {
+          "id": "vvDNllRciufwcwFo",
+          "name": "Redis account 2"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "rules": {
+          "values": [
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 2
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ JSON.parse($json.message?.last()).from }}",
+                    "rightValue": "={{ $('set Fields').item.json.message.from }}",
+                    "operator": {
+                      "type": "string",
+                      "operation": "notEquals"
+                    },
+                    "id": "64dcd87d-3aa5-4580-8e64-36bcae2eb5dd"
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "No hacer nada"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 2
+                },
+                "conditions": [
+                  {
+                    "id": "8f900d0c-69fa-4d9d-ab5f-a29ac29ab944",
+                    "leftValue": "={{  new Date(Number(JSON.parse($json.message?.last()).timestamp) * 1000).toISOString() }}",
+                    "rightValue": "={{  $now.minus(10, 'seconds') }}",
+                    "operator": {
+                      "type": "dateTime",
+                      "operation": "before"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "Seguir"
+            }
+          ]
+        },
+        "options": {
+          "fallbackOutput": "extra",
+          "renameFallbackOutput": "Esperar"
+        }
+      },
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 3.2,
+      "position": [
+        720,
+        272
+      ],
+      "id": "a7b33d67-2a65-4a4b-8bef-0fadc14670c3",
+      "name": "Switch"
+    },
+    {
+      "parameters": {},
+      "type": "n8n-nodes-base.wait",
+      "typeVersion": 1.1,
+      "position": [
+        944,
+        480
+      ],
+      "id": "72593c9d-9059-4849-9f42-66382bdc1141",
+      "name": "Wait",
+      "webhookId": "6757c8a5-327b-4e36-91df-44d759b2c7dd"
+    },
+    {
+      "parameters": {},
+      "type": "n8n-nodes-base.noOp",
+      "typeVersion": 1,
+      "position": [
+        944,
+        96
+      ],
+      "id": "b5a00237-502c-462b-99c9-9171f5d3d71c",
+      "name": "No Operation, do nothing"
+    },
+    {
+      "parameters": {
+        "operation": "delete",
+        "key": "={{ $('set Fields').item.json.message.from }}_buffer"
+      },
+      "type": "n8n-nodes-base.redis",
+      "typeVersion": 1,
+      "position": [
+        944,
+        288
+      ],
+      "id": "badaefad-ebe4-48a9-bbad-2f01053ae7dd",
+      "name": "Delete message buffer",
+      "credentials": {
+        "redis": {
+          "id": "vvDNllRciufwcwFo",
+          "name": "Redis account 2"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "fieldToSplitOut": "message",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.splitOut",
+      "typeVersion": 1,
+      "position": [
+        1168,
+        288
+      ],
+      "id": "dcb81658-fb89-4a17-b3aa-5aeec76fbea2",
+      "name": "Split Out1"
+    },
+    {
+      "parameters": {
+        "mode": "raw",
+        "jsonOutput": "={{ JSON.parse($json.message)}}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        1392,
+        288
+      ],
+      "id": "208d5cfc-3a0c-4390-8133-2c9c2e04672e",
+      "name": "Json parse"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "8c482fe8-7b1d-488d-80cc-9b908b977713",
+              "name": "message",
+              "value": "={{ $json.messages[0] }}",
+              "type": "object"
+            },
+            {
+              "id": "b5ed225b-ca80-4991-b2e2-c76e3c62e621",
+              "name": "contact",
+              "value": "={{ $json.contacts[0] }}",
+              "type": "object"
+            },
+            {
+              "id": "e2c24649-df67-4f4e-a79f-cabc956f17ab",
+              "name": "metadata",
+              "value": "={{ $json.metadata }}",
+              "type": "object"
+            },
+            {
+              "id": "b0e7d9cb-7ef1-4b68-b462-e4c65c54c537",
+              "name": "context_id",
+              "value": "={{ $json.messages[0].context.id }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        -848,
+        480
+      ],
+      "id": "45d8a82f-04d1-4dc9-b49e-33eb74ca2fdd",
+      "name": "set Fields"
+    },
+    {
+      "parameters": {
+        "sortFieldsUi": {
+          "sortField": [
+            {
+              "fieldName": "timestamp"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.sort",
+      "typeVersion": 1,
+      "position": [
+        2864,
+        288
+      ],
+      "id": "5363bde0-6fd7-44e8-a6a6-e0f3dd778544",
+      "name": "Sort"
+    },
+    {
+      "parameters": {
+        "fieldsToAggregate": {
+          "fieldToAggregate": [
+            {
+              "fieldToAggregate": "message"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.aggregate",
+      "typeVersion": 1,
+      "position": [
+        3088,
+        288
+      ],
+      "id": "f5a0eeaa-8320-4f85-aeb6-ec51f578bf16",
+      "name": "Aggregate"
+    },
+    {
+      "parameters": {
+        "content": "## SubWorkflow logica mensajes en memoria concurrencia\n**",
+        "height": 688,
+        "width": 1296
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [
+        224,
+        32
+      ],
+      "typeVersion": 1,
+      "id": "42927b2d-5261-4f1b-82cb-5b83d23627b1",
+      "name": "Sticky Note"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "35fd5cbb-a799-435f-89cf-3d0465432fbc",
+              "leftValue": "={{ $json.message }}",
+              "rightValue": "",
+              "operator": {
+                "type": "object",
+                "operation": "notEmpty",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        -624,
+        480
+      ],
+      "id": "4e17af37-1583-4829-857c-d2b1ad9f1dc1",
+      "name": "Validacion de mensaje"
+    },
+    {
+      "parameters": {},
+      "type": "n8n-nodes-base.noOp",
+      "typeVersion": 1,
+      "position": [
+        -352,
+        656
+      ],
+      "id": "56b26192-7f67-4cd4-ade2-a26b41843d81",
+      "name": "No Operation, do nothing1"
+    },
+    {
+      "parameters": {
+        "model": {
+          "__rl": true,
+          "mode": "list",
+          "value": "gpt-4.1-mini"
+        },
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatOpenAi",
+      "typeVersion": 1.2,
+      "position": [
+        5392,
+        448
+      ],
+      "id": "827cf8ee-3cc4-49f2-b421-57bc27ebea96",
+      "name": "OpenAI Chat Model",
+      "credentials": {
+        "openAiApi": {
+          "id": "LPsWoB91jlNHqeNc",
+          "name": "OpenAi_BW_Prod"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "sessionIdType": "customKey",
+        "sessionKey": "={{ $('Recibir Mensaje').item.json.contacts?.[0]?.wa_id }}"
+      },
+      "type": "@n8n/n8n-nodes-langchain.memoryBufferWindow",
+      "typeVersion": 1.3,
+      "position": [
+        5568,
+        448
+      ],
+      "id": "9e6e93a4-bf8a-4aa0-87dd-a5de8532b964",
+      "name": "Simple Memory2"
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "=Eres un agente maestro cuyo único rol es clasificar la intención de los mensajes que recibes y redirigirlos al workflow adecuado.\n\nEl mensaje es: \"{{ $('Unificacion mensaje').item.json.message }}\"\nEl ID del usuario es: \"{{ $('set Fields').item.json.message.from }}\"\n\n**Instrucciones Generales:**\n1.  **Utiliza siempre la herramienta \"Think\"** antes de dar una respuesta final para procesar la información.\n2.  **No debes responder al usuario final.** Tu única tarea es generar un JSON con la clasificación.\n3.  El JSON de salida debe tener las siguientes claves:\n    -   `destino`: Indica el workflow al que se debe enviar el mensaje. Solo puede ser:\n        -   \"Agente Asesor\"\n        -   \"Agente de Ventas\"\n    -   `mensaje`: El texto original que recibiste del usuario.\n    -   `id_usuario`: El ID del usuario que envió el mensaje.\n    -   `completion_tokens`: Número de tokens de salida usados (integer).\n    -   `prompt_tokens`: Número de tokens de entrada usados (integer).\n    -   `total_tokens`: Suma de los tokens usados (integer).\n    -   `model_name`: Nombre del modelo de IA utilizado (string).\n    -   `ai_response`: La respuesta cruda o resultado directo del modelo antes de ser parseado (string).\n\n**Reglas de Clasificación (Prioridad de arriba hacia abajo):**\n\n**1. Agente de Ventas:**\n   Clasifica como \"Agente de Ventas\" única y exclusivamente si se cumple alguna de estas condiciones:\n   -   **Palabras Clave de Intención Directa de Compra (individual):** El usuario utiliza exactamente o variaciones directas de:\n        -   \"este diseño me gusta\"\n        -   \"este me gusta\"\n        -   \"como puedo comprar este\"\n        -   \"quiero comprar este\"\n        -   \"dame el link de pago\"\n        -   \"quiero pagar\"\n   -   **Acción de Pago Explícita:** El usuario pide un link de pago, cuenta bancaria, QR o entrega datos de envío/facturación.\n   -   **Solicitud de Humano Directa:** El usuario pide explícitamente hablar con una persona o asesor real.\n   \n   Adicional, si el mensaje indica claramente una intención relacionada con compras al por mayor, distribución, colaboración con proveedores o solicitudes de negocio a gran escala.\n   Palabras clave o frases indicativas:\n   - \"precio al por mayor\", \"precios mayoristas\", \"comprar al por mayor\"\n   - \"distribuidor\", \"distribuir\", \"ser distribuidor\"\n   - \"cotización para negocio\", \"cotización para empresa\"\n   - \"soy proveedor\", \"somos proveedores\", \"propuesta de proveedor\"\n   - \"venta por volumen\", \"compra en cantidad\"\n   - \"colaboración comercial\", \"alianza estratégica\"\n   - \"negocio B2B\"\n   - \"catálogo para negocios\", \"lista de precios para empresas\"\n\n**2. Agente Asesor:**\n   Clasifica como \"Agente Asesor\" para cualquier otro caso que NO haya sido clasificado en las categorías anteriores. Esto incluye:\n   -   Consultas generales, dudas sobre materiales, precios o características de productos/servicios, consultas de stock.\n   -   Solicitudes de información, aclaración de dudas.\n   -   Preguntas sobre la disponibilidad de un producto, tallas, colores.\n   -   Mencionar categorías de productos sin intención explícita de compra o negocio (ej: \"busco cunas\", \"tienes coches para bebé\").\n   -   Expresiones de interés genéricas que no incluyan las palabras clave de \"Agente de Ventas\" (ej: \"estoy interesado en un coche\", \"quiero una silla de auto\").\n   -   Cualquier mensaje que no cumpla con los criterios específicos de las otras dos categorías.\n\n**Restricciones de Salida:**\n-   No generes explicaciones adicionales antes o después del JSON.\n-   Responde únicamente con el objeto JSON válido.\n\n**Ejemplo de Salida Esperada:**\n```json\n{\n  \"destino\": \"Agente Asesor\",\n  \"mensaje\": \"Quisiera información sobre precios mayoristas para la pañalera, soy distribuidor.\",\n  \"id_usuario\": \"1234567890\",\n  \"completion_tokens\": 123,\n  \"prompt_tokens\": 456,\n  \"total_tokens\": 579,\n  \"model_name\": \"gpt-4o-mini\",\n  \"ai_response\": \"{\"destino\": \"Agente Asesor\", \"mensaje\": \"Quisiera información sobre precios mayoristas para la pañalera, soy distribuidor.\"}\"\n}\n```",
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 2.2,
+      "position": [
+        5472,
+        224
+      ],
+      "id": "91e79981-ecf7-4ea3-9ece-036bbb8ef75b",
+      "name": "Agente Coordinador"
+    },
+    {
+      "parameters": {
+        "workflowId": {
+          "__rl": true,
+          "value": "jj3d8Tr4jkU37mes",
+          "mode": "list",
+          "cachedResultUrl": "/workflow/jj3d8Tr4jkU37mes",
+          "cachedResultName": "Babys World — Agente Asesor (PROD)"
+        },
+        "workflowInputs": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "session_id": "={{ JSON.parse($('Agente Coordinador').item.json.output).id_usuario }}",
+            "message": "={{ JSON.parse($('Agente Coordinador').item.json.output).mensaje }}",
+            "tipo_mensaje": "={{ $json.tipo_mensaje }}"
+          },
+          "matchingColumns": [],
+          "schema": [
+            {
+              "id": "session_id",
+              "displayName": "session_id",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string",
+              "removed": false
+            },
+            {
+              "id": "message",
+              "displayName": "message",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string",
+              "removed": false
+            },
+            {
+              "id": "tipo_mensaje",
+              "displayName": "tipo_mensaje",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string",
+              "removed": false
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": true
+        },
+        "options": {
+          "waitForSubWorkflow": false
+        }
+      },
+      "type": "n8n-nodes-base.executeWorkflow",
+      "typeVersion": 1.2,
+      "position": [
+        6880,
+        160
+      ],
+      "id": "0009a1fa-7de1-40c8-9037-6a43f49a4a17",
+      "name": "Execute Asesor"
+    },
+    {
+      "parameters": {
+        "workflowId": {
+          "__rl": true,
+          "value": "eqgf8EczFq138eBN",
+          "mode": "list",
+          "cachedResultUrl": "/workflow/eqgf8EczFq138eBN",
+          "cachedResultName": "Babys World — Redireccionamiento a humano  (PROD)"
+        },
+        "workflowInputs": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "session_id": "={{ JSON.parse($('Agente Coordinador').item.json.output).id_usuario }}"
+          },
+          "matchingColumns": [],
+          "schema": [
+            {
+              "id": "session_id",
+              "displayName": "session_id",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string",
+              "removed": false
+            },
+            {
+              "id": "message",
+              "displayName": "message",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string",
+              "removed": true
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": true
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.executeWorkflow",
+      "typeVersion": 1.2,
+      "position": [
+        7472,
+        336
+      ],
+      "id": "13dbff89-79e9-4100-9b8a-7c0eeb0f2e27",
+      "name": "Execute Ventas"
+    },
+    {
+      "parameters": {},
+      "type": "@n8n/n8n-nodes-langchain.toolThink",
+      "typeVersion": 1.1,
+      "position": [
+        5728,
+        448
+      ],
+      "id": "17274f3c-603e-4a50-9fdb-cf05e72e485b",
+      "name": "Think"
+    },
+    {
+      "parameters": {
+        "rules": {
+          "values": [
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 2
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ JSON.parse($('Agente Coordinador').item.json.output).destino.toLowerCase()}}",
+                    "rightValue": "agente asesor",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    },
+                    "id": "fc80e23d-1918-466f-849c-d7c19ffa0781"
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "Asesor"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 2
+                },
+                "conditions": [
+                  {
+                    "id": "9c25c477-2144-4355-a385-8fa27511d78c",
+                    "leftValue": "={{ JSON.parse($('Agente Coordinador').item.json.output).destino.toLowerCase() }}",
+                    "rightValue": "agente de ventas",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals",
+                      "name": "filter.operator.equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "Agente de Ventas"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 3.2,
+      "position": [
+        6432,
+        224
+      ],
+      "id": "acef1159-4750-45f9-8300-46cf8c1120fc",
+      "name": "Redireccionamiento"
+    },
+    {
+      "parameters": {
+        "dataTableId": {
+          "__rl": true,
+          "value": "pPYkms7dSZEi9e0s",
+          "mode": "list",
+          "cachedResultName": "user_status",
+          "cachedResultUrl": "/projects/8h8pwWGcWlnGEym3/datatables/pPYkms7dSZEi9e0s"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "session_id": "={{ $('set Fields').item.json.message.from }}",
+            "tipo_mensaje": "Primer mensaje"
+          },
+          "matchingColumns": [],
+          "schema": [
+            {
+              "id": "session_id",
+              "displayName": "session_id",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "agent",
+              "displayName": "agent",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "tipo_mensaje",
+              "displayName": "tipo_mensaje",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.dataTable",
+      "typeVersion": 1,
+      "position": [
+        5152,
+        336
+      ],
+      "id": "d20d0c1b-38a6-44ee-9435-10478ab3bf2f",
+      "name": "Inserta usuario en estado"
+    },
+    {
+      "parameters": {
+        "operation": "rowNotExists",
+        "dataTableId": {
+          "__rl": true,
+          "value": "pPYkms7dSZEi9e0s",
+          "mode": "list",
+          "cachedResultName": "user_status",
+          "cachedResultUrl": "/projects/8h8pwWGcWlnGEym3/datatables/pPYkms7dSZEi9e0s"
+        },
+        "matchType": "allConditions",
+        "filters": {
+          "conditions": [
+            {
+              "keyName": "session_id",
+              "keyValue": "={{ $('Sort').first().json['ID del usuario'] }}"
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.dataTable",
+      "typeVersion": 1,
+      "position": [
+        4928,
+        336
+      ],
+      "id": "47b1c234-0b4a-4dd0-a305-45b54d8ffc93",
+      "name": "Usuario no existe en tabla estado"
+    },
+    {
+      "parameters": {
+        "operation": "rowExists",
+        "dataTableId": {
+          "__rl": true,
+          "value": "pPYkms7dSZEi9e0s",
+          "mode": "list",
+          "cachedResultName": "user_status",
+          "cachedResultUrl": "/projects/8h8pwWGcWlnGEym3/datatables/pPYkms7dSZEi9e0s"
+        },
+        "matchType": "allConditions",
+        "filters": {
+          "conditions": [
+            {
+              "keyName": "session_id",
+              "keyValue": "={{ $('Sort').first().json['ID del usuario'] }}"
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.dataTable",
+      "typeVersion": 1,
+      "position": [
+        4928,
+        160
+      ],
+      "id": "3b5315bf-997a-415b-8487-66bf76b7d8e8",
+      "name": "Usuario existe en tabla estado"
+    },
+    {
+      "parameters": {
+        "operation": "get",
+        "dataTableId": {
+          "__rl": true,
+          "value": "pPYkms7dSZEi9e0s",
+          "mode": "list",
+          "cachedResultName": "user_status",
+          "cachedResultUrl": "/projects/8h8pwWGcWlnGEym3/datatables/pPYkms7dSZEi9e0s"
+        },
+        "filters": {
+          "conditions": [
+            {
+              "keyName": "session_id",
+              "keyValue": "={{ $('set Fields').item.json.contact.wa_id }}"
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.dataTable",
+      "typeVersion": 1,
+      "position": [
+        6000,
+        224
+      ],
+      "id": "7f38fb15-df95-4e4c-b44a-2b186bcc1434",
+      "name": "Obtener usuario tabla estado"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "bb27cc68-8023-4c57-8200-2050364f5dae",
+              "leftValue": "={{ $json.agent }}",
+              "rightValue": "",
+              "operator": {
+                "type": "string",
+                "operation": "notEmpty",
+                "singleValue": true
+              }
+            },
+            {
+              "id": "383ca2ff-8a5b-46a5-906a-78615adabac6",
+              "leftValue": "={{ $json.agent }}",
+              "rightValue": "\"Agente Ventas\"",
+              "operator": {
+                "type": "string",
+                "operation": "equals",
+                "name": "filter.operator.equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        6208,
+        224
+      ],
+      "id": "4bc02a23-1459-4e8f-ac8b-60124653d601",
+      "name": "Validación campo estado asesor"
+    },
+    {
+      "parameters": {
+        "operation": "update",
+        "dataTableId": {
+          "__rl": true,
+          "value": "pPYkms7dSZEi9e0s",
+          "mode": "list",
+          "cachedResultName": "user_status",
+          "cachedResultUrl": "/projects/8h8pwWGcWlnGEym3/datatables/pPYkms7dSZEi9e0s"
+        },
+        "filters": {
+          "conditions": [
+            {
+              "keyName": "session_id",
+              "keyValue": "={{ $json.session_id }}"
+            }
+          ]
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "agent": "\"Agente Asesor\"",
+            "tipo_mensaje": "={{ $json.tipo_mensaje }}"
+          },
+          "matchingColumns": [],
+          "schema": [
+            {
+              "id": "session_id",
+              "displayName": "session_id",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": true
+            },
+            {
+              "id": "agent",
+              "displayName": "agent",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "tipo_mensaje",
+              "displayName": "tipo_mensaje",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.dataTable",
+      "typeVersion": 1,
+      "position": [
+        6656,
+        160
+      ],
+      "id": "bc7c4200-b8f8-40a9-a0e3-de11e9765845",
+      "name": "Actualiza tipo agente asesor usuario"
+    },
+    {
+      "parameters": {
+        "operation": "update",
+        "dataTableId": {
+          "__rl": true,
+          "value": "pPYkms7dSZEi9e0s",
+          "mode": "list",
+          "cachedResultName": "user_status",
+          "cachedResultUrl": "/projects/8h8pwWGcWlnGEym3/datatables/pPYkms7dSZEi9e0s"
+        },
+        "filters": {
+          "conditions": [
+            {
+              "keyName": "session_id",
+              "keyValue": "={{ $json.session_id }}"
+            }
+          ]
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "agent": "\"Agente Ventas\"",
+            "mensaje_aviso": 0
+          },
+          "matchingColumns": [],
+          "schema": [
+            {
+              "id": "session_id",
+              "displayName": "session_id",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": true
+            },
+            {
+              "id": "agent",
+              "displayName": "agent",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "tipo_mensaje",
+              "displayName": "tipo_mensaje",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": true
+            },
+            {
+              "id": "mensaje_aviso",
+              "displayName": "mensaje_aviso",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "number",
+              "readOnly": false,
+              "removed": false
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.dataTable",
+      "typeVersion": 1,
+      "position": [
+        6656,
+        352
+      ],
+      "id": "df6cb1e3-81f3-4059-88df-9033fac63bf5",
+      "name": "Actualiza tipo agente ventas usuario"
+    },
+    {
+      "parameters": {
+        "operation": "update",
+        "dataTableId": {
+          "__rl": true,
+          "value": "pPYkms7dSZEi9e0s",
+          "mode": "list",
+          "cachedResultName": "user_status",
+          "cachedResultUrl": "/projects/8h8pwWGcWlnGEym3/datatables/pPYkms7dSZEi9e0s"
+        },
+        "filters": {
+          "conditions": [
+            {
+              "keyName": "session_id",
+              "keyValue": "={{ $('Sort').first().json['ID del usuario'] }}"
+            }
+          ]
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "tipo_mensaje": "Conversacion existente"
+          },
+          "matchingColumns": [],
+          "schema": [
+            {
+              "id": "session_id",
+              "displayName": "session_id",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": true
+            },
+            {
+              "id": "agent",
+              "displayName": "agent",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": true
+            },
+            {
+              "id": "tipo_mensaje",
+              "displayName": "tipo_mensaje",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.dataTable",
+      "typeVersion": 1,
+      "position": [
+        5152,
+        160
+      ],
+      "id": "a9a5d0d5-9b0a-44a3-986c-11bc7d2a30b1",
+      "name": "actualizar tipo de mensaje tabla user_state"
+    },
+    {
+      "parameters": {
+        "operation": "append",
+        "documentId": {
+          "__rl": true,
+          "value": "170WMmO1HEBNEPc_c0j4U-DIb5ur_eIFOQdYTq4l6PdA",
+          "mode": "list",
+          "cachedResultName": "Historial Baby's World Prod",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/170WMmO1HEBNEPc_c0j4U-DIb5ur_eIFOQdYTq4l6PdA/edit?usp=drivesdk"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "gid=0",
+          "mode": "list",
+          "cachedResultName": "Hoja 1",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1BBigXd9cM014ZVimnIvaXCcIVYuoHFDSq2ndYbWqAk8/edit#gid=0"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "id": "={{ $('Recibir Mensaje').item.json.contacts[0].wa_id }}",
+            "timestamp": "={{$now.format('dd/MM/yyyy hh:mm:ss')}}",
+            "rol": "cliente",
+            "mensaje": "={{ $('Recibir Mensaje')?.item?.json?.messages[0]?.text?.body || $('Recibir Mensaje').item.json.messages[0].image.caption}}",
+            "fecha": "={{ $now.format(\"dd/MM/yyyy\") }}",
+            "context_id_whatsapp": "={{ $json.message.id }}"
+          },
+          "matchingColumns": [
+            "id"
+          ],
+          "schema": [
+            {
+              "id": "id",
+              "displayName": "id",
+              "required": false,
+              "defaultMatch": true,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "timestamp",
+              "displayName": "timestamp",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "rol",
+              "displayName": "rol",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "mensaje",
+              "displayName": "mensaje",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "fecha",
+              "displayName": "fecha",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "context_id_whatsapp",
+              "displayName": "context_id_whatsapp",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [
+        48,
+        384
+      ],
+      "id": "1fbab425-93ec-4ac6-9f85-ffa20dbb5430",
+      "name": "Guarda Historial",
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "Pf0TYy2joLTmqt2C",
+          "name": "Google Sheets account 3"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "updates": [
+          "messages"
+        ],
+        "options": {}
+      },
+      "type": "n8n-nodes-base.whatsAppTrigger",
+      "typeVersion": 1,
+      "position": [
+        -1072,
+        480
+      ],
+      "id": "60cf0862-5878-4d8b-a409-82b81c00b64c",
+      "name": "Recibir Mensaje",
+      "webhookId": "4c9eedfb-f833-4e88-a86e-51e50159e60a",
+      "credentials": {
+        "whatsAppTriggerApi": {
+          "id": "JyJVLcmBp3tt6OZF",
+          "name": "WhatsApp_BW:Dalia_onMessages"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "4274be55-d038-4914-98e9-a2f8f094ab9f",
+              "leftValue": "={{ $('set Fields').item.json.context_id }}",
+              "rightValue": "",
+              "operator": {
+                "type": "string",
+                "operation": "notEmpty",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        3296,
+        288
+      ],
+      "id": "2a18e3a4-7cd9-4217-a89a-cf3e738a7e02",
+      "name": "Existe mensaje de contexto"
+    },
+    {
+      "parameters": {
+        "documentId": {
+          "__rl": true,
+          "value": "170WMmO1HEBNEPc_c0j4U-DIb5ur_eIFOQdYTq4l6PdA",
+          "mode": "list",
+          "cachedResultName": "Historial Baby's World Prod",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/170WMmO1HEBNEPc_c0j4U-DIb5ur_eIFOQdYTq4l6PdA/edit?usp=drivesdk"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "gid=0",
+          "mode": "list",
+          "cachedResultName": "Hoja 1",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1BBigXd9cM014ZVimnIvaXCcIVYuoHFDSq2ndYbWqAk8/edit#gid=0"
+        },
+        "filtersUI": {
+          "values": [
+            {
+              "lookupColumn": "context_id_whatsapp",
+              "lookupValue": "={{ $('set Fields').item.json.context_id }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [
+        3728,
+        208
+      ],
+      "id": "72a152b6-0ebb-484f-b7b4-31f04d6bc4ad",
+      "name": "Obtiene mensaje de contexto",
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "Pf0TYy2joLTmqt2C",
+          "name": "Google Sheets account 3"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "aaf1aa2e-9a07-4b50-be2a-a33551ed3e4d",
+              "name": "mensaje",
+              "value": "={{ $json.mensaje }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        3952,
+        208
+      ],
+      "id": "ada93611-c7e5-455d-8f77-4440d60bd496",
+      "name": "Obtiene mensaje contexto"
+    },
+    {
+      "parameters": {
+        "url": "https://graph.facebook.com/v18.0/1518532445916640/products",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "whatsAppApi",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            {
+              "name": "filter",
+              "value": "={\"retailer_id\": {\"eq\": \"{{ $('Recibir Mensaje').item.json.messages[0].context.referred_product.product_retailer_id }}\"}}"
+            },
+            {
+              "name": "fields",
+              "value": "name,description,price,currency,image_url,availability,condition,retailer_id"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.3,
+      "position": [
+        3712,
+        -64
+      ],
+      "id": "7355c60e-206a-4437-a1e6-1d6749942c65",
+      "name": "Obtiene producto catalogo whatsapp",
+      "credentials": {
+        "whatsAppApi": {
+          "id": "uxjDDXCt5mDphQ1e",
+          "name": "WhatsApp_BW:Dalia_sendMessage"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "4ceb5fe2-7f9b-4fac-99a2-3070ab97f7d2",
+              "leftValue": "={{ $('Recibir Mensaje').item.json.messages[0].context.referred_product }}",
+              "rightValue": "",
+              "operator": {
+                "type": "object",
+                "operation": "notEmpty",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        3504,
+        192
+      ],
+      "id": "d96467f1-fc94-4dc4-a25b-52af453c21bb",
+      "name": "Contiene referencia de catalogo whatsapp"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "d0c8457d-32a3-4a94-b0e9-a5f79d3d0ab0",
+              "name": "producto",
+              "value": "={{ $json.data[0].name }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        3920,
+        -64
+      ],
+      "id": "2170c49e-bda8-41ec-8e10-f8a9ae76a638",
+      "name": "Obtiene nombre producto catalogo"
+    },
+    {
+      "parameters": {
+        "jsCode": "const initialMessage = $('Aggregate').item.json.message.join(\",\");\nlet contextMessage = \"\";\ntry {\n  contextMessage = $('Obtiene mensaje contexto').item.json.mensaje || \"\";\n} catch (e) {\n  contextMessage = \"\";\n}\n\nlet productCatalog = \"\";\ntry {\n  productCatalog = $('Obtiene nombre producto catalogo').item.json.producto || \"\";\n} catch (e) {\n  productCatalog = \"\";\n}\n\nreturn {\n  message: `${initialMessage} ${contextMessage} ${productCatalog}`.trim().replace(/\\s+/g, ' ')\n};"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        4496,
+        304
+      ],
+      "id": "6fe86adf-b243-411a-8ed0-7ed6f2da72ca",
+      "name": "Unificacion mensaje"
+    },
+    {
+      "parameters": {
+        "content": "## Subworkflow validación contexto whatsapp\n** Cuando el usuario solicita información de productos y el agente envía imágenes, el usuario puede hacer reply a la imagen y solicitar la descripción\n** Por otro lado si el usuario solicita información de un producto del catálogo de whatsapp no hay contexto por tal motivo debemos buscar la info en el api de meta por el id del producto",
+        "height": 656,
+        "width": 1216
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [
+        3232,
+        -192
+      ],
+      "typeVersion": 1,
+      "id": "18edb9a4-8430-4acc-a5e4-46f1d4022c36",
+      "name": "Sticky Note1"
+    },
+    {
+      "parameters": {
+        "workflowId": {
+          "__rl": true,
+          "value": "rH2mRbC4Gc-X8_3SA06Zw",
+          "mode": "list",
+          "cachedResultUrl": "/workflow/rH2mRbC4Gc-X8_3SA06Zw",
+          "cachedResultName": "Babys World — ai_usage_log"
+        },
+        "workflowInputs": {
+          "mappingMode": "passThrough",
+          "value": {},
+          "matchingColumns": [],
+          "schema": [],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": true
+        },
+        "mode": "each",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.executeWorkflow",
+      "typeVersion": 1.3,
+      "position": [
+        5952,
+        32
+      ],
+      "id": "e0fff8e0-78e4-4521-80ab-43ad06467c6b",
+      "name": "Call 'ai_usage_log'"
+    },
+    {
+      "parameters": {
+        "jsCode": "const tokenUsage = JSON.parse($('Agente Coordinador').item.json.output);\nconst now = Date.now();\n\nreturn {\n  process_id: \"coordinating_agent\",\n  model_name: tokenUsage.model_name,\n  prompt_tokens: tokenUsage.prompt_tokens,\n  completion_tokens: tokenUsage.completion_tokens,\n  total_tokens: tokenUsage.total_tokens,\n  ai_response: tokenUsage.ai_response,\n  completed_at: now,\n  created_at: now,\n  environment: 'ist'\n};"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        5776,
+        32
+      ],
+      "id": "464e77fa-a9bc-4ddb-89c2-28211f1de5db",
+      "name": "build_token_usage_dto"
+    },
+    {
+      "parameters": {
+        "model": {
+          "__rl": true,
+          "mode": "list",
+          "value": "gpt-4.1-mini"
+        },
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatOpenAi",
+      "typeVersion": 1.2,
+      "position": [
+        6928,
+        512
+      ],
+      "id": "bd0df827-cc3f-4482-ae5e-5140c15ae99c",
+      "name": "OpenAI Chat Model1",
+      "credentials": {
+        "openAiApi": {
+          "id": "LPsWoB91jlNHqeNc",
+          "name": "OpenAi_BW_Prod"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "text": "={{ $node[\"Convertir entrada\"].json[\"message\"] }}",
+        "attributes": {
+          "attributes": [
+            {
+              "name": "nombre",
+              "description": "El nombre completo de la persona en el mensaje, si está presente. Si no se menciona ningún nombre, devuelve una cadena vacía (o déjalo nulo). Nunca pongas aquí el nombre de un producto, marca, empresa o tienda. Si el mensaje solo habla de productos, deja este campo vacío / nulo."
+            },
+            {
+              "name": "producto_interes",
+              "description": "Identifica el nombre del producto o servicio por el cual el usuario está preguntando. Si no se menciona ninguno, devuelve 'no especificado'."
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.informationExtractor",
+      "typeVersion": 1.2,
+      "position": [
+        6912,
+        336
+      ],
+      "id": "c38a8e68-688c-4d8d-9874-3944215fc344",
+      "name": "Extractor de informacion para leads"
+    },
+    {
+      "parameters": {
+        "operation": "appendOrUpdate",
+        "documentId": {
+          "__rl": true,
+          "value": "1yiOEew_HANuh_t4gjnXMz_cq6uSXeoOlKjNnLvWjmZ8",
+          "mode": "list",
+          "cachedResultName": "Leads Prod",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1yiOEew_HANuh_t4gjnXMz_cq6uSXeoOlKjNnLvWjmZ8/edit?usp=drivesdk"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "gid=0",
+          "mode": "list",
+          "cachedResultName": "Hoja 1",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/12q0bQoQoJxYTuqCc9YcNxBXMV7Kt8a9spNW1XXjp3vc/edit#gid=0"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "Fecha": "={{ $('Guarda Historial').item.json.timestamp }}",
+            "Nombre": "={{ $('Recibir Mensaje').item.json.contacts[0].profile.name }}",
+            "Telefono": "={{ $('Recibir Mensaje').item.json.messages[0].from }}",
+            "interes_asesor": "=si",
+            "interes_producto": "={{ $('Extractor de informacion para leads').item.json.output.producto_interes }}"
+          },
+          "matchingColumns": [
+            "Telefono"
+          ],
+          "schema": [
+            {
+              "id": "Nombre",
+              "displayName": "Nombre",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "Telefono",
+              "displayName": "Telefono",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "Fecha",
+              "displayName": "Fecha",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "interes_asesor",
+              "displayName": "interes_asesor",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "interes_producto",
+              "displayName": "interes_producto",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [
+        7264,
+        336
+      ],
+      "id": "975787e1-b6a2-46c6-a739-179291a3f400",
+      "name": "Actualizar o llenar informacion de leads",
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "Pf0TYy2joLTmqt2C",
+          "name": "Google Sheets account 3"
+        }
+      }
+    }
+  ],
+  "connections": {
+    "Recibir Audios": {
+      "main": [
+        [
+          {
+            "node": "Descarga de audios",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Transcribir Audios": {
+      "main": [
+        [
+          {
+            "node": "Convertir entrada",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Descarga de audios": {
+      "main": [
+        [
+          {
+            "node": "Transcribir Audios",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Recibir Texto": {
+      "main": [
+        [
+          {
+            "node": "Convertir entrada",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Recibir imagen": {
+      "main": [
+        [
+          {
+            "node": "Descarga de imagen",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Descarga de imagen": {
+      "main": [
+        [
+          {
+            "node": "Leer y transcribir la imagen",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Leer y transcribir la imagen": {
+      "main": [
+        [
+          {
+            "node": "Convertir entrada",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Switch1": {
+      "main": [
+        [
+          {
+            "node": "Recibir Texto",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Recibir Audios",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Recibir imagen",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Convertir entrada": {
+      "main": [
+        [
+          {
+            "node": "Sort",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Modelo De Chat1": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "Leer y transcribir la imagen",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Push message buffer": {
+      "main": [
+        [
+          {
+            "node": "Get message buffer",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get message buffer": {
+      "main": [
+        [
+          {
+            "node": "Switch",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Switch": {
+      "main": [
+        [
+          {
+            "node": "No Operation, do nothing",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Delete message buffer",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Wait",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Wait": {
+      "main": [
+        [
+          {
+            "node": "Get message buffer",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Delete message buffer": {
+      "main": [
+        [
+          {
+            "node": "Split Out1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Split Out1": {
+      "main": [
+        [
+          {
+            "node": "Json parse",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "set Fields": {
+      "main": [
+        [
+          {
+            "node": "Validacion de mensaje",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Json parse": {
+      "main": [
+        [
+          {
+            "node": "Switch1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Sort": {
+      "main": [
+        [
+          {
+            "node": "Aggregate",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Aggregate": {
+      "main": [
+        [
+          {
+            "node": "Existe mensaje de contexto",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Validacion de mensaje": {
+      "main": [
+        [
+          {
+            "node": "Guarda Historial",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "No Operation, do nothing1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "OpenAI Chat Model": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "Agente Coordinador",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Simple Memory2": {
+      "ai_memory": [
+        [
+          {
+            "node": "Agente Coordinador",
+            "type": "ai_memory",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Agente Coordinador": {
+      "main": [
+        [
+          {
+            "node": "Obtener usuario tabla estado",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "build_token_usage_dto",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Think": {
+      "ai_tool": [
+        [
+          {
+            "node": "Agente Coordinador",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Redireccionamiento": {
+      "main": [
+        [
+          {
+            "node": "Actualiza tipo agente asesor usuario",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Actualiza tipo agente ventas usuario",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Inserta usuario en estado": {
+      "main": [
+        [
+          {
+            "node": "Agente Coordinador",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Usuario no existe en tabla estado": {
+      "main": [
+        [
+          {
+            "node": "Inserta usuario en estado",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Usuario existe en tabla estado": {
+      "main": [
+        [
+          {
+            "node": "actualizar tipo de mensaje tabla user_state",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Obtener usuario tabla estado": {
+      "main": [
+        [
+          {
+            "node": "Validación campo estado asesor",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Validación campo estado asesor": {
+      "main": [
+        [
+          {
+            "node": "Extractor de informacion para leads",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Redireccionamiento",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Actualiza tipo agente asesor usuario": {
+      "main": [
+        [
+          {
+            "node": "Execute Asesor",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Actualiza tipo agente ventas usuario": {
+      "main": [
+        [
+          {
+            "node": "Extractor de informacion para leads",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "actualizar tipo de mensaje tabla user_state": {
+      "main": [
+        [
+          {
+            "node": "Agente Coordinador",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Guarda Historial": {
+      "main": [
+        [
+          {
+            "node": "Push message buffer",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Recibir Mensaje": {
+      "main": [
+        [
+          {
+            "node": "set Fields",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Existe mensaje de contexto": {
+      "main": [
+        [
+          {
+            "node": "Contiene referencia de catalogo whatsapp",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Unificacion mensaje",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Obtiene mensaje de contexto": {
+      "main": [
+        [
+          {
+            "node": "Obtiene mensaje contexto",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Obtiene mensaje contexto": {
+      "main": [
+        [
+          {
+            "node": "Unificacion mensaje",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Contiene referencia de catalogo whatsapp": {
+      "main": [
+        [
+          {
+            "node": "Obtiene producto catalogo whatsapp",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Obtiene mensaje de contexto",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Obtiene producto catalogo whatsapp": {
+      "main": [
+        [
+          {
+            "node": "Obtiene nombre producto catalogo",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Obtiene nombre producto catalogo": {
+      "main": [
+        [
+          {
+            "node": "Unificacion mensaje",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Unificacion mensaje": {
+      "main": [
+        [
+          {
+            "node": "Usuario existe en tabla estado",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Usuario no existe en tabla estado",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "build_token_usage_dto": {
+      "main": [
+        [
+          {
+            "node": "Call 'ai_usage_log'",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "OpenAI Chat Model1": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "Extractor de informacion para leads",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Extractor de informacion para leads": {
+      "main": [
+        [
+          {
+            "node": "Actualizar o llenar informacion de leads",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Actualizar o llenar informacion de leads": {
+      "main": [
+        [
+          {
+            "node": "Execute Ventas",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "nodeGroups": [],
+  "settings": {
+    "executionOrder": "v1",
+    "callerPolicy": "workflowsFromSameOwner",
+    "errorWorkflow": "GZN4CJ6QgYxm77J7",
+    "availableInMCP": false,
+    "timeSavedMode": "fixed"
+  },
+  "staticData": null,
+  "pinData": {},
+  "meta": {
+    "templateCredsSetupCompleted": true
+  },
+  "tags": [
+    {
+      "id": "2nDb4zfpAXOj9Pvx",
+      "name": "env:prod",
+      "createdAt": "2026-02-25T21:45:46.330Z",
+      "updatedAt": "2026-02-25T21:45:46.330Z"
+    }
+  ],
+  "shared": [
+    {
+      "role": "workflow:owner",
+      "workflowId": "JQFFTw7GiYPatV9b",
+      "projectId": "8h8pwWGcWlnGEym3",
+      "createdAt": "2026-02-25T22:39:37.499Z",
+      "updatedAt": "2026-02-25T22:39:37.499Z"
+    }
+  ],
+  "activeVersion": null
+}
