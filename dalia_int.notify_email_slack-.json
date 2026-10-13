@@ -1,0 +1,443 @@
+{
+  "id": "ZtqMD77c8PkYExYT",
+  "name": "DALIA_INT.notify_email_slack",
+  "active": true,
+  "activeVersionId": "1ef44a9a-b911-45cf-898e-2a2c502cd79d",
+  "createdAt": "2026-10-03T01:56:02.959Z",
+  "updatedAt": "2026-10-03T16:46:51.499Z",
+  "isArchived": false,
+  "versionId": "1ef44a9a-b911-45cf-898e-2a2c502cd79d",
+  "triggerCount": 0,
+  "nodes": [
+    {
+      "id": "57cd9223-61aa-4670-a81b-1293e2902094",
+      "name": "Notificacion solicitada",
+      "type": "n8n-nodes-base.executeWorkflowTrigger",
+      "typeVersion": 1.2,
+      "position": [
+        0,
+        96
+      ],
+      "parameters": {
+        "inputSource": "passthrough"
+      }
+    },
+    {
+      "id": "2ce57dc5-0710-4f4c-88f2-5b995ad081ab",
+      "name": "Leer destinos",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.7,
+      "position": [
+        224,
+        96
+      ],
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "select dalia.m10_param('alerts.targets') as targets, dalia.m10_param('deployment.id') #>> '{}' as deployment_id, dalia.m10_param('deployment.environment') #>> '{}' as environment;"
+      },
+      "credentials": {
+        "postgres": {
+          "id": "HfCgVAjUygK1vrkU",
+          "name": "DALIA dev Supabase"
+        }
+      }
+    },
+    {
+      "id": "04f03a8c-cf70-467c-b6f5-b9d24367f960",
+      "name": "Correo habilitado",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        448,
+        0
+      ],
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose"
+          },
+          "conditions": [
+            {
+              "leftValue": "={{ $json.targets?.email?.enabled === true }}",
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        }
+      }
+    },
+    {
+      "id": "614822a8-3666-49f1-aab3-3ee0078c0be2",
+      "name": "Enviar correo",
+      "type": "n8n-nodes-base.emailSend",
+      "typeVersion": 2.1,
+      "position": [
+        672,
+        0
+      ],
+      "parameters": {
+        "operation": "send",
+        "fromEmail": "={{ $json.targets.email.from }}",
+        "toEmail": "={{ $json.targets.email.to }}",
+        "subject": "=[DALIA {{ $json.deployment_id }} {{ $json.environment }}] {{ $(\"Notificacion solicitada\").item.json.severity }} · {{ $(\"Notificacion solicitada\").item.json.title }}",
+        "emailFormat": "text",
+        "text": "={{ $(\"Notificacion solicitada\").item.json.text }}\n\nDatos: {{ JSON.stringify($(\"Notificacion solicitada\").item.json.data ?? {}) }}",
+        "options": {
+          "appendAttribution": false
+        }
+      },
+      "webhookId": "df37265f-07b4-4f4c-ae8d-422a171a6111",
+      "disabled": true
+    },
+    {
+      "id": "34b3891c-b01a-4d9a-942e-56da377d5c03",
+      "name": "Slack habilitado",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        448,
+        192
+      ],
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose"
+          },
+          "conditions": [
+            {
+              "leftValue": "={{ $json.targets?.slack?.enabled === true }}",
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        }
+      }
+    },
+    {
+      "id": "3c7d72f4-d6c2-47a5-9d3c-5beee29fb904",
+      "name": "Enviar a Slack",
+      "type": "n8n-nodes-base.slack",
+      "typeVersion": 2.7,
+      "position": [
+        672,
+        192
+      ],
+      "parameters": {
+        "resource": "message",
+        "operation": "post",
+        "authentication": "accessToken",
+        "select": "channel",
+        "channelId": {
+          "__rl": true,
+          "mode": "id",
+          "value": "={{ $json.targets.slack.channel_id }}"
+        },
+        "messageType": "text",
+        "text": "=*[DALIA {{ $json.deployment_id }} {{ $json.environment }}] {{ $(\"Notificacion solicitada\").item.json.severity }}* · {{ $(\"Notificacion solicitada\").item.json.title }}\n{{ $(\"Notificacion solicitada\").item.json.text }}",
+        "otherOptions": {
+          "includeLinkToWorkflow": false
+        }
+      },
+      "webhookId": "606f31bd-efbf-4f21-a0e7-16a808f19f3c",
+      "disabled": true
+    }
+  ],
+  "connections": {
+    "Notificacion solicitada": {
+      "main": [
+        [
+          {
+            "node": "Leer destinos",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Leer destinos": {
+      "main": [
+        [
+          {
+            "node": "Correo habilitado",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Slack habilitado",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Correo habilitado": {
+      "main": [
+        [
+          {
+            "node": "Enviar correo",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Slack habilitado": {
+      "main": [
+        [
+          {
+            "node": "Enviar a Slack",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "nodeGroups": [],
+  "settings": {
+    "executionOrder": "v1",
+    "availableInMCP": true,
+    "errorWorkflow": "cjjQno2MxMTT3Icc",
+    "timezone": "America/Bogota",
+    "saveManualExecutions": true,
+    "saveDataErrorExecution": "all",
+    "saveDataSuccessExecution": "all",
+    "callerPolicy": "workflowsFromSameOwner"
+  },
+  "staticData": null,
+  "pinData": null,
+  "meta": {
+    "aiBuilderAssisted": true,
+    "builderVariant": "mcp"
+  },
+  "tags": [],
+  "shared": [
+    {
+      "role": "workflow:owner",
+      "workflowId": "ZtqMD77c8PkYExYT",
+      "projectId": "tRHCC8ts4mkRGXGn",
+      "createdAt": "2026-10-09T21:09:17.747Z",
+      "updatedAt": "2026-10-09T21:09:17.747Z"
+    }
+  ],
+  "activeVersion": {
+    "versionId": "1ef44a9a-b911-45cf-898e-2a2c502cd79d",
+    "workflowId": "ZtqMD77c8PkYExYT",
+    "nodes": [
+      {
+        "id": "57cd9223-61aa-4670-a81b-1293e2902094",
+        "name": "Notificacion solicitada",
+        "type": "n8n-nodes-base.executeWorkflowTrigger",
+        "typeVersion": 1.2,
+        "position": [
+          0,
+          96
+        ],
+        "parameters": {
+          "inputSource": "passthrough"
+        }
+      },
+      {
+        "id": "2ce57dc5-0710-4f4c-88f2-5b995ad081ab",
+        "name": "Leer destinos",
+        "type": "n8n-nodes-base.postgres",
+        "typeVersion": 2.7,
+        "position": [
+          224,
+          96
+        ],
+        "parameters": {
+          "operation": "executeQuery",
+          "query": "select dalia.m10_param('alerts.targets') as targets, dalia.m10_param('deployment.id') #>> '{}' as deployment_id, dalia.m10_param('deployment.environment') #>> '{}' as environment;"
+        },
+        "credentials": {
+          "postgres": {
+            "id": "HfCgVAjUygK1vrkU",
+            "name": "DALIA dev Supabase"
+          }
+        }
+      },
+      {
+        "id": "04f03a8c-cf70-467c-b6f5-b9d24367f960",
+        "name": "Correo habilitado",
+        "type": "n8n-nodes-base.if",
+        "typeVersion": 2.2,
+        "position": [
+          448,
+          0
+        ],
+        "parameters": {
+          "conditions": {
+            "options": {
+              "caseSensitive": true,
+              "leftValue": "",
+              "typeValidation": "loose"
+            },
+            "conditions": [
+              {
+                "leftValue": "={{ $json.targets?.email?.enabled === true }}",
+                "operator": {
+                  "type": "boolean",
+                  "operation": "true",
+                  "singleValue": true
+                }
+              }
+            ],
+            "combinator": "and"
+          }
+        }
+      },
+      {
+        "id": "614822a8-3666-49f1-aab3-3ee0078c0be2",
+        "name": "Enviar correo",
+        "type": "n8n-nodes-base.emailSend",
+        "typeVersion": 2.1,
+        "position": [
+          672,
+          0
+        ],
+        "parameters": {
+          "operation": "send",
+          "fromEmail": "={{ $json.targets.email.from }}",
+          "toEmail": "={{ $json.targets.email.to }}",
+          "subject": "=[DALIA {{ $json.deployment_id }} {{ $json.environment }}] {{ $(\"Notificacion solicitada\").item.json.severity }} · {{ $(\"Notificacion solicitada\").item.json.title }}",
+          "emailFormat": "text",
+          "text": "={{ $(\"Notificacion solicitada\").item.json.text }}\n\nDatos: {{ JSON.stringify($(\"Notificacion solicitada\").item.json.data ?? {}) }}",
+          "options": {
+            "appendAttribution": false
+          }
+        },
+        "webhookId": "df37265f-07b4-4f4c-ae8d-422a171a6111",
+        "disabled": true
+      },
+      {
+        "id": "34b3891c-b01a-4d9a-942e-56da377d5c03",
+        "name": "Slack habilitado",
+        "type": "n8n-nodes-base.if",
+        "typeVersion": 2.2,
+        "position": [
+          448,
+          192
+        ],
+        "parameters": {
+          "conditions": {
+            "options": {
+              "caseSensitive": true,
+              "leftValue": "",
+              "typeValidation": "loose"
+            },
+            "conditions": [
+              {
+                "leftValue": "={{ $json.targets?.slack?.enabled === true }}",
+                "operator": {
+                  "type": "boolean",
+                  "operation": "true",
+                  "singleValue": true
+                }
+              }
+            ],
+            "combinator": "and"
+          }
+        }
+      },
+      {
+        "id": "3c7d72f4-d6c2-47a5-9d3c-5beee29fb904",
+        "name": "Enviar a Slack",
+        "type": "n8n-nodes-base.slack",
+        "typeVersion": 2.7,
+        "position": [
+          672,
+          192
+        ],
+        "parameters": {
+          "resource": "message",
+          "operation": "post",
+          "authentication": "accessToken",
+          "select": "channel",
+          "channelId": {
+            "__rl": true,
+            "mode": "id",
+            "value": "={{ $json.targets.slack.channel_id }}"
+          },
+          "messageType": "text",
+          "text": "=*[DALIA {{ $json.deployment_id }} {{ $json.environment }}] {{ $(\"Notificacion solicitada\").item.json.severity }}* · {{ $(\"Notificacion solicitada\").item.json.title }}\n{{ $(\"Notificacion solicitada\").item.json.text }}",
+          "otherOptions": {
+            "includeLinkToWorkflow": false
+          }
+        },
+        "webhookId": "606f31bd-efbf-4f21-a0e7-16a808f19f3c",
+        "disabled": true
+      }
+    ],
+    "connections": {
+      "Notificacion solicitada": {
+        "main": [
+          [
+            {
+              "node": "Leer destinos",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Leer destinos": {
+        "main": [
+          [
+            {
+              "node": "Correo habilitado",
+              "type": "main",
+              "index": 0
+            },
+            {
+              "node": "Slack habilitado",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Correo habilitado": {
+        "main": [
+          [
+            {
+              "node": "Enviar correo",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Slack habilitado": {
+        "main": [
+          [
+            {
+              "node": "Enviar a Slack",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      }
+    },
+    "nodeGroups": [],
+    "authors": "Fabian Bocanegra (via MCP)",
+    "name": "DEV: correo y Slack desactivados hasta tener credenciales",
+    "description": "Updated nodes: Enviar correo, Enviar a Slack",
+    "autosaved": false,
+    "createdAt": "2026-10-03T01:58:00.947Z",
+    "updatedAt": "2026-10-03T01:58:00.947Z"
+  }
+}
