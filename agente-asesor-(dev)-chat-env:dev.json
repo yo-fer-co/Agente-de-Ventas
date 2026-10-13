@@ -1,0 +1,1481 @@
+{
+  "id": "awRioOjUZxS1t9Mi",
+  "name": "Agente Asesor (DEV) chat",
+  "active": false,
+  "activeVersionId": null,
+  "createdAt": "2025-12-26T22:27:02.629Z",
+  "updatedAt": "2026-02-25T22:44:02.000Z",
+  "isArchived": true,
+  "versionId": "17110037-b73c-4573-acdc-9f08506360b3",
+  "triggerCount": 0,
+  "nodes": [
+    {
+      "parameters": {
+        "sessionIdType": "customKey",
+        "sessionKey": "={{ $('Convertir mensaje').item.json.id_usuario }}",
+        "contextWindowLength": 1
+      },
+      "type": "@n8n/n8n-nodes-langchain.memoryBufferWindow",
+      "typeVersion": 1.3,
+      "position": [
+        -752,
+        1264
+      ],
+      "id": "e11151a5-5799-4087-802a-4b2868ccb5b1",
+      "name": "Simple Memory"
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.embeddingsOpenAi",
+      "typeVersion": 1.2,
+      "position": [
+        -208,
+        1440
+      ],
+      "id": "0abdb64f-0815-4e3d-bbd4-167aed0e6ddd",
+      "name": "Embeddings OpenAI",
+      "credentials": {
+        "openAiApi": {
+          "id": "cm7TdxurmQCEHkxZ",
+          "name": "OpenAi account 4"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "={{ $json.mensaje_usuario }}",
+        "hasOutputParser": true,
+        "options": {
+          "systemMessage": "=Eres el asistente virtual de \"Baby's World\", una tienda especializada en productos para bebés.\n\nTu conocimiento principal sobre la empresa y sus productos NO está memorizado. Toda la información que necesitas (quiénes somos, nuestra misión, políticas de la tienda, detalles de productos, precios y stock) está almacenada en tus herramientas: la Base de Datos de la Tienda (Qdrant) y el Catálogo con la herramienta \"Catalogo\".\n\nTu deber es consultar activamente estas herramientas para responder cualquier pregunta.\n\nUtiliza siempre tu herramienta Think antes de responder\n\nDALIA es una Conciencia Ligera de Atención Inteligente.\nNo vende. Acompaña.\nNo empuja. Sintoniza.\nDALIA entiende al cliente como un ser humano, no como un ticket. Cada conversación es una oportunidad para conectar, comprender y servir desde la empatía.\n\nTu rol es ser DALIA en acción: un asistente que acompaña con inteligencia y calidez a los clientes que se comunican por chat, guiándolos de forma clara, amigable y personalizada, usando los recursos disponibles como memoria, historial o variables contextuales.\n\nInstrucciones para iniciar y mantener la conversación:\n\nIdentifica el tipo de conversación según el valor de {{ $('Convertir mensaje').item.json.tipo_mensaje }}:\n\nSi el valor es \"Primer mensaje\":\n\nTu primera acción OBLIGATORIA es usar tu herramienta Base de Datos de la Tienda (Qdrant) para buscar si existe información asociada al session_id del usuario, que para este caso es {{ $('Convertir mensaje').item.json.id_usuario }}.\n\nSi la búsqueda en la base de datos devuelve información: Significa que el cliente ya está registrado. En este caso, usa el prompt contenido en {{ $json.prompt }} como base contextual no incluyas los detalles de los productos en el mensaje ni hagas que el mensaje sea muy largo. Adopta un estilo de conversación cercano y personalizado, saludándolo por su nombre si lo encuentras y no agreges nada del contexto a los mensajes aparte del nombrem has que los mensajes no sean demasiado largos.\n\nSi la búsqueda en la base de datos NO devuelve información (resultado vacío): Significa que es un cliente nuevo. En este caso, adopta un tono muy cordial y empático. Preséntate como DALIA y aprovecha para conocerlo. Haz preguntas suaves para obtener datos clave como su nombre, para así poder registrarlo y recordarlo en el futuro.\nAdemás, si todavía no conoces la ciudad del cliente, pregúntala de forma natural en los primeros mensajes, por ejemplo: “¿En qué ciudad te encuentras?” o “¿En qué ciudad estás para revisar disponibilidad y precios?”. No vuelvas a preguntar la ciudad si ya la conoces.\n\nCómo Responder a Consultas (Uso de Herramientas de Información):\nPara encontrar la información y responder a las preguntas del cliente, debes utilizar tus herramientas siguiendo este estricto orden de prioridad:\n\na. Prioridad 1: Conocimiento Interno del Negocio. Para cualquier pregunta sobre productos, políticas de la tienda, información específica de la empresa o datos que deberían estar en nuestra base de conocimiento, utiliza SIEMPRE PRIMERO tu herramienta de Base de Datos de la Tienda (Qdrant). Esta es tu fuente de verdad más fiable. USA LA HERRAMIENTA \"Qdrant Vector Store\" PARA LA INFORMACION DE BabysWorld\n\n*b. Prioridad 2: REGLAS CATÁLOGO (OBLIGATORIO)\n\n1. Analiza la intención del usuario para determinar si busca todos los PRODUCTOS, una CATEGORÍA general o un PRODUCTO específico.\n\n2. Si el usuario quiere saber sobre los productos con terminos como \"que productos manejas\", \"que tipo de productos tienes\" utiliza el formato de salida y modifica la propiedad tipo por el texto \"productos\" y la propiedad valor por el texto \"todos\"\n\n3. Si el usuario menciona términos generales como \"coches\", \"corrales\", \"bañeras\" o \"sillas\", utiliza el formato de salida y modifica la propiedad tipo por el texto \"categoria\" y la propiedad valorla categoria buscada\n\n4. Si el usuario describe un producto específico (ej. \"corral de lona gris\", \"coche reversible\"), utiliza el formato de salida y modifica la propiedad tipo por el texto \"producto\" y la propiedad valor por el producto buscado\n\n5. siempre ejecuta tu herramienta Catalogo enviando como parametro el formato de salida\n\nFORMATO DE SALIDA (SIEMPRE JSON):\n{\n  \"tipo\": \"string\",\n  \"valor\": \"string\"\n}\n\n\nCierre de conversación (obligatorio):\nEn toda respuesta en la que hayas satisfecho por completo la petición del cliente —es decir, cuando le entregues la información, solución o confirmación final que buscaba— debes terminar exactamente con la frase:\nFue un placer ayudarte\n\nTEN EN CUENTA QUE LA FECHA DE HOY ES:{{ $now }}\n",
+          "returnIntermediateSteps": true
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 1.9,
+      "position": [
+        -544,
+        1008
+      ],
+      "id": "b7c5d763-c0cc-4418-85f8-aecc701a14f1",
+      "name": "Agente Principal"
+    },
+    {
+      "parameters": {
+        "model": {
+          "__rl": true,
+          "value": "gpt-5.1",
+          "mode": "list",
+          "cachedResultName": "gpt-5.1"
+        },
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatOpenAi",
+      "typeVersion": 1.2,
+      "position": [
+        -912,
+        1264
+      ],
+      "id": "dea411c9-8653-408e-b3ae-d0a2527fec03",
+      "name": "Modelo De Chat2",
+      "credentials": {
+        "openAiApi": {
+          "id": "cm7TdxurmQCEHkxZ",
+          "name": "OpenAi account 4"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "workflowId": {
+          "__rl": true,
+          "value": "T1PMxwA5UVGwhP1n",
+          "mode": "list",
+          "cachedResultUrl": "/workflow/T1PMxwA5UVGwhP1n",
+          "cachedResultName": "Babys World — Historial De Clientes"
+        },
+        "workflowInputs": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "user_id": "={{ $('Convertir mensaje').item.json.id_usuario }}",
+            "message": "={{ $('Convertir mensaje').item.json.message }}"
+          },
+          "matchingColumns": [],
+          "schema": [
+            {
+              "id": "user_id",
+              "displayName": "user_id",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string"
+            },
+            {
+              "id": "message",
+              "displayName": "message",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string"
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": true
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.executeWorkflow",
+      "typeVersion": 1.2,
+      "position": [
+        -1008,
+        736
+      ],
+      "id": "04190578-f826-43fe-8852-28bc7fcc7d1e",
+      "name": "Llamada a historial de clientes"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "2bf9fff9-8f90-4db5-92ba-ff177e7b2230",
+              "name": "mensaje_usuario",
+              "value": "={{ $json.prompt ?? $('Convertir mensaje').item.json.message}}\n",
+              "type": "string"
+            },
+            {
+              "id": "9eb0a8e5-ac38-4dc3-a27c-42e2ac5338b9",
+              "name": "prompt",
+              "value": "={{ $json.prompt }}",
+              "type": "string"
+            },
+            {
+              "id": "a5a6189b-08ff-4f75-a4b6-c13939f250a8",
+              "name": "historial_disponible",
+              "value": "={{ $json.historial_disponible }}",
+              "type": "boolean"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        -864,
+        1008
+      ],
+      "id": "84e00556-f87e-421e-a2ef-f24814052276",
+      "name": "Convertir Entrada"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "13ee2b30-1377-415c-9927-dccb0f78b231",
+              "name": "message",
+              "value": "={{ $json.message }}",
+              "type": "string"
+            },
+            {
+              "id": "5927e26f-ee6f-449a-aeae-a83a0123973d",
+              "name": "id_usuario",
+              "value": "={{$json.session_id }}",
+              "type": "string"
+            },
+            {
+              "id": "befe4d09-ddb6-4acd-9b1c-3cf5d77026d9",
+              "name": "tipo_mensaje",
+              "value": "={{ $json.tipo_mensaje }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        -1376,
+        864
+      ],
+      "id": "e83d8c9e-1d12-4915-b3c5-695be2ada1c4",
+      "name": "Convertir mensaje"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "40512a95-0b94-46c9-87a8-3e9eb65d40aa",
+              "leftValue": "={{ $json.tipo_mensaje }}",
+              "rightValue": "Primer mensaje",
+              "operator": {
+                "type": "string",
+                "operation": "equals",
+                "name": "filter.operator.equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        -1184,
+        864
+      ],
+      "id": "271256ba-175e-41c5-bea6-6ff8820afb03",
+      "name": "If"
+    },
+    {
+      "parameters": {
+        "mode": "retrieve-as-tool",
+        "toolName": "YoEco",
+        "toolDescription": "Eres un asistente que nos apoya en la generación de información relacionada con la empresa BabysWorld. Tu enfoque debe ser ayudarnos a responder preguntas sobre la operación y forma de trabajo de la empresa BabysWorld, así como ayudar a resolver las dudas sobre a que se dedica la empresa, que vende, cual es su público objetivo, cual es su misión y visión, y en general orientar y asesorar a clientes existentes o nuevos en el ciclo de ventas para que estos decidan comprar a la tienda Baby´s world. ",
+        "qdrantCollection": {
+          "__rl": true,
+          "value": "BabysWorld_Business_TEST",
+          "mode": "list",
+          "cachedResultName": "BabysWorld_Business_TEST"
+        },
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.vectorStoreQdrant",
+      "typeVersion": 1.1,
+      "position": [
+        -208,
+        1264
+      ],
+      "id": "0c61b3e3-7437-40fd-b4d1-861942e17b75",
+      "name": "Tienda/Negocio",
+      "credentials": {
+        "qdrantApi": {
+          "id": "ZYv8vdr6tkTS4jYz",
+          "name": "QdrantApi account 3"
+        }
+      }
+    },
+    {
+      "parameters": {},
+      "type": "@n8n/n8n-nodes-langchain.toolThink",
+      "typeVersion": 1.1,
+      "position": [
+        -592,
+        1264
+      ],
+      "id": "10b243fc-7876-4208-92ae-b2e0322e0202",
+      "name": "Think"
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.chatTrigger",
+      "typeVersion": 1.4,
+      "position": [
+        -1856,
+        864
+      ],
+      "id": "557ac259-7421-47a5-b95f-647b09218177",
+      "name": "When chat message received",
+      "webhookId": "d8f8b817-8839-41f0-852e-f3277fe6184c"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "8331e5c3-e4f3-49ed-b796-415df269904e",
+              "name": "message",
+              "value": "={{ $json.chatInput }}",
+              "type": "string"
+            },
+            {
+              "id": "341d5a9b-c46d-4061-b98a-e91aea31800f",
+              "name": "session_id",
+              "value": "3183779152",
+              "type": "string"
+            },
+            {
+              "id": "58e42c9b-4582-4290-983a-2309fce8bf6c",
+              "name": "tipo_mensaje",
+              "value": "Conversacion exsitente",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        -1632,
+        864
+      ],
+      "id": "a41ce3df-605b-40df-a870-01bd02e499da",
+      "name": "Edit Fields"
+    },
+    {
+      "parameters": {
+        "schemaType": "manual",
+        "inputSchema": "{\n  \"type\": \"object\",\n  \"properties\": {\n    \"replyText\": { \"type\": \"string\" },\n    \"consultaCatalogo\": { \"type\": \"boolean\" },\n     \"tipo\": { \"type\": \"string\" },\n     \"valor\": { \"type\": \"string\" }\n  },\n  \"required\": [\"replyText\", \"consultaCatalogo\", \"tipo\", \"valore\"]\n}\n\n"
+      },
+      "type": "@n8n/n8n-nodes-langchain.outputParserStructured",
+      "typeVersion": 1.3,
+      "position": [
+        192,
+        1216
+      ],
+      "id": "6728ef4d-bc6c-4658-a8f2-8c695417d847",
+      "name": "Structured Output Parser"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "bb5f247e-b0b8-4106-a568-994c5a0ea531",
+              "leftValue": "={{ $json.output.consultaCatalogo }}",
+              "rightValue": "",
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        -224,
+        448
+      ],
+      "id": "3aa011f9-5c68-40f6-adca-823ba228a4e9",
+      "name": "Valida consulta catalogo"
+    },
+    {
+      "parameters": {
+        "rules": {
+          "values": [
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 3
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $json.output.tipo }}",
+                    "rightValue": "productos",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    },
+                    "id": "098d3512-fa9f-4f2a-a1f5-ad328f976d22"
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "Obtiene Categorias"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 3
+                },
+                "conditions": [
+                  {
+                    "id": "3f0b24bc-6a51-4e64-967b-5f98d2a45c03",
+                    "leftValue": "={{ $json.output.tipo }}",
+                    "rightValue": "categoria",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "Busca por categoria"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 3
+                },
+                "conditions": [
+                  {
+                    "id": "edaac69a-82e6-4531-85fc-743f7ce1f99f",
+                    "leftValue": "={{ $json.output.tipo }}",
+                    "rightValue": "producto",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "Busca por producto"
+            }
+          ]
+        },
+        "options": {
+          "fallbackOutput": "extra"
+        }
+      },
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 3.4,
+      "position": [
+        16,
+        368
+      ],
+      "id": "7340733e-5aae-4c41-b559-dcf94a9d29f6",
+      "name": "Switch"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "=https://1537c683-48da-4631-ab76-ad698b6b9881.us-east-1-0.aws.cloud.qdrant.io/collections/BabysWorld_Catalogo/points/scroll",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "api-key",
+              "value": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJhY2Nlc3MiOiJtIn0.JAQWQxC9pi-OqDGt1gflxPim1XwBWw6Iq7Nq8Xdan3s"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "{\n    \"limit\": 100,\n    \"with_payload\": true,\n    \"with_vector\": false\n}",
+        "options": {
+          "redirect": {
+            "redirect": {}
+          }
+        }
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.3,
+      "position": [
+        352,
+        224
+      ],
+      "id": "fdb62bf8-93bf-4c3b-876f-e546682f7fbb",
+      "name": "Obtiene productos Qdrant"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://1537c683-48da-4631-ab76-ad698b6b9881.us-east-1-0.aws.cloud.qdrant.io/collections/BabysWorld_Catalogo/points/scroll",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "api-key",
+              "value": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJhY2Nlc3MiOiJtIn0.JAQWQxC9pi-OqDGt1gflxPim1XwBWw6Iq7Nq8Xdan3s"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"filter\": {\n    \"must\": [\n      {\n        \"key\": \"metadata.categoria\",\n        \"match\": {\n          \"value\": \"{{ $('Valida consulta catalogo').item.json.output.valor.toUpperCase() }}\"\n        }\n      }\n    ]\n  },\n  \"limit\": 30,\n  \"with_payload\": true\n}",
+        "options": {
+          "redirect": {
+            "redirect": {}
+          }
+        }
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.3,
+      "position": [
+        352,
+        416
+      ],
+      "id": "dc287c9d-6dc8-492a-a42f-0bea8732a880",
+      "name": "Obtiene productos por  categoria"
+    },
+    {
+      "parameters": {
+        "jsCode": "const items = $input.first().json.result.points\nconst categorias = items.reduce((acc, item) => {\n  const rawCategory = item.payload?.metadata?.categoria?.trim();\n\n  if (rawCategory) {\n    const pascalCased = rawCategory\n      .toLowerCase()\n      .split(' ')\n      .filter(word => word.length > 0)\n      .map(word => \n        word.charAt(0).toUpperCase() + word.slice(1)\n      )\n      .join('');\n\n    if (!acc.includes(pascalCased)) {\n      acc.push(pascalCased);\n    }\n  }\n  \n  return acc;\n}, []);\n\nreturn { items: categorias, tipo: \"Categoria\" };"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        560,
+        224
+      ],
+      "id": "3e96f4e4-788b-4e8b-9ff1-456531e13151",
+      "name": "Agrupa categorias"
+    },
+    {
+      "parameters": {
+        "jsCode": "const items = $('Obtiene productos por  categoria').first().json.result.points\nconst productos = items.reduce((acc, item) => {\n const product = item.payload?.metadata?.titulo?.trim();\n if (product && !acc.includes(product)) {\n    acc.push(product);\n  }\n  \n  return acc;\n}, []);\n\nreturn productos.map((item) => {return {nombre: item}})\n\n"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        992,
+        416
+      ],
+      "id": "3cd0792b-a0e3-4d2a-a31b-2da542cb94e0",
+      "name": "Agrupa productos"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://1537c683-48da-4631-ab76-ad698b6b9881.us-east-1-0.aws.cloud.qdrant.io/collections/BabysWorld_Catalogo/points/scroll",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "api-key",
+              "value": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJhY2Nlc3MiOiJtIn0.JAQWQxC9pi-OqDGt1gflxPim1XwBWw6Iq7Nq8Xdan3s"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"filter\": {\n    \"must\": [\n      {\n        \"key\": \"metadata.titulo\",\n        \"match\": {\n          \"text\": \"{{ $('Valida consulta catalogo').item.json.output.valor.toUpperCase() }}\"\n        }\n      }\n    ]\n  },\n  \"limit\": 30,\n  \"with_payload\": true\n}",
+        "options": {
+          "redirect": {
+            "redirect": {}
+          }
+        }
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.3,
+      "position": [
+        368,
+        656
+      ],
+      "id": "fa12a977-78d3-42a3-b17a-3c31e51aabe4",
+      "name": "Obtiene producto por nombre"
+    },
+    {
+      "parameters": {
+        "jsCode": "const items = $input.first().json.result.points\nconst productos = items.reduce((acc, item) => {\n const product = item.payload?.metadata?.titulo?.trim();\n if (product && !acc.includes(product)) {\n    acc.push(product);\n  }\n  \n  return acc;\n}, []);\n\nreturn { items: productos, tipo: \"Productos\" };"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        560,
+        656
+      ],
+      "id": "af078b98-590c-49cf-b1dc-2c30a0f6e5d4",
+      "name": "Agrupa productos1"
+    },
+    {
+      "parameters": {},
+      "type": "n8n-nodes-base.noOp",
+      "typeVersion": 1,
+      "position": [
+        16,
+        560
+      ],
+      "id": "e482ac3e-ea34-4889-8d18-482290379be0",
+      "name": "Finaliza"
+    },
+    {
+      "parameters": {
+        "url": "https://www.googleapis.com/drive/v3/files",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "googleDriveOAuth2Api",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            {
+              "name": "q",
+              "value": "=name=\"{{ $('Switch').item.json.output.valor.toUpperCase() }}\" and '1hiDjeYmj7r9zZRl59Z9NiWWfT7bm3v6h' in parents and trashed=false"
+            },
+            {
+              "name": "fields",
+              "value": "files(id,name,mimeType,webContentLink,webViewLink)"
+            },
+            {
+              "name": "pageSize",
+              "value": "100"
+            }
+          ]
+        },
+        "options": {
+          "redirect": {
+            "redirect": {}
+          }
+        }
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        560,
+        416
+      ],
+      "id": "9609c1b4-5279-4669-97cf-80a599d418a2",
+      "name": "Obtiene id categoria drive",
+      "credentials": {
+        "googleDriveOAuth2Api": {
+          "id": "55RafwUzcXl8phIg",
+          "name": "Google Drive account 3"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "fb036818-f23f-4309-9635-45e4421d2e63",
+              "name": "id",
+              "value": "={{ $json.files[0].id }}",
+              "type": "string"
+            },
+            {
+              "id": "9d8a6cb3-7ce7-4ba0-a837-813076a780f4",
+              "name": "name",
+              "value": "={{ $json.files[0].name }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        768,
+        416
+      ],
+      "id": "b3e050e2-d507-4a58-9e8a-3196b2097546",
+      "name": "Datos categoria"
+    },
+    {
+      "parameters": {
+        "jsCode": "const items = $input.all();\nconst files = items.map((item) => item.json.files).flat();\nconst filter = files.find((item) => item.name.split('.')[0] === \"1\")\nif (filter){\n  return {exist: true, id:filter.id}\n} else\n  return {exist: false, id:0}\n\n  \n "
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        2480,
+        960
+      ],
+      "id": "27dbcae4-6add-405c-8488-ab3bd15102d6",
+      "name": "Code in JavaScript1"
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "type": "n8n-nodes-base.splitInBatches",
+      "typeVersion": 3,
+      "position": [
+        1216,
+        960
+      ],
+      "id": "89196203-7b87-4638-985b-24365bcac08d",
+      "name": "Recorre productos"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "d568f7f6-21d6-464c-abda-d992b4d0f73d",
+              "leftValue": "={{ $json.files }}",
+              "rightValue": "",
+              "operator": {
+                "type": "array",
+                "operation": "notEmpty",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        1856,
+        1056
+      ],
+      "id": "fcf63aaa-c918-4bc1-ba08-3d1f683f7052",
+      "name": "Existe producto"
+    },
+    {
+      "parameters": {
+        "url": "https://www.googleapis.com/drive/v3/files",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "googleDriveOAuth2Api",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            {
+              "name": "q",
+              "value": "=name=\"{{ $('Nombre producto').item.json.name }}\" and '{{ $('Datos categoria').item.json.id }}' in parents and trashed=false"
+            },
+            {
+              "name": "fields",
+              "value": "files(id,name,mimeType,webContentLink,webViewLink)"
+            },
+            {
+              "name": "pageSize",
+              "value": "100"
+            }
+          ]
+        },
+        "options": {
+          "redirect": {
+            "redirect": {}
+          }
+        }
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        1648,
+        1056
+      ],
+      "id": "8ffca6f9-187d-4551-9c7a-5b86aa25a3ea",
+      "name": "Obtiene id folder producto",
+      "credentials": {
+        "googleDriveOAuth2Api": {
+          "id": "55RafwUzcXl8phIg",
+          "name": "Google Drive account 3"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "c93facbc-bd91-4e1e-a959-d4b1608c0205",
+              "name": "name",
+              "value": "={{ $json.nombre }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        1424,
+        1056
+      ],
+      "id": "171c6333-1932-4ee9-80ae-811f3a7232f6",
+      "name": "Nombre producto"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "273856bb-8445-42ce-b6e3-0a7fe4e05106",
+              "name": "id",
+              "value": "={{ $json.files[0].id }}",
+              "type": "string"
+            },
+            {
+              "id": "36ab0fc0-3515-44ff-b174-d921addbe763",
+              "name": "name",
+              "value": "={{ $json.files[0].name }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        2064,
+        960
+      ],
+      "id": "810c022b-5187-45d9-aada-ac1adc5c1aae",
+      "name": "Datos producto"
+    },
+    {
+      "parameters": {
+        "url": "https://www.googleapis.com/drive/v3/files",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "googleDriveOAuth2Api",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            {
+              "name": "q",
+              "value": "='{{ $('Datos producto').item.json.id }}' in parents and trashed=false"
+            },
+            {
+              "name": "fields",
+              "value": "files(id,name,mimeType,webContentLink,webViewLink)"
+            },
+            {
+              "name": "pageSize",
+              "value": "100"
+            }
+          ]
+        },
+        "options": {
+          "redirect": {
+            "redirect": {}
+          }
+        }
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        2256,
+        960
+      ],
+      "id": "dc9b8e3e-0b32-4a7e-9d6b-91ef8d2ac85d",
+      "name": "Obtiene archivos producto",
+      "credentials": {
+        "googleDriveOAuth2Api": {
+          "id": "55RafwUzcXl8phIg",
+          "name": "Google Drive account 3"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "24b14f97-c96e-4f88-9b9f-fd8ec51834b1",
+              "leftValue": "={{ $json.exist }}",
+              "rightValue": "",
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        2704,
+        960
+      ],
+      "id": "ed548618-369a-4c67-bbbb-5ad1cc23f5f4",
+      "name": "Existe imagen principal"
+    },
+    {
+      "parameters": {
+        "operation": "download",
+        "fileId": {
+          "__rl": true,
+          "value": "={{ $json.id }}",
+          "mode": "id"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleDrive",
+      "typeVersion": 3,
+      "position": [
+        2912,
+        864
+      ],
+      "id": "64818bb2-9044-4360-9dd5-ebfc99e41a0c",
+      "name": "Download file",
+      "credentials": {
+        "googleDriveOAuth2Api": {
+          "id": "55RafwUzcXl8phIg",
+          "name": "Google Drive account 3"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "send",
+        "phoneNumberId": "816698168200279",
+        "recipientPhoneNumber": "={{ $('Convertir mensaje').item.json.id_usuario }}",
+        "messageType": "image",
+        "mediaPath": "useMedian8n",
+        "mediaPropertyName": "=data",
+        "additionalFields": {
+          "mediaCaption": "={{ $('Datos producto').item.json.name }}"
+        }
+      },
+      "type": "n8n-nodes-base.whatsApp",
+      "typeVersion": 1.1,
+      "position": [
+        3360,
+        656
+      ],
+      "id": "d46db071-8fba-48f4-b1b8-c3d755e537e0",
+      "name": "Envia Imagen",
+      "webhookId": "f5c0c724-74d0-4a81-bc93-2585a4d271f2",
+      "credentials": {
+        "whatsAppApi": {
+          "id": "iHkr3pR5oLrSBpeh",
+          "name": "WhatsApp BW AccessToken"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "send",
+        "phoneNumberId": "816698168200279",
+        "recipientPhoneNumber": "={{ $('Convertir mensaje').item.json.id_usuario }}",
+        "textBody": "={{ $('Datos producto').item.json.name }} ** Producto sin imagen disponible",
+        "additionalFields": {}
+      },
+      "type": "n8n-nodes-base.whatsApp",
+      "typeVersion": 1.1,
+      "position": [
+        3344,
+        1056
+      ],
+      "id": "c27bfcdc-3336-4d64-af48-c66feeea81fe",
+      "name": "Envia mensaje",
+      "webhookId": "f5c0c724-74d0-4a81-bc93-2585a4d271f2",
+      "credentials": {
+        "whatsAppApi": {
+          "id": "iHkr3pR5oLrSBpeh",
+          "name": "WhatsApp BW AccessToken"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "workflowId": {
+          "__rl": true,
+          "value": "aRJCOVZWZxrRZu3p",
+          "mode": "list",
+          "cachedResultUrl": "/workflow/aRJCOVZWZxrRZu3p",
+          "cachedResultName": "Babys World — Catalogo Qdrant"
+        },
+        "workflowInputs": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "tipo": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('tipo', ``, 'string') }}",
+            "valor": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('valor', ``, 'string') }}"
+          },
+          "matchingColumns": [],
+          "schema": [
+            {
+              "id": "tipo",
+              "displayName": "tipo",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string"
+            },
+            {
+              "id": "valor",
+              "displayName": "valor",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string"
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.toolWorkflow",
+      "typeVersion": 2.2,
+      "position": [
+        -448,
+        1264
+      ],
+      "id": "820c9de7-d76c-45c3-9f14-63b7e64504c1",
+      "name": "Catalogo"
+    }
+  ],
+  "connections": {
+    "Simple Memory": {
+      "ai_memory": [
+        [
+          {
+            "node": "Agente Principal",
+            "type": "ai_memory",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Embeddings OpenAI": {
+      "ai_embedding": [
+        [
+          {
+            "node": "Tienda/Negocio",
+            "type": "ai_embedding",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Agente Principal": {
+      "main": [
+        []
+      ]
+    },
+    "Modelo De Chat2": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "Agente Principal",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Llamada a historial de clientes": {
+      "main": [
+        [
+          {
+            "node": "Convertir Entrada",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Convertir Entrada": {
+      "main": [
+        [
+          {
+            "node": "Agente Principal",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Convertir mensaje": {
+      "main": [
+        [
+          {
+            "node": "If",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "If": {
+      "main": [
+        [
+          {
+            "node": "Llamada a historial de clientes",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Convertir Entrada",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Tienda/Negocio": {
+      "ai_tool": [
+        [
+          {
+            "node": "Agente Principal",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Think": {
+      "ai_tool": [
+        [
+          {
+            "node": "Agente Principal",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "When chat message received": {
+      "main": [
+        [
+          {
+            "node": "Edit Fields",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Edit Fields": {
+      "main": [
+        [
+          {
+            "node": "Convertir mensaje",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Structured Output Parser": {
+      "ai_outputParser": [
+        [
+          {
+            "node": "Agente Principal",
+            "type": "ai_outputParser",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Valida consulta catalogo": {
+      "main": [
+        [
+          {
+            "node": "Switch",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Finaliza",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Switch": {
+      "main": [
+        [
+          {
+            "node": "Obtiene productos Qdrant",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Obtiene productos por  categoria",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Obtiene producto por nombre",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Obtiene productos Qdrant": {
+      "main": [
+        [
+          {
+            "node": "Agrupa categorias",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Obtiene productos por  categoria": {
+      "main": [
+        [
+          {
+            "node": "Obtiene id categoria drive",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Obtiene producto por nombre": {
+      "main": [
+        [
+          {
+            "node": "Agrupa productos1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Agrupa categorias": {
+      "main": [
+        []
+      ]
+    },
+    "Agrupa productos": {
+      "main": [
+        [
+          {
+            "node": "Recorre productos",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Agrupa productos1": {
+      "main": [
+        []
+      ]
+    },
+    "Obtiene id categoria drive": {
+      "main": [
+        [
+          {
+            "node": "Datos categoria",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Datos categoria": {
+      "main": [
+        [
+          {
+            "node": "Agrupa productos",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code in JavaScript1": {
+      "main": [
+        [
+          {
+            "node": "Existe imagen principal",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Recorre productos": {
+      "main": [
+        [],
+        [
+          {
+            "node": "Nombre producto",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Existe producto": {
+      "main": [
+        [
+          {
+            "node": "Datos producto",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Obtiene id folder producto": {
+      "main": [
+        [
+          {
+            "node": "Existe producto",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Nombre producto": {
+      "main": [
+        [
+          {
+            "node": "Obtiene id folder producto",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Datos producto": {
+      "main": [
+        [
+          {
+            "node": "Obtiene archivos producto",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Obtiene archivos producto": {
+      "main": [
+        [
+          {
+            "node": "Code in JavaScript1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Existe imagen principal": {
+      "main": [
+        [
+          {
+            "node": "Download file",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Envia mensaje",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Download file": {
+      "main": [
+        [
+          {
+            "node": "Envia Imagen",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Envia Imagen": {
+      "main": [
+        [
+          {
+            "node": "Recorre productos",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Envia mensaje": {
+      "main": [
+        [
+          {
+            "node": "Recorre productos",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Catalogo": {
+      "ai_tool": [
+        [
+          {
+            "node": "Agente Principal",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "nodeGroups": [],
+  "settings": {
+    "executionOrder": "v1",
+    "callerPolicy": "workflowsFromSameOwner",
+    "errorWorkflow": "5j9hfL5IlhLCpydB",
+    "timeSavedMode": "fixed",
+    "availableInMCP": false
+  },
+  "staticData": null,
+  "pinData": {},
+  "meta": {
+    "templateCredsSetupCompleted": true
+  },
+  "tags": [
+    {
+      "id": "6e1haF3pXukz6KVf",
+      "name": "env:dev",
+      "createdAt": "2025-05-27T01:29:25.680Z",
+      "updatedAt": "2026-02-11T00:17:23.837Z"
+    }
+  ],
+  "shared": [
+    {
+      "role": "workflow:owner",
+      "workflowId": "awRioOjUZxS1t9Mi",
+      "projectId": "8h8pwWGcWlnGEym3",
+      "createdAt": "2025-12-26T22:27:02.633Z",
+      "updatedAt": "2025-12-26T22:27:02.633Z"
+    }
+  ],
+  "activeVersion": null
+}
