@@ -1,0 +1,165 @@
+{
+  "id": "0yiQz1sZAJBA0cue",
+  "name": "Flujo guardar historial de asesor (DEV) test",
+  "active": false,
+  "activeVersionId": null,
+  "createdAt": "2026-05-28T21:44:55.871Z",
+  "updatedAt": "2026-05-28T21:45:20.131Z",
+  "isArchived": false,
+  "versionId": "ef11c158-5bc5-4732-a4e9-445f3069f50f",
+  "triggerCount": 0,
+  "nodes": [
+    {
+      "parameters": {
+        "workflowInputs": {
+          "values": [
+            {
+              "name": "id"
+            },
+            {
+              "name": "rol"
+            },
+            {
+              "name": "mensaje"
+            },
+            {
+              "name": "context_id_whatsapp"
+            },
+            {
+              "name": "context_relation_whatsapp"
+            },
+            {
+              "name": "channel"
+            },
+            {
+              "name": "execution_id"
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.executeWorkflowTrigger",
+      "typeVersion": 1.1,
+      "position": [
+        0,
+        0
+      ],
+      "id": "070d89da-f188-43a0-a061-2dcfc31fd69c",
+      "name": "When Executed by Another Workflow"
+    },
+    {
+      "parameters": {
+        "tableId": "babys_world_dev_chat_history",
+        "fieldsUi": {
+          "fieldValues": [
+            {
+              "fieldId": "rol",
+              "fieldValue": "={{ $json.rol }}"
+            },
+            {
+              "fieldId": "message",
+              "fieldValue": "={{ $json.mensaje }}"
+            },
+            {
+              "fieldId": "context_id",
+              "fieldValue": "={{ $json.context_id_whatsapp }}"
+            },
+            {
+              "fieldId": "context_relation",
+              "fieldValue": "={{ $json.context_relation_whatsapp }}"
+            },
+            {
+              "fieldId": "session_id",
+              "fieldValue": "={{ $json.id }}"
+            },
+            {
+              "fieldId": "channel",
+              "fieldValue": "={{ $json.channel }}"
+            },
+            {
+              "fieldId": "create_at",
+              "fieldValue": "={{ $now }}"
+            },
+            {
+              "fieldId": "create_date",
+              "fieldValue": "={{ $now.format('yyyy-MM-dd') }}"
+            },
+            {
+              "fieldId": "create_time",
+              "fieldValue": "={{ $now.format('HH:mm:ss') }}"
+            },
+            {
+              "fieldId": "execution_id",
+              "fieldValue": "={{ $json.execution_id }}"
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.supabase",
+      "typeVersion": 1,
+      "position": [
+        336,
+        0
+      ],
+      "id": "7cad67bf-087b-4ece-9eee-c412ed4cba1b",
+      "name": "insert_chat_history",
+      "credentials": {
+        "supabaseApi": {
+          "id": "dtKFPWrXh0HZEyUt",
+          "name": "clients_database"
+        }
+      },
+      "onError": "continueRegularOutput"
+    }
+  ],
+  "connections": {
+    "When Executed by Another Workflow": {
+      "main": [
+        [
+          {
+            "node": "insert_chat_history",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "nodeGroups": [],
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate",
+    "availableInMCP": false
+  },
+  "staticData": null,
+  "pinData": {
+    "When Executed by Another Workflow": [
+      {
+        "json": {
+          "id": null,
+          "timestamp": null,
+          "rol": null,
+          "mensaje": null,
+          "fecha": null,
+          "context_id_whatsapp": null,
+          "context_relation_whatsapp": null,
+          "channel": null,
+          "execution_id": null
+        }
+      }
+    ]
+  },
+  "meta": {
+    "templateCredsSetupCompleted": true
+  },
+  "tags": [],
+  "shared": [
+    {
+      "role": "workflow:owner",
+      "workflowId": "0yiQz1sZAJBA0cue",
+      "projectId": "8h8pwWGcWlnGEym3",
+      "createdAt": "2026-05-28T21:44:55.874Z",
+      "updatedAt": "2026-05-28T21:44:55.874Z"
+    }
+  ],
+  "activeVersion": null
+}
