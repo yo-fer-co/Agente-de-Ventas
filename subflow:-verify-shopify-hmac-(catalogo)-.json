@@ -1,0 +1,179 @@
+{
+  "id": "Xdodv0vmnbB0nVNt",
+  "name": "Subflow: Verify Shopify HMAC (Catalogo)",
+  "active": true,
+  "activeVersionId": "a5085bbb-701c-472f-ab5f-805f43632e9a",
+  "createdAt": "2026-08-11T21:40:23.154Z",
+  "updatedAt": "2026-10-07T23:38:49.493Z",
+  "isArchived": false,
+  "versionId": "a5085bbb-701c-472f-ab5f-805f43632e9a",
+  "triggerCount": 0,
+  "nodes": [
+    {
+      "parameters": {
+        "content": "## Subflow: Verify Shopify HMAC (Catalogo)\n\nVerifica la firma X-Shopify-Hmac-Sha256 contra el secreto guardado en $vars (por defecto SHOPIFY_WEBHOOK_SECRET).\n\nMisma logica ya probada en produccion en M5_EVT_Shopify_Payment (nodo 03_Verify_Shopify_HMAC), reescrita aqui de forma independiente: este subflujo NO depende del workflow de pagos ni comparte ejecucion con el.\n\nInput: raw_body (string exacto tal como llego, sin re-serializar), hmac_header (string), secret_name (opcional).\nOutput: { valid, reason }.",
+        "height": 260,
+        "width": 380,
+        "color": 5
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        0,
+        0
+      ],
+      "id": "bb59ef1b-7ae6-4d7d-b27e-e443999c3079",
+      "name": "Sticky_284fb4ef"
+    },
+    {
+      "parameters": {
+        "workflowInputs": {
+          "values": [
+            {
+              "name": "raw_body"
+            },
+            {
+              "name": "hmac_header"
+            },
+            {
+              "name": "secret_name"
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.executeWorkflowTrigger",
+      "typeVersion": 1.1,
+      "position": [
+        432,
+        80
+      ],
+      "id": "8acd3800-40cc-4dc4-be43-5590f22a0957",
+      "name": "When Executed by Another Workflow"
+    },
+    {
+      "parameters": {
+        "jsCode": "const crypto = require('crypto');\n\nconst input = $input.first().json ?? {};\nconst rawBody = input.raw_body ?? '';\nconst receivedHmac = input.hmac_header ?? null;\nconst secretName = input.secret_name || 'SHOPIFY_WEBHOOK_SECRET';\nconst secret = $vars[secretName] ?? null;\n\nfunction safeCompareBase64(a, b) {\n  if (!a || !b) return false;\n  const aBuffer = Buffer.from(a, 'base64');\n  const bBuffer = Buffer.from(b, 'base64');\n  if (aBuffer.length !== bBuffer.length) return false;\n  return crypto.timingSafeEqual(aBuffer, bBuffer);\n}\n\nlet valid = false;\nlet reason = null;\n\nif (!secret) {\n  reason = 'missing_shopify_webhook_secret';\n} else if (!receivedHmac) {\n  reason = 'missing_shopify_hmac_header';\n} else if (!rawBody) {\n  reason = 'missing_raw_body';\n} else {\n  const calculatedHmac = crypto\n    .createHmac('sha256', secret)\n    .update(rawBody, 'utf8')\n    .digest('base64');\n\n  valid = safeCompareBase64(calculatedHmac, receivedHmac);\n  if (!valid) reason = 'invalid_hmac';\n}\n\nreturn [{\n  json: {\n    valid,\n    reason,\n    validated_at: new Date().toISOString()\n  }\n}];\n"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        688,
+        80
+      ],
+      "id": "a8e7a285-c4d6-4c7c-b9de-06a4a469e19f",
+      "name": "Verify_HMAC"
+    }
+  ],
+  "connections": {
+    "When Executed by Another Workflow": {
+      "main": [
+        [
+          {
+            "node": "Verify_HMAC",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "nodeGroups": [],
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate",
+    "availableInMCP": false
+  },
+  "staticData": null,
+  "pinData": {},
+  "meta": null,
+  "tags": [],
+  "shared": [
+    {
+      "role": "workflow:owner",
+      "workflowId": "Xdodv0vmnbB0nVNt",
+      "projectId": "8h8pwWGcWlnGEym3",
+      "createdAt": "2026-08-11T21:40:23.156Z",
+      "updatedAt": "2026-08-11T21:40:23.156Z"
+    }
+  ],
+  "activeVersion": {
+    "versionId": "a5085bbb-701c-472f-ab5f-805f43632e9a",
+    "workflowId": "Xdodv0vmnbB0nVNt",
+    "nodes": [
+      {
+        "parameters": {
+          "content": "## Subflow: Verify Shopify HMAC (Catalogo)\n\nVerifica la firma X-Shopify-Hmac-Sha256 contra el secreto guardado en $vars (por defecto SHOPIFY_WEBHOOK_SECRET).\n\nMisma logica ya probada en produccion en M5_EVT_Shopify_Payment (nodo 03_Verify_Shopify_HMAC), reescrita aqui de forma independiente: este subflujo NO depende del workflow de pagos ni comparte ejecucion con el.\n\nInput: raw_body (string exacto tal como llego, sin re-serializar), hmac_header (string), secret_name (opcional).\nOutput: { valid, reason }.",
+          "height": 260,
+          "width": 380,
+          "color": 5
+        },
+        "type": "n8n-nodes-base.stickyNote",
+        "typeVersion": 1,
+        "position": [
+          0,
+          0
+        ],
+        "id": "bb59ef1b-7ae6-4d7d-b27e-e443999c3079",
+        "name": "Sticky_284fb4ef"
+      },
+      {
+        "parameters": {
+          "workflowInputs": {
+            "values": [
+              {
+                "name": "raw_body"
+              },
+              {
+                "name": "hmac_header"
+              },
+              {
+                "name": "secret_name"
+              }
+            ]
+          }
+        },
+        "type": "n8n-nodes-base.executeWorkflowTrigger",
+        "typeVersion": 1.1,
+        "position": [
+          432,
+          80
+        ],
+        "id": "8acd3800-40cc-4dc4-be43-5590f22a0957",
+        "name": "When Executed by Another Workflow"
+      },
+      {
+        "parameters": {
+          "jsCode": "const crypto = require('crypto');\n\nconst input = $input.first().json ?? {};\nconst rawBody = input.raw_body ?? '';\nconst receivedHmac = input.hmac_header ?? null;\nconst secretName = input.secret_name || 'SHOPIFY_WEBHOOK_SECRET';\nconst secret = $vars[secretName] ?? null;\n\nfunction safeCompareBase64(a, b) {\n  if (!a || !b) return false;\n  const aBuffer = Buffer.from(a, 'base64');\n  const bBuffer = Buffer.from(b, 'base64');\n  if (aBuffer.length !== bBuffer.length) return false;\n  return crypto.timingSafeEqual(aBuffer, bBuffer);\n}\n\nlet valid = false;\nlet reason = null;\n\nif (!secret) {\n  reason = 'missing_shopify_webhook_secret';\n} else if (!receivedHmac) {\n  reason = 'missing_shopify_hmac_header';\n} else if (!rawBody) {\n  reason = 'missing_raw_body';\n} else {\n  const calculatedHmac = crypto\n    .createHmac('sha256', secret)\n    .update(rawBody, 'utf8')\n    .digest('base64');\n\n  valid = safeCompareBase64(calculatedHmac, receivedHmac);\n  if (!valid) reason = 'invalid_hmac';\n}\n\nreturn [{\n  json: {\n    valid,\n    reason,\n    validated_at: new Date().toISOString()\n  }\n}];\n"
+        },
+        "type": "n8n-nodes-base.code",
+        "typeVersion": 2,
+        "position": [
+          688,
+          80
+        ],
+        "id": "a8e7a285-c4d6-4c7c-b9de-06a4a469e19f",
+        "name": "Verify_HMAC"
+      }
+    ],
+    "connections": {
+      "When Executed by Another Workflow": {
+        "main": [
+          [
+            {
+              "node": "Verify_HMAC",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      }
+    },
+    "nodeGroups": [],
+    "authors": "Michelo Vaca Cardozo",
+    "name": "Version a5085bbb",
+    "description": "",
+    "autosaved": true,
+    "createdAt": "2026-08-12T01:09:58.095Z",
+    "updatedAt": "2026-08-12T01:19:03.000Z"
+  }
+}
