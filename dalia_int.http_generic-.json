@@ -1,0 +1,2199 @@
+{
+  "id": "3pLANf6wOcZfy2jn",
+  "name": "DALIA_INT.http_generic",
+  "active": true,
+  "activeVersionId": "131038b3-a2f5-4a04-ac30-526912c3becf",
+  "createdAt": "2026-10-03T02:21:21.716Z",
+  "updatedAt": "2026-10-03T16:46:52.786Z",
+  "isArchived": false,
+  "versionId": "131038b3-a2f5-4a04-ac30-526912c3becf",
+  "triggerCount": 0,
+  "nodes": [
+    {
+      "id": "a50f2213-8fd8-4c82-86eb-4ea9b94dbbaa",
+      "name": "Solicitud del puerto",
+      "type": "n8n-nodes-base.executeWorkflowTrigger",
+      "typeVersion": 1.2,
+      "position": [
+        0,
+        1232
+      ],
+      "parameters": {
+        "inputSource": "passthrough"
+      }
+    },
+    {
+      "id": "ca50dc7f-6c4f-48de-9c00-bc6083d0ff1d",
+      "name": "Construir solicitud generica",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        224,
+        1232
+      ],
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "jsCode": "// Adaptador genérico: construye la solicitud HTTP a partir de settings.operations[<operación>].\n// Plantillas: \"{{input.a.b}}\", \"{{settings.x}}\", \"{{envelope.trace_id}}\". Si un string es\n// exactamente una plantilla, se conserva el tipo del valor (número, objeto, arreglo).\nconst r = $json;\nconst s = r.settings || {};\nconst op = (s.operations || {})[r.operation];\nconst fail = (status, code, message) => ({ json: { skip: true, status, error: { code, message } } });\nconst SLOTS = ['catalog', 'inventory', 'order_registry', 'payment', 'invoicing', 'fulfillment', 'human_console', 'iam', 'knowledge_source', 'telemetry_export', 'crm'];\nif (!op) return fail('NOT_SUPPORTED', 'OPERATION_NOT_CONFIGURED', 'settings.operations.' + r.operation + ' no está definido para el puerto ' + r.port);\nif (!s.base_url) return fail('PERMANENT_ERROR', 'VALIDATION', 'falta settings.base_url');\nif (!SLOTS.includes(s.credential_slot)) return fail('PERMANENT_ERROR', 'VALIDATION', 'settings.credential_slot inválido: ' + s.credential_slot);\nconst ctx = { input: r.input || {}, settings: Object.assign({}, s, { operations: undefined }), envelope: r.envelope || {} };\nconst get = (obj, path) => String(path).split('.').reduce((a, k) => {\n  if (a === undefined || a === null) return undefined;\n  const m = k.match(/^(.*)\\[(\\d+)\\]$/);\n  return m ? (m[1] ? a[m[1]] : a)?.[Number(m[2])] : a[k];\n}, obj);\nconst render = (v) => {\n  if (typeof v === 'string') {\n    const whole = v.match(/^\\{\\{\\s*([^}]+?)\\s*\\}\\}$/);\n    if (whole) { const x = get(ctx, whole[1]); return x === undefined ? null : x; }\n    return v.replace(/\\{\\{\\s*([^}]+?)\\s*\\}\\}/g, (_, p) => { const x = get(ctx, p); return x === undefined || x === null ? '' : String(x); });\n  }\n  if (Array.isArray(v)) return v.map(render);\n  if (v && typeof v === 'object') return Object.fromEntries(Object.entries(v).map(([k, x]) => [k, render(x)]));\n  return v;\n};\nconst renderPath = (v) => String(v || '').replace(/\\{\\{\\s*([^}]+?)\\s*\\}\\}/g, (_, p) => { const x = get(ctx, p); return x === undefined || x === null ? '' : encodeURIComponent(String(x)); });\nconst path = renderPath(op.path);\nconst query = op.query ? render(op.query) : null;\nlet url = s.base_url.replace(/\\/$/, '') + (path.startsWith('/') ? path : '/' + path);\nif (query) {\n  const qs = Object.entries(query).filter(([, v]) => v !== null && v !== '').map(([k, v]) => encodeURIComponent(k) + '=' + encodeURIComponent(typeof v === 'object' ? JSON.stringify(v) : v)).join('&');\n  if (qs) url += (url.includes('?') ? '&' : '?') + qs;\n}\nconst method = (op.method || 'GET').toUpperCase();\nconst headers = Object.assign({ 'Accept': 'application/json', 'Content-Type': 'application/json' }, render(op.headers || {}));\nconst body = (method === 'GET' || method === 'DELETE' || op.body === undefined) ? '' : JSON.stringify(render(op.body));\nreturn { json: { skip: false, slot: s.credential_slot, method, url, headers, body, timeout_ms: op.timeout_ms || s.timeout_ms || 10000 } };"
+      }
+    },
+    {
+      "id": "20724990-25da-4724-a811-1f8c6fc9554d",
+      "name": "Solicitud ejecutable",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        448,
+        1232
+      ],
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose"
+          },
+          "conditions": [
+            {
+              "leftValue": "={{ $json.skip === false }}",
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        }
+      }
+    },
+    {
+      "id": "21f557ba-50e4-4e98-bbd0-64d5635e127a",
+      "name": "Credencial del puerto",
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 3.2,
+      "position": [
+        672,
+        912
+      ],
+      "parameters": {
+        "rules": {
+          "values": [
+            {
+              "outputKey": "catalog",
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict"
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $json.slot }}",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    },
+                    "rightValue": "catalog"
+                  }
+                ],
+                "combinator": "and"
+              }
+            },
+            {
+              "outputKey": "inventory",
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict"
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $json.slot }}",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    },
+                    "rightValue": "inventory"
+                  }
+                ],
+                "combinator": "and"
+              }
+            },
+            {
+              "outputKey": "order_registry",
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict"
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $json.slot }}",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    },
+                    "rightValue": "order_registry"
+                  }
+                ],
+                "combinator": "and"
+              }
+            },
+            {
+              "outputKey": "payment",
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict"
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $json.slot }}",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    },
+                    "rightValue": "payment"
+                  }
+                ],
+                "combinator": "and"
+              }
+            },
+            {
+              "outputKey": "invoicing",
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict"
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $json.slot }}",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    },
+                    "rightValue": "invoicing"
+                  }
+                ],
+                "combinator": "and"
+              }
+            },
+            {
+              "outputKey": "fulfillment",
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict"
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $json.slot }}",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    },
+                    "rightValue": "fulfillment"
+                  }
+                ],
+                "combinator": "and"
+              }
+            },
+            {
+              "outputKey": "human_console",
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict"
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $json.slot }}",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    },
+                    "rightValue": "human_console"
+                  }
+                ],
+                "combinator": "and"
+              }
+            },
+            {
+              "outputKey": "iam",
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict"
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $json.slot }}",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    },
+                    "rightValue": "iam"
+                  }
+                ],
+                "combinator": "and"
+              }
+            },
+            {
+              "outputKey": "knowledge_source",
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict"
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $json.slot }}",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    },
+                    "rightValue": "knowledge_source"
+                  }
+                ],
+                "combinator": "and"
+              }
+            },
+            {
+              "outputKey": "telemetry_export",
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict"
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $json.slot }}",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    },
+                    "rightValue": "telemetry_export"
+                  }
+                ],
+                "combinator": "and"
+              }
+            },
+            {
+              "outputKey": "crm",
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict"
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $json.slot }}",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    },
+                    "rightValue": "crm"
+                  }
+                ],
+                "combinator": "and"
+              }
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "3ed0dbd9-bf26-4f97-b000-ba554e9b7c7e",
+      "name": "Llamar API catalog",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.5,
+      "position": [
+        896,
+        0
+      ],
+      "parameters": {
+        "method": "={{ $json.method }}",
+        "url": "={{ $json.url }}",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendHeaders": true,
+        "specifyHeaders": "json",
+        "jsonHeaders": "={{ JSON.stringify($json.headers) }}",
+        "sendBody": true,
+        "contentType": "raw",
+        "rawContentType": "application/json",
+        "body": "={{ $json.body }}",
+        "options": {
+          "timeout": "={{ $json.timeout_ms }}",
+          "response": {
+            "response": {
+              "fullResponse": true,
+              "neverError": true,
+              "responseFormat": "autodetect"
+            }
+          }
+        }
+      },
+      "onError": "continueErrorOutput",
+      "disabled": true
+    },
+    {
+      "id": "d5511804-d81d-4112-88a0-f19e32370a39",
+      "name": "Normalizar respuesta",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1120,
+        800
+      ],
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "jsCode": "// Adaptador genérico: interpreta la respuesta según settings.operations[<operación>]\nconst req = $('Solicitud del puerto').item.json;\nconst op = (req.settings.operations || {})[req.operation] || {};\nconst res = $json;\nconst code = res.statusCode;\nlet body = res.body;\nif (typeof body === 'string') { try { body = JSON.parse(body); } catch (e) { /* respuesta no JSON */ } }\nconst get = (obj, path) => String(path).split('.').reduce((a, k) => {\n  if (a === undefined || a === null) return undefined;\n  const m = k.match(/^(.*)\\[(\\d+)\\]$/);\n  return m ? (m[1] ? a[m[1]] : a)?.[Number(m[2])] : a[k];\n}, obj);\nconst success = op.success_codes || null;\nconst isOk = success ? success.includes(code) : (code >= 200 && code < 300);\nconst notFound = (op.not_found_codes || [404]).includes(code);\nif (isOk) {\n  let data;\n  if (op.response_map) {\n    data = {};\n    for (const [k, p] of Object.entries(op.response_map)) data[k] = get(body, p) ?? null;\n  } else data = body;\n  if (op.status_field && op.status_map && data && typeof data === 'object') {\n    const raw = data[op.status_field];\n    data.provider_status = raw ?? null;\n    data[op.status_field] = op.status_map[raw] ?? op.status_map['*'] ?? 'unknown';\n  }\n  return { json: { status: 'OK', data, error: null } };\n}\nif (notFound) return { json: { status: 'NOT_FOUND', data: null, error: { code: 'NOT_FOUND', message: 'HTTP ' + code, http_status: code } } };\nconst sensitive = req.sensitive === true;\nlet status;\nif (code === 429 || code === 408) status = 'RETRYABLE_ERROR';\nelse if (code >= 500) status = sensitive ? 'UNKNOWN' : 'RETRYABLE_ERROR';\nelse status = 'PERMANENT_ERROR';\nconst msg = (body && typeof body === 'object') ? JSON.stringify(body).slice(0, 500) : String(body ?? '').slice(0, 500);\nreturn { json: { status, data: null, error: { code: 'HTTP_' + code, message: msg, http_status: code } } };"
+      }
+    },
+    {
+      "id": "aeb9e553-d7df-4d85-a0ed-f851fdf7f387",
+      "name": "Llamar API inventory",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.5,
+      "position": [
+        896,
+        240
+      ],
+      "parameters": {
+        "method": "={{ $json.method }}",
+        "url": "={{ $json.url }}",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendHeaders": true,
+        "specifyHeaders": "json",
+        "jsonHeaders": "={{ JSON.stringify($json.headers) }}",
+        "sendBody": true,
+        "contentType": "raw",
+        "rawContentType": "application/json",
+        "body": "={{ $json.body }}",
+        "options": {
+          "timeout": "={{ $json.timeout_ms }}",
+          "response": {
+            "response": {
+              "fullResponse": true,
+              "neverError": true,
+              "responseFormat": "autodetect"
+            }
+          }
+        }
+      },
+      "onError": "continueErrorOutput",
+      "disabled": true
+    },
+    {
+      "id": "7a660681-62f3-4383-9f82-cbd828ee4ca7",
+      "name": "Llamar API order_registry",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.5,
+      "position": [
+        896,
+        432
+      ],
+      "parameters": {
+        "method": "={{ $json.method }}",
+        "url": "={{ $json.url }}",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendHeaders": true,
+        "specifyHeaders": "json",
+        "jsonHeaders": "={{ JSON.stringify($json.headers) }}",
+        "sendBody": true,
+        "contentType": "raw",
+        "rawContentType": "application/json",
+        "body": "={{ $json.body }}",
+        "options": {
+          "timeout": "={{ $json.timeout_ms }}",
+          "response": {
+            "response": {
+              "fullResponse": true,
+              "neverError": true,
+              "responseFormat": "autodetect"
+            }
+          }
+        }
+      },
+      "onError": "continueErrorOutput",
+      "disabled": true
+    },
+    {
+      "id": "b936aaea-9c15-4b60-95d6-29c3d45ba2cb",
+      "name": "Llamar API payment",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.5,
+      "position": [
+        896,
+        624
+      ],
+      "parameters": {
+        "method": "={{ $json.method }}",
+        "url": "={{ $json.url }}",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendHeaders": true,
+        "specifyHeaders": "json",
+        "jsonHeaders": "={{ JSON.stringify($json.headers) }}",
+        "sendBody": true,
+        "contentType": "raw",
+        "rawContentType": "application/json",
+        "body": "={{ $json.body }}",
+        "options": {
+          "timeout": "={{ $json.timeout_ms }}",
+          "response": {
+            "response": {
+              "fullResponse": true,
+              "neverError": true,
+              "responseFormat": "autodetect"
+            }
+          }
+        }
+      },
+      "onError": "continueErrorOutput",
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "QG27cUMB5JSJR2EI",
+          "name": "DALIA API payment"
+        }
+      }
+    },
+    {
+      "id": "e6656754-3266-42f7-bc50-1901267be7af",
+      "name": "Llamar API invoicing",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.5,
+      "position": [
+        896,
+        816
+      ],
+      "parameters": {
+        "method": "={{ $json.method }}",
+        "url": "={{ $json.url }}",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendHeaders": true,
+        "specifyHeaders": "json",
+        "jsonHeaders": "={{ JSON.stringify($json.headers) }}",
+        "sendBody": true,
+        "contentType": "raw",
+        "rawContentType": "application/json",
+        "body": "={{ $json.body }}",
+        "options": {
+          "timeout": "={{ $json.timeout_ms }}",
+          "response": {
+            "response": {
+              "fullResponse": true,
+              "neverError": true,
+              "responseFormat": "autodetect"
+            }
+          }
+        }
+      },
+      "onError": "continueErrorOutput",
+      "disabled": true
+    },
+    {
+      "id": "0a2edb2d-5682-4e9e-ba09-acb84f0b650d",
+      "name": "Llamar API fulfillment",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.5,
+      "position": [
+        896,
+        1008
+      ],
+      "parameters": {
+        "method": "={{ $json.method }}",
+        "url": "={{ $json.url }}",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendHeaders": true,
+        "specifyHeaders": "json",
+        "jsonHeaders": "={{ JSON.stringify($json.headers) }}",
+        "sendBody": true,
+        "contentType": "raw",
+        "rawContentType": "application/json",
+        "body": "={{ $json.body }}",
+        "options": {
+          "timeout": "={{ $json.timeout_ms }}",
+          "response": {
+            "response": {
+              "fullResponse": true,
+              "neverError": true,
+              "responseFormat": "autodetect"
+            }
+          }
+        }
+      },
+      "onError": "continueErrorOutput",
+      "disabled": true
+    },
+    {
+      "id": "e64ab2a2-0f82-4b7b-9e0d-67d55dc66d46",
+      "name": "Llamar API human_console",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.5,
+      "position": [
+        896,
+        1248
+      ],
+      "parameters": {
+        "method": "={{ $json.method }}",
+        "url": "={{ $json.url }}",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendHeaders": true,
+        "specifyHeaders": "json",
+        "jsonHeaders": "={{ JSON.stringify($json.headers) }}",
+        "sendBody": true,
+        "contentType": "raw",
+        "rawContentType": "application/json",
+        "body": "={{ $json.body }}",
+        "options": {
+          "timeout": "={{ $json.timeout_ms }}",
+          "response": {
+            "response": {
+              "fullResponse": true,
+              "neverError": true,
+              "responseFormat": "autodetect"
+            }
+          }
+        }
+      },
+      "onError": "continueErrorOutput",
+      "disabled": true
+    },
+    {
+      "id": "8a7ec70d-99d3-404a-97aa-46201017f35e",
+      "name": "Llamar API iam",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.5,
+      "position": [
+        896,
+        1440
+      ],
+      "parameters": {
+        "method": "={{ $json.method }}",
+        "url": "={{ $json.url }}",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendHeaders": true,
+        "specifyHeaders": "json",
+        "jsonHeaders": "={{ JSON.stringify($json.headers) }}",
+        "sendBody": true,
+        "contentType": "raw",
+        "rawContentType": "application/json",
+        "body": "={{ $json.body }}",
+        "options": {
+          "timeout": "={{ $json.timeout_ms }}",
+          "response": {
+            "response": {
+              "fullResponse": true,
+              "neverError": true,
+              "responseFormat": "autodetect"
+            }
+          }
+        }
+      },
+      "onError": "continueErrorOutput",
+      "disabled": true
+    },
+    {
+      "id": "b224a61a-662e-4dad-a099-a75e43c82075",
+      "name": "Llamar API knowledge_source",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.5,
+      "position": [
+        896,
+        1632
+      ],
+      "parameters": {
+        "method": "={{ $json.method }}",
+        "url": "={{ $json.url }}",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendHeaders": true,
+        "specifyHeaders": "json",
+        "jsonHeaders": "={{ JSON.stringify($json.headers) }}",
+        "sendBody": true,
+        "contentType": "raw",
+        "rawContentType": "application/json",
+        "body": "={{ $json.body }}",
+        "options": {
+          "timeout": "={{ $json.timeout_ms }}",
+          "response": {
+            "response": {
+              "fullResponse": true,
+              "neverError": true,
+              "responseFormat": "autodetect"
+            }
+          }
+        }
+      },
+      "onError": "continueErrorOutput",
+      "disabled": true
+    },
+    {
+      "id": "209e43db-430f-44a3-86e2-4ad6d8f2eb72",
+      "name": "Llamar API telemetry_export",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.5,
+      "position": [
+        896,
+        1824
+      ],
+      "parameters": {
+        "method": "={{ $json.method }}",
+        "url": "={{ $json.url }}",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendHeaders": true,
+        "specifyHeaders": "json",
+        "jsonHeaders": "={{ JSON.stringify($json.headers) }}",
+        "sendBody": true,
+        "contentType": "raw",
+        "rawContentType": "application/json",
+        "body": "={{ $json.body }}",
+        "options": {
+          "timeout": "={{ $json.timeout_ms }}",
+          "response": {
+            "response": {
+              "fullResponse": true,
+              "neverError": true,
+              "responseFormat": "autodetect"
+            }
+          }
+        }
+      },
+      "onError": "continueErrorOutput",
+      "disabled": true
+    },
+    {
+      "id": "ecca5cd1-17dd-491c-a438-eb77a7e12a83",
+      "name": "Llamar API crm",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.5,
+      "position": [
+        896,
+        2016
+      ],
+      "parameters": {
+        "method": "={{ $json.method }}",
+        "url": "={{ $json.url }}",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendHeaders": true,
+        "specifyHeaders": "json",
+        "jsonHeaders": "={{ JSON.stringify($json.headers) }}",
+        "sendBody": true,
+        "contentType": "raw",
+        "rawContentType": "application/json",
+        "body": "={{ $json.body }}",
+        "options": {
+          "timeout": "={{ $json.timeout_ms }}",
+          "response": {
+            "response": {
+              "fullResponse": true,
+              "neverError": true,
+              "responseFormat": "autodetect"
+            }
+          }
+        }
+      },
+      "onError": "continueErrorOutput",
+      "disabled": true
+    },
+    {
+      "id": "8c5df6ad-e077-4c6a-b09f-0819c06e20c1",
+      "name": "Solicitud no ejecutable",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        672,
+        1392
+      ],
+      "parameters": {
+        "mode": "manual",
+        "includeOtherFields": false,
+        "assignments": {
+          "assignments": [
+            {
+              "id": "n1",
+              "name": "status",
+              "value": "={{ $json.status }}",
+              "type": "string"
+            },
+            {
+              "id": "n2",
+              "name": "error",
+              "value": "={{ $json.error }}",
+              "type": "object"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "0a9fab4a-0f7e-4cfb-a681-0476147c6895",
+      "name": "Clasificar fallo",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1120,
+        992
+      ],
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "jsCode": "// Timeout o error de red: si la operación es sensible el resultado es INCIERTO (ASR-02)\nconst req = $('Solicitud del puerto').item.json;\nconst msg = $json.error?.message ?? String($json.error ?? 'error de red');\nconst status = req.sensitive === true ? 'UNKNOWN' : 'RETRYABLE_ERROR';\nreturn { json: { status, data: null, error: { code: /timeout/i.test(msg) ? 'TIMEOUT' : 'NETWORK_ERROR', message: msg } } };"
+      }
+    }
+  ],
+  "connections": {
+    "Solicitud del puerto": {
+      "main": [
+        [
+          {
+            "node": "Construir solicitud generica",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Construir solicitud generica": {
+      "main": [
+        [
+          {
+            "node": "Solicitud ejecutable",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Solicitud ejecutable": {
+      "main": [
+        [
+          {
+            "node": "Credencial del puerto",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Solicitud no ejecutable",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Credencial del puerto": {
+      "main": [
+        [
+          {
+            "node": "Llamar API catalog",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Llamar API inventory",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Llamar API order_registry",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Llamar API payment",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Llamar API invoicing",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Llamar API fulfillment",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Llamar API human_console",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Llamar API iam",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Llamar API knowledge_source",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Llamar API telemetry_export",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Llamar API crm",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Llamar API catalog": {
+      "main": [
+        [
+          {
+            "node": "Normalizar respuesta",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Clasificar fallo",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Llamar API inventory": {
+      "main": [
+        [
+          {
+            "node": "Normalizar respuesta",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Clasificar fallo",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Llamar API order_registry": {
+      "main": [
+        [
+          {
+            "node": "Normalizar respuesta",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Clasificar fallo",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Llamar API payment": {
+      "main": [
+        [
+          {
+            "node": "Normalizar respuesta",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Clasificar fallo",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Llamar API invoicing": {
+      "main": [
+        [
+          {
+            "node": "Normalizar respuesta",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Clasificar fallo",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Llamar API fulfillment": {
+      "main": [
+        [
+          {
+            "node": "Normalizar respuesta",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Clasificar fallo",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Llamar API human_console": {
+      "main": [
+        [
+          {
+            "node": "Normalizar respuesta",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Clasificar fallo",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Llamar API iam": {
+      "main": [
+        [
+          {
+            "node": "Normalizar respuesta",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Clasificar fallo",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Llamar API knowledge_source": {
+      "main": [
+        [
+          {
+            "node": "Normalizar respuesta",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Clasificar fallo",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Llamar API telemetry_export": {
+      "main": [
+        [
+          {
+            "node": "Normalizar respuesta",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Clasificar fallo",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Llamar API crm": {
+      "main": [
+        [
+          {
+            "node": "Normalizar respuesta",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Clasificar fallo",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "nodeGroups": [],
+  "settings": {
+    "executionOrder": "v1",
+    "availableInMCP": true,
+    "errorWorkflow": "cjjQno2MxMTT3Icc",
+    "timezone": "America/Bogota",
+    "saveManualExecutions": true,
+    "saveDataErrorExecution": "all",
+    "saveDataSuccessExecution": "all",
+    "callerPolicy": "workflowsFromSameOwner"
+  },
+  "staticData": null,
+  "pinData": null,
+  "meta": {
+    "aiBuilderAssisted": true,
+    "builderVariant": "mcp"
+  },
+  "tags": [],
+  "shared": [
+    {
+      "role": "workflow:owner",
+      "workflowId": "3pLANf6wOcZfy2jn",
+      "projectId": "tRHCC8ts4mkRGXGn",
+      "createdAt": "2026-10-09T21:09:17.766Z",
+      "updatedAt": "2026-10-09T21:09:17.766Z"
+    }
+  ],
+  "activeVersion": {
+    "versionId": "131038b3-a2f5-4a04-ac30-526912c3becf",
+    "workflowId": "3pLANf6wOcZfy2jn",
+    "nodes": [
+      {
+        "id": "a50f2213-8fd8-4c82-86eb-4ea9b94dbbaa",
+        "name": "Solicitud del puerto",
+        "type": "n8n-nodes-base.executeWorkflowTrigger",
+        "typeVersion": 1.2,
+        "position": [
+          0,
+          1232
+        ],
+        "parameters": {
+          "inputSource": "passthrough"
+        }
+      },
+      {
+        "id": "ca50dc7f-6c4f-48de-9c00-bc6083d0ff1d",
+        "name": "Construir solicitud generica",
+        "type": "n8n-nodes-base.code",
+        "typeVersion": 2,
+        "position": [
+          224,
+          1232
+        ],
+        "parameters": {
+          "mode": "runOnceForEachItem",
+          "jsCode": "// Adaptador genérico: construye la solicitud HTTP a partir de settings.operations[<operación>].\n// Plantillas: \"{{input.a.b}}\", \"{{settings.x}}\", \"{{envelope.trace_id}}\". Si un string es\n// exactamente una plantilla, se conserva el tipo del valor (número, objeto, arreglo).\nconst r = $json;\nconst s = r.settings || {};\nconst op = (s.operations || {})[r.operation];\nconst fail = (status, code, message) => ({ json: { skip: true, status, error: { code, message } } });\nconst SLOTS = ['catalog', 'inventory', 'order_registry', 'payment', 'invoicing', 'fulfillment', 'human_console', 'iam', 'knowledge_source', 'telemetry_export', 'crm'];\nif (!op) return fail('NOT_SUPPORTED', 'OPERATION_NOT_CONFIGURED', 'settings.operations.' + r.operation + ' no está definido para el puerto ' + r.port);\nif (!s.base_url) return fail('PERMANENT_ERROR', 'VALIDATION', 'falta settings.base_url');\nif (!SLOTS.includes(s.credential_slot)) return fail('PERMANENT_ERROR', 'VALIDATION', 'settings.credential_slot inválido: ' + s.credential_slot);\nconst ctx = { input: r.input || {}, settings: Object.assign({}, s, { operations: undefined }), envelope: r.envelope || {} };\nconst get = (obj, path) => String(path).split('.').reduce((a, k) => {\n  if (a === undefined || a === null) return undefined;\n  const m = k.match(/^(.*)\\[(\\d+)\\]$/);\n  return m ? (m[1] ? a[m[1]] : a)?.[Number(m[2])] : a[k];\n}, obj);\nconst render = (v) => {\n  if (typeof v === 'string') {\n    const whole = v.match(/^\\{\\{\\s*([^}]+?)\\s*\\}\\}$/);\n    if (whole) { const x = get(ctx, whole[1]); return x === undefined ? null : x; }\n    return v.replace(/\\{\\{\\s*([^}]+?)\\s*\\}\\}/g, (_, p) => { const x = get(ctx, p); return x === undefined || x === null ? '' : String(x); });\n  }\n  if (Array.isArray(v)) return v.map(render);\n  if (v && typeof v === 'object') return Object.fromEntries(Object.entries(v).map(([k, x]) => [k, render(x)]));\n  return v;\n};\nconst renderPath = (v) => String(v || '').replace(/\\{\\{\\s*([^}]+?)\\s*\\}\\}/g, (_, p) => { const x = get(ctx, p); return x === undefined || x === null ? '' : encodeURIComponent(String(x)); });\nconst path = renderPath(op.path);\nconst query = op.query ? render(op.query) : null;\nlet url = s.base_url.replace(/\\/$/, '') + (path.startsWith('/') ? path : '/' + path);\nif (query) {\n  const qs = Object.entries(query).filter(([, v]) => v !== null && v !== '').map(([k, v]) => encodeURIComponent(k) + '=' + encodeURIComponent(typeof v === 'object' ? JSON.stringify(v) : v)).join('&');\n  if (qs) url += (url.includes('?') ? '&' : '?') + qs;\n}\nconst method = (op.method || 'GET').toUpperCase();\nconst headers = Object.assign({ 'Accept': 'application/json', 'Content-Type': 'application/json' }, render(op.headers || {}));\nconst body = (method === 'GET' || method === 'DELETE' || op.body === undefined) ? '' : JSON.stringify(render(op.body));\nreturn { json: { skip: false, slot: s.credential_slot, method, url, headers, body, timeout_ms: op.timeout_ms || s.timeout_ms || 10000 } };"
+        }
+      },
+      {
+        "id": "20724990-25da-4724-a811-1f8c6fc9554d",
+        "name": "Solicitud ejecutable",
+        "type": "n8n-nodes-base.if",
+        "typeVersion": 2.2,
+        "position": [
+          448,
+          1232
+        ],
+        "parameters": {
+          "conditions": {
+            "options": {
+              "caseSensitive": true,
+              "leftValue": "",
+              "typeValidation": "loose"
+            },
+            "conditions": [
+              {
+                "leftValue": "={{ $json.skip === false }}",
+                "operator": {
+                  "type": "boolean",
+                  "operation": "true",
+                  "singleValue": true
+                }
+              }
+            ],
+            "combinator": "and"
+          }
+        }
+      },
+      {
+        "id": "21f557ba-50e4-4e98-bbd0-64d5635e127a",
+        "name": "Credencial del puerto",
+        "type": "n8n-nodes-base.switch",
+        "typeVersion": 3.2,
+        "position": [
+          672,
+          912
+        ],
+        "parameters": {
+          "rules": {
+            "values": [
+              {
+                "outputKey": "catalog",
+                "conditions": {
+                  "options": {
+                    "caseSensitive": true,
+                    "leftValue": "",
+                    "typeValidation": "strict"
+                  },
+                  "conditions": [
+                    {
+                      "leftValue": "={{ $json.slot }}",
+                      "operator": {
+                        "type": "string",
+                        "operation": "equals"
+                      },
+                      "rightValue": "catalog"
+                    }
+                  ],
+                  "combinator": "and"
+                }
+              },
+              {
+                "outputKey": "inventory",
+                "conditions": {
+                  "options": {
+                    "caseSensitive": true,
+                    "leftValue": "",
+                    "typeValidation": "strict"
+                  },
+                  "conditions": [
+                    {
+                      "leftValue": "={{ $json.slot }}",
+                      "operator": {
+                        "type": "string",
+                        "operation": "equals"
+                      },
+                      "rightValue": "inventory"
+                    }
+                  ],
+                  "combinator": "and"
+                }
+              },
+              {
+                "outputKey": "order_registry",
+                "conditions": {
+                  "options": {
+                    "caseSensitive": true,
+                    "leftValue": "",
+                    "typeValidation": "strict"
+                  },
+                  "conditions": [
+                    {
+                      "leftValue": "={{ $json.slot }}",
+                      "operator": {
+                        "type": "string",
+                        "operation": "equals"
+                      },
+                      "rightValue": "order_registry"
+                    }
+                  ],
+                  "combinator": "and"
+                }
+              },
+              {
+                "outputKey": "payment",
+                "conditions": {
+                  "options": {
+                    "caseSensitive": true,
+                    "leftValue": "",
+                    "typeValidation": "strict"
+                  },
+                  "conditions": [
+                    {
+                      "leftValue": "={{ $json.slot }}",
+                      "operator": {
+                        "type": "string",
+                        "operation": "equals"
+                      },
+                      "rightValue": "payment"
+                    }
+                  ],
+                  "combinator": "and"
+                }
+              },
+              {
+                "outputKey": "invoicing",
+                "conditions": {
+                  "options": {
+                    "caseSensitive": true,
+                    "leftValue": "",
+                    "typeValidation": "strict"
+                  },
+                  "conditions": [
+                    {
+                      "leftValue": "={{ $json.slot }}",
+                      "operator": {
+                        "type": "string",
+                        "operation": "equals"
+                      },
+                      "rightValue": "invoicing"
+                    }
+                  ],
+                  "combinator": "and"
+                }
+              },
+              {
+                "outputKey": "fulfillment",
+                "conditions": {
+                  "options": {
+                    "caseSensitive": true,
+                    "leftValue": "",
+                    "typeValidation": "strict"
+                  },
+                  "conditions": [
+                    {
+                      "leftValue": "={{ $json.slot }}",
+                      "operator": {
+                        "type": "string",
+                        "operation": "equals"
+                      },
+                      "rightValue": "fulfillment"
+                    }
+                  ],
+                  "combinator": "and"
+                }
+              },
+              {
+                "outputKey": "human_console",
+                "conditions": {
+                  "options": {
+                    "caseSensitive": true,
+                    "leftValue": "",
+                    "typeValidation": "strict"
+                  },
+                  "conditions": [
+                    {
+                      "leftValue": "={{ $json.slot }}",
+                      "operator": {
+                        "type": "string",
+                        "operation": "equals"
+                      },
+                      "rightValue": "human_console"
+                    }
+                  ],
+                  "combinator": "and"
+                }
+              },
+              {
+                "outputKey": "iam",
+                "conditions": {
+                  "options": {
+                    "caseSensitive": true,
+                    "leftValue": "",
+                    "typeValidation": "strict"
+                  },
+                  "conditions": [
+                    {
+                      "leftValue": "={{ $json.slot }}",
+                      "operator": {
+                        "type": "string",
+                        "operation": "equals"
+                      },
+                      "rightValue": "iam"
+                    }
+                  ],
+                  "combinator": "and"
+                }
+              },
+              {
+                "outputKey": "knowledge_source",
+                "conditions": {
+                  "options": {
+                    "caseSensitive": true,
+                    "leftValue": "",
+                    "typeValidation": "strict"
+                  },
+                  "conditions": [
+                    {
+                      "leftValue": "={{ $json.slot }}",
+                      "operator": {
+                        "type": "string",
+                        "operation": "equals"
+                      },
+                      "rightValue": "knowledge_source"
+                    }
+                  ],
+                  "combinator": "and"
+                }
+              },
+              {
+                "outputKey": "telemetry_export",
+                "conditions": {
+                  "options": {
+                    "caseSensitive": true,
+                    "leftValue": "",
+                    "typeValidation": "strict"
+                  },
+                  "conditions": [
+                    {
+                      "leftValue": "={{ $json.slot }}",
+                      "operator": {
+                        "type": "string",
+                        "operation": "equals"
+                      },
+                      "rightValue": "telemetry_export"
+                    }
+                  ],
+                  "combinator": "and"
+                }
+              },
+              {
+                "outputKey": "crm",
+                "conditions": {
+                  "options": {
+                    "caseSensitive": true,
+                    "leftValue": "",
+                    "typeValidation": "strict"
+                  },
+                  "conditions": [
+                    {
+                      "leftValue": "={{ $json.slot }}",
+                      "operator": {
+                        "type": "string",
+                        "operation": "equals"
+                      },
+                      "rightValue": "crm"
+                    }
+                  ],
+                  "combinator": "and"
+                }
+              }
+            ]
+          }
+        }
+      },
+      {
+        "id": "3ed0dbd9-bf26-4f97-b000-ba554e9b7c7e",
+        "name": "Llamar API catalog",
+        "type": "n8n-nodes-base.httpRequest",
+        "typeVersion": 4.5,
+        "position": [
+          896,
+          0
+        ],
+        "parameters": {
+          "method": "={{ $json.method }}",
+          "url": "={{ $json.url }}",
+          "authentication": "genericCredentialType",
+          "genericAuthType": "httpHeaderAuth",
+          "sendHeaders": true,
+          "specifyHeaders": "json",
+          "jsonHeaders": "={{ JSON.stringify($json.headers) }}",
+          "sendBody": true,
+          "contentType": "raw",
+          "rawContentType": "application/json",
+          "body": "={{ $json.body }}",
+          "options": {
+            "timeout": "={{ $json.timeout_ms }}",
+            "response": {
+              "response": {
+                "fullResponse": true,
+                "neverError": true,
+                "responseFormat": "autodetect"
+              }
+            }
+          }
+        },
+        "onError": "continueErrorOutput",
+        "disabled": true
+      },
+      {
+        "id": "d5511804-d81d-4112-88a0-f19e32370a39",
+        "name": "Normalizar respuesta",
+        "type": "n8n-nodes-base.code",
+        "typeVersion": 2,
+        "position": [
+          1120,
+          800
+        ],
+        "parameters": {
+          "mode": "runOnceForEachItem",
+          "jsCode": "// Adaptador genérico: interpreta la respuesta según settings.operations[<operación>]\nconst req = $('Solicitud del puerto').item.json;\nconst op = (req.settings.operations || {})[req.operation] || {};\nconst res = $json;\nconst code = res.statusCode;\nlet body = res.body;\nif (typeof body === 'string') { try { body = JSON.parse(body); } catch (e) { /* respuesta no JSON */ } }\nconst get = (obj, path) => String(path).split('.').reduce((a, k) => {\n  if (a === undefined || a === null) return undefined;\n  const m = k.match(/^(.*)\\[(\\d+)\\]$/);\n  return m ? (m[1] ? a[m[1]] : a)?.[Number(m[2])] : a[k];\n}, obj);\nconst success = op.success_codes || null;\nconst isOk = success ? success.includes(code) : (code >= 200 && code < 300);\nconst notFound = (op.not_found_codes || [404]).includes(code);\nif (isOk) {\n  let data;\n  if (op.response_map) {\n    data = {};\n    for (const [k, p] of Object.entries(op.response_map)) data[k] = get(body, p) ?? null;\n  } else data = body;\n  if (op.status_field && op.status_map && data && typeof data === 'object') {\n    const raw = data[op.status_field];\n    data.provider_status = raw ?? null;\n    data[op.status_field] = op.status_map[raw] ?? op.status_map['*'] ?? 'unknown';\n  }\n  return { json: { status: 'OK', data, error: null } };\n}\nif (notFound) return { json: { status: 'NOT_FOUND', data: null, error: { code: 'NOT_FOUND', message: 'HTTP ' + code, http_status: code } } };\nconst sensitive = req.sensitive === true;\nlet status;\nif (code === 429 || code === 408) status = 'RETRYABLE_ERROR';\nelse if (code >= 500) status = sensitive ? 'UNKNOWN' : 'RETRYABLE_ERROR';\nelse status = 'PERMANENT_ERROR';\nconst msg = (body && typeof body === 'object') ? JSON.stringify(body).slice(0, 500) : String(body ?? '').slice(0, 500);\nreturn { json: { status, data: null, error: { code: 'HTTP_' + code, message: msg, http_status: code } } };"
+        }
+      },
+      {
+        "id": "aeb9e553-d7df-4d85-a0ed-f851fdf7f387",
+        "name": "Llamar API inventory",
+        "type": "n8n-nodes-base.httpRequest",
+        "typeVersion": 4.5,
+        "position": [
+          896,
+          240
+        ],
+        "parameters": {
+          "method": "={{ $json.method }}",
+          "url": "={{ $json.url }}",
+          "authentication": "genericCredentialType",
+          "genericAuthType": "httpHeaderAuth",
+          "sendHeaders": true,
+          "specifyHeaders": "json",
+          "jsonHeaders": "={{ JSON.stringify($json.headers) }}",
+          "sendBody": true,
+          "contentType": "raw",
+          "rawContentType": "application/json",
+          "body": "={{ $json.body }}",
+          "options": {
+            "timeout": "={{ $json.timeout_ms }}",
+            "response": {
+              "response": {
+                "fullResponse": true,
+                "neverError": true,
+                "responseFormat": "autodetect"
+              }
+            }
+          }
+        },
+        "onError": "continueErrorOutput",
+        "disabled": true
+      },
+      {
+        "id": "7a660681-62f3-4383-9f82-cbd828ee4ca7",
+        "name": "Llamar API order_registry",
+        "type": "n8n-nodes-base.httpRequest",
+        "typeVersion": 4.5,
+        "position": [
+          896,
+          432
+        ],
+        "parameters": {
+          "method": "={{ $json.method }}",
+          "url": "={{ $json.url }}",
+          "authentication": "genericCredentialType",
+          "genericAuthType": "httpHeaderAuth",
+          "sendHeaders": true,
+          "specifyHeaders": "json",
+          "jsonHeaders": "={{ JSON.stringify($json.headers) }}",
+          "sendBody": true,
+          "contentType": "raw",
+          "rawContentType": "application/json",
+          "body": "={{ $json.body }}",
+          "options": {
+            "timeout": "={{ $json.timeout_ms }}",
+            "response": {
+              "response": {
+                "fullResponse": true,
+                "neverError": true,
+                "responseFormat": "autodetect"
+              }
+            }
+          }
+        },
+        "onError": "continueErrorOutput",
+        "disabled": true
+      },
+      {
+        "id": "b936aaea-9c15-4b60-95d6-29c3d45ba2cb",
+        "name": "Llamar API payment",
+        "type": "n8n-nodes-base.httpRequest",
+        "typeVersion": 4.5,
+        "position": [
+          896,
+          624
+        ],
+        "parameters": {
+          "method": "={{ $json.method }}",
+          "url": "={{ $json.url }}",
+          "authentication": "genericCredentialType",
+          "genericAuthType": "httpHeaderAuth",
+          "sendHeaders": true,
+          "specifyHeaders": "json",
+          "jsonHeaders": "={{ JSON.stringify($json.headers) }}",
+          "sendBody": true,
+          "contentType": "raw",
+          "rawContentType": "application/json",
+          "body": "={{ $json.body }}",
+          "options": {
+            "timeout": "={{ $json.timeout_ms }}",
+            "response": {
+              "response": {
+                "fullResponse": true,
+                "neverError": true,
+                "responseFormat": "autodetect"
+              }
+            }
+          }
+        },
+        "onError": "continueErrorOutput",
+        "credentials": {
+          "httpHeaderAuth": {
+            "id": "QG27cUMB5JSJR2EI",
+            "name": "DALIA API payment"
+          }
+        }
+      },
+      {
+        "id": "e6656754-3266-42f7-bc50-1901267be7af",
+        "name": "Llamar API invoicing",
+        "type": "n8n-nodes-base.httpRequest",
+        "typeVersion": 4.5,
+        "position": [
+          896,
+          816
+        ],
+        "parameters": {
+          "method": "={{ $json.method }}",
+          "url": "={{ $json.url }}",
+          "authentication": "genericCredentialType",
+          "genericAuthType": "httpHeaderAuth",
+          "sendHeaders": true,
+          "specifyHeaders": "json",
+          "jsonHeaders": "={{ JSON.stringify($json.headers) }}",
+          "sendBody": true,
+          "contentType": "raw",
+          "rawContentType": "application/json",
+          "body": "={{ $json.body }}",
+          "options": {
+            "timeout": "={{ $json.timeout_ms }}",
+            "response": {
+              "response": {
+                "fullResponse": true,
+                "neverError": true,
+                "responseFormat": "autodetect"
+              }
+            }
+          }
+        },
+        "onError": "continueErrorOutput",
+        "disabled": true
+      },
+      {
+        "id": "0a2edb2d-5682-4e9e-ba09-acb84f0b650d",
+        "name": "Llamar API fulfillment",
+        "type": "n8n-nodes-base.httpRequest",
+        "typeVersion": 4.5,
+        "position": [
+          896,
+          1008
+        ],
+        "parameters": {
+          "method": "={{ $json.method }}",
+          "url": "={{ $json.url }}",
+          "authentication": "genericCredentialType",
+          "genericAuthType": "httpHeaderAuth",
+          "sendHeaders": true,
+          "specifyHeaders": "json",
+          "jsonHeaders": "={{ JSON.stringify($json.headers) }}",
+          "sendBody": true,
+          "contentType": "raw",
+          "rawContentType": "application/json",
+          "body": "={{ $json.body }}",
+          "options": {
+            "timeout": "={{ $json.timeout_ms }}",
+            "response": {
+              "response": {
+                "fullResponse": true,
+                "neverError": true,
+                "responseFormat": "autodetect"
+              }
+            }
+          }
+        },
+        "onError": "continueErrorOutput",
+        "disabled": true
+      },
+      {
+        "id": "e64ab2a2-0f82-4b7b-9e0d-67d55dc66d46",
+        "name": "Llamar API human_console",
+        "type": "n8n-nodes-base.httpRequest",
+        "typeVersion": 4.5,
+        "position": [
+          896,
+          1248
+        ],
+        "parameters": {
+          "method": "={{ $json.method }}",
+          "url": "={{ $json.url }}",
+          "authentication": "genericCredentialType",
+          "genericAuthType": "httpHeaderAuth",
+          "sendHeaders": true,
+          "specifyHeaders": "json",
+          "jsonHeaders": "={{ JSON.stringify($json.headers) }}",
+          "sendBody": true,
+          "contentType": "raw",
+          "rawContentType": "application/json",
+          "body": "={{ $json.body }}",
+          "options": {
+            "timeout": "={{ $json.timeout_ms }}",
+            "response": {
+              "response": {
+                "fullResponse": true,
+                "neverError": true,
+                "responseFormat": "autodetect"
+              }
+            }
+          }
+        },
+        "onError": "continueErrorOutput",
+        "disabled": true
+      },
+      {
+        "id": "8a7ec70d-99d3-404a-97aa-46201017f35e",
+        "name": "Llamar API iam",
+        "type": "n8n-nodes-base.httpRequest",
+        "typeVersion": 4.5,
+        "position": [
+          896,
+          1440
+        ],
+        "parameters": {
+          "method": "={{ $json.method }}",
+          "url": "={{ $json.url }}",
+          "authentication": "genericCredentialType",
+          "genericAuthType": "httpHeaderAuth",
+          "sendHeaders": true,
+          "specifyHeaders": "json",
+          "jsonHeaders": "={{ JSON.stringify($json.headers) }}",
+          "sendBody": true,
+          "contentType": "raw",
+          "rawContentType": "application/json",
+          "body": "={{ $json.body }}",
+          "options": {
+            "timeout": "={{ $json.timeout_ms }}",
+            "response": {
+              "response": {
+                "fullResponse": true,
+                "neverError": true,
+                "responseFormat": "autodetect"
+              }
+            }
+          }
+        },
+        "onError": "continueErrorOutput",
+        "disabled": true
+      },
+      {
+        "id": "b224a61a-662e-4dad-a099-a75e43c82075",
+        "name": "Llamar API knowledge_source",
+        "type": "n8n-nodes-base.httpRequest",
+        "typeVersion": 4.5,
+        "position": [
+          896,
+          1632
+        ],
+        "parameters": {
+          "method": "={{ $json.method }}",
+          "url": "={{ $json.url }}",
+          "authentication": "genericCredentialType",
+          "genericAuthType": "httpHeaderAuth",
+          "sendHeaders": true,
+          "specifyHeaders": "json",
+          "jsonHeaders": "={{ JSON.stringify($json.headers) }}",
+          "sendBody": true,
+          "contentType": "raw",
+          "rawContentType": "application/json",
+          "body": "={{ $json.body }}",
+          "options": {
+            "timeout": "={{ $json.timeout_ms }}",
+            "response": {
+              "response": {
+                "fullResponse": true,
+                "neverError": true,
+                "responseFormat": "autodetect"
+              }
+            }
+          }
+        },
+        "onError": "continueErrorOutput",
+        "disabled": true
+      },
+      {
+        "id": "209e43db-430f-44a3-86e2-4ad6d8f2eb72",
+        "name": "Llamar API telemetry_export",
+        "type": "n8n-nodes-base.httpRequest",
+        "typeVersion": 4.5,
+        "position": [
+          896,
+          1824
+        ],
+        "parameters": {
+          "method": "={{ $json.method }}",
+          "url": "={{ $json.url }}",
+          "authentication": "genericCredentialType",
+          "genericAuthType": "httpHeaderAuth",
+          "sendHeaders": true,
+          "specifyHeaders": "json",
+          "jsonHeaders": "={{ JSON.stringify($json.headers) }}",
+          "sendBody": true,
+          "contentType": "raw",
+          "rawContentType": "application/json",
+          "body": "={{ $json.body }}",
+          "options": {
+            "timeout": "={{ $json.timeout_ms }}",
+            "response": {
+              "response": {
+                "fullResponse": true,
+                "neverError": true,
+                "responseFormat": "autodetect"
+              }
+            }
+          }
+        },
+        "onError": "continueErrorOutput",
+        "disabled": true
+      },
+      {
+        "id": "ecca5cd1-17dd-491c-a438-eb77a7e12a83",
+        "name": "Llamar API crm",
+        "type": "n8n-nodes-base.httpRequest",
+        "typeVersion": 4.5,
+        "position": [
+          896,
+          2016
+        ],
+        "parameters": {
+          "method": "={{ $json.method }}",
+          "url": "={{ $json.url }}",
+          "authentication": "genericCredentialType",
+          "genericAuthType": "httpHeaderAuth",
+          "sendHeaders": true,
+          "specifyHeaders": "json",
+          "jsonHeaders": "={{ JSON.stringify($json.headers) }}",
+          "sendBody": true,
+          "contentType": "raw",
+          "rawContentType": "application/json",
+          "body": "={{ $json.body }}",
+          "options": {
+            "timeout": "={{ $json.timeout_ms }}",
+            "response": {
+              "response": {
+                "fullResponse": true,
+                "neverError": true,
+                "responseFormat": "autodetect"
+              }
+            }
+          }
+        },
+        "onError": "continueErrorOutput",
+        "disabled": true
+      },
+      {
+        "id": "8c5df6ad-e077-4c6a-b09f-0819c06e20c1",
+        "name": "Solicitud no ejecutable",
+        "type": "n8n-nodes-base.set",
+        "typeVersion": 3.4,
+        "position": [
+          672,
+          1392
+        ],
+        "parameters": {
+          "mode": "manual",
+          "includeOtherFields": false,
+          "assignments": {
+            "assignments": [
+              {
+                "id": "n1",
+                "name": "status",
+                "value": "={{ $json.status }}",
+                "type": "string"
+              },
+              {
+                "id": "n2",
+                "name": "error",
+                "value": "={{ $json.error }}",
+                "type": "object"
+              }
+            ]
+          }
+        }
+      },
+      {
+        "id": "0a9fab4a-0f7e-4cfb-a681-0476147c6895",
+        "name": "Clasificar fallo",
+        "type": "n8n-nodes-base.code",
+        "typeVersion": 2,
+        "position": [
+          1120,
+          992
+        ],
+        "parameters": {
+          "mode": "runOnceForEachItem",
+          "jsCode": "// Timeout o error de red: si la operación es sensible el resultado es INCIERTO (ASR-02)\nconst req = $('Solicitud del puerto').item.json;\nconst msg = $json.error?.message ?? String($json.error ?? 'error de red');\nconst status = req.sensitive === true ? 'UNKNOWN' : 'RETRYABLE_ERROR';\nreturn { json: { status, data: null, error: { code: /timeout/i.test(msg) ? 'TIMEOUT' : 'NETWORK_ERROR', message: msg } } };"
+        }
+      }
+    ],
+    "connections": {
+      "Solicitud del puerto": {
+        "main": [
+          [
+            {
+              "node": "Construir solicitud generica",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Construir solicitud generica": {
+        "main": [
+          [
+            {
+              "node": "Solicitud ejecutable",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Solicitud ejecutable": {
+        "main": [
+          [
+            {
+              "node": "Credencial del puerto",
+              "type": "main",
+              "index": 0
+            }
+          ],
+          [
+            {
+              "node": "Solicitud no ejecutable",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Credencial del puerto": {
+        "main": [
+          [
+            {
+              "node": "Llamar API catalog",
+              "type": "main",
+              "index": 0
+            }
+          ],
+          [
+            {
+              "node": "Llamar API inventory",
+              "type": "main",
+              "index": 0
+            }
+          ],
+          [
+            {
+              "node": "Llamar API order_registry",
+              "type": "main",
+              "index": 0
+            }
+          ],
+          [
+            {
+              "node": "Llamar API payment",
+              "type": "main",
+              "index": 0
+            }
+          ],
+          [
+            {
+              "node": "Llamar API invoicing",
+              "type": "main",
+              "index": 0
+            }
+          ],
+          [
+            {
+              "node": "Llamar API fulfillment",
+              "type": "main",
+              "index": 0
+            }
+          ],
+          [
+            {
+              "node": "Llamar API human_console",
+              "type": "main",
+              "index": 0
+            }
+          ],
+          [
+            {
+              "node": "Llamar API iam",
+              "type": "main",
+              "index": 0
+            }
+          ],
+          [
+            {
+              "node": "Llamar API knowledge_source",
+              "type": "main",
+              "index": 0
+            }
+          ],
+          [
+            {
+              "node": "Llamar API telemetry_export",
+              "type": "main",
+              "index": 0
+            }
+          ],
+          [
+            {
+              "node": "Llamar API crm",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Llamar API catalog": {
+        "main": [
+          [
+            {
+              "node": "Normalizar respuesta",
+              "type": "main",
+              "index": 0
+            }
+          ],
+          [
+            {
+              "node": "Clasificar fallo",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Llamar API inventory": {
+        "main": [
+          [
+            {
+              "node": "Normalizar respuesta",
+              "type": "main",
+              "index": 0
+            }
+          ],
+          [
+            {
+              "node": "Clasificar fallo",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Llamar API order_registry": {
+        "main": [
+          [
+            {
+              "node": "Normalizar respuesta",
+              "type": "main",
+              "index": 0
+            }
+          ],
+          [
+            {
+              "node": "Clasificar fallo",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Llamar API payment": {
+        "main": [
+          [
+            {
+              "node": "Normalizar respuesta",
+              "type": "main",
+              "index": 0
+            }
+          ],
+          [
+            {
+              "node": "Clasificar fallo",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Llamar API invoicing": {
+        "main": [
+          [
+            {
+              "node": "Normalizar respuesta",
+              "type": "main",
+              "index": 0
+            }
+          ],
+          [
+            {
+              "node": "Clasificar fallo",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Llamar API fulfillment": {
+        "main": [
+          [
+            {
+              "node": "Normalizar respuesta",
+              "type": "main",
+              "index": 0
+            }
+          ],
+          [
+            {
+              "node": "Clasificar fallo",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Llamar API human_console": {
+        "main": [
+          [
+            {
+              "node": "Normalizar respuesta",
+              "type": "main",
+              "index": 0
+            }
+          ],
+          [
+            {
+              "node": "Clasificar fallo",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Llamar API iam": {
+        "main": [
+          [
+            {
+              "node": "Normalizar respuesta",
+              "type": "main",
+              "index": 0
+            }
+          ],
+          [
+            {
+              "node": "Clasificar fallo",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Llamar API knowledge_source": {
+        "main": [
+          [
+            {
+              "node": "Normalizar respuesta",
+              "type": "main",
+              "index": 0
+            }
+          ],
+          [
+            {
+              "node": "Clasificar fallo",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Llamar API telemetry_export": {
+        "main": [
+          [
+            {
+              "node": "Normalizar respuesta",
+              "type": "main",
+              "index": 0
+            }
+          ],
+          [
+            {
+              "node": "Clasificar fallo",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Llamar API crm": {
+        "main": [
+          [
+            {
+              "node": "Normalizar respuesta",
+              "type": "main",
+              "index": 0
+            }
+          ],
+          [
+            {
+              "node": "Clasificar fallo",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      }
+    },
+    "nodeGroups": [],
+    "authors": "Fabian Bocanegra (via MCP)",
+    "name": "Credencial DALIA API payment asignada",
+    "description": "Updated nodes: Llamar API payment",
+    "autosaved": false,
+    "createdAt": "2026-10-03T03:25:06.868Z",
+    "updatedAt": "2026-10-03T03:25:06.868Z"
+  }
+}
