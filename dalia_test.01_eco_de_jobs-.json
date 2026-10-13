@@ -1,0 +1,287 @@
+{
+  "id": "JT5SoZ0bNgK21YFK",
+  "name": "DALIA_TEST.01_Eco_de_jobs",
+  "active": true,
+  "activeVersionId": "21ada0e1-4e76-449f-9ccd-4f7d9627ae69",
+  "createdAt": "2026-10-03T01:56:56.667Z",
+  "updatedAt": "2026-10-03T16:46:51.582Z",
+  "isArchived": false,
+  "versionId": "21ada0e1-4e76-449f-9ccd-4f7d9627ae69",
+  "triggerCount": 0,
+  "nodes": [
+    {
+      "id": "42bdba38-ecc7-4195-8eee-756a669d2754",
+      "name": "Job de prueba",
+      "type": "n8n-nodes-base.executeWorkflowTrigger",
+      "typeVersion": 1.2,
+      "position": [
+        0,
+        96
+      ],
+      "parameters": {
+        "inputSource": "passthrough"
+      }
+    },
+    {
+      "id": "79851a05-1e9a-41b5-b62c-d387bdb1bd43",
+      "name": "Forzar fallo",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        224,
+        96
+      ],
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose"
+          },
+          "conditions": [
+            {
+              "leftValue": "={{ $json.payload?.force_error === true }}",
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        }
+      }
+    },
+    {
+      "id": "06e5c0f0-1ebe-4c92-a5e1-c89e69e6090b",
+      "name": "Provocar error de prueba",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.7,
+      "position": [
+        448,
+        0
+      ],
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "select dalia.sys_raise('DALIA_VALIDATION', 'fallo forzado de prueba E2E-P6');"
+      },
+      "credentials": {
+        "postgres": {
+          "id": "HfCgVAjUygK1vrkU",
+          "name": "DALIA dev Supabase"
+        }
+      }
+    },
+    {
+      "id": "a83812d4-a725-43e2-b69d-e1dc31e8d1cd",
+      "name": "Completar con eco",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.7,
+      "position": [
+        448,
+        192
+      ],
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "select dalia.sys_complete_job($1::uuid, $2::jsonb) as job_status;",
+        "options": {
+          "queryReplacement": "={{ [ $json.job_id, JSON.stringify({ echo: $json.payload, handled_by: \"TEST.01\", at: $now.toISO() }) ] }}"
+        }
+      },
+      "credentials": {
+        "postgres": {
+          "id": "HfCgVAjUygK1vrkU",
+          "name": "DALIA dev Supabase"
+        }
+      }
+    }
+  ],
+  "connections": {
+    "Job de prueba": {
+      "main": [
+        [
+          {
+            "node": "Forzar fallo",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Forzar fallo": {
+      "main": [
+        [
+          {
+            "node": "Provocar error de prueba",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Completar con eco",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "nodeGroups": [],
+  "settings": {
+    "executionOrder": "v1",
+    "availableInMCP": true,
+    "errorWorkflow": "cjjQno2MxMTT3Icc",
+    "timezone": "America/Bogota",
+    "saveManualExecutions": true,
+    "saveDataErrorExecution": "all",
+    "saveDataSuccessExecution": "all",
+    "callerPolicy": "workflowsFromSameOwner"
+  },
+  "staticData": null,
+  "pinData": null,
+  "meta": {
+    "aiBuilderAssisted": true,
+    "builderVariant": "mcp"
+  },
+  "tags": [],
+  "shared": [
+    {
+      "role": "workflow:owner",
+      "workflowId": "JT5SoZ0bNgK21YFK",
+      "projectId": "tRHCC8ts4mkRGXGn",
+      "createdAt": "2026-10-09T21:09:17.755Z",
+      "updatedAt": "2026-10-09T21:09:17.755Z"
+    }
+  ],
+  "activeVersion": {
+    "versionId": "21ada0e1-4e76-449f-9ccd-4f7d9627ae69",
+    "workflowId": "JT5SoZ0bNgK21YFK",
+    "nodes": [
+      {
+        "id": "42bdba38-ecc7-4195-8eee-756a669d2754",
+        "name": "Job de prueba",
+        "type": "n8n-nodes-base.executeWorkflowTrigger",
+        "typeVersion": 1.2,
+        "position": [
+          0,
+          96
+        ],
+        "parameters": {
+          "inputSource": "passthrough"
+        }
+      },
+      {
+        "id": "79851a05-1e9a-41b5-b62c-d387bdb1bd43",
+        "name": "Forzar fallo",
+        "type": "n8n-nodes-base.if",
+        "typeVersion": 2.2,
+        "position": [
+          224,
+          96
+        ],
+        "parameters": {
+          "conditions": {
+            "options": {
+              "caseSensitive": true,
+              "leftValue": "",
+              "typeValidation": "loose"
+            },
+            "conditions": [
+              {
+                "leftValue": "={{ $json.payload?.force_error === true }}",
+                "operator": {
+                  "type": "boolean",
+                  "operation": "true",
+                  "singleValue": true
+                }
+              }
+            ],
+            "combinator": "and"
+          }
+        }
+      },
+      {
+        "id": "06e5c0f0-1ebe-4c92-a5e1-c89e69e6090b",
+        "name": "Provocar error de prueba",
+        "type": "n8n-nodes-base.postgres",
+        "typeVersion": 2.7,
+        "position": [
+          448,
+          0
+        ],
+        "parameters": {
+          "operation": "executeQuery",
+          "query": "select dalia.sys_raise('DALIA_VALIDATION', 'fallo forzado de prueba E2E-P6');"
+        },
+        "credentials": {
+          "postgres": {
+            "id": "HfCgVAjUygK1vrkU",
+            "name": "DALIA dev Supabase"
+          }
+        }
+      },
+      {
+        "id": "a83812d4-a725-43e2-b69d-e1dc31e8d1cd",
+        "name": "Completar con eco",
+        "type": "n8n-nodes-base.postgres",
+        "typeVersion": 2.7,
+        "position": [
+          448,
+          192
+        ],
+        "parameters": {
+          "operation": "executeQuery",
+          "query": "select dalia.sys_complete_job($1::uuid, $2::jsonb) as job_status;",
+          "options": {
+            "queryReplacement": "={{ [ $json.job_id, JSON.stringify({ echo: $json.payload, handled_by: \"TEST.01\", at: $now.toISO() }) ] }}"
+          }
+        },
+        "credentials": {
+          "postgres": {
+            "id": "HfCgVAjUygK1vrkU",
+            "name": "DALIA dev Supabase"
+          }
+        }
+      }
+    ],
+    "connections": {
+      "Job de prueba": {
+        "main": [
+          [
+            {
+              "node": "Forzar fallo",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Forzar fallo": {
+        "main": [
+          [
+            {
+              "node": "Provocar error de prueba",
+              "type": "main",
+              "index": 0
+            }
+          ],
+          [
+            {
+              "node": "Completar con eco",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      }
+    },
+    "nodeGroups": [],
+    "authors": "Fabian Bocanegra (via MCP)",
+    "name": "DALIA v1.0 lote 1 · instalación DEV",
+    "description": "Created with 4 nodes: Job de prueba, Forzar fallo, Provocar error de prueba, Completar con eco",
+    "autosaved": false,
+    "createdAt": "2026-10-03T01:56:56.669Z",
+    "updatedAt": "2026-10-03T01:56:56.669Z"
+  }
+}
