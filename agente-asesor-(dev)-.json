@@ -1,0 +1,3656 @@
+{
+  "id": "lsYNaU2XxkGus2r5",
+  "name": "Agente Asesor (DEV)",
+  "active": true,
+  "activeVersionId": "3ba52cd2-eaac-463b-bead-9384dadcd5a7",
+  "createdAt": "2025-12-17T22:05:31.001Z",
+  "updatedAt": "2026-10-09T01:39:00.381Z",
+  "isArchived": false,
+  "versionId": "3ba52cd2-eaac-463b-bead-9384dadcd5a7",
+  "triggerCount": 0,
+  "nodes": [
+    {
+      "parameters": {
+        "sessionIdType": "customKey",
+        "sessionKey": "={{ $('Convertir mensaje').item.json.id_usuario }}"
+      },
+      "type": "@n8n/n8n-nodes-langchain.memoryBufferWindow",
+      "typeVersion": 1.3,
+      "position": [
+        -6608,
+        1552
+      ],
+      "id": "877a1938-24d7-468a-9013-cdd0d86cc978",
+      "name": "Simple Memory"
+    },
+    {
+      "parameters": {
+        "jsCode": "let rawRespuesta = $('Agente Principal').first().json.output || \"\";\n\nif (typeof rawRespuesta === 'string') {\n    const jsonMatch = rawRespuesta.match(/\\{[\\s\\S]*\\}/);\n    if (jsonMatch) {\n        rawRespuesta = jsonMatch[0]; \n    }\n}\n\nreturn [{\n  json: {\n    user_id: $('Convertir mensaje').first().json.id_usuario,\n    message: $('Convertir Entrada').first().json.mensaje_usuario,\n    respuesta: rawRespuesta\n  }\n}];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -4832,
+        1232
+      ],
+      "id": "23c077ba-bcd0-4a52-a166-46bd47feccc9",
+      "name": "Preparar para memoria",
+      "executeOnce": true
+    },
+    {
+      "parameters": {
+        "jsCode": "// Loop over input items and add a new field called 'myNewField' to the JSON of each one\nconst inputData = $input.first().json;;\n\nconst historialPrevio = inputData.historial_sesion || [];\nconst nuevoMensaje = `Usuario: ${inputData.message}\\nAgente: ${inputData.respuesta}`;\nhistorialPrevio.push(nuevoMensaje);\n\nreturn [{\n  json: {\n    user_id: inputData.user_id,\n    historial_sesion: historialPrevio,\n    ultima_respuesta: inputData.respuesta\n  }\n}];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -4608,
+        1232
+      ],
+      "id": "f7c4b218-5fbc-4db8-8dbe-7632d5720e2b",
+      "name": "Code",
+      "executeOnce": false
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.embeddingsOpenAi",
+      "typeVersion": 1.2,
+      "position": [
+        -6176,
+        1744
+      ],
+      "id": "a1589f20-d556-46f8-967d-a1e335eb6126",
+      "name": "Embeddings OpenAI",
+      "credentials": {
+        "openAiApi": {
+          "id": "zACGOxtwAjrFvDag",
+          "name": "OpenAi_YoEco_DEV"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "={{ $('Convertir Entrada').item.json.mensaje_usuario }}",
+        "hasOutputParser": true,
+        "options": {
+          "systemMessage": "=Eres DALIA, el asistente virtual de \"Baby's World\", una tienda especializada en productos para bebés.\n\nDALIA es una Conciencia Ligera de Atención Inteligente.\nNo vende. Acompaña. No empuja. Sintoniza.\nCada conversación es una oportunidad para conectar, comprender y servir desde la empatía.\n\nSiempre usa la herramienta Think antes de realizar consultas o devolver un mensaje al usuario.\n\nFecha actual: {{ $now }}\n\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n§1 — REGLA GLOBAL: NO INVENTAR\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n- Tu conocimiento NO está memorizado. Todo dato (productos, precios, stock, políticas) DEBE salir de tus herramientas.\n- PROHIBIDO inventar productos, promociones, categorías, precios, condiciones o políticas.\n- PROHIBIDO mencionar problemas internos al cliente (\"fallas del sistema\", \"no lo encuentro\", \"no tengo acceso\"). Si falta información, pregunta para acotar o muestra opciones válidas.\n- PROHIBIDO mostrar SKUs al cliente en el texto. El SKU solo va en el JSON de salida.\n\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n§2 — SALUDO Y PRIMER CONTACTO\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\nAPLICA CUANDO el mensaje es saludo, cortesía o no contiene intención de compra ni pregunta.\nEjemplos: \"hola\", \"buenas\", \"buenas noches\", \"cómo estás\", \"gracias\", \"ok\", \"perfecto\".\n\nREGLAS GENERALES (aplican siempre en modo saludo):\n- NO llames a Tienda/Negocio ni a Catalogo.\n- PROHIBIDO mencionar productos, categorías, precios, stock, envíos, ciudades.\n- PROHIBIDO mencionar que tienes perfil, historial o datos internos del cliente.\n- Responde con un saludo cordial, amigable y breve.\n- Cierra con UNA sola pregunta cálida para entender la intención.\n\nSALIDA OBLIGATORIA EN MODO SALUDO:\n  sendImage = false\n  imagenproducto = false\n  catalog = null\n\n--- PRIMER MENSAJE ---\n\nIdentifica el tipo según: {{ $('Convertir mensaje').item.json.tipo_mensaje }}\n\nSi tipo_mensaje = \"Primer mensaje\", aplica las reglas generales de arriba MÁS estas instrucciones específicas:\n\nA) CLIENTE REGISTRADO ({{ $('Convertir Entrada').item.json.historial_disponible }} = true)\n\n  Datos del cliente disponibles en: {{ $('Convertir Entrada').item.json.promp }}\n\n  - USA el nombre del cliente en el saludo. Esto es obligatorio.\n  - Adopta el tono indicado en el perfil.\n  - Trátalo como conversación nueva con alguien conocido:\n    NO leas en voz alta compras anteriores, historial ni datos del perfil.\n  - Estructura: saludo con nombre → 1 pregunta abierta breve. Nada más.\n\n  Ejemplo: \"¡Hola, María! Qué gusto saludarte 🙂 ¿En qué te puedo ayudar hoy?\"\n\nB) CLIENTE NUEVO ({{ $('Convertir Entrada').item.json.historial_disponible }} = false o null)\n\n  - Preséntate como DALIA con tono cordial y empático.\n  - Pregunta suavemente su nombre para poder registrarlo.\n  - NO preguntes la ciudad en este momento (solo se pide cuando sea\n    necesaria para dar precios, más adelante en la conversación).\n\n  Ejemplo: \"¡Hola! Soy DALIA, tu asistente en Baby's World 🍼 ¿Cómo te llamas?\"\n\n--- MENSAJES POSTERIORES DE CORTESÍA ---\n\nSi tipo_mensaje ≠ \"Primer mensaje\" y el mensaje es solo cortesía (\"gracias\", \"ok\", \"perfecto\"):\n  - Si conoces el nombre, úsalo naturalmente.\n  - Responde brevemente y pregunta si necesita algo más.\n\n  Ejemplo: \"¡Con gusto, María! ¿Te ayudo con algo más?\"\n\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n§3 — HERRAMIENTAS (FUENTES DE VERDAD)\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\nDos herramientas basadas en Qdrant:\n\nTIENDA/NEGOCIO → Políticas, envíos, garantías, pagos, horarios, información corporativa.\n                  NO es fuente de productos ni SKUs.\n\nCATALOGO → Única fuente válida para productos, promociones, títulos, categorías, SKUs, precios, stock y condiciones comerciales consultables. Las promociones se modelan como productos dentro del catálogo y deben tratarse como elementos válidos consultables. Una promoción puede representar combinación de productos, precio especial, condiciones especiales de compra o envío. Solo si Catalogo retorna datos puedes llenar el campo \"catalog\" del JSON.\n\nRegla de enrutamiento:\n- Solo saludo/cortesía → MODO SALUDO (§2, sin herramientas)\n- Pregunta sobre empresa/políticas → Tienda/Negocio\n- Pregunta sobre productos, promociones, catálogo o descripción de imagen → Catalogo\n\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n§4 — CÓMO LLAMAR A CATALOGO\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\nSiempre envía un JSON con esta estructura:\n{\n  \"tipo\": \"productos\" | \"categoria\" | \"producto\",\n  \"valor\": \"<string>\"\n}\n\nReglas:\n- \"¿Qué productos manejas?\" → { \"tipo\": \"productos\", \"valor\": \"todos\" }\n- Términos generales (\"coches\", \"corrales\", \"sillas\") → { \"tipo\": \"categoria\", \"valor\": \"<categoría>\" }\n- Producto específico (\"corral de lona gris\") → { \"tipo\": \"producto\", \"valor\": \"<producto>\" }\n- Promoción específica (\"super combo paseo y descanso\") → { \"tipo\": \"producto\", \"valor\": \"<nombre de la promoción>\" }\n- Pregunta general por promociones (\"qué promociones tienen\", \"muéstrame promos\", \"qué combos hay\") → { \"tipo\": \"categoria\", \"valor\": \"PROMOS\" }\n- Descripción de imagen → interpreta elementos clave → { \"tipo\": \"producto\", \"valor\": \"<nombre descriptivo>\" }\n\nINTELIGENCIA DE BÚSQUEDA:\nTraduce términos coloquiales al lenguaje del catálogo ANTES de llamar:\n- \"Sillas de alimentación\" → \"Comedores\"\n- \"Cosas para caminar\" → \"Caminadores\"\n- \"Carriola\" → \"Coches\"\n\nLÓGICA ESPECIAL PARA PROMOCIONES:\n- Trata las promociones como productos válidos del catálogo. No las manejes como una excepción aparte.\n- Si el cliente pregunta por una promoción específica, búscala como \"producto\".\n- Si el cliente pregunta por promociones en general, consulta la categoría \"PROMOS\".\n- Si el cliente pregunta por una categoría o tipo de producto (ej: \"coches\", \"corrales\", \"comedores\"), además de mostrar productos de esa categoría, incluye también promociones claramente relacionadas con esa categoría o con alguno de los productos recuperados.\n- Para considerar una promoción como relacionada, debes apoyarte SOLO en la información retornada por Catalogo (nombre, descripción, composición, metadata o texto de la promoción). NO inventes relaciones.\n- Si necesitas ampliar resultados para detectar promociones relacionadas, puedes hacer una consulta adicional a Catalogo sobre \"PROMOS\" y filtrar solo las promociones con relación clara a la categoría consultada.\n- Las promociones relacionadas cuentan dentro del mismo máximo total de 5 opciones.\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n§5 — PRESENTACIÓN DE PRODUCTOS\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\nREGLA DURA: Máximo 5 productos en cualquier respuesta.\n\nLas promociones cuentan como un producto más dentro del límite total de 5.\nSi mezclas productos regulares y promociones en una misma respuesta:\n- Muestra primero las opciones más útiles para la intención del cliente.\n- Puedes presentar la promoción como promoción, pero manteniendo intacto el nombre exacto retornado por Catalogo.\n- No separes las promociones en otro bloque si son relevantes; intégralas como una opción natural dentro del listado.\n\nA) LISTADO SIN PRECIO (por defecto, incluye productos y promociones):\n- Máximo 5 productos, una línea por producto.\n- Formato: \"• {{título}}\"\n- Cierra con 1 pregunta para acotar: \"¿Cuál te interesa más?\"\n\nB) LISTADO CON PRECIO (solo si se cumplen AMBAS condiciones, aplica también a promociones si Catalogo retorna precio):\n  1. El cliente pidió precio explícitamente (\"precio\", \"cuánto vale\", \"valor\", \"$\")\n  2. La ciudad del cliente es Bogotá\n\n- Si no conoces la ciudad → pregunta: \"Para darte el precio correcto, ¿en qué ciudad te encuentras?\"\n- Si la ciudad NO es Bogotá → \"Por ahora solo puedo compartir precios para clientes en Bogotá. Igual puedo ayudarte con características y a elegir 🙂\"\n- Si aplica → Formato: \"• {{título}} — {{precio_formateado}}\"\n- Precio 0 o null → \"Precio no disponible\"\n- Formato dinero: $380.000\n\nC) RESCATE (sin resultados o categoría ambigua):\n1. NO entres en bucle de preguntas sin mostrar nada.\n2. Intenta sinónimos automáticamente (ej: \"sillas de alimentación\" → \"comedores\" → \"sillas\").\n3. Si tras 2 intentos no hay match: muestra los 5 productos más cercanos disponibles.\n4. Ejemplo: \"No encontré exactamente con ese nombre, pero estos pueden ser justo lo que buscas. ¿Te gusta alguno?\"\n5. catalog = [los mejores matches], sendImage = true.\n\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n§6 — TONO Y MICRO-FRASES\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\nUsa máximo 1 micro-frase humana por respuesta. No repitas la misma dos veces seguidas.\nEjemplos:\n- \"Genial, vamos paso a paso.\"\n- \"Perfecto, te ayudo con eso.\"\n- \"Dime con cuál seguimos y te muestro opciones.\"\n\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n§7 — IMÁGENES (sendImage e imagenproducto)\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\nsendImage = true CUANDO:\n- Muestras una lista de productos (categoría, opciones, rescate).\n\nimagenproducto = true CUANDO:\n- El cliente pregunta por UN producto específico, un color, o pide descripción de un producto.\n\nEN CUALQUIER OTRO CASO: ambos = false.\n\nREGLA: No enviar imagen del mismo SKU ni de la misma promoción dos veces en la misma conversación.\n\nREGLA ESPECIAL PARA PROMOCIONES:\n- Si el elemento mostrado es una promoción, maneja la imagen exactamente con la misma lógica que usas para productos.\n- Si muestras una lista donde hay promociones, sendImage = true.\n- Si el cliente pregunta por una promoción específica, o por detalles de una promoción, imagenproducto = true.\n- No envíes la misma imagen de la misma promoción dos veces en la misma conversación.\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n§8 — NORMALIZACIÓN DE COLOR\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\nCuando un título incluya color (ej: \"COCHE MALETA JUMPY KHAKI\"), SEPARA:\n- titulo → nombre base sin color (\"COCHE MALETA JUMPY\")\n- color → la variante (\"KHAKI\")\n\nPrioridad para extraer color:\n1. metadata.color / metadata.variante (si existe)\n2. Patrón \"(Color X)\" o último token si es color conocido (KHAKI, GRIS, AZUL, ROSADO, NEGRO, VERDE, MORADO, CAFÉ, BEIGE, BLANCO, ROJO, etc.)\n3. Si no puedes inferir con confianza → color = \"\" (string vacío)\n\nEn replyText puedes mostrar \"Producto (Color)\" para el cliente.\nEn el JSON, titulo y color van separados.\n\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n§9 — FORMATO DE SALIDA (JSON)\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\nDevuelve SIEMPRE un JSON válido con esta estructura exacta:\n\n{\n  \"replyText\": \"string — el mensaje para el cliente\",\n  \"sendImage\": boolean,\n  \"imagenproducto\": boolean,\n  \"catalog\": null | [\n    {\n      \"categoria\": \"string — nombre de la categoría\",\n      \"productos\": [\n        {\n          \"titulo\": \"string — nombre base del producto SIN color\",\n          \"descripcion\": \"string - descripcion del producto\",\n          \"main_image_url\": \"string | null — URL de imagen principal del producto, EXACTAMENTE como la retorna Catalogo\",\n          \"colores\": [\n            {\n              \"color\": \"string — variante/color, o string vacío si no aplica\",\n              \"sku\": \"string — código SKU\",\n              \"variant_image_url\": \"string | null — URL de imagen de esta variante/color, EXACTAMENTE como la retorna Catalogo\"\n            }\n          ],\n          stock: \"number - stock disponible\"\n        }\n      ]\n    }\n  ]\n}\n\n\nNotas sobre catalog:\n- Si un producto tiene múltiples colores/variantes, agrúpalos bajo el mismo objeto \"titulo\" con múltiples entradas en \"colores\".\n- Si un producto no tiene variante de color, usa: { \"color\": \"\", \"sku\": \"SKU_DEL_PRODUCTO\" }\n- Máximo 5 productos totales sumando todos los objetos de \"productos\" en todos los elementos del array.\n- No modifiques los nombres de producto — déjalos tal cual retorna Catalogo.\n- \"main_image_url\" y \"variant_image_url\" son campos técnicos (URLs) que Catalogo siempre retorna junto con cada producto/color. Debes COPIARLOS exactamente tal cual — incluyendo el valor null cuando corresponda — en el JSON de salida. NUNCA los omitas, NUNCA los inventes, y NUNCA los menciones ni los muestres en replyText (son de uso interno, no para el cliente).\n\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n§10 — VALIDACIÓN FINAL (CHECK ANTES DE RESPONDER)\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\nAntes de emitir tu respuesta, verifica:\n\n1. Si replyText menciona productos por nombre → catalog NO puede ser null.\n2. Si catalog es null → sendImage = false, imagenproducto = false.\n3. Si catalog tiene datos → sendImage o imagenproducto = true según §7.\n4. Máximo 5 productos entre replyText y catalog.\n5. replyText NO contiene SKUs.\n6. Si es saludo/cortesía → replyText NO contiene productos, categorías, precios, ciudades.\n7. Si replyText menciona una promoción por nombre → catalog NO puede ser null.\n8. Si catalog incluye promociones, trátalas como productos válidos del catálogo y cuentan dentro del máximo total de 5.\n9. Si el cliente preguntó por una categoría y existe una promoción claramente relacionada según Catalogo, inclúyela como opción dentro del mismo listado, siempre respetando el máximo de 5.\n\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n§11 - ENGANCHES DE PUBLICIDAD E INTENCI�N DE COMPRA\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\nAPLICA CUANDO el usuario inicia la conversación con frases de un anuncio publicitario que demuestran intención de compra (ej: \"este diseño me gusta\", \"este me gusta\", \"como puedo comprar este\", \"quiero comprar este\").\n\nREGLAS PARA ESTE ESCENARIO:\n- Sé muy concreto en el direccionamiento a un vendedor humano.\n- NO entregues catálogos, NO ofrezcas más opciones, NO solicites información irrelevante.\n- Indaga ÚNICAMENTE por información básica necesaria antes de que la conversación sea escalada a un humano:\n  1. Nombre\n  2. Ciudad\n  3. Fecha en que lo desea\n- Una vez tengas esta información, indícale al usuario que lo comunicarás de inmediato con un asesor de ventas y pídele que por favor escriba la frase \"Quiero hablar con un asesor\" para que el sistema realice la transferencia automáticamente.\n- Salida para estos mensajes: sendImage = false, imagenproducto = false, catalog = null.\\r\n"
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 1.9,
+      "position": [
+        -6368,
+        1200
+      ],
+      "id": "15cff478-2971-4363-9353-57ad66b0eb0e",
+      "name": "Agente Principal",
+      "retryOnFail": true
+    },
+    {
+      "parameters": {
+        "model": {
+          "__rl": true,
+          "value": "gpt-5.1",
+          "mode": "list",
+          "cachedResultName": "gpt-5.1"
+        },
+        "options": {
+          "maxRetries": 2
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatOpenAi",
+      "typeVersion": 1.2,
+      "position": [
+        -6768,
+        1552
+      ],
+      "id": "65cea119-93fd-401a-886d-fe55e81d0e69",
+      "name": "Modelo De Chat2",
+      "retryOnFail": true,
+      "credentials": {
+        "openAiApi": {
+          "id": "zACGOxtwAjrFvDag",
+          "name": "OpenAi_YoEco_DEV"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "13ee2b30-1377-415c-9927-dccb0f78b231",
+              "name": "message",
+              "value": "={{ $json.message }}",
+              "type": "string"
+            },
+            {
+              "id": "5927e26f-ee6f-449a-aeae-a83a0123973d",
+              "name": "id_usuario",
+              "value": "={{$json.session_id }}",
+              "type": "string"
+            },
+            {
+              "id": "befe4d09-ddb6-4acd-9b1c-3cf5d77026d9",
+              "name": "tipo_mensaje",
+              "value": "={{ $json.tipo_mensaje }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        -7584,
+        1152
+      ],
+      "id": "bb6f085d-308b-4c12-9419-0038b926b606",
+      "name": "Convertir mensaje"
+    },
+    {
+      "parameters": {
+        "workflowInputs": {
+          "values": [
+            {
+              "name": "session_id"
+            },
+            {
+              "name": "message"
+            },
+            {
+              "name": "tipo_mensaje"
+            },
+            {
+              "name": "environment"
+            },
+            {
+              "name": "channel"
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.executeWorkflowTrigger",
+      "typeVersion": 1.1,
+      "position": [
+        -7824,
+        1152
+      ],
+      "id": "134a20d8-97e9-4f5b-b0e8-f45ea39ea836",
+      "name": "When Executed by Another Workflow"
+    },
+    {
+      "parameters": {
+        "mode": "retrieve-as-tool",
+        "toolName": "YoEco",
+        "toolDescription": "Eres un asistente que nos apoya en la generación de información relacionada con la empresa BabysWorld. Tu enfoque debe ser ayudarnos a responder preguntas sobre la operación y forma de trabajo de la empresa BabysWorld, así como ayudar a resolver las dudas sobre a que se dedica la empresa, que vende, cual es su público objetivo, cual es su misión y visión, y en general orientar y asesorar a clientes existentes o nuevos en el ciclo de ventas para que estos decidan comprar a la tienda Baby´s world. ",
+        "qdrantCollection": {
+          "__rl": true,
+          "value": "={{ $('When Executed by Another Workflow').first().json.environment == 'dev' ? 'BabysWorld_Business_TEST' : 'BabysWorld_Business' }}",
+          "mode": "id"
+        },
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.vectorStoreQdrant",
+      "typeVersion": 1.1,
+      "position": [
+        -6176,
+        1552
+      ],
+      "id": "a7e23979-1d8e-4476-9eb5-aed476aa6e8b",
+      "name": "Tienda/Negocio",
+      "credentials": {
+        "qdrantApi": {
+          "id": "ZYv8vdr6tkTS4jYz",
+          "name": "QdrantApi account 3"
+        }
+      }
+    },
+    {
+      "parameters": {},
+      "type": "@n8n/n8n-nodes-langchain.toolThink",
+      "typeVersion": 1.1,
+      "position": [
+        -6448,
+        1552
+      ],
+      "id": "d27467a4-7d18-41da-9781-cf386b93ceb9",
+      "name": "Think"
+    },
+    {
+      "parameters": {
+        "description": "Llama a esta herramienta siempre que el mensaje este consultando explicita o implicitamente por productos, categorias o en general información sobre catalogo de productos de Baby´s world. Suministra la información previamente interpretada de \"tipo\": \"string\" y \"valor\": \"string\". ",
+        "workflowId": {
+          "__rl": true,
+          "value": "aRJCOVZWZxrRZu3p",
+          "mode": "list",
+          "cachedResultUrl": "/workflow/aRJCOVZWZxrRZu3p",
+          "cachedResultName": "Babys World — Catalogo Qdrant (DEV)"
+        },
+        "workflowInputs": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "tipo": "={{ $fromAI('tipo', 'productos, categoria o producto', 'string') }}",
+            "valor": "={{ $fromAI('valor', 'nombre de la categoría o de los productos separados por coma', 'string') }}"
+          },
+          "matchingColumns": [],
+          "schema": [
+            {
+              "id": "tipo",
+              "displayName": "tipo",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string"
+            },
+            {
+              "id": "valor",
+              "displayName": "valor",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string"
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.toolWorkflow",
+      "typeVersion": 2.2,
+      "position": [
+        -6288,
+        1552
+      ],
+      "id": "f22cc026-7885-4ab6-94ab-89728581b27d",
+      "name": "Catalogo"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "40512a95-0b94-46c9-87a8-3e9eb65d40aa",
+              "leftValue": "={{ $json.tipo_mensaje }}",
+              "rightValue": "Primer mensaje",
+              "operator": {
+                "type": "string",
+                "operation": "equals",
+                "name": "filter.operator.equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        -7360,
+        1152
+      ],
+      "id": "312cbcc6-ed75-4322-a88c-a884c17c03e4",
+      "name": "primer mensaje?"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "d13255a4-cb4d-4037-a299-24468d0036f3",
+              "leftValue": "={{ $binary?.data ? 'yes' : '' }}",
+              "rightValue": "",
+              "operator": {
+                "type": "string",
+                "operation": "notEmpty",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        -4656,
+        1904
+      ],
+      "id": "9719663f-3443-4093-b5e5-aff69aeaca41",
+      "name": "Imagen descargada?"
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "type": "n8n-nodes-base.splitInBatches",
+      "typeVersion": 3,
+      "position": [
+        -5328,
+        1808
+      ],
+      "id": "e60df975-32fc-42d4-a118-6dc14ef19eec",
+      "name": "Recorre productos"
+    },
+    {
+      "parameters": {
+        "workflowId": {
+          "__rl": true,
+          "value": "={{ $('When Executed by Another Workflow').first().json.environment == 'dev' ? $vars.FLOW_AI_USAGE_LOG_DEV : $vars.FLOW_AI_USAGE_LOG_PROD }}",
+          "mode": "id",
+          "cachedResultUrl": "/workflow/=%7B%7B%20$('When%20Executed%20by%20Another%20Workflow').item.json.environment%20==%20'dev'%20%3F%20$vars.FLOW_AI_USAGE_LOG_DEV%20:%20$vars.FLOW_AI_USAGE_LOG_PROD%20%7D%7D"
+        },
+        "workflowInputs": {
+          "mappingMode": "passThrough",
+          "value": {},
+          "matchingColumns": [],
+          "schema": [],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": true
+        },
+        "mode": "each",
+        "options": {
+          "waitForSubWorkflow": false
+        }
+      },
+      "type": "n8n-nodes-base.executeWorkflow",
+      "typeVersion": 1.3,
+      "position": [
+        -5792,
+        992
+      ],
+      "id": "e303df71-ed74-4d51-a373-7b7619173014",
+      "name": "Call 'ai_usage_log'",
+      "disabled": true,
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "jsCode": "const agentItem = $('Agente Principal').first();\nconst native    = agentItem.metadata?.tokenUsage ?? {};\n\n// El output final del agente está en el JSON (puede traer markdown fences)\nconst raw   = agentItem.json.output ?? '';\nconst clean = raw.replace(/^```json\\\\\\\\s*/i, '').replace(/\\\\\\\\s*```\\\\\\\\s*$/i, '').trim();\n\nlet parsed = {};\ntry { parsed = JSON.parse(clean); } catch { parsed = {}; }\n\nconst now = Date.now();\nreturn {\n  process_id:        $execution.id,\n  model_name:        'gpt-5.1',\n  prompt_tokens:     native.promptTokens     ?? 0,\n  completion_tokens: native.completionTokens ?? 0,\n  total_tokens:      native.totalTokens      ?? 0,\n  ai_response:       parsed.replyText        ?? clean,\n  completed_at:      now,\n  created_at:        now,\n  environment:       $('Convertir Entrada').item.json.environment ?? 'prod',\n  token_source:      'native'\n}"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -5968,
+        992
+      ],
+      "id": "9f7dcf70-8e0e-4de5-aa8b-8dd2e05ef5be",
+      "name": "build_token_usage_dto",
+      "disabled": true
+    },
+    {
+      "parameters": {
+        "content": "## Envío de imágenes de productos\nVarios productos: 1 imagen por producto (máx. 5). Un solo producto: 1 imagen por color. Las URLs vienen de Qdrant. Si no hay imagen envía *Imagen no disponible* + nombre.",
+        "height": 640,
+        "width": 1680
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [
+        -5632,
+        1616
+      ],
+      "typeVersion": 1,
+      "id": "a1e6e7cb-70db-44b7-a8b7-37b2ea87391a",
+      "name": "Sticky Note"
+    },
+    {
+      "parameters": {
+        "jsCode": "// 1. Obtenemos el texto del agente\nlet rawOutput = $('Agente Principal').item.json.output;\nlet data = {};\n\nif (typeof rawOutput === 'string') {\n    try {\n        // Limpiamos el texto de espacios o saltos de línea al inicio/fin\n        let cleanedOutput = rawOutput.trim();\n        \n        // Extraemos estrictamente lo que hay entre la primera '{' y la última '}'\n        const jsonMatch = cleanedOutput.match(/\\{[\\s\\S]*\\}/);\n        \n        if (jsonMatch) {\n            // Si el agente mandó un JSON correctamente, lo extraemos y lo convertimos\n            cleanedOutput = jsonMatch[0];\n            data = JSON.parse(cleanedOutput);\n        } else {\n            // PLAN B: Si no hay llaves, significa que mandó texto puro. \n            // Lo metemos directamente en replyText.\n            data = { replyText: cleanedOutput };\n        }\n\n    } catch (error) {\n        // PLAN C: Si intentó parsear un JSON pero estaba roto, salvamos el mensaje original.\n        console.error(\"Error al parsear el JSON:\", error);\n        data = { replyText: rawOutput }; \n    }\n} else {\n    // Si ya venía como objeto, lo asignamos directamente\n    data = rawOutput || {};\n}\n\n// 2. Obtenemos la lista plana de productos que viene en el input\nlet rawCatalog = [];\nif (data.catalog){\n  rawCatalog = Array.isArray(data.catalog) ? data.catalog : [data.catalog];\n}\n\n// 3. Retornamos el objeto final\nreturn {\n  replyText: data.replyText || \"\",\n  sendImage: !!data.sendImage,\n  imagenproducto: !!data.imagenproducto,\n  catalog: rawCatalog\n};"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -6000,
+        1200
+      ],
+      "id": "8f242b49-09ce-4145-984f-cbcb2edc59fa",
+      "name": "Poner formato necesario"
+    },
+    {
+      "parameters": {
+        "jsCode": "if (!$runIndex || $runIndex === 0) {\n  return {isValid: true};\n}\n\nreturn {isValid: false};"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -4400,
+        1232
+      ],
+      "id": "d157029e-b959-42b9-8303-1211fd735ebd",
+      "name": "validate_once_execution"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "e80b280b-7682-437e-82aa-a15063c33f77",
+              "leftValue": "={{ $json.isValid }}",
+              "rightValue": true,
+              "operator": {
+                "type": "boolean",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        -4192,
+        1232
+      ],
+      "id": "21b52f94-1886-4941-b985-025b13ccc947",
+      "name": "is_once_execution"
+    },
+    {
+      "parameters": {},
+      "type": "n8n-nodes-base.noOp",
+      "typeVersion": 1,
+      "position": [
+        -3968,
+        1408
+      ],
+      "id": "1bf94cd8-8622-4cca-bd2e-ad584a0033f9",
+      "name": "No Operation, do nothing"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "d04b719d-c103-4a59-8359-05eed9667b21",
+              "name": "mensaje_usuario",
+              "value": "={{ $('Convertir mensaje').item.json.message }}",
+              "type": "string"
+            },
+            {
+              "id": "cc869312-8bc8-4711-8636-268a0768ba1a",
+              "name": "prompt",
+              "value": "={{ $('get_history_user_status').item.json.conversation_history }}",
+              "type": "string"
+            },
+            {
+              "id": "3de0d956-23d3-448a-a5fc-c27c47a0bc02",
+              "name": "historial_disponible",
+              "value": "={{ ($('get_history_user_status').item.json.conversation_history !== \"\") }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        -6832,
+        1248
+      ],
+      "id": "ba1f193b-6c2b-47a4-93c2-48c3e17a67e6",
+      "name": "set_data_history"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "2bf9fff9-8f90-4db5-92ba-ff177e7b2230",
+              "name": "mensaje_usuario",
+              "value": "={{ $('Convertir mensaje').item.json.message }}\n",
+              "type": "string"
+            },
+            {
+              "id": "9eb0a8e5-ac38-4dc3-a27c-42e2ac5338b9",
+              "name": "prompt",
+              "value": "={{ $('Llamada a historial de clientes').item.json.prompt }}",
+              "type": "string"
+            },
+            {
+              "id": "a5a6189b-08ff-4f75-a4b6-c13939f250a8",
+              "name": "historial_disponible",
+              "value": "={{ $('Llamada a historial de clientes').item.json.historial_disponible }}",
+              "type": "boolean"
+            },
+            {
+              "id": "413e7478-9d46-4954-89f7-33589aec809d",
+              "name": "",
+              "value": "",
+              "type": "string"
+            },
+            {
+              "id": "095e268c-b537-46be-99ef-6e4df09184e0",
+              "name": "",
+              "value": "",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        -6704,
+        1024
+      ],
+      "id": "780b5967-319f-4b74-96a0-c7e1bf42e03c",
+      "name": "set_data_history_database"
+    },
+    {
+      "parameters": {},
+      "type": "n8n-nodes-base.merge",
+      "typeVersion": 3.2,
+      "position": [
+        -6512,
+        1200
+      ],
+      "id": "a9fa26d9-b832-4e93-a156-2776afb6b9b5",
+      "name": "Convertir Entrada"
+    },
+    {
+      "parameters": {
+        "operation": "get",
+        "tableId": "={{ 'babys_world_' + $('When Executed by Another Workflow').first().json.environment + '_session_chat' }}",
+        "filters": {
+          "conditions": [
+            {
+              "keyName": "=session_id",
+              "keyValue": "={{ $('When Executed by Another Workflow').first().json.session_id }}"
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.supabase",
+      "typeVersion": 1,
+      "position": [
+        -7104,
+        1248
+      ],
+      "id": "f214c318-c8b1-4232-91b9-634f5a20d530",
+      "name": "get_history_user_status",
+      "alwaysOutputData": true,
+      "credentials": {
+        "supabaseApi": {
+          "id": "dtKFPWrXh0HZEyUt",
+          "name": "clients_database"
+        }
+      },
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "operation": "update",
+        "tableId": "={{ 'babys_world_' + $('When Executed by Another Workflow').first().json.environment + '_session_chat' }}",
+        "filters": {
+          "conditions": [
+            {
+              "keyName": "=session_id",
+              "condition": "=eq",
+              "keyValue": "={{ $('When Executed by Another Workflow').first().json.session_id }}"
+            }
+          ]
+        },
+        "fieldsUi": {
+          "fieldValues": [
+            {
+              "fieldId": "=conversation_history",
+              "fieldValue": "={{ $json.prompt }}"
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.supabase",
+      "typeVersion": 1,
+      "position": [
+        -6880,
+        1024
+      ],
+      "id": "54d7f5dd-2957-4847-8aab-c2b12046cd30",
+      "name": "update_history_user_status",
+      "credentials": {
+        "supabaseApi": {
+          "id": "dtKFPWrXh0HZEyUt",
+          "name": "clients_database"
+        }
+      },
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "workflowId": {
+          "__rl": true,
+          "value": "T1PMxwA5UVGwhP1n",
+          "mode": "list",
+          "cachedResultUrl": "/workflow/T1PMxwA5UVGwhP1n",
+          "cachedResultName": "Babys World — Historial De Clientes (DEV)"
+        },
+        "workflowInputs": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "user_id": "={{ $('Convertir mensaje').item.json.id_usuario }}",
+            "message": "={{ $('Convertir mensaje').item.json.message }}"
+          },
+          "matchingColumns": [],
+          "schema": [
+            {
+              "id": "user_id",
+              "displayName": "user_id",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string",
+              "removed": false
+            },
+            {
+              "id": "message",
+              "displayName": "message",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string",
+              "removed": false
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": true
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.executeWorkflow",
+      "typeVersion": 1.3,
+      "position": [
+        -7104,
+        1024
+      ],
+      "id": "a611013a-f167-4138-86eb-b90f33853545",
+      "name": "Llamada a historial de clientes"
+    },
+    {
+      "parameters": {
+        "workflowId": {
+          "__rl": true,
+          "value": "moR2mUZuRnJIiNZq",
+          "mode": "list",
+          "cachedResultUrl": "/workflow/moR2mUZuRnJIiNZq",
+          "cachedResultName": "Babys World — Flujo de enviar mensaje (DEV)"
+        },
+        "workflowInputs": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "session_id": "={{ $('Convertir mensaje').first().json.id_usuario }}",
+            "text_body": "={{ $('Poner formato necesario').first().json.replyText }}",
+            "channel": "={{ $('When Executed by Another Workflow').first().json.channel }}"
+          },
+          "matchingColumns": [],
+          "schema": [
+            {
+              "id": "session_id",
+              "displayName": "session_id",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string",
+              "removed": false
+            },
+            {
+              "id": "text_body",
+              "displayName": "text_body",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string",
+              "removed": false
+            },
+            {
+              "id": "caption",
+              "displayName": "caption",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string",
+              "removed": false
+            },
+            {
+              "id": "imagen no disponible",
+              "displayName": "imagen no disponible",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string",
+              "removed": false
+            },
+            {
+              "id": "environment",
+              "displayName": "environment",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string",
+              "removed": false
+            },
+            {
+              "id": "channel",
+              "displayName": "channel",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string",
+              "removed": false
+            },
+            {
+              "id": "mime_type",
+              "displayName": "mime_type",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string",
+              "removed": false
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": true
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.executeWorkflow",
+      "typeVersion": 1.3,
+      "position": [
+        -3968,
+        1216
+      ],
+      "id": "d05fb783-4347-4b74-a6e4-c93d29e8245e",
+      "name": "Enviar mensaje"
+    },
+    {
+      "parameters": {
+        "workflowId": {
+          "__rl": true,
+          "value": "1k57pJ9j6gB7neP8",
+          "mode": "list",
+          "cachedResultUrl": "/workflow/1k57pJ9j6gB7neP8",
+          "cachedResultName": "Babys World — Flujo guardar historial de asesor (DEV)"
+        },
+        "workflowInputs": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "id": "={{ $json.contacts[0].wa_id }}",
+            "rol": "asesor",
+            "mensaje": "={{ JSON.parse($('Code').item.json.ultima_respuesta).replyText }}",
+            "context_id_whatsapp": "={{ $json.messages[0].id }}"
+          },
+          "matchingColumns": [],
+          "schema": [
+            {
+              "id": "id",
+              "displayName": "id",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string",
+              "removed": false
+            },
+            {
+              "id": "rol",
+              "displayName": "rol",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string",
+              "removed": false
+            },
+            {
+              "id": "mensaje",
+              "displayName": "mensaje",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string",
+              "removed": false
+            },
+            {
+              "id": "context_id_whatsapp",
+              "displayName": "context_id_whatsapp",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string",
+              "removed": false
+            },
+            {
+              "id": "context_relation_whatsapp",
+              "displayName": "context_relation_whatsapp",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string",
+              "removed": false
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": true
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.executeWorkflow",
+      "typeVersion": 1.3,
+      "position": [
+        -3744,
+        1216
+      ],
+      "id": "a207c089-9f31-48ee-a78b-5d3133ba93b6",
+      "name": "guardar historial"
+    },
+    {
+      "parameters": {
+        "workflowId": {
+          "__rl": true,
+          "value": "moR2mUZuRnJIiNZq",
+          "mode": "list",
+          "cachedResultUrl": "/workflow/moR2mUZuRnJIiNZq",
+          "cachedResultName": "Babys World — Flujo de enviar mensaje (DEV)"
+        },
+        "workflowInputs": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "session_id": "={{ $('Convertir mensaje').first().json.id_usuario }}",
+            "imagen no disponible": "=",
+            "caption": "={{ $('Recorre productos').first().json.titulo }}",
+            "channel": "={{ $('When Executed by Another Workflow').first().json.channel }}"
+          },
+          "matchingColumns": [],
+          "schema": [
+            {
+              "id": "session_id",
+              "displayName": "session_id",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string",
+              "removed": false
+            },
+            {
+              "id": "text_body",
+              "displayName": "text_body",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string",
+              "removed": false
+            },
+            {
+              "id": "caption",
+              "displayName": "caption",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string",
+              "removed": false
+            },
+            {
+              "id": "imagen no disponible",
+              "displayName": "imagen no disponible",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string",
+              "removed": false
+            },
+            {
+              "id": "environment",
+              "displayName": "environment",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string",
+              "removed": false
+            },
+            {
+              "id": "channel",
+              "displayName": "channel",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string",
+              "removed": false
+            },
+            {
+              "id": "mime_type",
+              "displayName": "mime_type",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string",
+              "removed": false
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": true
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.executeWorkflow",
+      "typeVersion": 1.3,
+      "position": [
+        -4400,
+        1728
+      ],
+      "id": "2998deda-52fd-45be-8bc5-ab401a263418",
+      "name": "Enviar imagen producto"
+    },
+    {
+      "parameters": {
+        "workflowId": {
+          "__rl": true,
+          "value": "1k57pJ9j6gB7neP8",
+          "mode": "list",
+          "cachedResultUrl": "/workflow/1k57pJ9j6gB7neP8",
+          "cachedResultName": "Babys World — Flujo guardar historial de asesor (DEV)"
+        },
+        "workflowInputs": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "id": "={{ $json.contacts[0].wa_id }}",
+            "rol": "asesor",
+            "mensaje": "={{ $('Recorre productos').first().json.titulo }}",
+            "context_id_whatsapp": "={{ $json.messages[0].id }}"
+          },
+          "matchingColumns": [],
+          "schema": [
+            {
+              "id": "id",
+              "displayName": "id",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string",
+              "removed": false
+            },
+            {
+              "id": "rol",
+              "displayName": "rol",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string",
+              "removed": false
+            },
+            {
+              "id": "mensaje",
+              "displayName": "mensaje",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string",
+              "removed": false
+            },
+            {
+              "id": "context_id_whatsapp",
+              "displayName": "context_id_whatsapp",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string",
+              "removed": false
+            },
+            {
+              "id": "context_relation_whatsapp",
+              "displayName": "context_relation_whatsapp",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string",
+              "removed": false
+            },
+            {
+              "id": "channel",
+              "displayName": "channel",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string",
+              "removed": false
+            },
+            {
+              "id": "execution_id",
+              "displayName": "execution_id",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string",
+              "removed": false
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": true
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.executeWorkflow",
+      "typeVersion": 1.3,
+      "position": [
+        -4176,
+        1728
+      ],
+      "id": "8dc4abae-e877-4495-8df9-3b39af52e368",
+      "name": "guardar historial imagen",
+      "alwaysOutputData": true,
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "workflowId": {
+          "__rl": true,
+          "value": "1k57pJ9j6gB7neP8",
+          "mode": "list",
+          "cachedResultUrl": "/workflow/1k57pJ9j6gB7neP8",
+          "cachedResultName": "Babys World — Flujo guardar historial de asesor (DEV)"
+        },
+        "workflowInputs": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "id": "={{ $json.contacts[0].wa_id }}",
+            "rol": "asesor",
+            "mensaje": "={{ $('Recorre productos').first().json.titulo }}",
+            "context_id_whatsapp": "={{ $json.messages[0].id }}"
+          },
+          "matchingColumns": [],
+          "schema": [
+            {
+              "id": "id",
+              "displayName": "id",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string",
+              "removed": false
+            },
+            {
+              "id": "rol",
+              "displayName": "rol",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string",
+              "removed": false
+            },
+            {
+              "id": "mensaje",
+              "displayName": "mensaje",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string",
+              "removed": false
+            },
+            {
+              "id": "context_id_whatsapp",
+              "displayName": "context_id_whatsapp",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string",
+              "removed": false
+            },
+            {
+              "id": "context_relation_whatsapp",
+              "displayName": "context_relation_whatsapp",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string",
+              "removed": false
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": true
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.executeWorkflow",
+      "typeVersion": 1.3,
+      "position": [
+        -4176,
+        2080
+      ],
+      "id": "b673d4fc-fb42-4d91-a1d0-0890a6ab4319",
+      "name": "guardar historial sin imagen",
+      "alwaysOutputData": true,
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "workflowId": {
+          "__rl": true,
+          "value": "moR2mUZuRnJIiNZq",
+          "mode": "list",
+          "cachedResultUrl": "/workflow/moR2mUZuRnJIiNZq",
+          "cachedResultName": "Babys World — Flujo de enviar mensaje (DEV)"
+        },
+        "workflowInputs": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "session_id": "={{ $('Convertir mensaje').first().json.id_usuario }}",
+            "imagen no disponible": "=*Imagen no disponible* {{ $('Recorre productos').first().json.titulo }}",
+            "channel": "={{ $('When Executed by Another Workflow').first().json.channel }}"
+          },
+          "matchingColumns": [],
+          "schema": [
+            {
+              "id": "session_id",
+              "displayName": "session_id",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string",
+              "removed": false
+            },
+            {
+              "id": "text_body",
+              "displayName": "text_body",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string",
+              "removed": false
+            },
+            {
+              "id": "caption",
+              "displayName": "caption",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string",
+              "removed": false
+            },
+            {
+              "id": "imagen no disponible",
+              "displayName": "imagen no disponible",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string",
+              "removed": false
+            },
+            {
+              "id": "environment",
+              "displayName": "environment",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string",
+              "removed": false
+            },
+            {
+              "id": "channel",
+              "displayName": "channel",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string",
+              "removed": false
+            },
+            {
+              "id": "mime_type",
+              "displayName": "mime_type",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string",
+              "removed": false
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": true
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.executeWorkflow",
+      "typeVersion": 1.3,
+      "position": [
+        -4400,
+        2080
+      ],
+      "id": "0c00b9c3-d489-44ee-9e3c-56c777166a4c",
+      "name": "Enviar imagen no disponible"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "703371c8-b282-4404-a319-45fab0324558",
+              "leftValue": "={{ $json.imageUrl }}",
+              "rightValue": "",
+              "operator": {
+                "type": "string",
+                "operation": "notEmpty",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        -5104,
+        1904
+      ],
+      "id": "f5390ccf-91a8-4bf9-a98c-d594e21972b9",
+      "name": "Existe URL imagen?"
+    },
+    {
+      "parameters": {
+        "url": "={{ $json.imageUrl }}",
+        "options": {
+          "response": {
+            "response": {
+              "responseFormat": "file"
+            }
+          }
+        }
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        -4880,
+        1808
+      ],
+      "id": "c42ba0bc-511a-4e04-98e2-4d83ee0ca0ff",
+      "name": "Descargar imagen",
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "822270b3-f6c1-463c-adf8-689ff0d9c97b",
+              "leftValue": "={{ $json.sendImage || $json.imagenproducto }}",
+              "rightValue": "",
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            },
+            {
+              "id": "018eb12a-705a-4fcc-bf71-f05318e3bc86",
+              "leftValue": "={{ ($json.catalog || []).flatMap(c => c.productos || []).length }}",
+              "rightValue": 0,
+              "operator": {
+                "type": "number",
+                "operation": "gt"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "looseTypeValidation": true,
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        -5776,
+        1216
+      ],
+      "id": "59d0c71a-2246-4cfa-826a-9dd180673cf7",
+      "name": "¿Enviar imágenes?"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Arma la lista de imágenes a enviar con las URLs que vienen de Qdrant.\n// - Varios productos (ej. \"¿tienes coches?\"): 1 imagen por producto, máx. 5.\n// - Un solo producto: 1 imagen por color (variant_image_url; si el color no tiene, usa main_image_url).\n//   Si varios colores comparten la misma imagen, se envía una vez con los colores juntos en el caption.\nconst catalog = $('Poner formato necesario').first().json.catalog || [];\nconst MAX_PRODUCTOS = 5;\nconst MAX_COLORES = 10;\n\n// Junta productos de todas las categorías, sin repetidos\nconst vistos = new Set();\nconst productos = [];\nfor (const cat of catalog) {\n  for (const p of (cat.productos || [])) {\n    const titulo = (p.titulo || '').trim();\n    if (!titulo || vistos.has(titulo)) continue;\n    vistos.add(titulo);\n    productos.push({ ...p, titulo });\n  }\n}\n\nconst salida = [];\n\nif (productos.length === 1) {\n  // Un solo producto -> una imagen por color\n  const p = productos[0];\n  const colores = (p.colores || []).slice(0, MAX_COLORES);\n  const porUrl = new Map();   // imageUrl -> [colores]\n  const sinImagen = [];\n\n  for (const c of colores) {\n    const url = c.variant_image_url || p.main_image_url || null;\n    const color = (c.color || '').trim();\n    if (!url) { sinImagen.push(color); continue; }\n    if (!porUrl.has(url)) porUrl.set(url, []);\n    if (color) porUrl.get(url).push(color);\n  }\n\n  for (const [imageUrl, cols] of porUrl) {\n    const titulo = cols.length ? `${p.titulo} (${cols.join(' / ')})` : p.titulo;\n    salida.push({ json: { titulo, imageUrl } });\n  }\n  if (sinImagen.length || colores.length === 0 && !p.main_image_url) {\n    const cols = sinImagen.filter(Boolean);\n    const titulo = cols.length ? `${p.titulo} (${cols.join(' / ')})` : p.titulo;\n    salida.push({ json: { titulo, imageUrl: null } });\n  }\n  if (colores.length === 0 && p.main_image_url) {\n    salida.push({ json: { titulo: p.titulo, imageUrl: p.main_image_url } });\n  }\n} else {\n  // Varios productos -> una imagen por producto\n  for (const p of productos.slice(0, MAX_PRODUCTOS)) {\n    const colores = p.colores || [];\n    const first = colores[0] || {};\n    const imageUrl = (colores.length === 1 && first.variant_image_url)\n      ? first.variant_image_url\n      : (p.main_image_url ?? null);\n    salida.push({ json: { titulo: p.titulo, imageUrl } });\n  }\n}\n\nreturn salida;"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -5552,
+        1808
+      ],
+      "id": "d617888f-9b29-4ec8-ac59-13f863228f04",
+      "name": "Preparar productos imagen"
+    }
+  ],
+  "connections": {
+    "Simple Memory": {
+      "ai_memory": [
+        [
+          {
+            "node": "Agente Principal",
+            "type": "ai_memory",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Preparar para memoria": {
+      "main": [
+        [
+          {
+            "node": "Code",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code": {
+      "main": [
+        [
+          {
+            "node": "validate_once_execution",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Embeddings OpenAI": {
+      "ai_embedding": [
+        [
+          {
+            "node": "Tienda/Negocio",
+            "type": "ai_embedding",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Agente Principal": {
+      "main": [
+        [
+          {
+            "node": "Poner formato necesario",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "build_token_usage_dto",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Modelo De Chat2": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "Agente Principal",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Convertir mensaje": {
+      "main": [
+        [
+          {
+            "node": "primer mensaje?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "When Executed by Another Workflow": {
+      "main": [
+        [
+          {
+            "node": "Convertir mensaje",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Tienda/Negocio": {
+      "ai_tool": [
+        [
+          {
+            "node": "Agente Principal",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Think": {
+      "ai_tool": [
+        [
+          {
+            "node": "Agente Principal",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Catalogo": {
+      "ai_tool": [
+        [
+          {
+            "node": "Agente Principal",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "primer mensaje?": {
+      "main": [
+        [
+          {
+            "node": "Llamada a historial de clientes",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "get_history_user_status",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Recorre productos": {
+      "main": [
+        [
+          {
+            "node": "Preparar para memoria",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Existe URL imagen?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "build_token_usage_dto": {
+      "main": [
+        [
+          {
+            "node": "Call 'ai_usage_log'",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Poner formato necesario": {
+      "main": [
+        [
+          {
+            "node": "¿Enviar imágenes?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "validate_once_execution": {
+      "main": [
+        [
+          {
+            "node": "is_once_execution",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "is_once_execution": {
+      "main": [
+        [
+          {
+            "node": "Enviar mensaje",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "No Operation, do nothing",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "set_data_history": {
+      "main": [
+        [
+          {
+            "node": "Convertir Entrada",
+            "type": "main",
+            "index": 1
+          }
+        ]
+      ]
+    },
+    "set_data_history_database": {
+      "main": [
+        [
+          {
+            "node": "Convertir Entrada",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Convertir Entrada": {
+      "main": [
+        [
+          {
+            "node": "Agente Principal",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "get_history_user_status": {
+      "main": [
+        [
+          {
+            "node": "set_data_history",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "update_history_user_status": {
+      "main": [
+        [
+          {
+            "node": "set_data_history_database",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Llamada a historial de clientes": {
+      "main": [
+        [
+          {
+            "node": "update_history_user_status",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Enviar mensaje": {
+      "main": [
+        [
+          {
+            "node": "guardar historial",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Enviar imagen producto": {
+      "main": [
+        [
+          {
+            "node": "guardar historial imagen",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "guardar historial imagen": {
+      "main": [
+        [
+          {
+            "node": "Recorre productos",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Enviar imagen no disponible": {
+      "main": [
+        [
+          {
+            "node": "guardar historial sin imagen",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "guardar historial sin imagen": {
+      "main": [
+        [
+          {
+            "node": "Recorre productos",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Imagen descargada?": {
+      "main": [
+        [
+          {
+            "node": "Enviar imagen producto",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Enviar imagen no disponible",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Existe URL imagen?": {
+      "main": [
+        [
+          {
+            "node": "Descargar imagen",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Enviar imagen no disponible",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Descargar imagen": {
+      "main": [
+        [
+          {
+            "node": "Imagen descargada?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "¿Enviar imágenes?": {
+      "main": [
+        [
+          {
+            "node": "Preparar productos imagen",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Preparar para memoria",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Preparar productos imagen": {
+      "main": [
+        [
+          {
+            "node": "Recorre productos",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "nodeGroups": [],
+  "settings": {
+    "executionOrder": "v1",
+    "callerPolicy": "workflowsFromSameOwner",
+    "errorWorkflow": "5j9hfL5IlhLCpydB",
+    "timeSavedMode": "fixed",
+    "availableInMCP": false,
+    "binaryMode": "separate"
+  },
+  "staticData": null,
+  "pinData": {
+    "When Executed by Another Workflow": [
+      {
+        "json": {
+          "session_id": "573197933815",
+          "message": "Hola",
+          "tipo_mensaje": "Conversacion existente",
+          "environment": "dev",
+          "channel": "whatsapp"
+        }
+      }
+    ]
+  },
+  "meta": {
+    "templateCredsSetupCompleted": true
+  },
+  "tags": [],
+  "shared": [
+    {
+      "role": "workflow:owner",
+      "workflowId": "lsYNaU2XxkGus2r5",
+      "projectId": "8h8pwWGcWlnGEym3",
+      "createdAt": "2025-12-17T22:05:31.003Z",
+      "updatedAt": "2025-12-17T22:05:31.003Z"
+    }
+  ],
+  "activeVersion": {
+    "versionId": "3ba52cd2-eaac-463b-bead-9384dadcd5a7",
+    "workflowId": "lsYNaU2XxkGus2r5",
+    "nodes": [
+      {
+        "parameters": {
+          "sessionIdType": "customKey",
+          "sessionKey": "={{ $('Convertir mensaje').item.json.id_usuario }}"
+        },
+        "type": "@n8n/n8n-nodes-langchain.memoryBufferWindow",
+        "typeVersion": 1.3,
+        "position": [
+          -6608,
+          1552
+        ],
+        "id": "877a1938-24d7-468a-9013-cdd0d86cc978",
+        "name": "Simple Memory"
+      },
+      {
+        "parameters": {
+          "jsCode": "let rawRespuesta = $('Agente Principal').first().json.output || \"\";\n\nif (typeof rawRespuesta === 'string') {\n    const jsonMatch = rawRespuesta.match(/\\{[\\s\\S]*\\}/);\n    if (jsonMatch) {\n        rawRespuesta = jsonMatch[0]; \n    }\n}\n\nreturn [{\n  json: {\n    user_id: $('Convertir mensaje').first().json.id_usuario,\n    message: $('Convertir Entrada').first().json.mensaje_usuario,\n    respuesta: rawRespuesta\n  }\n}];"
+        },
+        "type": "n8n-nodes-base.code",
+        "typeVersion": 2,
+        "position": [
+          -4832,
+          1232
+        ],
+        "id": "23c077ba-bcd0-4a52-a166-46bd47feccc9",
+        "name": "Preparar para memoria",
+        "executeOnce": true
+      },
+      {
+        "parameters": {
+          "jsCode": "// Loop over input items and add a new field called 'myNewField' to the JSON of each one\nconst inputData = $input.first().json;;\n\nconst historialPrevio = inputData.historial_sesion || [];\nconst nuevoMensaje = `Usuario: ${inputData.message}\\nAgente: ${inputData.respuesta}`;\nhistorialPrevio.push(nuevoMensaje);\n\nreturn [{\n  json: {\n    user_id: inputData.user_id,\n    historial_sesion: historialPrevio,\n    ultima_respuesta: inputData.respuesta\n  }\n}];"
+        },
+        "type": "n8n-nodes-base.code",
+        "typeVersion": 2,
+        "position": [
+          -4608,
+          1232
+        ],
+        "id": "f7c4b218-5fbc-4db8-8dbe-7632d5720e2b",
+        "name": "Code",
+        "executeOnce": false
+      },
+      {
+        "parameters": {
+          "options": {}
+        },
+        "type": "@n8n/n8n-nodes-langchain.embeddingsOpenAi",
+        "typeVersion": 1.2,
+        "position": [
+          -6176,
+          1744
+        ],
+        "id": "a1589f20-d556-46f8-967d-a1e335eb6126",
+        "name": "Embeddings OpenAI",
+        "credentials": {
+          "openAiApi": {
+            "id": "zACGOxtwAjrFvDag",
+            "name": "OpenAi_YoEco_DEV"
+          }
+        }
+      },
+      {
+        "parameters": {
+          "promptType": "define",
+          "text": "={{ $('Convertir Entrada').item.json.mensaje_usuario }}",
+          "hasOutputParser": true,
+          "options": {
+            "systemMessage": "=Eres DALIA, el asistente virtual de \"Baby's World\", una tienda especializada en productos para bebés.\n\nDALIA es una Conciencia Ligera de Atención Inteligente.\nNo vende. Acompaña. No empuja. Sintoniza.\nCada conversación es una oportunidad para conectar, comprender y servir desde la empatía.\n\nSiempre usa la herramienta Think antes de realizar consultas o devolver un mensaje al usuario.\n\nFecha actual: {{ $now }}\n\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n§1 — REGLA GLOBAL: NO INVENTAR\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n- Tu conocimiento NO está memorizado. Todo dato (productos, precios, stock, políticas) DEBE salir de tus herramientas.\n- PROHIBIDO inventar productos, promociones, categorías, precios, condiciones o políticas.\n- PROHIBIDO mencionar problemas internos al cliente (\"fallas del sistema\", \"no lo encuentro\", \"no tengo acceso\"). Si falta información, pregunta para acotar o muestra opciones válidas.\n- PROHIBIDO mostrar SKUs al cliente en el texto. El SKU solo va en el JSON de salida.\n\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n§2 — SALUDO Y PRIMER CONTACTO\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\nAPLICA CUANDO el mensaje es saludo, cortesía o no contiene intención de compra ni pregunta.\nEjemplos: \"hola\", \"buenas\", \"buenas noches\", \"cómo estás\", \"gracias\", \"ok\", \"perfecto\".\n\nREGLAS GENERALES (aplican siempre en modo saludo):\n- NO llames a Tienda/Negocio ni a Catalogo.\n- PROHIBIDO mencionar productos, categorías, precios, stock, envíos, ciudades.\n- PROHIBIDO mencionar que tienes perfil, historial o datos internos del cliente.\n- Responde con un saludo cordial, amigable y breve.\n- Cierra con UNA sola pregunta cálida para entender la intención.\n\nSALIDA OBLIGATORIA EN MODO SALUDO:\n  sendImage = false\n  imagenproducto = false\n  catalog = null\n\n--- PRIMER MENSAJE ---\n\nIdentifica el tipo según: {{ $('Convertir mensaje').item.json.tipo_mensaje }}\n\nSi tipo_mensaje = \"Primer mensaje\", aplica las reglas generales de arriba MÁS estas instrucciones específicas:\n\nA) CLIENTE REGISTRADO ({{ $('Convertir Entrada').item.json.historial_disponible }} = true)\n\n  Datos del cliente disponibles en: {{ $('Convertir Entrada').item.json.promp }}\n\n  - USA el nombre del cliente en el saludo. Esto es obligatorio.\n  - Adopta el tono indicado en el perfil.\n  - Trátalo como conversación nueva con alguien conocido:\n    NO leas en voz alta compras anteriores, historial ni datos del perfil.\n  - Estructura: saludo con nombre → 1 pregunta abierta breve. Nada más.\n\n  Ejemplo: \"¡Hola, María! Qué gusto saludarte 🙂 ¿En qué te puedo ayudar hoy?\"\n\nB) CLIENTE NUEVO ({{ $('Convertir Entrada').item.json.historial_disponible }} = false o null)\n\n  - Preséntate como DALIA con tono cordial y empático.\n  - Pregunta suavemente su nombre para poder registrarlo.\n  - NO preguntes la ciudad en este momento (solo se pide cuando sea\n    necesaria para dar precios, más adelante en la conversación).\n\n  Ejemplo: \"¡Hola! Soy DALIA, tu asistente en Baby's World 🍼 ¿Cómo te llamas?\"\n\n--- MENSAJES POSTERIORES DE CORTESÍA ---\n\nSi tipo_mensaje ≠ \"Primer mensaje\" y el mensaje es solo cortesía (\"gracias\", \"ok\", \"perfecto\"):\n  - Si conoces el nombre, úsalo naturalmente.\n  - Responde brevemente y pregunta si necesita algo más.\n\n  Ejemplo: \"¡Con gusto, María! ¿Te ayudo con algo más?\"\n\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n§3 — HERRAMIENTAS (FUENTES DE VERDAD)\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\nDos herramientas basadas en Qdrant:\n\nTIENDA/NEGOCIO → Políticas, envíos, garantías, pagos, horarios, información corporativa.\n                  NO es fuente de productos ni SKUs.\n\nCATALOGO → Única fuente válida para productos, promociones, títulos, categorías, SKUs, precios, stock y condiciones comerciales consultables. Las promociones se modelan como productos dentro del catálogo y deben tratarse como elementos válidos consultables. Una promoción puede representar combinación de productos, precio especial, condiciones especiales de compra o envío. Solo si Catalogo retorna datos puedes llenar el campo \"catalog\" del JSON.\n\nRegla de enrutamiento:\n- Solo saludo/cortesía → MODO SALUDO (§2, sin herramientas)\n- Pregunta sobre empresa/políticas → Tienda/Negocio\n- Pregunta sobre productos, promociones, catálogo o descripción de imagen → Catalogo\n\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n§4 — CÓMO LLAMAR A CATALOGO\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\nSiempre envía un JSON con esta estructura:\n{\n  \"tipo\": \"productos\" | \"categoria\" | \"producto\",\n  \"valor\": \"<string>\"\n}\n\nReglas:\n- \"¿Qué productos manejas?\" → { \"tipo\": \"productos\", \"valor\": \"todos\" }\n- Términos generales (\"coches\", \"corrales\", \"sillas\") → { \"tipo\": \"categoria\", \"valor\": \"<categoría>\" }\n- Producto específico (\"corral de lona gris\") → { \"tipo\": \"producto\", \"valor\": \"<producto>\" }\n- Promoción específica (\"super combo paseo y descanso\") → { \"tipo\": \"producto\", \"valor\": \"<nombre de la promoción>\" }\n- Pregunta general por promociones (\"qué promociones tienen\", \"muéstrame promos\", \"qué combos hay\") → { \"tipo\": \"categoria\", \"valor\": \"PROMOS\" }\n- Descripción de imagen → interpreta elementos clave → { \"tipo\": \"producto\", \"valor\": \"<nombre descriptivo>\" }\n\nINTELIGENCIA DE BÚSQUEDA:\nTraduce términos coloquiales al lenguaje del catálogo ANTES de llamar:\n- \"Sillas de alimentación\" → \"Comedores\"\n- \"Cosas para caminar\" → \"Caminadores\"\n- \"Carriola\" → \"Coches\"\n\nLÓGICA ESPECIAL PARA PROMOCIONES:\n- Trata las promociones como productos válidos del catálogo. No las manejes como una excepción aparte.\n- Si el cliente pregunta por una promoción específica, búscala como \"producto\".\n- Si el cliente pregunta por promociones en general, consulta la categoría \"PROMOS\".\n- Si el cliente pregunta por una categoría o tipo de producto (ej: \"coches\", \"corrales\", \"comedores\"), además de mostrar productos de esa categoría, incluye también promociones claramente relacionadas con esa categoría o con alguno de los productos recuperados.\n- Para considerar una promoción como relacionada, debes apoyarte SOLO en la información retornada por Catalogo (nombre, descripción, composición, metadata o texto de la promoción). NO inventes relaciones.\n- Si necesitas ampliar resultados para detectar promociones relacionadas, puedes hacer una consulta adicional a Catalogo sobre \"PROMOS\" y filtrar solo las promociones con relación clara a la categoría consultada.\n- Las promociones relacionadas cuentan dentro del mismo máximo total de 5 opciones.\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n§5 — PRESENTACIÓN DE PRODUCTOS\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\nREGLA DURA: Máximo 5 productos en cualquier respuesta.\n\nLas promociones cuentan como un producto más dentro del límite total de 5.\nSi mezclas productos regulares y promociones en una misma respuesta:\n- Muestra primero las opciones más útiles para la intención del cliente.\n- Puedes presentar la promoción como promoción, pero manteniendo intacto el nombre exacto retornado por Catalogo.\n- No separes las promociones en otro bloque si son relevantes; intégralas como una opción natural dentro del listado.\n\nA) LISTADO SIN PRECIO (por defecto, incluye productos y promociones):\n- Máximo 5 productos, una línea por producto.\n- Formato: \"• {{título}}\"\n- Cierra con 1 pregunta para acotar: \"¿Cuál te interesa más?\"\n\nB) LISTADO CON PRECIO (solo si se cumplen AMBAS condiciones, aplica también a promociones si Catalogo retorna precio):\n  1. El cliente pidió precio explícitamente (\"precio\", \"cuánto vale\", \"valor\", \"$\")\n  2. La ciudad del cliente es Bogotá\n\n- Si no conoces la ciudad → pregunta: \"Para darte el precio correcto, ¿en qué ciudad te encuentras?\"\n- Si la ciudad NO es Bogotá → \"Por ahora solo puedo compartir precios para clientes en Bogotá. Igual puedo ayudarte con características y a elegir 🙂\"\n- Si aplica → Formato: \"• {{título}} — {{precio_formateado}}\"\n- Precio 0 o null → \"Precio no disponible\"\n- Formato dinero: $380.000\n\nC) RESCATE (sin resultados o categoría ambigua):\n1. NO entres en bucle de preguntas sin mostrar nada.\n2. Intenta sinónimos automáticamente (ej: \"sillas de alimentación\" → \"comedores\" → \"sillas\").\n3. Si tras 2 intentos no hay match: muestra los 5 productos más cercanos disponibles.\n4. Ejemplo: \"No encontré exactamente con ese nombre, pero estos pueden ser justo lo que buscas. ¿Te gusta alguno?\"\n5. catalog = [los mejores matches], sendImage = true.\n\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n§6 — TONO Y MICRO-FRASES\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\nUsa máximo 1 micro-frase humana por respuesta. No repitas la misma dos veces seguidas.\nEjemplos:\n- \"Genial, vamos paso a paso.\"\n- \"Perfecto, te ayudo con eso.\"\n- \"Dime con cuál seguimos y te muestro opciones.\"\n\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n§7 — IMÁGENES (sendImage e imagenproducto)\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\nsendImage = true CUANDO:\n- Muestras una lista de productos (categoría, opciones, rescate).\n\nimagenproducto = true CUANDO:\n- El cliente pregunta por UN producto específico, un color, o pide descripción de un producto.\n\nEN CUALQUIER OTRO CASO: ambos = false.\n\nREGLA: No enviar imagen del mismo SKU ni de la misma promoción dos veces en la misma conversación.\n\nREGLA ESPECIAL PARA PROMOCIONES:\n- Si el elemento mostrado es una promoción, maneja la imagen exactamente con la misma lógica que usas para productos.\n- Si muestras una lista donde hay promociones, sendImage = true.\n- Si el cliente pregunta por una promoción específica, o por detalles de una promoción, imagenproducto = true.\n- No envíes la misma imagen de la misma promoción dos veces en la misma conversación.\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n§8 — NORMALIZACIÓN DE COLOR\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\nCuando un título incluya color (ej: \"COCHE MALETA JUMPY KHAKI\"), SEPARA:\n- titulo → nombre base sin color (\"COCHE MALETA JUMPY\")\n- color → la variante (\"KHAKI\")\n\nPrioridad para extraer color:\n1. metadata.color / metadata.variante (si existe)\n2. Patrón \"(Color X)\" o último token si es color conocido (KHAKI, GRIS, AZUL, ROSADO, NEGRO, VERDE, MORADO, CAFÉ, BEIGE, BLANCO, ROJO, etc.)\n3. Si no puedes inferir con confianza → color = \"\" (string vacío)\n\nEn replyText puedes mostrar \"Producto (Color)\" para el cliente.\nEn el JSON, titulo y color van separados.\n\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n§9 — FORMATO DE SALIDA (JSON)\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\nDevuelve SIEMPRE un JSON válido con esta estructura exacta:\n\n{\n  \"replyText\": \"string — el mensaje para el cliente\",\n  \"sendImage\": boolean,\n  \"imagenproducto\": boolean,\n  \"catalog\": null | [\n    {\n      \"categoria\": \"string — nombre de la categoría\",\n      \"productos\": [\n        {\n          \"titulo\": \"string — nombre base del producto SIN color\",\n          \"descripcion\": \"string - descripcion del producto\",\n          \"main_image_url\": \"string | null — URL de imagen principal del producto, EXACTAMENTE como la retorna Catalogo\",\n          \"colores\": [\n            {\n              \"color\": \"string — variante/color, o string vacío si no aplica\",\n              \"sku\": \"string — código SKU\",\n              \"variant_image_url\": \"string | null — URL de imagen de esta variante/color, EXACTAMENTE como la retorna Catalogo\"\n            }\n          ],\n          stock: \"number - stock disponible\"\n        }\n      ]\n    }\n  ]\n}\n\n\nNotas sobre catalog:\n- Si un producto tiene múltiples colores/variantes, agrúpalos bajo el mismo objeto \"titulo\" con múltiples entradas en \"colores\".\n- Si un producto no tiene variante de color, usa: { \"color\": \"\", \"sku\": \"SKU_DEL_PRODUCTO\" }\n- Máximo 5 productos totales sumando todos los objetos de \"productos\" en todos los elementos del array.\n- No modifiques los nombres de producto — déjalos tal cual retorna Catalogo.\n- \"main_image_url\" y \"variant_image_url\" son campos técnicos (URLs) que Catalogo siempre retorna junto con cada producto/color. Debes COPIARLOS exactamente tal cual — incluyendo el valor null cuando corresponda — en el JSON de salida. NUNCA los omitas, NUNCA los inventes, y NUNCA los menciones ni los muestres en replyText (son de uso interno, no para el cliente).\n\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n§10 — VALIDACIÓN FINAL (CHECK ANTES DE RESPONDER)\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\nAntes de emitir tu respuesta, verifica:\n\n1. Si replyText menciona productos por nombre → catalog NO puede ser null.\n2. Si catalog es null → sendImage = false, imagenproducto = false.\n3. Si catalog tiene datos → sendImage o imagenproducto = true según §7.\n4. Máximo 5 productos entre replyText y catalog.\n5. replyText NO contiene SKUs.\n6. Si es saludo/cortesía → replyText NO contiene productos, categorías, precios, ciudades.\n7. Si replyText menciona una promoción por nombre → catalog NO puede ser null.\n8. Si catalog incluye promociones, trátalas como productos válidos del catálogo y cuentan dentro del máximo total de 5.\n9. Si el cliente preguntó por una categoría y existe una promoción claramente relacionada según Catalogo, inclúyela como opción dentro del mismo listado, siempre respetando el máximo de 5.\n\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n§11 - ENGANCHES DE PUBLICIDAD E INTENCI�N DE COMPRA\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\nAPLICA CUANDO el usuario inicia la conversación con frases de un anuncio publicitario que demuestran intención de compra (ej: \"este diseño me gusta\", \"este me gusta\", \"como puedo comprar este\", \"quiero comprar este\").\n\nREGLAS PARA ESTE ESCENARIO:\n- Sé muy concreto en el direccionamiento a un vendedor humano.\n- NO entregues catálogos, NO ofrezcas más opciones, NO solicites información irrelevante.\n- Indaga ÚNICAMENTE por información básica necesaria antes de que la conversación sea escalada a un humano:\n  1. Nombre\n  2. Ciudad\n  3. Fecha en que lo desea\n- Una vez tengas esta información, indícale al usuario que lo comunicarás de inmediato con un asesor de ventas y pídele que por favor escriba la frase \"Quiero hablar con un asesor\" para que el sistema realice la transferencia automáticamente.\n- Salida para estos mensajes: sendImage = false, imagenproducto = false, catalog = null.\\r\n"
+          }
+        },
+        "type": "@n8n/n8n-nodes-langchain.agent",
+        "typeVersion": 1.9,
+        "position": [
+          -6368,
+          1200
+        ],
+        "id": "15cff478-2971-4363-9353-57ad66b0eb0e",
+        "name": "Agente Principal",
+        "retryOnFail": true
+      },
+      {
+        "parameters": {
+          "model": {
+            "__rl": true,
+            "value": "gpt-5.1",
+            "mode": "list",
+            "cachedResultName": "gpt-5.1"
+          },
+          "options": {
+            "maxRetries": 2
+          }
+        },
+        "type": "@n8n/n8n-nodes-langchain.lmChatOpenAi",
+        "typeVersion": 1.2,
+        "position": [
+          -6768,
+          1552
+        ],
+        "id": "65cea119-93fd-401a-886d-fe55e81d0e69",
+        "name": "Modelo De Chat2",
+        "retryOnFail": true,
+        "credentials": {
+          "openAiApi": {
+            "id": "zACGOxtwAjrFvDag",
+            "name": "OpenAi_YoEco_DEV"
+          }
+        }
+      },
+      {
+        "parameters": {
+          "assignments": {
+            "assignments": [
+              {
+                "id": "13ee2b30-1377-415c-9927-dccb0f78b231",
+                "name": "message",
+                "value": "={{ $json.message }}",
+                "type": "string"
+              },
+              {
+                "id": "5927e26f-ee6f-449a-aeae-a83a0123973d",
+                "name": "id_usuario",
+                "value": "={{$json.session_id }}",
+                "type": "string"
+              },
+              {
+                "id": "befe4d09-ddb6-4acd-9b1c-3cf5d77026d9",
+                "name": "tipo_mensaje",
+                "value": "={{ $json.tipo_mensaje }}",
+                "type": "string"
+              }
+            ]
+          },
+          "options": {}
+        },
+        "type": "n8n-nodes-base.set",
+        "typeVersion": 3.4,
+        "position": [
+          -7584,
+          1152
+        ],
+        "id": "bb6f085d-308b-4c12-9419-0038b926b606",
+        "name": "Convertir mensaje"
+      },
+      {
+        "parameters": {
+          "workflowInputs": {
+            "values": [
+              {
+                "name": "session_id"
+              },
+              {
+                "name": "message"
+              },
+              {
+                "name": "tipo_mensaje"
+              },
+              {
+                "name": "environment"
+              },
+              {
+                "name": "channel"
+              }
+            ]
+          }
+        },
+        "type": "n8n-nodes-base.executeWorkflowTrigger",
+        "typeVersion": 1.1,
+        "position": [
+          -7824,
+          1152
+        ],
+        "id": "134a20d8-97e9-4f5b-b0e8-f45ea39ea836",
+        "name": "When Executed by Another Workflow"
+      },
+      {
+        "parameters": {
+          "mode": "retrieve-as-tool",
+          "toolName": "YoEco",
+          "toolDescription": "Eres un asistente que nos apoya en la generación de información relacionada con la empresa BabysWorld. Tu enfoque debe ser ayudarnos a responder preguntas sobre la operación y forma de trabajo de la empresa BabysWorld, así como ayudar a resolver las dudas sobre a que se dedica la empresa, que vende, cual es su público objetivo, cual es su misión y visión, y en general orientar y asesorar a clientes existentes o nuevos en el ciclo de ventas para que estos decidan comprar a la tienda Baby´s world. ",
+          "qdrantCollection": {
+            "__rl": true,
+            "value": "={{ $('When Executed by Another Workflow').first().json.environment == 'dev' ? 'BabysWorld_Business_TEST' : 'BabysWorld_Business' }}",
+            "mode": "id"
+          },
+          "options": {}
+        },
+        "type": "@n8n/n8n-nodes-langchain.vectorStoreQdrant",
+        "typeVersion": 1.1,
+        "position": [
+          -6176,
+          1552
+        ],
+        "id": "a7e23979-1d8e-4476-9eb5-aed476aa6e8b",
+        "name": "Tienda/Negocio",
+        "credentials": {
+          "qdrantApi": {
+            "id": "ZYv8vdr6tkTS4jYz",
+            "name": "QdrantApi account 3"
+          }
+        }
+      },
+      {
+        "parameters": {},
+        "type": "@n8n/n8n-nodes-langchain.toolThink",
+        "typeVersion": 1.1,
+        "position": [
+          -6448,
+          1552
+        ],
+        "id": "d27467a4-7d18-41da-9781-cf386b93ceb9",
+        "name": "Think"
+      },
+      {
+        "parameters": {
+          "description": "Llama a esta herramienta siempre que el mensaje este consultando explicita o implicitamente por productos, categorias o en general información sobre catalogo de productos de Baby´s world. Suministra la información previamente interpretada de \"tipo\": \"string\" y \"valor\": \"string\". ",
+          "workflowId": {
+            "__rl": true,
+            "value": "aRJCOVZWZxrRZu3p",
+            "mode": "list",
+            "cachedResultUrl": "/workflow/aRJCOVZWZxrRZu3p",
+            "cachedResultName": "Babys World — Catalogo Qdrant (DEV)"
+          },
+          "workflowInputs": {
+            "mappingMode": "defineBelow",
+            "value": {
+              "tipo": "={{ $fromAI('tipo', 'productos, categoria o producto', 'string') }}",
+              "valor": "={{ $fromAI('valor', 'nombre de la categoría o de los productos separados por coma', 'string') }}"
+            },
+            "matchingColumns": [],
+            "schema": [
+              {
+                "id": "tipo",
+                "displayName": "tipo",
+                "required": false,
+                "defaultMatch": false,
+                "display": true,
+                "canBeUsedToMatch": true,
+                "type": "string"
+              },
+              {
+                "id": "valor",
+                "displayName": "valor",
+                "required": false,
+                "defaultMatch": false,
+                "display": true,
+                "canBeUsedToMatch": true,
+                "type": "string"
+              }
+            ],
+            "attemptToConvertTypes": false,
+            "convertFieldsToString": false
+          }
+        },
+        "type": "@n8n/n8n-nodes-langchain.toolWorkflow",
+        "typeVersion": 2.2,
+        "position": [
+          -6288,
+          1552
+        ],
+        "id": "f22cc026-7885-4ab6-94ab-89728581b27d",
+        "name": "Catalogo"
+      },
+      {
+        "parameters": {
+          "conditions": {
+            "options": {
+              "caseSensitive": true,
+              "leftValue": "",
+              "typeValidation": "strict",
+              "version": 2
+            },
+            "conditions": [
+              {
+                "id": "40512a95-0b94-46c9-87a8-3e9eb65d40aa",
+                "leftValue": "={{ $json.tipo_mensaje }}",
+                "rightValue": "Primer mensaje",
+                "operator": {
+                  "type": "string",
+                  "operation": "equals",
+                  "name": "filter.operator.equals"
+                }
+              }
+            ],
+            "combinator": "and"
+          },
+          "options": {}
+        },
+        "type": "n8n-nodes-base.if",
+        "typeVersion": 2.2,
+        "position": [
+          -7360,
+          1152
+        ],
+        "id": "312cbcc6-ed75-4322-a88c-a884c17c03e4",
+        "name": "primer mensaje?"
+      },
+      {
+        "parameters": {
+          "conditions": {
+            "options": {
+              "caseSensitive": true,
+              "leftValue": "",
+              "typeValidation": "strict",
+              "version": 3
+            },
+            "conditions": [
+              {
+                "id": "d13255a4-cb4d-4037-a299-24468d0036f3",
+                "leftValue": "={{ $binary?.data ? 'yes' : '' }}",
+                "rightValue": "",
+                "operator": {
+                  "type": "string",
+                  "operation": "notEmpty",
+                  "singleValue": true
+                }
+              }
+            ],
+            "combinator": "and"
+          },
+          "options": {}
+        },
+        "type": "n8n-nodes-base.if",
+        "typeVersion": 2.3,
+        "position": [
+          -4656,
+          1904
+        ],
+        "id": "9719663f-3443-4093-b5e5-aff69aeaca41",
+        "name": "Imagen descargada?"
+      },
+      {
+        "parameters": {
+          "options": {}
+        },
+        "type": "n8n-nodes-base.splitInBatches",
+        "typeVersion": 3,
+        "position": [
+          -5328,
+          1808
+        ],
+        "id": "e60df975-32fc-42d4-a118-6dc14ef19eec",
+        "name": "Recorre productos"
+      },
+      {
+        "parameters": {
+          "workflowId": {
+            "__rl": true,
+            "value": "={{ $('When Executed by Another Workflow').first().json.environment == 'dev' ? $vars.FLOW_AI_USAGE_LOG_DEV : $vars.FLOW_AI_USAGE_LOG_PROD }}",
+            "mode": "id",
+            "cachedResultUrl": "/workflow/=%7B%7B%20$('When%20Executed%20by%20Another%20Workflow').item.json.environment%20==%20'dev'%20%3F%20$vars.FLOW_AI_USAGE_LOG_DEV%20:%20$vars.FLOW_AI_USAGE_LOG_PROD%20%7D%7D"
+          },
+          "workflowInputs": {
+            "mappingMode": "passThrough",
+            "value": {},
+            "matchingColumns": [],
+            "schema": [],
+            "attemptToConvertTypes": false,
+            "convertFieldsToString": true
+          },
+          "mode": "each",
+          "options": {
+            "waitForSubWorkflow": false
+          }
+        },
+        "type": "n8n-nodes-base.executeWorkflow",
+        "typeVersion": 1.3,
+        "position": [
+          -5792,
+          992
+        ],
+        "id": "e303df71-ed74-4d51-a373-7b7619173014",
+        "name": "Call 'ai_usage_log'",
+        "disabled": true,
+        "onError": "continueRegularOutput"
+      },
+      {
+        "parameters": {
+          "jsCode": "const agentItem = $('Agente Principal').first();\nconst native    = agentItem.metadata?.tokenUsage ?? {};\n\n// El output final del agente está en el JSON (puede traer markdown fences)\nconst raw   = agentItem.json.output ?? '';\nconst clean = raw.replace(/^```json\\\\\\\\s*/i, '').replace(/\\\\\\\\s*```\\\\\\\\s*$/i, '').trim();\n\nlet parsed = {};\ntry { parsed = JSON.parse(clean); } catch { parsed = {}; }\n\nconst now = Date.now();\nreturn {\n  process_id:        $execution.id,\n  model_name:        'gpt-5.1',\n  prompt_tokens:     native.promptTokens     ?? 0,\n  completion_tokens: native.completionTokens ?? 0,\n  total_tokens:      native.totalTokens      ?? 0,\n  ai_response:       parsed.replyText        ?? clean,\n  completed_at:      now,\n  created_at:        now,\n  environment:       $('Convertir Entrada').item.json.environment ?? 'prod',\n  token_source:      'native'\n}"
+        },
+        "type": "n8n-nodes-base.code",
+        "typeVersion": 2,
+        "position": [
+          -5968,
+          992
+        ],
+        "id": "9f7dcf70-8e0e-4de5-aa8b-8dd2e05ef5be",
+        "name": "build_token_usage_dto",
+        "disabled": true
+      },
+      {
+        "parameters": {
+          "content": "## Envío de imágenes de productos\nVarios productos: 1 imagen por producto (máx. 5). Un solo producto: 1 imagen por color. Las URLs vienen de Qdrant. Si no hay imagen envía *Imagen no disponible* + nombre.",
+          "height": 640,
+          "width": 1680
+        },
+        "type": "n8n-nodes-base.stickyNote",
+        "position": [
+          -5632,
+          1616
+        ],
+        "typeVersion": 1,
+        "id": "a1e6e7cb-70db-44b7-a8b7-37b2ea87391a",
+        "name": "Sticky Note"
+      },
+      {
+        "parameters": {
+          "jsCode": "// 1. Obtenemos el texto del agente\nlet rawOutput = $('Agente Principal').item.json.output;\nlet data = {};\n\nif (typeof rawOutput === 'string') {\n    try {\n        // Limpiamos el texto de espacios o saltos de línea al inicio/fin\n        let cleanedOutput = rawOutput.trim();\n        \n        // Extraemos estrictamente lo que hay entre la primera '{' y la última '}'\n        const jsonMatch = cleanedOutput.match(/\\{[\\s\\S]*\\}/);\n        \n        if (jsonMatch) {\n            // Si el agente mandó un JSON correctamente, lo extraemos y lo convertimos\n            cleanedOutput = jsonMatch[0];\n            data = JSON.parse(cleanedOutput);\n        } else {\n            // PLAN B: Si no hay llaves, significa que mandó texto puro. \n            // Lo metemos directamente en replyText.\n            data = { replyText: cleanedOutput };\n        }\n\n    } catch (error) {\n        // PLAN C: Si intentó parsear un JSON pero estaba roto, salvamos el mensaje original.\n        console.error(\"Error al parsear el JSON:\", error);\n        data = { replyText: rawOutput }; \n    }\n} else {\n    // Si ya venía como objeto, lo asignamos directamente\n    data = rawOutput || {};\n}\n\n// 2. Obtenemos la lista plana de productos que viene en el input\nlet rawCatalog = [];\nif (data.catalog){\n  rawCatalog = Array.isArray(data.catalog) ? data.catalog : [data.catalog];\n}\n\n// 3. Retornamos el objeto final\nreturn {\n  replyText: data.replyText || \"\",\n  sendImage: !!data.sendImage,\n  imagenproducto: !!data.imagenproducto,\n  catalog: rawCatalog\n};"
+        },
+        "type": "n8n-nodes-base.code",
+        "typeVersion": 2,
+        "position": [
+          -6000,
+          1200
+        ],
+        "id": "8f242b49-09ce-4145-984f-cbcb2edc59fa",
+        "name": "Poner formato necesario"
+      },
+      {
+        "parameters": {
+          "jsCode": "if (!$runIndex || $runIndex === 0) {\n  return {isValid: true};\n}\n\nreturn {isValid: false};"
+        },
+        "type": "n8n-nodes-base.code",
+        "typeVersion": 2,
+        "position": [
+          -4400,
+          1232
+        ],
+        "id": "d157029e-b959-42b9-8303-1211fd735ebd",
+        "name": "validate_once_execution"
+      },
+      {
+        "parameters": {
+          "conditions": {
+            "options": {
+              "caseSensitive": true,
+              "leftValue": "",
+              "typeValidation": "strict",
+              "version": 3
+            },
+            "conditions": [
+              {
+                "id": "e80b280b-7682-437e-82aa-a15063c33f77",
+                "leftValue": "={{ $json.isValid }}",
+                "rightValue": true,
+                "operator": {
+                  "type": "boolean",
+                  "operation": "equals"
+                }
+              }
+            ],
+            "combinator": "and"
+          },
+          "options": {}
+        },
+        "type": "n8n-nodes-base.if",
+        "typeVersion": 2.3,
+        "position": [
+          -4192,
+          1232
+        ],
+        "id": "21b52f94-1886-4941-b985-025b13ccc947",
+        "name": "is_once_execution"
+      },
+      {
+        "parameters": {},
+        "type": "n8n-nodes-base.noOp",
+        "typeVersion": 1,
+        "position": [
+          -3968,
+          1408
+        ],
+        "id": "1bf94cd8-8622-4cca-bd2e-ad584a0033f9",
+        "name": "No Operation, do nothing"
+      },
+      {
+        "parameters": {
+          "assignments": {
+            "assignments": [
+              {
+                "id": "d04b719d-c103-4a59-8359-05eed9667b21",
+                "name": "mensaje_usuario",
+                "value": "={{ $('Convertir mensaje').item.json.message }}",
+                "type": "string"
+              },
+              {
+                "id": "cc869312-8bc8-4711-8636-268a0768ba1a",
+                "name": "prompt",
+                "value": "={{ $('get_history_user_status').item.json.conversation_history }}",
+                "type": "string"
+              },
+              {
+                "id": "3de0d956-23d3-448a-a5fc-c27c47a0bc02",
+                "name": "historial_disponible",
+                "value": "={{ ($('get_history_user_status').item.json.conversation_history !== \"\") }}",
+                "type": "string"
+              }
+            ]
+          },
+          "options": {}
+        },
+        "type": "n8n-nodes-base.set",
+        "typeVersion": 3.4,
+        "position": [
+          -6832,
+          1248
+        ],
+        "id": "ba1f193b-6c2b-47a4-93c2-48c3e17a67e6",
+        "name": "set_data_history"
+      },
+      {
+        "parameters": {
+          "assignments": {
+            "assignments": [
+              {
+                "id": "2bf9fff9-8f90-4db5-92ba-ff177e7b2230",
+                "name": "mensaje_usuario",
+                "value": "={{ $('Convertir mensaje').item.json.message }}\n",
+                "type": "string"
+              },
+              {
+                "id": "9eb0a8e5-ac38-4dc3-a27c-42e2ac5338b9",
+                "name": "prompt",
+                "value": "={{ $('Llamada a historial de clientes').item.json.prompt }}",
+                "type": "string"
+              },
+              {
+                "id": "a5a6189b-08ff-4f75-a4b6-c13939f250a8",
+                "name": "historial_disponible",
+                "value": "={{ $('Llamada a historial de clientes').item.json.historial_disponible }}",
+                "type": "boolean"
+              },
+              {
+                "id": "413e7478-9d46-4954-89f7-33589aec809d",
+                "name": "",
+                "value": "",
+                "type": "string"
+              },
+              {
+                "id": "095e268c-b537-46be-99ef-6e4df09184e0",
+                "name": "",
+                "value": "",
+                "type": "string"
+              }
+            ]
+          },
+          "options": {}
+        },
+        "type": "n8n-nodes-base.set",
+        "typeVersion": 3.4,
+        "position": [
+          -6704,
+          1024
+        ],
+        "id": "780b5967-319f-4b74-96a0-c7e1bf42e03c",
+        "name": "set_data_history_database"
+      },
+      {
+        "parameters": {},
+        "type": "n8n-nodes-base.merge",
+        "typeVersion": 3.2,
+        "position": [
+          -6512,
+          1200
+        ],
+        "id": "a9fa26d9-b832-4e93-a156-2776afb6b9b5",
+        "name": "Convertir Entrada"
+      },
+      {
+        "parameters": {
+          "operation": "get",
+          "tableId": "={{ 'babys_world_' + $('When Executed by Another Workflow').first().json.environment + '_session_chat' }}",
+          "filters": {
+            "conditions": [
+              {
+                "keyName": "=session_id",
+                "keyValue": "={{ $('When Executed by Another Workflow').first().json.session_id }}"
+              }
+            ]
+          }
+        },
+        "type": "n8n-nodes-base.supabase",
+        "typeVersion": 1,
+        "position": [
+          -7104,
+          1248
+        ],
+        "id": "f214c318-c8b1-4232-91b9-634f5a20d530",
+        "name": "get_history_user_status",
+        "alwaysOutputData": true,
+        "credentials": {
+          "supabaseApi": {
+            "id": "dtKFPWrXh0HZEyUt",
+            "name": "clients_database"
+          }
+        },
+        "onError": "continueRegularOutput"
+      },
+      {
+        "parameters": {
+          "operation": "update",
+          "tableId": "={{ 'babys_world_' + $('When Executed by Another Workflow').first().json.environment + '_session_chat' }}",
+          "filters": {
+            "conditions": [
+              {
+                "keyName": "=session_id",
+                "condition": "=eq",
+                "keyValue": "={{ $('When Executed by Another Workflow').first().json.session_id }}"
+              }
+            ]
+          },
+          "fieldsUi": {
+            "fieldValues": [
+              {
+                "fieldId": "=conversation_history",
+                "fieldValue": "={{ $json.prompt }}"
+              }
+            ]
+          }
+        },
+        "type": "n8n-nodes-base.supabase",
+        "typeVersion": 1,
+        "position": [
+          -6880,
+          1024
+        ],
+        "id": "54d7f5dd-2957-4847-8aab-c2b12046cd30",
+        "name": "update_history_user_status",
+        "credentials": {
+          "supabaseApi": {
+            "id": "dtKFPWrXh0HZEyUt",
+            "name": "clients_database"
+          }
+        },
+        "onError": "continueRegularOutput"
+      },
+      {
+        "parameters": {
+          "workflowId": {
+            "__rl": true,
+            "value": "T1PMxwA5UVGwhP1n",
+            "mode": "list",
+            "cachedResultUrl": "/workflow/T1PMxwA5UVGwhP1n",
+            "cachedResultName": "Babys World — Historial De Clientes (DEV)"
+          },
+          "workflowInputs": {
+            "mappingMode": "defineBelow",
+            "value": {
+              "user_id": "={{ $('Convertir mensaje').item.json.id_usuario }}",
+              "message": "={{ $('Convertir mensaje').item.json.message }}"
+            },
+            "matchingColumns": [],
+            "schema": [
+              {
+                "id": "user_id",
+                "displayName": "user_id",
+                "required": false,
+                "defaultMatch": false,
+                "display": true,
+                "canBeUsedToMatch": true,
+                "type": "string",
+                "removed": false
+              },
+              {
+                "id": "message",
+                "displayName": "message",
+                "required": false,
+                "defaultMatch": false,
+                "display": true,
+                "canBeUsedToMatch": true,
+                "type": "string",
+                "removed": false
+              }
+            ],
+            "attemptToConvertTypes": false,
+            "convertFieldsToString": true
+          },
+          "options": {}
+        },
+        "type": "n8n-nodes-base.executeWorkflow",
+        "typeVersion": 1.3,
+        "position": [
+          -7104,
+          1024
+        ],
+        "id": "a611013a-f167-4138-86eb-b90f33853545",
+        "name": "Llamada a historial de clientes"
+      },
+      {
+        "parameters": {
+          "workflowId": {
+            "__rl": true,
+            "value": "moR2mUZuRnJIiNZq",
+            "mode": "list",
+            "cachedResultUrl": "/workflow/moR2mUZuRnJIiNZq",
+            "cachedResultName": "Babys World — Flujo de enviar mensaje (DEV)"
+          },
+          "workflowInputs": {
+            "mappingMode": "defineBelow",
+            "value": {
+              "session_id": "={{ $('Convertir mensaje').first().json.id_usuario }}",
+              "text_body": "={{ $('Poner formato necesario').first().json.replyText }}",
+              "channel": "={{ $('When Executed by Another Workflow').first().json.channel }}"
+            },
+            "matchingColumns": [],
+            "schema": [
+              {
+                "id": "session_id",
+                "displayName": "session_id",
+                "required": false,
+                "defaultMatch": false,
+                "display": true,
+                "canBeUsedToMatch": true,
+                "type": "string",
+                "removed": false
+              },
+              {
+                "id": "text_body",
+                "displayName": "text_body",
+                "required": false,
+                "defaultMatch": false,
+                "display": true,
+                "canBeUsedToMatch": true,
+                "type": "string",
+                "removed": false
+              },
+              {
+                "id": "caption",
+                "displayName": "caption",
+                "required": false,
+                "defaultMatch": false,
+                "display": true,
+                "canBeUsedToMatch": true,
+                "type": "string",
+                "removed": false
+              },
+              {
+                "id": "imagen no disponible",
+                "displayName": "imagen no disponible",
+                "required": false,
+                "defaultMatch": false,
+                "display": true,
+                "canBeUsedToMatch": true,
+                "type": "string",
+                "removed": false
+              },
+              {
+                "id": "environment",
+                "displayName": "environment",
+                "required": false,
+                "defaultMatch": false,
+                "display": true,
+                "canBeUsedToMatch": true,
+                "type": "string",
+                "removed": false
+              },
+              {
+                "id": "channel",
+                "displayName": "channel",
+                "required": false,
+                "defaultMatch": false,
+                "display": true,
+                "canBeUsedToMatch": true,
+                "type": "string",
+                "removed": false
+              },
+              {
+                "id": "mime_type",
+                "displayName": "mime_type",
+                "required": false,
+                "defaultMatch": false,
+                "display": true,
+                "canBeUsedToMatch": true,
+                "type": "string",
+                "removed": false
+              }
+            ],
+            "attemptToConvertTypes": false,
+            "convertFieldsToString": true
+          },
+          "options": {}
+        },
+        "type": "n8n-nodes-base.executeWorkflow",
+        "typeVersion": 1.3,
+        "position": [
+          -3968,
+          1216
+        ],
+        "id": "d05fb783-4347-4b74-a6e4-c93d29e8245e",
+        "name": "Enviar mensaje"
+      },
+      {
+        "parameters": {
+          "workflowId": {
+            "__rl": true,
+            "value": "1k57pJ9j6gB7neP8",
+            "mode": "list",
+            "cachedResultUrl": "/workflow/1k57pJ9j6gB7neP8",
+            "cachedResultName": "Babys World — Flujo guardar historial de asesor (DEV)"
+          },
+          "workflowInputs": {
+            "mappingMode": "defineBelow",
+            "value": {
+              "id": "={{ $json.contacts[0].wa_id }}",
+              "rol": "asesor",
+              "mensaje": "={{ JSON.parse($('Code').item.json.ultima_respuesta).replyText }}",
+              "context_id_whatsapp": "={{ $json.messages[0].id }}"
+            },
+            "matchingColumns": [],
+            "schema": [
+              {
+                "id": "id",
+                "displayName": "id",
+                "required": false,
+                "defaultMatch": false,
+                "display": true,
+                "canBeUsedToMatch": true,
+                "type": "string",
+                "removed": false
+              },
+              {
+                "id": "rol",
+                "displayName": "rol",
+                "required": false,
+                "defaultMatch": false,
+                "display": true,
+                "canBeUsedToMatch": true,
+                "type": "string",
+                "removed": false
+              },
+              {
+                "id": "mensaje",
+                "displayName": "mensaje",
+                "required": false,
+                "defaultMatch": false,
+                "display": true,
+                "canBeUsedToMatch": true,
+                "type": "string",
+                "removed": false
+              },
+              {
+                "id": "context_id_whatsapp",
+                "displayName": "context_id_whatsapp",
+                "required": false,
+                "defaultMatch": false,
+                "display": true,
+                "canBeUsedToMatch": true,
+                "type": "string",
+                "removed": false
+              },
+              {
+                "id": "context_relation_whatsapp",
+                "displayName": "context_relation_whatsapp",
+                "required": false,
+                "defaultMatch": false,
+                "display": true,
+                "canBeUsedToMatch": true,
+                "type": "string",
+                "removed": false
+              }
+            ],
+            "attemptToConvertTypes": false,
+            "convertFieldsToString": true
+          },
+          "options": {}
+        },
+        "type": "n8n-nodes-base.executeWorkflow",
+        "typeVersion": 1.3,
+        "position": [
+          -3744,
+          1216
+        ],
+        "id": "a207c089-9f31-48ee-a78b-5d3133ba93b6",
+        "name": "guardar historial"
+      },
+      {
+        "parameters": {
+          "workflowId": {
+            "__rl": true,
+            "value": "moR2mUZuRnJIiNZq",
+            "mode": "list",
+            "cachedResultUrl": "/workflow/moR2mUZuRnJIiNZq",
+            "cachedResultName": "Babys World — Flujo de enviar mensaje (DEV)"
+          },
+          "workflowInputs": {
+            "mappingMode": "defineBelow",
+            "value": {
+              "session_id": "={{ $('Convertir mensaje').first().json.id_usuario }}",
+              "imagen no disponible": "=",
+              "caption": "={{ $('Recorre productos').first().json.titulo }}",
+              "channel": "={{ $('When Executed by Another Workflow').first().json.channel }}"
+            },
+            "matchingColumns": [],
+            "schema": [
+              {
+                "id": "session_id",
+                "displayName": "session_id",
+                "required": false,
+                "defaultMatch": false,
+                "display": true,
+                "canBeUsedToMatch": true,
+                "type": "string",
+                "removed": false
+              },
+              {
+                "id": "text_body",
+                "displayName": "text_body",
+                "required": false,
+                "defaultMatch": false,
+                "display": true,
+                "canBeUsedToMatch": true,
+                "type": "string",
+                "removed": false
+              },
+              {
+                "id": "caption",
+                "displayName": "caption",
+                "required": false,
+                "defaultMatch": false,
+                "display": true,
+                "canBeUsedToMatch": true,
+                "type": "string",
+                "removed": false
+              },
+              {
+                "id": "imagen no disponible",
+                "displayName": "imagen no disponible",
+                "required": false,
+                "defaultMatch": false,
+                "display": true,
+                "canBeUsedToMatch": true,
+                "type": "string",
+                "removed": false
+              },
+              {
+                "id": "environment",
+                "displayName": "environment",
+                "required": false,
+                "defaultMatch": false,
+                "display": true,
+                "canBeUsedToMatch": true,
+                "type": "string",
+                "removed": false
+              },
+              {
+                "id": "channel",
+                "displayName": "channel",
+                "required": false,
+                "defaultMatch": false,
+                "display": true,
+                "canBeUsedToMatch": true,
+                "type": "string",
+                "removed": false
+              },
+              {
+                "id": "mime_type",
+                "displayName": "mime_type",
+                "required": false,
+                "defaultMatch": false,
+                "display": true,
+                "canBeUsedToMatch": true,
+                "type": "string",
+                "removed": false
+              }
+            ],
+            "attemptToConvertTypes": false,
+            "convertFieldsToString": true
+          },
+          "options": {}
+        },
+        "type": "n8n-nodes-base.executeWorkflow",
+        "typeVersion": 1.3,
+        "position": [
+          -4400,
+          1728
+        ],
+        "id": "2998deda-52fd-45be-8bc5-ab401a263418",
+        "name": "Enviar imagen producto"
+      },
+      {
+        "parameters": {
+          "workflowId": {
+            "__rl": true,
+            "value": "1k57pJ9j6gB7neP8",
+            "mode": "list",
+            "cachedResultUrl": "/workflow/1k57pJ9j6gB7neP8",
+            "cachedResultName": "Babys World — Flujo guardar historial de asesor (DEV)"
+          },
+          "workflowInputs": {
+            "mappingMode": "defineBelow",
+            "value": {
+              "id": "={{ $json.contacts[0].wa_id }}",
+              "rol": "asesor",
+              "mensaje": "={{ $('Recorre productos').first().json.titulo }}",
+              "context_id_whatsapp": "={{ $json.messages[0].id }}"
+            },
+            "matchingColumns": [],
+            "schema": [
+              {
+                "id": "id",
+                "displayName": "id",
+                "required": false,
+                "defaultMatch": false,
+                "display": true,
+                "canBeUsedToMatch": true,
+                "type": "string",
+                "removed": false
+              },
+              {
+                "id": "rol",
+                "displayName": "rol",
+                "required": false,
+                "defaultMatch": false,
+                "display": true,
+                "canBeUsedToMatch": true,
+                "type": "string",
+                "removed": false
+              },
+              {
+                "id": "mensaje",
+                "displayName": "mensaje",
+                "required": false,
+                "defaultMatch": false,
+                "display": true,
+                "canBeUsedToMatch": true,
+                "type": "string",
+                "removed": false
+              },
+              {
+                "id": "context_id_whatsapp",
+                "displayName": "context_id_whatsapp",
+                "required": false,
+                "defaultMatch": false,
+                "display": true,
+                "canBeUsedToMatch": true,
+                "type": "string",
+                "removed": false
+              },
+              {
+                "id": "context_relation_whatsapp",
+                "displayName": "context_relation_whatsapp",
+                "required": false,
+                "defaultMatch": false,
+                "display": true,
+                "canBeUsedToMatch": true,
+                "type": "string",
+                "removed": false
+              },
+              {
+                "id": "channel",
+                "displayName": "channel",
+                "required": false,
+                "defaultMatch": false,
+                "display": true,
+                "canBeUsedToMatch": true,
+                "type": "string",
+                "removed": false
+              },
+              {
+                "id": "execution_id",
+                "displayName": "execution_id",
+                "required": false,
+                "defaultMatch": false,
+                "display": true,
+                "canBeUsedToMatch": true,
+                "type": "string",
+                "removed": false
+              }
+            ],
+            "attemptToConvertTypes": false,
+            "convertFieldsToString": true
+          },
+          "options": {}
+        },
+        "type": "n8n-nodes-base.executeWorkflow",
+        "typeVersion": 1.3,
+        "position": [
+          -4176,
+          1728
+        ],
+        "id": "8dc4abae-e877-4495-8df9-3b39af52e368",
+        "name": "guardar historial imagen",
+        "alwaysOutputData": true,
+        "onError": "continueRegularOutput"
+      },
+      {
+        "parameters": {
+          "workflowId": {
+            "__rl": true,
+            "value": "1k57pJ9j6gB7neP8",
+            "mode": "list",
+            "cachedResultUrl": "/workflow/1k57pJ9j6gB7neP8",
+            "cachedResultName": "Babys World — Flujo guardar historial de asesor (DEV)"
+          },
+          "workflowInputs": {
+            "mappingMode": "defineBelow",
+            "value": {
+              "id": "={{ $json.contacts[0].wa_id }}",
+              "rol": "asesor",
+              "mensaje": "={{ $('Recorre productos').first().json.titulo }}",
+              "context_id_whatsapp": "={{ $json.messages[0].id }}"
+            },
+            "matchingColumns": [],
+            "schema": [
+              {
+                "id": "id",
+                "displayName": "id",
+                "required": false,
+                "defaultMatch": false,
+                "display": true,
+                "canBeUsedToMatch": true,
+                "type": "string",
+                "removed": false
+              },
+              {
+                "id": "rol",
+                "displayName": "rol",
+                "required": false,
+                "defaultMatch": false,
+                "display": true,
+                "canBeUsedToMatch": true,
+                "type": "string",
+                "removed": false
+              },
+              {
+                "id": "mensaje",
+                "displayName": "mensaje",
+                "required": false,
+                "defaultMatch": false,
+                "display": true,
+                "canBeUsedToMatch": true,
+                "type": "string",
+                "removed": false
+              },
+              {
+                "id": "context_id_whatsapp",
+                "displayName": "context_id_whatsapp",
+                "required": false,
+                "defaultMatch": false,
+                "display": true,
+                "canBeUsedToMatch": true,
+                "type": "string",
+                "removed": false
+              },
+              {
+                "id": "context_relation_whatsapp",
+                "displayName": "context_relation_whatsapp",
+                "required": false,
+                "defaultMatch": false,
+                "display": true,
+                "canBeUsedToMatch": true,
+                "type": "string",
+                "removed": false
+              }
+            ],
+            "attemptToConvertTypes": false,
+            "convertFieldsToString": true
+          },
+          "options": {}
+        },
+        "type": "n8n-nodes-base.executeWorkflow",
+        "typeVersion": 1.3,
+        "position": [
+          -4176,
+          2080
+        ],
+        "id": "b673d4fc-fb42-4d91-a1d0-0890a6ab4319",
+        "name": "guardar historial sin imagen",
+        "alwaysOutputData": true,
+        "onError": "continueRegularOutput"
+      },
+      {
+        "parameters": {
+          "workflowId": {
+            "__rl": true,
+            "value": "moR2mUZuRnJIiNZq",
+            "mode": "list",
+            "cachedResultUrl": "/workflow/moR2mUZuRnJIiNZq",
+            "cachedResultName": "Babys World — Flujo de enviar mensaje (DEV)"
+          },
+          "workflowInputs": {
+            "mappingMode": "defineBelow",
+            "value": {
+              "session_id": "={{ $('Convertir mensaje').first().json.id_usuario }}",
+              "imagen no disponible": "=*Imagen no disponible* {{ $('Recorre productos').first().json.titulo }}",
+              "channel": "={{ $('When Executed by Another Workflow').first().json.channel }}"
+            },
+            "matchingColumns": [],
+            "schema": [
+              {
+                "id": "session_id",
+                "displayName": "session_id",
+                "required": false,
+                "defaultMatch": false,
+                "display": true,
+                "canBeUsedToMatch": true,
+                "type": "string",
+                "removed": false
+              },
+              {
+                "id": "text_body",
+                "displayName": "text_body",
+                "required": false,
+                "defaultMatch": false,
+                "display": true,
+                "canBeUsedToMatch": true,
+                "type": "string",
+                "removed": false
+              },
+              {
+                "id": "caption",
+                "displayName": "caption",
+                "required": false,
+                "defaultMatch": false,
+                "display": true,
+                "canBeUsedToMatch": true,
+                "type": "string",
+                "removed": false
+              },
+              {
+                "id": "imagen no disponible",
+                "displayName": "imagen no disponible",
+                "required": false,
+                "defaultMatch": false,
+                "display": true,
+                "canBeUsedToMatch": true,
+                "type": "string",
+                "removed": false
+              },
+              {
+                "id": "environment",
+                "displayName": "environment",
+                "required": false,
+                "defaultMatch": false,
+                "display": true,
+                "canBeUsedToMatch": true,
+                "type": "string",
+                "removed": false
+              },
+              {
+                "id": "channel",
+                "displayName": "channel",
+                "required": false,
+                "defaultMatch": false,
+                "display": true,
+                "canBeUsedToMatch": true,
+                "type": "string",
+                "removed": false
+              },
+              {
+                "id": "mime_type",
+                "displayName": "mime_type",
+                "required": false,
+                "defaultMatch": false,
+                "display": true,
+                "canBeUsedToMatch": true,
+                "type": "string",
+                "removed": false
+              }
+            ],
+            "attemptToConvertTypes": false,
+            "convertFieldsToString": true
+          },
+          "options": {}
+        },
+        "type": "n8n-nodes-base.executeWorkflow",
+        "typeVersion": 1.3,
+        "position": [
+          -4400,
+          2080
+        ],
+        "id": "0c00b9c3-d489-44ee-9e3c-56c777166a4c",
+        "name": "Enviar imagen no disponible"
+      },
+      {
+        "parameters": {
+          "conditions": {
+            "options": {
+              "caseSensitive": true,
+              "leftValue": "",
+              "typeValidation": "strict",
+              "version": 3
+            },
+            "conditions": [
+              {
+                "id": "703371c8-b282-4404-a319-45fab0324558",
+                "leftValue": "={{ $json.imageUrl }}",
+                "rightValue": "",
+                "operator": {
+                  "type": "string",
+                  "operation": "notEmpty",
+                  "singleValue": true
+                }
+              }
+            ],
+            "combinator": "and"
+          },
+          "options": {}
+        },
+        "type": "n8n-nodes-base.if",
+        "typeVersion": 2.2,
+        "position": [
+          -5104,
+          1904
+        ],
+        "id": "f5390ccf-91a8-4bf9-a98c-d594e21972b9",
+        "name": "Existe URL imagen?"
+      },
+      {
+        "parameters": {
+          "url": "={{ $json.imageUrl }}",
+          "options": {
+            "response": {
+              "response": {
+                "responseFormat": "file"
+              }
+            }
+          }
+        },
+        "type": "n8n-nodes-base.httpRequest",
+        "typeVersion": 4.2,
+        "position": [
+          -4880,
+          1808
+        ],
+        "id": "c42ba0bc-511a-4e04-98e2-4d83ee0ca0ff",
+        "name": "Descargar imagen",
+        "onError": "continueRegularOutput"
+      },
+      {
+        "parameters": {
+          "conditions": {
+            "options": {
+              "caseSensitive": true,
+              "leftValue": "",
+              "typeValidation": "loose",
+              "version": 3
+            },
+            "conditions": [
+              {
+                "id": "822270b3-f6c1-463c-adf8-689ff0d9c97b",
+                "leftValue": "={{ $json.sendImage || $json.imagenproducto }}",
+                "rightValue": "",
+                "operator": {
+                  "type": "boolean",
+                  "operation": "true",
+                  "singleValue": true
+                }
+              },
+              {
+                "id": "018eb12a-705a-4fcc-bf71-f05318e3bc86",
+                "leftValue": "={{ ($json.catalog || []).flatMap(c => c.productos || []).length }}",
+                "rightValue": 0,
+                "operator": {
+                  "type": "number",
+                  "operation": "gt"
+                }
+              }
+            ],
+            "combinator": "and"
+          },
+          "looseTypeValidation": true,
+          "options": {}
+        },
+        "type": "n8n-nodes-base.if",
+        "typeVersion": 2.3,
+        "position": [
+          -5776,
+          1216
+        ],
+        "id": "59d0c71a-2246-4cfa-826a-9dd180673cf7",
+        "name": "¿Enviar imágenes?"
+      },
+      {
+        "parameters": {
+          "jsCode": "// Arma la lista de imágenes a enviar con las URLs que vienen de Qdrant.\n// - Varios productos (ej. \"¿tienes coches?\"): 1 imagen por producto, máx. 5.\n// - Un solo producto: 1 imagen por color (variant_image_url; si el color no tiene, usa main_image_url).\n//   Si varios colores comparten la misma imagen, se envía una vez con los colores juntos en el caption.\nconst catalog = $('Poner formato necesario').first().json.catalog || [];\nconst MAX_PRODUCTOS = 5;\nconst MAX_COLORES = 10;\n\n// Junta productos de todas las categorías, sin repetidos\nconst vistos = new Set();\nconst productos = [];\nfor (const cat of catalog) {\n  for (const p of (cat.productos || [])) {\n    const titulo = (p.titulo || '').trim();\n    if (!titulo || vistos.has(titulo)) continue;\n    vistos.add(titulo);\n    productos.push({ ...p, titulo });\n  }\n}\n\nconst salida = [];\n\nif (productos.length === 1) {\n  // Un solo producto -> una imagen por color\n  const p = productos[0];\n  const colores = (p.colores || []).slice(0, MAX_COLORES);\n  const porUrl = new Map();   // imageUrl -> [colores]\n  const sinImagen = [];\n\n  for (const c of colores) {\n    const url = c.variant_image_url || p.main_image_url || null;\n    const color = (c.color || '').trim();\n    if (!url) { sinImagen.push(color); continue; }\n    if (!porUrl.has(url)) porUrl.set(url, []);\n    if (color) porUrl.get(url).push(color);\n  }\n\n  for (const [imageUrl, cols] of porUrl) {\n    const titulo = cols.length ? `${p.titulo} (${cols.join(' / ')})` : p.titulo;\n    salida.push({ json: { titulo, imageUrl } });\n  }\n  if (sinImagen.length || colores.length === 0 && !p.main_image_url) {\n    const cols = sinImagen.filter(Boolean);\n    const titulo = cols.length ? `${p.titulo} (${cols.join(' / ')})` : p.titulo;\n    salida.push({ json: { titulo, imageUrl: null } });\n  }\n  if (colores.length === 0 && p.main_image_url) {\n    salida.push({ json: { titulo: p.titulo, imageUrl: p.main_image_url } });\n  }\n} else {\n  // Varios productos -> una imagen por producto\n  for (const p of productos.slice(0, MAX_PRODUCTOS)) {\n    const colores = p.colores || [];\n    const first = colores[0] || {};\n    const imageUrl = (colores.length === 1 && first.variant_image_url)\n      ? first.variant_image_url\n      : (p.main_image_url ?? null);\n    salida.push({ json: { titulo: p.titulo, imageUrl } });\n  }\n}\n\nreturn salida;"
+        },
+        "type": "n8n-nodes-base.code",
+        "typeVersion": 2,
+        "position": [
+          -5552,
+          1808
+        ],
+        "id": "d617888f-9b29-4ec8-ac59-13f863228f04",
+        "name": "Preparar productos imagen"
+      }
+    ],
+    "connections": {
+      "Simple Memory": {
+        "ai_memory": [
+          [
+            {
+              "node": "Agente Principal",
+              "type": "ai_memory",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Preparar para memoria": {
+        "main": [
+          [
+            {
+              "node": "Code",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Code": {
+        "main": [
+          [
+            {
+              "node": "validate_once_execution",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Embeddings OpenAI": {
+        "ai_embedding": [
+          [
+            {
+              "node": "Tienda/Negocio",
+              "type": "ai_embedding",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Agente Principal": {
+        "main": [
+          [
+            {
+              "node": "Poner formato necesario",
+              "type": "main",
+              "index": 0
+            },
+            {
+              "node": "build_token_usage_dto",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Modelo De Chat2": {
+        "ai_languageModel": [
+          [
+            {
+              "node": "Agente Principal",
+              "type": "ai_languageModel",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Convertir mensaje": {
+        "main": [
+          [
+            {
+              "node": "primer mensaje?",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "When Executed by Another Workflow": {
+        "main": [
+          [
+            {
+              "node": "Convertir mensaje",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Tienda/Negocio": {
+        "ai_tool": [
+          [
+            {
+              "node": "Agente Principal",
+              "type": "ai_tool",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Think": {
+        "ai_tool": [
+          [
+            {
+              "node": "Agente Principal",
+              "type": "ai_tool",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Catalogo": {
+        "ai_tool": [
+          [
+            {
+              "node": "Agente Principal",
+              "type": "ai_tool",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "primer mensaje?": {
+        "main": [
+          [
+            {
+              "node": "Llamada a historial de clientes",
+              "type": "main",
+              "index": 0
+            }
+          ],
+          [
+            {
+              "node": "get_history_user_status",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Recorre productos": {
+        "main": [
+          [
+            {
+              "node": "Preparar para memoria",
+              "type": "main",
+              "index": 0
+            }
+          ],
+          [
+            {
+              "node": "Existe URL imagen?",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "build_token_usage_dto": {
+        "main": [
+          [
+            {
+              "node": "Call 'ai_usage_log'",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Poner formato necesario": {
+        "main": [
+          [
+            {
+              "node": "¿Enviar imágenes?",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "validate_once_execution": {
+        "main": [
+          [
+            {
+              "node": "is_once_execution",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "is_once_execution": {
+        "main": [
+          [
+            {
+              "node": "Enviar mensaje",
+              "type": "main",
+              "index": 0
+            }
+          ],
+          [
+            {
+              "node": "No Operation, do nothing",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "set_data_history": {
+        "main": [
+          [
+            {
+              "node": "Convertir Entrada",
+              "type": "main",
+              "index": 1
+            }
+          ]
+        ]
+      },
+      "set_data_history_database": {
+        "main": [
+          [
+            {
+              "node": "Convertir Entrada",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Convertir Entrada": {
+        "main": [
+          [
+            {
+              "node": "Agente Principal",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "get_history_user_status": {
+        "main": [
+          [
+            {
+              "node": "set_data_history",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "update_history_user_status": {
+        "main": [
+          [
+            {
+              "node": "set_data_history_database",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Llamada a historial de clientes": {
+        "main": [
+          [
+            {
+              "node": "update_history_user_status",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Enviar mensaje": {
+        "main": [
+          [
+            {
+              "node": "guardar historial",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Enviar imagen producto": {
+        "main": [
+          [
+            {
+              "node": "guardar historial imagen",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "guardar historial imagen": {
+        "main": [
+          [
+            {
+              "node": "Recorre productos",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Enviar imagen no disponible": {
+        "main": [
+          [
+            {
+              "node": "guardar historial sin imagen",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "guardar historial sin imagen": {
+        "main": [
+          [
+            {
+              "node": "Recorre productos",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Imagen descargada?": {
+        "main": [
+          [
+            {
+              "node": "Enviar imagen producto",
+              "type": "main",
+              "index": 0
+            }
+          ],
+          [
+            {
+              "node": "Enviar imagen no disponible",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Existe URL imagen?": {
+        "main": [
+          [
+            {
+              "node": "Descargar imagen",
+              "type": "main",
+              "index": 0
+            }
+          ],
+          [
+            {
+              "node": "Enviar imagen no disponible",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Descargar imagen": {
+        "main": [
+          [
+            {
+              "node": "Imagen descargada?",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "¿Enviar imágenes?": {
+        "main": [
+          [
+            {
+              "node": "Preparar productos imagen",
+              "type": "main",
+              "index": 0
+            }
+          ],
+          [
+            {
+              "node": "Preparar para memoria",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Preparar productos imagen": {
+        "main": [
+          [
+            {
+              "node": "Recorre productos",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      }
+    },
+    "nodeGroups": [],
+    "authors": "Kmilo Guerrero",
+    "name": "Version 3ba52cd2",
+    "description": "",
+    "autosaved": true,
+    "createdAt": "2026-10-09T01:39:00.383Z",
+    "updatedAt": "2026-10-09T01:39:03.000Z"
+  }
+}
