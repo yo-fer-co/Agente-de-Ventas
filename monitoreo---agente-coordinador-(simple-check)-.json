@@ -1,0 +1,278 @@
+{
+  "id": "BtLpLj1j8M1nrbL2",
+  "name": "Monitoreo - Agente Coordinador (Simple Check)",
+  "active": false,
+  "activeVersionId": null,
+  "createdAt": "2026-08-26T02:59:00.580Z",
+  "updatedAt": "2026-08-26T03:03:20.000Z",
+  "isArchived": true,
+  "versionId": "58b85953-937e-4d45-b936-51432268e61e",
+  "triggerCount": 0,
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {}
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.1,
+      "position": [
+        -880,
+        208
+      ],
+      "id": "5c26b79c-58d6-4716-b43d-d11bf46f6e08",
+      "name": "Ejecutar Daily 9 AM"
+    },
+    {
+      "parameters": {
+        "url": "https://yoeco.app.n8n.cloud/api/v1/workflows/CcOQYxNOyPeOYkoP",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "X-N8N-API-KEY",
+              "value": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIzMDQyZWFkZi05MTcwLTRhOWQtOTk4My0wZjhkZWRmMzRkNTQiLCJpc3MiOiJuOG4iLCJhdWQiOiJwdWJsaWMtYXBpIiwianRpIjoiMzhhM2M0YzUtMWYxZS00Nzg0LWFjYTItYmM2ZjY0NTQxMjI1IiwiaWF0IjoxNzczODgwMDc3fQ.ScPaXRDX_MBu74x2FIce3aDPewZ-Y2ozA4st1Ho1voE"
+            }
+          ]
+        },
+        "options": {
+          "response": {
+            "response": {
+              "responseFormat": "json"
+            }
+          },
+          "timeout": 30
+        }
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        -656,
+        208
+      ],
+      "id": "5ccc57f7-6f4e-4f45-a06b-1364f8131020",
+      "name": "Verificar status del Agente",
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "swrGOIy8ZdXlPUOY",
+          "name": "Header Auth account 2"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "status",
+              "name": "status",
+              "value": "={{ $json.active === true ? 'OK' : 'FAIL' }}",
+              "type": "string"
+            },
+            {
+              "id": "timestamp",
+              "name": "timestamp",
+              "value": "={{ now.toFormat('yyyy-MM-dd HH:mm:ss') }}",
+              "type": "string"
+            },
+            {
+              "id": "nodes_count",
+              "name": "nodes_count",
+              "value": "={{ $json.nodes ? $json.nodes.length : 0 }}",
+              "type": "number"
+            },
+            {
+              "id": "version",
+              "name": "version",
+              "value": "={{ $json.versionCounter || 'unknown' }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        -400,
+        208
+      ],
+      "id": "98b76875-0c5f-453e-90bb-e3d6aebc693b",
+      "name": "Procesar resultado"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "leftValue": "={{ $json.status }}",
+              "rightValue": "OK",
+              "operator": {
+                "type": "string",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [
+        -208,
+        208
+      ],
+      "id": "53e1d6cb-689b-42d7-a723-c90d1498c847",
+      "name": "Workflow Activo?"
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        0,
+        0
+      ],
+      "id": "dcbc60b2-ce7b-4de2-a759-1632af7c8b37",
+      "name": "Mensaje Exito"
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        0,
+        400
+      ],
+      "id": "4a4c613e-575c-4621-b8f9-20c142c7e90b",
+      "name": "Mensaje Error"
+    },
+    {
+      "parameters": {
+        "operation": "sendMessage"
+      },
+      "type": "n8n-nodes-base.whatsApp",
+      "typeVersion": 1,
+      "position": [
+        208,
+        0
+      ],
+      "id": "0ad15e85-15fc-441c-b85f-41a2910f4466",
+      "name": "Notificar SUCCESS por WhatsApp",
+      "webhookId": "61d9cc70-c46a-4bdd-9033-6bea2e8c439c",
+      "credentials": {
+        "whatsAppApi": {
+          "id": "VkoCC1dvkFgJX0Kc",
+          "name": "Pruebas nuevo numero enviar mensaje"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "send",
+        "phoneNumberId": "992551847276777",
+        "recipientPhoneNumber": "573183779152",
+        "textBody": "El agente de pruebas de desarrollo no esta funcionado",
+        "additionalFields": {}
+      },
+      "type": "n8n-nodes-base.whatsApp",
+      "typeVersion": 1,
+      "position": [
+        208,
+        400
+      ],
+      "id": "6ec39976-977a-4b9d-8271-579647d22ebb",
+      "name": "Notificar ERROR por WhatsApp",
+      "webhookId": "57a4aada-4717-426d-808e-eb8c7dd3bb81",
+      "credentials": {
+        "whatsAppApi": {
+          "id": "VkoCC1dvkFgJX0Kc",
+          "name": "Pruebas nuevo numero enviar mensaje"
+        }
+      }
+    }
+  ],
+  "connections": {
+    "Verificar status del Agente": {
+      "main": [
+        [
+          {
+            "node": "Procesar resultado",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Workflow Activo?": {
+      "main": [
+        [],
+        [
+          {
+            "node": "Mensaje Error",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Mensaje Error": {
+      "main": [
+        [
+          {
+            "node": "Notificar ERROR por WhatsApp",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Ejecutar Daily 9 AM": {
+      "main": [
+        [
+          {
+            "node": "Verificar status del Agente",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "nodeGroups": [],
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate",
+    "availableInMCP": false
+  },
+  "staticData": null,
+  "pinData": {},
+  "meta": null,
+  "tags": [],
+  "shared": [
+    {
+      "role": "workflow:owner",
+      "workflowId": "BtLpLj1j8M1nrbL2",
+      "projectId": "8h8pwWGcWlnGEym3",
+      "createdAt": "2026-08-26T02:59:00.582Z",
+      "updatedAt": "2026-08-26T02:59:00.582Z"
+    }
+  ],
+  "activeVersion": null
+}
