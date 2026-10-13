@@ -1,0 +1,149 @@
+{
+  "id": "w0iFgNmxCx15WPns",
+  "name": "DALIA_TEST.07_Probar_contexto",
+  "active": false,
+  "activeVersionId": null,
+  "createdAt": "2026-10-04T04:14:06.648Z",
+  "updatedAt": "2026-10-04T04:28:56.520Z",
+  "isArchived": false,
+  "versionId": "8ba13bd1-810f-4328-a9b2-7154abd329a8",
+  "triggerCount": 0,
+  "nodes": [
+    {
+      "id": "a452b221-1741-4e3a-9673-2bc018847462",
+      "name": "Probar contexto",
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [
+        0,
+        0
+      ],
+      "parameters": {}
+    },
+    {
+      "id": "bacb8504-5c52-4cc4-8ca0-ff70723bf254",
+      "name": "Solicitud de prueba",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        224,
+        0
+      ],
+      "parameters": {
+        "mode": "manual",
+        "includeOtherFields": false,
+        "assignments": {
+          "assignments": [
+            {
+              "id": "q1",
+              "name": "channel",
+              "value": "whatsapp",
+              "type": "string"
+            },
+            {
+              "id": "q2",
+              "name": "external_id",
+              "value": "573000000000",
+              "type": "string"
+            },
+            {
+              "id": "q3",
+              "name": "purpose",
+              "value": "advise",
+              "type": "string"
+            },
+            {
+              "id": "q4",
+              "name": "query",
+              "value": "¿qué tipo de coche para bebé le gusta?",
+              "type": "string"
+            },
+            {
+              "id": "q5",
+              "name": "profile",
+              "value": "={{ { name: \"Contacto de prueba\" } }}",
+              "type": "object"
+            },
+            {
+              "id": "q6",
+              "name": "envelope",
+              "value": "={{ { trace_id: \"test07-\" + $now.toMillis(), correlation_id: \"test07\" } }}",
+              "type": "object"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "400248e9-b689-4cab-8b54-043e85beb8ed",
+      "name": "Llamar M4.01",
+      "type": "n8n-nodes-base.executeWorkflow",
+      "typeVersion": 1.3,
+      "position": [
+        448,
+        0
+      ],
+      "parameters": {
+        "mode": "each",
+        "source": "database",
+        "workflowId": {
+          "__rl": true,
+          "mode": "id",
+          "value": "Ys1IC6QH1dER3mJN"
+        },
+        "options": {
+          "waitForSubWorkflow": true
+        }
+      }
+    }
+  ],
+  "connections": {
+    "Probar contexto": {
+      "main": [
+        [
+          {
+            "node": "Solicitud de prueba",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Solicitud de prueba": {
+      "main": [
+        [
+          {
+            "node": "Llamar M4.01",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "nodeGroups": [],
+  "settings": {
+    "executionOrder": "v1",
+    "availableInMCP": true,
+    "errorWorkflow": "cjjQno2MxMTT3Icc",
+    "timezone": "America/Bogota",
+    "callerPolicy": "workflowsFromSameOwner"
+  },
+  "staticData": null,
+  "pinData": null,
+  "meta": {
+    "aiBuilderAssisted": true,
+    "builderVariant": "mcp"
+  },
+  "tags": [],
+  "shared": [
+    {
+      "role": "workflow:owner",
+      "workflowId": "w0iFgNmxCx15WPns",
+      "projectId": "tRHCC8ts4mkRGXGn",
+      "createdAt": "2026-10-09T21:09:17.809Z",
+      "updatedAt": "2026-10-09T21:09:17.809Z"
+    }
+  ],
+  "activeVersion": null
+}
