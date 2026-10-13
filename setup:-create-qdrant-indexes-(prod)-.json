@@ -1,0 +1,488 @@
+{
+  "id": "7gOZMbPCSP9tTS6f",
+  "name": "Setup: Create Qdrant Indexes (PROD)",
+  "active": false,
+  "activeVersionId": null,
+  "createdAt": "2026-10-08T23:58:59.803Z",
+  "updatedAt": "2026-10-09T00:04:43.973Z",
+  "isArchived": false,
+  "versionId": "98bfd899-a239-4571-bea6-6a4ba32e39f2",
+  "triggerCount": 0,
+  "nodes": [
+    {
+      "parameters": {
+        "content": "## Setup: Create Qdrant Indexes (PROD)\n\nCrea los 10 indices de payload que necesita el pipeline nuevo en la coleccion de produccion BabysWorld_Catalogo (los mismos que crea la cadena de auto-reparacion de 'Subflow: Upsert Qdrant Point').\n\nEjecutar UNA vez, a mano, antes de la carga. Es idempotente: si un indice ya existe, Qdrant lo deja igual. No borra ni modifica puntos.\n\nAl final, 'Verify_Payload_Schema' lee la coleccion: revisar que result.payload_schema tenga los 10 campos.",
+        "height": 300,
+        "width": 440,
+        "color": 5
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        -128,
+        -48
+      ],
+      "id": "5ec90493-0f72-4d85-8575-c8e1c5315784",
+      "name": "Nota"
+    },
+    {
+      "parameters": {},
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [
+        -96,
+        320
+      ],
+      "id": "c416a9f2-4fd1-482f-86f9-e307f47e1400",
+      "name": "Ejecutar manualmente"
+    },
+    {
+      "parameters": {
+        "method": "PUT",
+        "url": "https://1537c683-48da-4631-ab76-ad698b6b9881.us-east-1-0.aws.cloud.qdrant.io:6333/collections/BabysWorld_Catalogo/index",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "qdrantApi",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ { field_name: 'product_id', field_schema: 'integer' } }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        160,
+        320
+      ],
+      "id": "18121acf-9f07-4252-8d35-cbd81bbc1cb8",
+      "name": "Create_Index_Product_Id",
+      "credentials": {
+        "qdrantApi": {
+          "id": "ZYv8vdr6tkTS4jYz",
+          "name": "QdrantApi account 3"
+        }
+      },
+      "continueOnFail": true,
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "method": "PUT",
+        "url": "https://1537c683-48da-4631-ab76-ad698b6b9881.us-east-1-0.aws.cloud.qdrant.io:6333/collections/BabysWorld_Catalogo/index",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "qdrantApi",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ { field_name: 'variant_id', field_schema: 'integer' } }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        400,
+        320
+      ],
+      "id": "754f4381-f277-45ee-bd74-593fd40f6a66",
+      "name": "Create_Index_Variant_Id",
+      "credentials": {
+        "qdrantApi": {
+          "id": "ZYv8vdr6tkTS4jYz",
+          "name": "QdrantApi account 3"
+        }
+      },
+      "continueOnFail": true,
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "method": "PUT",
+        "url": "https://1537c683-48da-4631-ab76-ad698b6b9881.us-east-1-0.aws.cloud.qdrant.io:6333/collections/BabysWorld_Catalogo/index",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "qdrantApi",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ { field_name: 'product_type', field_schema: 'text' } }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        640,
+        320
+      ],
+      "id": "2ac5b277-8d0d-490f-8b21-a2353442e8c1",
+      "name": "Create_Index_Product_Type",
+      "credentials": {
+        "qdrantApi": {
+          "id": "ZYv8vdr6tkTS4jYz",
+          "name": "QdrantApi account 3"
+        }
+      },
+      "continueOnFail": true,
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "method": "PUT",
+        "url": "https://1537c683-48da-4631-ab76-ad698b6b9881.us-east-1-0.aws.cloud.qdrant.io:6333/collections/BabysWorld_Catalogo/index",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "qdrantApi",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ { field_name: 'title', field_schema: 'text' } }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        880,
+        320
+      ],
+      "id": "5166d1b0-f4ad-4810-9a1a-4bd9218d6e0a",
+      "name": "Create_Index_Title",
+      "credentials": {
+        "qdrantApi": {
+          "id": "ZYv8vdr6tkTS4jYz",
+          "name": "QdrantApi account 3"
+        }
+      },
+      "continueOnFail": true,
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "method": "PUT",
+        "url": "https://1537c683-48da-4631-ab76-ad698b6b9881.us-east-1-0.aws.cloud.qdrant.io:6333/collections/BabysWorld_Catalogo/index",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "qdrantApi",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ { field_name: 'descripcion', field_schema: 'text' } }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        1120,
+        320
+      ],
+      "id": "ff4f6d22-0d3f-4b28-ab5e-68e973112ae6",
+      "name": "Create_Index_Descripcion",
+      "credentials": {
+        "qdrantApi": {
+          "id": "ZYv8vdr6tkTS4jYz",
+          "name": "QdrantApi account 3"
+        }
+      },
+      "continueOnFail": true,
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "method": "PUT",
+        "url": "https://1537c683-48da-4631-ab76-ad698b6b9881.us-east-1-0.aws.cloud.qdrant.io:6333/collections/BabysWorld_Catalogo/index",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "qdrantApi",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ { field_name: 'collections', field_schema: 'text' } }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        1360,
+        320
+      ],
+      "id": "989fc56b-9aac-4522-98a6-e1310a6a7402",
+      "name": "Create_Index_Collections",
+      "credentials": {
+        "qdrantApi": {
+          "id": "ZYv8vdr6tkTS4jYz",
+          "name": "QdrantApi account 3"
+        }
+      },
+      "continueOnFail": true,
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "method": "PUT",
+        "url": "https://1537c683-48da-4631-ab76-ad698b6b9881.us-east-1-0.aws.cloud.qdrant.io:6333/collections/BabysWorld_Catalogo/index",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "qdrantApi",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ { field_name: 'metadata.categoria', field_schema: 'text' } }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        1600,
+        320
+      ],
+      "id": "1b998935-8437-4630-bc71-527df5fe331d",
+      "name": "Create_Index_Metadata_Categoria",
+      "credentials": {
+        "qdrantApi": {
+          "id": "ZYv8vdr6tkTS4jYz",
+          "name": "QdrantApi account 3"
+        }
+      },
+      "continueOnFail": true,
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "method": "PUT",
+        "url": "https://1537c683-48da-4631-ab76-ad698b6b9881.us-east-1-0.aws.cloud.qdrant.io:6333/collections/BabysWorld_Catalogo/index",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "qdrantApi",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ { field_name: 'metadata.titulo', field_schema: 'text' } }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        1840,
+        320
+      ],
+      "id": "3e77a2e2-fdea-4332-9a5b-504619aafdf4",
+      "name": "Create_Index_Metadata_Titulo",
+      "credentials": {
+        "qdrantApi": {
+          "id": "ZYv8vdr6tkTS4jYz",
+          "name": "QdrantApi account 3"
+        }
+      },
+      "continueOnFail": true,
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "method": "PUT",
+        "url": "https://1537c683-48da-4631-ab76-ad698b6b9881.us-east-1-0.aws.cloud.qdrant.io:6333/collections/BabysWorld_Catalogo/index",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "qdrantApi",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ { field_name: 'metadata.descripcion', field_schema: 'text' } }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        2080,
+        320
+      ],
+      "id": "d631728a-8dee-47e5-984c-5a3f3be73f76",
+      "name": "Create_Index_Metadata_Descripcion",
+      "credentials": {
+        "qdrantApi": {
+          "id": "ZYv8vdr6tkTS4jYz",
+          "name": "QdrantApi account 3"
+        }
+      },
+      "continueOnFail": true,
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "method": "PUT",
+        "url": "https://1537c683-48da-4631-ab76-ad698b6b9881.us-east-1-0.aws.cloud.qdrant.io:6333/collections/BabysWorld_Catalogo/index",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "qdrantApi",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ { field_name: 'sku', field_schema: 'keyword' } }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        2320,
+        320
+      ],
+      "id": "58fe5926-0db1-4cd9-8c9e-f01c60f1abba",
+      "name": "Create_Index_Sku",
+      "credentials": {
+        "qdrantApi": {
+          "id": "ZYv8vdr6tkTS4jYz",
+          "name": "QdrantApi account 3"
+        }
+      },
+      "continueOnFail": true,
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "url": "https://1537c683-48da-4631-ab76-ad698b6b9881.us-east-1-0.aws.cloud.qdrant.io:6333/collections/BabysWorld_Catalogo",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "qdrantApi",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        2560,
+        320
+      ],
+      "id": "340db56c-b080-40c3-b7d8-a575add9e35d",
+      "name": "Verify_Payload_Schema",
+      "credentials": {
+        "qdrantApi": {
+          "id": "ZYv8vdr6tkTS4jYz",
+          "name": "QdrantApi account 3"
+        }
+      }
+    }
+  ],
+  "connections": {
+    "Ejecutar manualmente": {
+      "main": [
+        [
+          {
+            "node": "Create_Index_Product_Id",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Create_Index_Product_Id": {
+      "main": [
+        [
+          {
+            "node": "Create_Index_Variant_Id",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Create_Index_Variant_Id": {
+      "main": [
+        [
+          {
+            "node": "Create_Index_Product_Type",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Create_Index_Product_Type": {
+      "main": [
+        [
+          {
+            "node": "Create_Index_Title",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Create_Index_Title": {
+      "main": [
+        [
+          {
+            "node": "Create_Index_Descripcion",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Create_Index_Descripcion": {
+      "main": [
+        [
+          {
+            "node": "Create_Index_Collections",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Create_Index_Collections": {
+      "main": [
+        [
+          {
+            "node": "Create_Index_Metadata_Categoria",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Create_Index_Metadata_Categoria": {
+      "main": [
+        [
+          {
+            "node": "Create_Index_Metadata_Titulo",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Create_Index_Metadata_Titulo": {
+      "main": [
+        [
+          {
+            "node": "Create_Index_Metadata_Descripcion",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Create_Index_Metadata_Descripcion": {
+      "main": [
+        [
+          {
+            "node": "Create_Index_Sku",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Create_Index_Sku": {
+      "main": [
+        [
+          {
+            "node": "Verify_Payload_Schema",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "nodeGroups": [],
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate",
+    "timeSavedMode": "fixed",
+    "errorWorkflow": "GZN4CJ6QgYxm77J7",
+    "callerPolicy": "workflowsFromSameOwner",
+    "availableInMCP": false
+  },
+  "staticData": null,
+  "pinData": {},
+  "meta": null,
+  "tags": [],
+  "shared": [
+    {
+      "role": "workflow:owner",
+      "workflowId": "7gOZMbPCSP9tTS6f",
+      "projectId": "8h8pwWGcWlnGEym3",
+      "createdAt": "2026-10-08T23:58:59.805Z",
+      "updatedAt": "2026-10-08T23:58:59.805Z"
+    }
+  ],
+  "activeVersion": null
+}
