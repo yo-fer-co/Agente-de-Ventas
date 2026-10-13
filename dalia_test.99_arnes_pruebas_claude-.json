@@ -1,0 +1,106 @@
+{
+  "id": "bd74zyOfTXtx6pV8",
+  "name": "DALIA_TEST.99_Arnes_pruebas_Claude",
+  "active": false,
+  "activeVersionId": null,
+  "createdAt": "2026-10-03T03:28:14.581Z",
+  "updatedAt": "2026-10-04T14:51:55.667Z",
+  "isArchived": false,
+  "versionId": "1a4a7502-66ed-4465-b08b-a4c08f8a66a7",
+  "triggerCount": 0,
+  "nodes": [
+    {
+      "id": "aeb83732-e2c7-4618-a5ac-634c991cea39",
+      "name": "Inicio manual",
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [
+        0,
+        0
+      ],
+      "parameters": {}
+    },
+    {
+      "id": "d9898031-9838-473c-b563-acfd53a6c4fe",
+      "name": "Invocar INT.port",
+      "type": "n8n-nodes-base.executeWorkflow",
+      "typeVersion": 1.3,
+      "position": [
+        448,
+        0
+      ],
+      "parameters": {
+        "mode": "each",
+        "source": "database",
+        "workflowId": {
+          "__rl": true,
+          "mode": "id",
+          "value": "5gbpWhv0zIA8bZ0w"
+        },
+        "options": {
+          "waitForSubWorkflow": true
+        }
+      }
+    },
+    {
+      "id": "f8763985-4d0e-4c3b-9fa8-31d742ceba68",
+      "name": "Solicitudes",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        220,
+        0
+      ],
+      "parameters": {
+        "jsCode": "return [\n { json: { port: 'catalog', operation: 'search_products', input: { query: 'sku:BW-20261815 OR sku:BW-20261817 OR (sillas mecedoras eléctricas para bebé y sus precios)', limit: 5 }, envelope: { trace_id: 'h-l7-03' } } }\n];",
+        "mode": "runOnceForAllItems"
+      }
+    }
+  ],
+  "connections": {
+    "Inicio manual": {
+      "main": [
+        [
+          {
+            "node": "Solicitudes",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Solicitudes": {
+      "main": [
+        [
+          {
+            "node": "Invocar INT.port",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "nodeGroups": [],
+  "settings": {
+    "executionOrder": "v1",
+    "availableInMCP": true
+  },
+  "staticData": null,
+  "pinData": null,
+  "meta": {
+    "aiBuilderAssisted": true,
+    "builderVariant": "mcp"
+  },
+  "tags": [],
+  "shared": [
+    {
+      "role": "workflow:owner",
+      "workflowId": "bd74zyOfTXtx6pV8",
+      "projectId": "tRHCC8ts4mkRGXGn",
+      "createdAt": "2026-10-09T21:09:17.773Z",
+      "updatedAt": "2026-10-09T21:09:17.773Z"
+    }
+  ],
+  "activeVersion": null
+}
