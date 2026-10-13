@@ -1,0 +1,143 @@
+{
+  "id": "mjOODvxJZSsByptc",
+  "name": "DALIA_TEST.06_Probar_recuperacion",
+  "active": false,
+  "activeVersionId": null,
+  "createdAt": "2026-10-04T03:18:08.299Z",
+  "updatedAt": "2026-10-04T03:53:23.684Z",
+  "isArchived": false,
+  "versionId": "50e3e9b0-2a50-45a8-b7b2-8fa4ba1a9cdf",
+  "triggerCount": 0,
+  "nodes": [
+    {
+      "id": "f965593c-3c24-43ee-9ab6-9995f7fa71e0",
+      "name": "Probar recuperacion",
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [
+        0,
+        0
+      ],
+      "parameters": {}
+    },
+    {
+      "id": "c4ed8474-ffbc-4401-97ad-3d3180c0dfdf",
+      "name": "Consulta de prueba",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        224,
+        0
+      ],
+      "parameters": {
+        "mode": "manual",
+        "includeOtherFields": false,
+        "assignments": {
+          "assignments": [
+            {
+              "id": "q1",
+              "name": "query",
+              "value": "¿Tienen una mecedora eléctrica para bebé con control remoto?",
+              "type": "string"
+            },
+            {
+              "id": "q2",
+              "name": "collections",
+              "value": "={{ [\"business\", \"products\"] }}",
+              "type": "array"
+            },
+            {
+              "id": "q3",
+              "name": "limit",
+              "value": 5,
+              "type": "number"
+            },
+            {
+              "id": "q4",
+              "name": "purpose",
+              "value": "prueba",
+              "type": "string"
+            },
+            {
+              "id": "q5",
+              "name": "envelope",
+              "value": "={{ { trace_id: \"test06-\" + $now.toMillis(), correlation_id: \"test06\" } }}",
+              "type": "object"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "30d581a1-5e11-4b01-9778-e4439f09af8e",
+      "name": "Llamar M9.05",
+      "type": "n8n-nodes-base.executeWorkflow",
+      "typeVersion": 1.3,
+      "position": [
+        448,
+        0
+      ],
+      "parameters": {
+        "mode": "each",
+        "source": "database",
+        "workflowId": {
+          "__rl": true,
+          "mode": "id",
+          "value": "W64Nazq98jdMAbsW"
+        },
+        "options": {
+          "waitForSubWorkflow": true
+        }
+      }
+    }
+  ],
+  "connections": {
+    "Probar recuperacion": {
+      "main": [
+        [
+          {
+            "node": "Consulta de prueba",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Consulta de prueba": {
+      "main": [
+        [
+          {
+            "node": "Llamar M9.05",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "nodeGroups": [],
+  "settings": {
+    "executionOrder": "v1",
+    "availableInMCP": true,
+    "errorWorkflow": "cjjQno2MxMTT3Icc",
+    "timezone": "America/Bogota",
+    "callerPolicy": "workflowsFromSameOwner"
+  },
+  "staticData": null,
+  "pinData": null,
+  "meta": {
+    "aiBuilderAssisted": true,
+    "builderVariant": "mcp"
+  },
+  "tags": [],
+  "shared": [
+    {
+      "role": "workflow:owner",
+      "workflowId": "mjOODvxJZSsByptc",
+      "projectId": "tRHCC8ts4mkRGXGn",
+      "createdAt": "2026-10-09T21:09:17.800Z",
+      "updatedAt": "2026-10-09T21:09:17.800Z"
+    }
+  ],
+  "activeVersion": null
+}
