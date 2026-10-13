@@ -1,0 +1,1551 @@
+{
+  "id": "JHsWSapRjZlOsf8M",
+  "name": "DALIA_M2.02_Ejecutar_plan",
+  "active": true,
+  "activeVersionId": "a2350e43-c31f-4167-b0f2-2e11d4b74391",
+  "createdAt": "2026-10-06T00:55:34.535Z",
+  "updatedAt": "2026-10-06T00:56:56.090Z",
+  "isArchived": false,
+  "versionId": "a2350e43-c31f-4167-b0f2-2e11d4b74391",
+  "triggerCount": 0,
+  "nodes": [
+    {
+      "id": "eee5d88b-3b17-45a7-8d85-581a336adc9d",
+      "name": "Entrada",
+      "type": "n8n-nodes-base.executeWorkflowTrigger",
+      "typeVersion": 1.2,
+      "position": [
+        0,
+        1040
+      ],
+      "parameters": {
+        "inputSource": "passthrough"
+      }
+    },
+    {
+      "id": "40d1483e-0e18-4ef7-96c9-5da627f7cb50",
+      "name": "Pasos del plan",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.7,
+      "position": [
+        224,
+        1040
+      ],
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "select n from dalia.m2_plan_steps($1::uuid);",
+        "options": {
+          "queryReplacement": "={{ [ $json.payload?.decision_id ?? $json.decision_id ] }}"
+        }
+      },
+      "credentials": {
+        "postgres": {
+          "id": "HfCgVAjUygK1vrkU",
+          "name": "DALIA dev Supabase"
+        }
+      },
+      "alwaysOutputData": true
+    },
+    {
+      "id": "3709b3a1-5750-4011-a2c7-b57701ab7c12",
+      "name": "Terminar decision",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.7,
+      "position": [
+        672,
+        64
+      ],
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "select dalia.m2_finish_decision($1::uuid) as result;",
+        "options": {
+          "queryReplacement": "={{ [ $(\"Entrada\").first().json.payload?.decision_id ?? $(\"Entrada\").first().json.decision_id ] }}"
+        }
+      },
+      "credentials": {
+        "postgres": {
+          "id": "HfCgVAjUygK1vrkU",
+          "name": "DALIA dev Supabase"
+        }
+      },
+      "executeOnce": true
+    },
+    {
+      "id": "55a8a1e1-1645-4dc9-9647-1894a0ef3dd0",
+      "name": "Es job",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        896,
+        64
+      ],
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose"
+          },
+          "conditions": [
+            {
+              "leftValue": "={{ !!$(\"Entrada\").first().json.job_id }}",
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        }
+      }
+    },
+    {
+      "id": "c038784e-4df3-4d1c-8b2f-e744ba4d1ebc",
+      "name": "Completar job",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.7,
+      "position": [
+        1120,
+        0
+      ],
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "select dalia.sys_complete_job($1::uuid, $2::jsonb) as job_status;",
+        "options": {
+          "queryReplacement": "={{ [ $(\"Entrada\").first().json.job_id, JSON.stringify($json.result ?? {}) ] }}"
+        }
+      },
+      "credentials": {
+        "postgres": {
+          "id": "HfCgVAjUygK1vrkU",
+          "name": "DALIA dev Supabase"
+        }
+      }
+    },
+    {
+      "id": "cbee82bc-c7c6-4b15-ba36-88cdfc871f02",
+      "name": "Salida",
+      "type": "n8n-nodes-base.noOp",
+      "typeVersion": 1,
+      "position": [
+        1120,
+        192
+      ],
+      "parameters": {},
+      "notes": "H-L9-02: sin job, el resultado sale por la salida 0 hacia quien llamó"
+    },
+    {
+      "id": "44a976bf-c440-4834-8c85-372ab29ac64b",
+      "name": "Solicitud del paso",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.7,
+      "position": [
+        672,
+        768
+      ],
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "select dalia.m2_step_request($1::uuid, $2::int) as q;",
+        "options": {
+          "queryReplacement": "={{ [ $(\"Entrada\").first().json.payload?.decision_id ?? $(\"Entrada\").first().json.decision_id, $json.n ?? 0 ] }}"
+        }
+      },
+      "credentials": {
+        "postgres": {
+          "id": "HfCgVAjUygK1vrkU",
+          "name": "DALIA dev Supabase"
+        }
+      }
+    },
+    {
+      "id": "e4705ca4-cc86-413b-8ebd-969213687166",
+      "name": "Modulo del paso",
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 3.2,
+      "position": [
+        896,
+        704
+      ],
+      "parameters": {
+        "rules": {
+          "values": [
+            {
+              "outputKey": "asesorar",
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict"
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $json.q.action === \"call\" ? $json.q.kind : \"skip\" }}",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    },
+                    "rightValue": "advise"
+                  }
+                ],
+                "combinator": "or"
+              }
+            },
+            {
+              "outputKey": "extraer",
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict"
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $json.q.action === \"call\" ? $json.q.kind : \"skip\" }}",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    },
+                    "rightValue": "extract_order"
+                  }
+                ],
+                "combinator": "or"
+              }
+            },
+            {
+              "outputKey": "comercio",
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict"
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $json.q.action === \"call\" ? $json.q.kind : \"skip\" }}",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    },
+                    "rightValue": "commerce"
+                  }
+                ],
+                "combinator": "or"
+              }
+            },
+            {
+              "outputKey": "presentar",
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict"
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $json.q.action === \"call\" ? $json.q.kind : \"skip\" }}",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    },
+                    "rightValue": "present"
+                  }
+                ],
+                "combinator": "or"
+              }
+            },
+            {
+              "outputKey": "traspaso",
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict"
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $json.q.action === \"call\" ? $json.q.kind : \"skip\" }}",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    },
+                    "rightValue": "handoff"
+                  }
+                ],
+                "combinator": "or"
+              }
+            }
+          ]
+        },
+        "options": {
+          "fallbackOutput": "extra",
+          "renameFallbackOutput": "Desconocido"
+        }
+      }
+    },
+    {
+      "id": "2b538269-e03b-4d9a-9dba-5ecba8f92c40",
+      "name": "Solicitud a M3.02",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        1120,
+        384
+      ],
+      "parameters": {
+        "mode": "raw",
+        "jsonOutput": "={{ JSON.stringify(Object.assign({}, $json.q.request, { context: $(\"Entrada\").first().json.context ?? null })) }}",
+        "options": {}
+      }
+    },
+    {
+      "id": "fd5e22f6-15ea-487b-abf0-1700cb53b95f",
+      "name": "Asesorar (M3.02)",
+      "type": "n8n-nodes-base.executeWorkflow",
+      "typeVersion": 1.3,
+      "position": [
+        1344,
+        384
+      ],
+      "parameters": {
+        "mode": "each",
+        "source": "database",
+        "workflowId": {
+          "__rl": true,
+          "mode": "id",
+          "value": "cIJW9FzCrXSD5OlM"
+        },
+        "options": {
+          "waitForSubWorkflow": true
+        }
+      },
+      "onError": "continueRegularOutput"
+    },
+    {
+      "id": "0bff495b-de10-4ad3-8ca3-00b6a5514e62",
+      "name": "Registrar paso",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.7,
+      "position": [
+        1568,
+        832
+      ],
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "select dalia.m2_record_step($1::uuid, $2::int, $3::jsonb) as r;",
+        "options": {
+          "queryReplacement": "={{ [ $(\"Solicitud del paso\").first().json.q.decision_id, $(\"Solicitud del paso\").first().json.q.n, JSON.stringify($json) ] }}"
+        }
+      },
+      "credentials": {
+        "postgres": {
+          "id": "HfCgVAjUygK1vrkU",
+          "name": "DALIA dev Supabase"
+        }
+      }
+    },
+    {
+      "id": "23e7dffb-990c-4c2f-920e-2bdf9d985df2",
+      "name": "Un paso a la vez",
+      "type": "n8n-nodes-base.splitInBatches",
+      "typeVersion": 3,
+      "position": [
+        448,
+        1040
+      ],
+      "parameters": {
+        "batchSize": 1,
+        "options": {}
+      }
+    },
+    {
+      "id": "c376ff76-ab44-4783-bd18-3e2b9e8aaf98",
+      "name": "Solicitud a M3.03",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        1120,
+        576
+      ],
+      "parameters": {
+        "mode": "raw",
+        "jsonOutput": "={{ JSON.stringify($json.q.request) }}",
+        "options": {}
+      }
+    },
+    {
+      "id": "02bc1ee6-7282-4d9e-8991-ae2e32072609",
+      "name": "Extraer pedido (M3.03)",
+      "type": "n8n-nodes-base.executeWorkflow",
+      "typeVersion": 1.3,
+      "position": [
+        1344,
+        576
+      ],
+      "parameters": {
+        "mode": "each",
+        "source": "database",
+        "workflowId": {
+          "__rl": true,
+          "mode": "id",
+          "value": "xzFPZ492fyYSBT8l"
+        },
+        "options": {
+          "waitForSubWorkflow": true
+        }
+      },
+      "onError": "continueRegularOutput"
+    },
+    {
+      "id": "ebf8045b-62fc-4668-8320-c6e5b5aea3fa",
+      "name": "Solicitud a M5.01",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        1120,
+        768
+      ],
+      "parameters": {
+        "mode": "raw",
+        "jsonOutput": "={{ JSON.stringify($json.q.request) }}",
+        "options": {}
+      }
+    },
+    {
+      "id": "1955bccd-d756-46c0-919a-5b09b3660d99",
+      "name": "Comando comercial (M5.01)",
+      "type": "n8n-nodes-base.executeWorkflow",
+      "typeVersion": 1.3,
+      "position": [
+        1344,
+        768
+      ],
+      "parameters": {
+        "mode": "each",
+        "source": "database",
+        "workflowId": {
+          "__rl": true,
+          "mode": "id",
+          "value": "yYPgdUrGfC19JLbu"
+        },
+        "options": {
+          "waitForSubWorkflow": true
+        }
+      },
+      "onError": "continueRegularOutput"
+    },
+    {
+      "id": "919c19de-4c74-4777-8d98-da05e9546bc5",
+      "name": "Solicitud a M7.01",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        1120,
+        960
+      ],
+      "parameters": {
+        "mode": "raw",
+        "jsonOutput": "={{ JSON.stringify($json.q.request) }}",
+        "options": {}
+      }
+    },
+    {
+      "id": "44e260a9-f59d-4054-98b0-3ae2b6c3c2f2",
+      "name": "Presentar (M7.01)",
+      "type": "n8n-nodes-base.executeWorkflow",
+      "typeVersion": 1.3,
+      "position": [
+        1344,
+        960
+      ],
+      "parameters": {
+        "mode": "each",
+        "source": "database",
+        "workflowId": {
+          "__rl": true,
+          "mode": "id",
+          "value": "1nllxN28kc96xP8x"
+        },
+        "options": {
+          "waitForSubWorkflow": true
+        }
+      },
+      "onError": "continueRegularOutput"
+    },
+    {
+      "id": "f84e4346-4754-46a1-ac66-84edc0aae41c",
+      "name": "Solicitud a M6.01",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        1120,
+        1152
+      ],
+      "parameters": {
+        "mode": "raw",
+        "jsonOutput": "={{ JSON.stringify($json.q.request) }}",
+        "options": {}
+      }
+    },
+    {
+      "id": "24507202-3ef1-41ea-a373-394d4c6ef9c6",
+      "name": "Traspaso (M6.01)",
+      "type": "n8n-nodes-base.executeWorkflow",
+      "typeVersion": 1.3,
+      "position": [
+        1344,
+        1152
+      ],
+      "parameters": {
+        "mode": "each",
+        "source": "database",
+        "workflowId": {
+          "__rl": true,
+          "mode": "id",
+          "value": "9jGorCFmBLrKUOWX"
+        },
+        "options": {
+          "waitForSubWorkflow": true
+        }
+      },
+      "onError": "continueRegularOutput"
+    }
+  ],
+  "connections": {
+    "Entrada": {
+      "main": [
+        [
+          {
+            "node": "Pasos del plan",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Pasos del plan": {
+      "main": [
+        [
+          {
+            "node": "Un paso a la vez",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Terminar decision": {
+      "main": [
+        [
+          {
+            "node": "Es job",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Es job": {
+      "main": [
+        [
+          {
+            "node": "Completar job",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Salida",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Solicitud del paso": {
+      "main": [
+        [
+          {
+            "node": "Modulo del paso",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Modulo del paso": {
+      "main": [
+        [
+          {
+            "node": "Solicitud a M3.02",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Solicitud a M3.03",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Solicitud a M5.01",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Solicitud a M7.01",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Solicitud a M6.01",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Un paso a la vez",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Solicitud a M3.02": {
+      "main": [
+        [
+          {
+            "node": "Asesorar (M3.02)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Asesorar (M3.02)": {
+      "main": [
+        [
+          {
+            "node": "Registrar paso",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Registrar paso": {
+      "main": [
+        [
+          {
+            "node": "Un paso a la vez",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Un paso a la vez": {
+      "main": [
+        [
+          {
+            "node": "Terminar decision",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Solicitud del paso",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Solicitud a M3.03": {
+      "main": [
+        [
+          {
+            "node": "Extraer pedido (M3.03)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Extraer pedido (M3.03)": {
+      "main": [
+        [
+          {
+            "node": "Registrar paso",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Solicitud a M5.01": {
+      "main": [
+        [
+          {
+            "node": "Comando comercial (M5.01)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Comando comercial (M5.01)": {
+      "main": [
+        [
+          {
+            "node": "Registrar paso",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Solicitud a M7.01": {
+      "main": [
+        [
+          {
+            "node": "Presentar (M7.01)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Presentar (M7.01)": {
+      "main": [
+        [
+          {
+            "node": "Registrar paso",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Solicitud a M6.01": {
+      "main": [
+        [
+          {
+            "node": "Traspaso (M6.01)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Traspaso (M6.01)": {
+      "main": [
+        [
+          {
+            "node": "Registrar paso",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "nodeGroups": [],
+  "settings": {
+    "executionOrder": "v1",
+    "availableInMCP": true,
+    "errorWorkflow": "cjjQno2MxMTT3Icc",
+    "timezone": "America/Bogota",
+    "saveDataSuccessExecution": "none",
+    "callerPolicy": "workflowsFromSameOwner"
+  },
+  "staticData": null,
+  "pinData": null,
+  "meta": {
+    "aiBuilderAssisted": true,
+    "builderVariant": "mcp"
+  },
+  "tags": [],
+  "shared": [
+    {
+      "role": "workflow:owner",
+      "workflowId": "JHsWSapRjZlOsf8M",
+      "projectId": "tRHCC8ts4mkRGXGn",
+      "createdAt": "2026-10-09T21:09:17.849Z",
+      "updatedAt": "2026-10-09T21:09:17.849Z"
+    }
+  ],
+  "activeVersion": {
+    "versionId": "a2350e43-c31f-4167-b0f2-2e11d4b74391",
+    "workflowId": "JHsWSapRjZlOsf8M",
+    "nodes": [
+      {
+        "id": "eee5d88b-3b17-45a7-8d85-581a336adc9d",
+        "name": "Entrada",
+        "type": "n8n-nodes-base.executeWorkflowTrigger",
+        "typeVersion": 1.2,
+        "position": [
+          0,
+          1040
+        ],
+        "parameters": {
+          "inputSource": "passthrough"
+        }
+      },
+      {
+        "id": "40d1483e-0e18-4ef7-96c9-5da627f7cb50",
+        "name": "Pasos del plan",
+        "type": "n8n-nodes-base.postgres",
+        "typeVersion": 2.7,
+        "position": [
+          224,
+          1040
+        ],
+        "parameters": {
+          "operation": "executeQuery",
+          "query": "select n from dalia.m2_plan_steps($1::uuid);",
+          "options": {
+            "queryReplacement": "={{ [ $json.payload?.decision_id ?? $json.decision_id ] }}"
+          }
+        },
+        "credentials": {
+          "postgres": {
+            "id": "HfCgVAjUygK1vrkU",
+            "name": "DALIA dev Supabase"
+          }
+        },
+        "alwaysOutputData": true
+      },
+      {
+        "id": "3709b3a1-5750-4011-a2c7-b57701ab7c12",
+        "name": "Terminar decision",
+        "type": "n8n-nodes-base.postgres",
+        "typeVersion": 2.7,
+        "position": [
+          672,
+          64
+        ],
+        "parameters": {
+          "operation": "executeQuery",
+          "query": "select dalia.m2_finish_decision($1::uuid) as result;",
+          "options": {
+            "queryReplacement": "={{ [ $(\"Entrada\").first().json.payload?.decision_id ?? $(\"Entrada\").first().json.decision_id ] }}"
+          }
+        },
+        "credentials": {
+          "postgres": {
+            "id": "HfCgVAjUygK1vrkU",
+            "name": "DALIA dev Supabase"
+          }
+        },
+        "executeOnce": true
+      },
+      {
+        "id": "55a8a1e1-1645-4dc9-9647-1894a0ef3dd0",
+        "name": "Es job",
+        "type": "n8n-nodes-base.if",
+        "typeVersion": 2.2,
+        "position": [
+          896,
+          64
+        ],
+        "parameters": {
+          "conditions": {
+            "options": {
+              "caseSensitive": true,
+              "leftValue": "",
+              "typeValidation": "loose"
+            },
+            "conditions": [
+              {
+                "leftValue": "={{ !!$(\"Entrada\").first().json.job_id }}",
+                "operator": {
+                  "type": "boolean",
+                  "operation": "true",
+                  "singleValue": true
+                }
+              }
+            ],
+            "combinator": "and"
+          }
+        }
+      },
+      {
+        "id": "c038784e-4df3-4d1c-8b2f-e744ba4d1ebc",
+        "name": "Completar job",
+        "type": "n8n-nodes-base.postgres",
+        "typeVersion": 2.7,
+        "position": [
+          1120,
+          0
+        ],
+        "parameters": {
+          "operation": "executeQuery",
+          "query": "select dalia.sys_complete_job($1::uuid, $2::jsonb) as job_status;",
+          "options": {
+            "queryReplacement": "={{ [ $(\"Entrada\").first().json.job_id, JSON.stringify($json.result ?? {}) ] }}"
+          }
+        },
+        "credentials": {
+          "postgres": {
+            "id": "HfCgVAjUygK1vrkU",
+            "name": "DALIA dev Supabase"
+          }
+        }
+      },
+      {
+        "id": "cbee82bc-c7c6-4b15-ba36-88cdfc871f02",
+        "name": "Salida",
+        "type": "n8n-nodes-base.noOp",
+        "typeVersion": 1,
+        "position": [
+          1120,
+          192
+        ],
+        "parameters": {},
+        "notes": "H-L9-02: sin job, el resultado sale por la salida 0 hacia quien llamó"
+      },
+      {
+        "id": "44a976bf-c440-4834-8c85-372ab29ac64b",
+        "name": "Solicitud del paso",
+        "type": "n8n-nodes-base.postgres",
+        "typeVersion": 2.7,
+        "position": [
+          672,
+          768
+        ],
+        "parameters": {
+          "operation": "executeQuery",
+          "query": "select dalia.m2_step_request($1::uuid, $2::int) as q;",
+          "options": {
+            "queryReplacement": "={{ [ $(\"Entrada\").first().json.payload?.decision_id ?? $(\"Entrada\").first().json.decision_id, $json.n ?? 0 ] }}"
+          }
+        },
+        "credentials": {
+          "postgres": {
+            "id": "HfCgVAjUygK1vrkU",
+            "name": "DALIA dev Supabase"
+          }
+        }
+      },
+      {
+        "id": "e4705ca4-cc86-413b-8ebd-969213687166",
+        "name": "Modulo del paso",
+        "type": "n8n-nodes-base.switch",
+        "typeVersion": 3.2,
+        "position": [
+          896,
+          704
+        ],
+        "parameters": {
+          "rules": {
+            "values": [
+              {
+                "outputKey": "asesorar",
+                "conditions": {
+                  "options": {
+                    "caseSensitive": true,
+                    "leftValue": "",
+                    "typeValidation": "strict"
+                  },
+                  "conditions": [
+                    {
+                      "leftValue": "={{ $json.q.action === \"call\" ? $json.q.kind : \"skip\" }}",
+                      "operator": {
+                        "type": "string",
+                        "operation": "equals"
+                      },
+                      "rightValue": "advise"
+                    }
+                  ],
+                  "combinator": "or"
+                }
+              },
+              {
+                "outputKey": "extraer",
+                "conditions": {
+                  "options": {
+                    "caseSensitive": true,
+                    "leftValue": "",
+                    "typeValidation": "strict"
+                  },
+                  "conditions": [
+                    {
+                      "leftValue": "={{ $json.q.action === \"call\" ? $json.q.kind : \"skip\" }}",
+                      "operator": {
+                        "type": "string",
+                        "operation": "equals"
+                      },
+                      "rightValue": "extract_order"
+                    }
+                  ],
+                  "combinator": "or"
+                }
+              },
+              {
+                "outputKey": "comercio",
+                "conditions": {
+                  "options": {
+                    "caseSensitive": true,
+                    "leftValue": "",
+                    "typeValidation": "strict"
+                  },
+                  "conditions": [
+                    {
+                      "leftValue": "={{ $json.q.action === \"call\" ? $json.q.kind : \"skip\" }}",
+                      "operator": {
+                        "type": "string",
+                        "operation": "equals"
+                      },
+                      "rightValue": "commerce"
+                    }
+                  ],
+                  "combinator": "or"
+                }
+              },
+              {
+                "outputKey": "presentar",
+                "conditions": {
+                  "options": {
+                    "caseSensitive": true,
+                    "leftValue": "",
+                    "typeValidation": "strict"
+                  },
+                  "conditions": [
+                    {
+                      "leftValue": "={{ $json.q.action === \"call\" ? $json.q.kind : \"skip\" }}",
+                      "operator": {
+                        "type": "string",
+                        "operation": "equals"
+                      },
+                      "rightValue": "present"
+                    }
+                  ],
+                  "combinator": "or"
+                }
+              },
+              {
+                "outputKey": "traspaso",
+                "conditions": {
+                  "options": {
+                    "caseSensitive": true,
+                    "leftValue": "",
+                    "typeValidation": "strict"
+                  },
+                  "conditions": [
+                    {
+                      "leftValue": "={{ $json.q.action === \"call\" ? $json.q.kind : \"skip\" }}",
+                      "operator": {
+                        "type": "string",
+                        "operation": "equals"
+                      },
+                      "rightValue": "handoff"
+                    }
+                  ],
+                  "combinator": "or"
+                }
+              }
+            ]
+          },
+          "options": {
+            "fallbackOutput": "extra",
+            "renameFallbackOutput": "Desconocido"
+          }
+        }
+      },
+      {
+        "id": "2b538269-e03b-4d9a-9dba-5ecba8f92c40",
+        "name": "Solicitud a M3.02",
+        "type": "n8n-nodes-base.set",
+        "typeVersion": 3.4,
+        "position": [
+          1120,
+          384
+        ],
+        "parameters": {
+          "mode": "raw",
+          "jsonOutput": "={{ JSON.stringify(Object.assign({}, $json.q.request, { context: $(\"Entrada\").first().json.context ?? null })) }}",
+          "options": {}
+        }
+      },
+      {
+        "id": "fd5e22f6-15ea-487b-abf0-1700cb53b95f",
+        "name": "Asesorar (M3.02)",
+        "type": "n8n-nodes-base.executeWorkflow",
+        "typeVersion": 1.3,
+        "position": [
+          1344,
+          384
+        ],
+        "parameters": {
+          "mode": "each",
+          "source": "database",
+          "workflowId": {
+            "__rl": true,
+            "mode": "id",
+            "value": "cIJW9FzCrXSD5OlM"
+          },
+          "options": {
+            "waitForSubWorkflow": true
+          }
+        },
+        "onError": "continueRegularOutput"
+      },
+      {
+        "id": "0bff495b-de10-4ad3-8ca3-00b6a5514e62",
+        "name": "Registrar paso",
+        "type": "n8n-nodes-base.postgres",
+        "typeVersion": 2.7,
+        "position": [
+          1568,
+          832
+        ],
+        "parameters": {
+          "operation": "executeQuery",
+          "query": "select dalia.m2_record_step($1::uuid, $2::int, $3::jsonb) as r;",
+          "options": {
+            "queryReplacement": "={{ [ $(\"Solicitud del paso\").first().json.q.decision_id, $(\"Solicitud del paso\").first().json.q.n, JSON.stringify($json) ] }}"
+          }
+        },
+        "credentials": {
+          "postgres": {
+            "id": "HfCgVAjUygK1vrkU",
+            "name": "DALIA dev Supabase"
+          }
+        }
+      },
+      {
+        "id": "23e7dffb-990c-4c2f-920e-2bdf9d985df2",
+        "name": "Un paso a la vez",
+        "type": "n8n-nodes-base.splitInBatches",
+        "typeVersion": 3,
+        "position": [
+          448,
+          1040
+        ],
+        "parameters": {
+          "batchSize": 1,
+          "options": {}
+        }
+      },
+      {
+        "id": "c376ff76-ab44-4783-bd18-3e2b9e8aaf98",
+        "name": "Solicitud a M3.03",
+        "type": "n8n-nodes-base.set",
+        "typeVersion": 3.4,
+        "position": [
+          1120,
+          576
+        ],
+        "parameters": {
+          "mode": "raw",
+          "jsonOutput": "={{ JSON.stringify($json.q.request) }}",
+          "options": {}
+        }
+      },
+      {
+        "id": "02bc1ee6-7282-4d9e-8991-ae2e32072609",
+        "name": "Extraer pedido (M3.03)",
+        "type": "n8n-nodes-base.executeWorkflow",
+        "typeVersion": 1.3,
+        "position": [
+          1344,
+          576
+        ],
+        "parameters": {
+          "mode": "each",
+          "source": "database",
+          "workflowId": {
+            "__rl": true,
+            "mode": "id",
+            "value": "xzFPZ492fyYSBT8l"
+          },
+          "options": {
+            "waitForSubWorkflow": true
+          }
+        },
+        "onError": "continueRegularOutput"
+      },
+      {
+        "id": "ebf8045b-62fc-4668-8320-c6e5b5aea3fa",
+        "name": "Solicitud a M5.01",
+        "type": "n8n-nodes-base.set",
+        "typeVersion": 3.4,
+        "position": [
+          1120,
+          768
+        ],
+        "parameters": {
+          "mode": "raw",
+          "jsonOutput": "={{ JSON.stringify($json.q.request) }}",
+          "options": {}
+        }
+      },
+      {
+        "id": "1955bccd-d756-46c0-919a-5b09b3660d99",
+        "name": "Comando comercial (M5.01)",
+        "type": "n8n-nodes-base.executeWorkflow",
+        "typeVersion": 1.3,
+        "position": [
+          1344,
+          768
+        ],
+        "parameters": {
+          "mode": "each",
+          "source": "database",
+          "workflowId": {
+            "__rl": true,
+            "mode": "id",
+            "value": "yYPgdUrGfC19JLbu"
+          },
+          "options": {
+            "waitForSubWorkflow": true
+          }
+        },
+        "onError": "continueRegularOutput"
+      },
+      {
+        "id": "919c19de-4c74-4777-8d98-da05e9546bc5",
+        "name": "Solicitud a M7.01",
+        "type": "n8n-nodes-base.set",
+        "typeVersion": 3.4,
+        "position": [
+          1120,
+          960
+        ],
+        "parameters": {
+          "mode": "raw",
+          "jsonOutput": "={{ JSON.stringify($json.q.request) }}",
+          "options": {}
+        }
+      },
+      {
+        "id": "44e260a9-f59d-4054-98b0-3ae2b6c3c2f2",
+        "name": "Presentar (M7.01)",
+        "type": "n8n-nodes-base.executeWorkflow",
+        "typeVersion": 1.3,
+        "position": [
+          1344,
+          960
+        ],
+        "parameters": {
+          "mode": "each",
+          "source": "database",
+          "workflowId": {
+            "__rl": true,
+            "mode": "id",
+            "value": "1nllxN28kc96xP8x"
+          },
+          "options": {
+            "waitForSubWorkflow": true
+          }
+        },
+        "onError": "continueRegularOutput"
+      },
+      {
+        "id": "f84e4346-4754-46a1-ac66-84edc0aae41c",
+        "name": "Solicitud a M6.01",
+        "type": "n8n-nodes-base.set",
+        "typeVersion": 3.4,
+        "position": [
+          1120,
+          1152
+        ],
+        "parameters": {
+          "mode": "raw",
+          "jsonOutput": "={{ JSON.stringify($json.q.request) }}",
+          "options": {}
+        }
+      },
+      {
+        "id": "24507202-3ef1-41ea-a373-394d4c6ef9c6",
+        "name": "Traspaso (M6.01)",
+        "type": "n8n-nodes-base.executeWorkflow",
+        "typeVersion": 1.3,
+        "position": [
+          1344,
+          1152
+        ],
+        "parameters": {
+          "mode": "each",
+          "source": "database",
+          "workflowId": {
+            "__rl": true,
+            "mode": "id",
+            "value": "9jGorCFmBLrKUOWX"
+          },
+          "options": {
+            "waitForSubWorkflow": true
+          }
+        },
+        "onError": "continueRegularOutput"
+      }
+    ],
+    "connections": {
+      "Entrada": {
+        "main": [
+          [
+            {
+              "node": "Pasos del plan",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Pasos del plan": {
+        "main": [
+          [
+            {
+              "node": "Un paso a la vez",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Terminar decision": {
+        "main": [
+          [
+            {
+              "node": "Es job",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Es job": {
+        "main": [
+          [
+            {
+              "node": "Completar job",
+              "type": "main",
+              "index": 0
+            }
+          ],
+          [
+            {
+              "node": "Salida",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Solicitud del paso": {
+        "main": [
+          [
+            {
+              "node": "Modulo del paso",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Modulo del paso": {
+        "main": [
+          [
+            {
+              "node": "Solicitud a M3.02",
+              "type": "main",
+              "index": 0
+            }
+          ],
+          [
+            {
+              "node": "Solicitud a M3.03",
+              "type": "main",
+              "index": 0
+            }
+          ],
+          [
+            {
+              "node": "Solicitud a M5.01",
+              "type": "main",
+              "index": 0
+            }
+          ],
+          [
+            {
+              "node": "Solicitud a M7.01",
+              "type": "main",
+              "index": 0
+            }
+          ],
+          [
+            {
+              "node": "Solicitud a M6.01",
+              "type": "main",
+              "index": 0
+            }
+          ],
+          [
+            {
+              "node": "Un paso a la vez",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Solicitud a M3.02": {
+        "main": [
+          [
+            {
+              "node": "Asesorar (M3.02)",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Asesorar (M3.02)": {
+        "main": [
+          [
+            {
+              "node": "Registrar paso",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Registrar paso": {
+        "main": [
+          [
+            {
+              "node": "Un paso a la vez",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Un paso a la vez": {
+        "main": [
+          [
+            {
+              "node": "Terminar decision",
+              "type": "main",
+              "index": 0
+            }
+          ],
+          [
+            {
+              "node": "Solicitud del paso",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Solicitud a M3.03": {
+        "main": [
+          [
+            {
+              "node": "Extraer pedido (M3.03)",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Extraer pedido (M3.03)": {
+        "main": [
+          [
+            {
+              "node": "Registrar paso",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Solicitud a M5.01": {
+        "main": [
+          [
+            {
+              "node": "Comando comercial (M5.01)",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Comando comercial (M5.01)": {
+        "main": [
+          [
+            {
+              "node": "Registrar paso",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Solicitud a M7.01": {
+        "main": [
+          [
+            {
+              "node": "Presentar (M7.01)",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Presentar (M7.01)": {
+        "main": [
+          [
+            {
+              "node": "Registrar paso",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Solicitud a M6.01": {
+        "main": [
+          [
+            {
+              "node": "Traspaso (M6.01)",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Traspaso (M6.01)": {
+        "main": [
+          [
+            {
+              "node": "Registrar paso",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      }
+    },
+    "nodeGroups": [],
+    "authors": "Fabian Bocanegra (via MCP)",
+    "name": "Lote 11: M2.02 Ejecutar plan (con Salida H-L9-02)",
+    "description": "Created with 20 nodes: Entrada, Pasos del plan, Terminar decision, Es job, Completar job and 15 more",
+    "autosaved": false,
+    "createdAt": "2026-10-06T00:55:34.538Z",
+    "updatedAt": "2026-10-06T00:55:34.538Z"
+  }
+}
