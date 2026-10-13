@@ -1,0 +1,1309 @@
+{
+  "id": "vNZJE21Coxp5eRww",
+  "name": "Agente Ventas - TEST Alfa V1",
+  "active": false,
+  "activeVersionId": null,
+  "createdAt": "2025-07-09T01:55:12.331Z",
+  "updatedAt": "2025-09-12T05:17:00.000Z",
+  "isArchived": false,
+  "versionId": "64f84a05-0b1e-4a60-a015-0d9ef9e6fb52",
+  "triggerCount": 1,
+  "nodes": [
+    {
+      "parameters": {
+        "content": "## Agente de Ventas -Alfa -V1 \n**Este flujo prueba las siguientes capacidades:\n1. Recepción e interpretación de mensajes\n2. Validación de existencia de cliente.\n3. Con nueva instancia QDrant \"YoEco_Clientes_TEST\"",
+        "width": 500,
+        "color": 6
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [
+        -448,
+        -368
+      ],
+      "typeVersion": 1,
+      "id": "25105df9-343a-4094-a52c-a26a40d280f3",
+      "name": "Sticky Note"
+    },
+    {
+      "parameters": {
+        "sessionIdType": "customKey",
+        "sessionKey": "={{ $('Convertir entrada').item.json['ID del usuario'] }}",
+        "contextWindowLength": 0
+      },
+      "type": "@n8n/n8n-nodes-langchain.memoryBufferWindow",
+      "typeVersion": 1.3,
+      "position": [
+        432,
+        1312
+      ],
+      "id": "8660128b-539b-4215-bf2f-cef13fc6ac29",
+      "name": "Simple Memory"
+    },
+    {
+      "parameters": {
+        "sessionIdType": "customKey",
+        "sessionKey": "={{ $json['ID del usuario'] }}"
+      },
+      "type": "@n8n/n8n-nodes-langchain.memoryBufferWindow",
+      "typeVersion": 1.3,
+      "position": [
+        -528,
+        448
+      ],
+      "id": "2860c0b8-88dd-4682-9f80-b8d6bdbf76b5",
+      "name": "Simple Memory1"
+    },
+    {
+      "parameters": {
+        "fieldToSplitOut": "messages",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.splitOut",
+      "typeVersion": 1,
+      "position": [
+        -2144,
+        208
+      ],
+      "id": "89a98d77-e6d2-4fc5-83ad-b0c27b5b1b49",
+      "name": "Split Out"
+    },
+    {
+      "parameters": {
+        "resource": "media",
+        "operation": "mediaUrlGet",
+        "mediaGetId": "={{ $json.audio.id }}"
+      },
+      "type": "n8n-nodes-base.whatsApp",
+      "typeVersion": 1,
+      "position": [
+        -1696,
+        208
+      ],
+      "id": "3ff2e8c5-3f95-4926-abdf-4f68cec00395",
+      "name": "Recibir Audios",
+      "webhookId": "6ce091e6-710e-4082-a38e-a2d6b32b01bc",
+      "credentials": {
+        "whatsAppApi": {
+          "id": "rzDBr0QmVYmWZxf0",
+          "name": "WhatsApp Send TEST"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "resource": "audio",
+        "operation": "transcribe",
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.openAi",
+      "typeVersion": 1.8,
+      "position": [
+        -1264,
+        208
+      ],
+      "id": "5a1dc3e6-b045-438c-bf1a-0acd6e2055f4",
+      "name": "Transcribir Audios",
+      "credentials": {
+        "openAiApi": {
+          "id": "CxN1M3GiHPXWR4gx",
+          "name": "OpenAi TEST"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "url": "={{ $json.url }}",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "whatsAppApi",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        -1520,
+        208
+      ],
+      "id": "425c9ab4-bd01-4084-941e-d03c0d031a03",
+      "name": "Descarga de audios",
+      "credentials": {
+        "whatsAppApi": {
+          "id": "rzDBr0QmVYmWZxf0",
+          "name": "WhatsApp Send TEST"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "5a68a177-3501-4ea6-95cb-cabc6f6b82ca",
+              "name": "texto",
+              "value": "={{ $('Recibir Mensaje').item.json.messages[0].text.body }}",
+              "type": "string"
+            },
+            {
+              "id": "b3e7886a-954a-4558-b90d-4d91849e374f",
+              "name": "",
+              "value": "",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        -1520,
+        48
+      ],
+      "id": "bc7581e8-83da-4fbe-be72-1ea0d3828711",
+      "name": "Recibir Texto"
+    },
+    {
+      "parameters": {
+        "resource": "media",
+        "operation": "mediaUrlGet",
+        "mediaGetId": "={{ $json.image.id }}"
+      },
+      "type": "n8n-nodes-base.whatsApp",
+      "typeVersion": 1,
+      "position": [
+        -1696,
+        368
+      ],
+      "id": "42dc8c1e-5040-4f06-bac8-cd111ca4074a",
+      "name": "Recibir imagen",
+      "webhookId": "0353a031-8a58-47e7-9fd6-1dbd82b3fa4e",
+      "credentials": {
+        "whatsAppApi": {
+          "id": "rzDBr0QmVYmWZxf0",
+          "name": "WhatsApp Send TEST"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "url": "={{ $json.url }}",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "whatsAppApi",
+        "options": {
+          "response": {
+            "response": {
+              "responseFormat": "file"
+            }
+          }
+        }
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        -1536,
+        368
+      ],
+      "id": "953fedad-4e9f-4161-bb9d-dca09e4cc0ba",
+      "name": "Descarga de imagen",
+      "credentials": {
+        "whatsAppApi": {
+          "id": "rzDBr0QmVYmWZxf0",
+          "name": "WhatsApp Send TEST"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "Aqui tienes una imagen enviada por el usuario. Describe la imagen y Transcribe cualquier texto visible",
+        "messages": {
+          "messageValues": [
+            {
+              "type": "HumanMessagePromptTemplate",
+              "messageType": "imageBinary"
+            }
+          ]
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.chainLlm",
+      "typeVersion": 1.6,
+      "position": [
+        -1344,
+        368
+      ],
+      "id": "513cabe5-603a-4537-b615-2213f78f4a58",
+      "name": "Leer y transcribir la imagen"
+    },
+    {
+      "parameters": {
+        "rules": {
+          "values": [
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 2
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $json.text.body }}",
+                    "rightValue": "",
+                    "operator": {
+                      "type": "string",
+                      "operation": "exists",
+                      "singleValue": true
+                    },
+                    "id": "e2c00f40-ffd8-4a76-9af0-dbbf763ea48b"
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "texto  "
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 2
+                },
+                "conditions": [
+                  {
+                    "id": "d8afee67-2bff-466b-b25d-3a702de759e7",
+                    "leftValue": "={{ $json.type == 'audio' && Boolean($json.audio) }}",
+                    "rightValue": "",
+                    "operator": {
+                      "type": "boolean",
+                      "operation": "true",
+                      "singleValue": true
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "Voz"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 2
+                },
+                "conditions": [
+                  {
+                    "id": "95458589-f1ca-44cb-b397-f6ef6a6c2b28",
+                    "leftValue": "={{ $json.type == 'image' && Boolean($json.image) }}",
+                    "rightValue": "",
+                    "operator": {
+                      "type": "boolean",
+                      "operation": "true",
+                      "singleValue": true
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "Imagen"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 3.2,
+      "position": [
+        -2000,
+        208
+      ],
+      "id": "d7a16e87-f1d9-41a9-82ea-62f8c65a7704",
+      "name": "Switch1"
+    },
+    {
+      "parameters": {
+        "updates": [
+          "messages"
+        ],
+        "options": {}
+      },
+      "type": "n8n-nodes-base.whatsAppTrigger",
+      "typeVersion": 1,
+      "position": [
+        -2576,
+        192
+      ],
+      "id": "478fafe4-0b50-40cc-aae0-4bade2478e0a",
+      "name": "Recibir Mensaje",
+      "webhookId": "9d751853-8d64-4991-9074-7a9402550c4f",
+      "credentials": {
+        "whatsAppTriggerApi": {
+          "id": "mkRuJBFZgnQPJdCr",
+          "name": "WhatsApp OnMessage TEST"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "={{ $json.message }}",
+        "options": {
+          "systemMessage": "=Analiza el siguiente mensaje recibido por un usuario. \n\nSi el mensaje corresponde a un saludo inicial típico como \"Hola\", \"Buenos días\", \"Buenas tardes\", \"Buenas noches\" o frases similares que suelen usarse para comenzar una conversación, responde únicamente con:\n\n\"Primer mensaje\"\n\nSi el mensaje NO corresponde a un saludo inicial, y parece ser parte de una conversación ya iniciada (por ejemplo: agradecimientos, preguntas, seguimiento, comentarios sobre interacciones anteriores, despedidas, etc.), responde únicamente con:\n\n\"Conversación existente\"\n\nRecuerda: la salida debe ser estrictamente una de estas dos opciones y **nada más**.\n\nMensaje a analizar:\n{{ $json.message }}\n\nEjemplos de uso:\n\nMensaje a analizar:\nHola, ¿hay alguien?\n\nRespuesta esperada:\nPrimer mensaje\n\nMensaje a analizar:\nSí, te respondí hace un rato sobre el pedido.\n\nRespuesta esperada:\nConversación existente\n\nMensaje a analizar:\nMuchas gracias por tu ayuda. ¡Hasta pronto!\n\nRespuesta esperada:\nConversación existente\n\nMensaje a analizar:\nBuenas tardes\n\nRespuesta esperada:\nPrimer mensaje\n\nMensaje a analizar:\nGracias por la atención. Adiós.\n\nRespuesta esperada:\nConversación existente"
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 1.9,
+      "position": [
+        -640,
+        192
+      ],
+      "id": "6754aada-5e46-41c7-add7-8d1329c605ad",
+      "name": "Agente Identificador"
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "={{ $json.mensaje_usuario }}",
+        "hasOutputParser": true,
+        "options": {
+          "systemMessage": "=YoEco es una tienda ecológica ubicada en Bogotá, Colombia, que ofrece productos de cuidado personal y hogar fabricados con materiales sostenibles. Opera en la zona horaria América/Bogotá y utiliza el peso colombiano (COP) como moneda. Su catálogo incluye cepillos de bambú biodegradables, kits de cuidado bucal ecológicos y otros artículos que promueven un estilo de vida responsable con el medio ambiente. Toda información sobre productos, precios y stock está almacenada en la Base de Datos de la Tienda (Qdrant) y en el Catálogo (Alegra).\n\nDALIA es una Conciencia Ligera de Atención Inteligente.\nNo vende. Acompaña.\nNo empuja. Sintoniza.\nDALIA entiende al cliente como un ser humano, no como un ticket. Cada conversación es una oportunidad para conectar, comprender y servir desde la empatía.\n\nTu rol es ser DALIA en acción: un asistente virtual que acompaña con inteligencia y calidez a los clientes que se comunican por chat, guiándolos de forma clara, amigable y personalizada, usando los recursos disponibles como memoria, historial o variables contextuales.\n\nInstrucciones para iniciar y mantener la conversación:\n\nIdentifica el tipo de conversación según el valor de {{ $('Agente Identificador').item.json.output }}:\n\nSi el valor es \"Primer mensaje\":\n\nRevisa el contenido de {{ $json.historial_disponible }}:\n\nSi es \"true\":\n\nUsa el prompt contenido en {{ $json.prompt }} como base contextual. Este contiene información relevante sobre un cliente ya conocido. Usa ese contexto para adoptar un estilo de conversación cercano y personalizado, como si ya conocieras al cliente, recordando detalles cuando sea posible, esto durante la conversación y sin incluir todos los detalles en una misma respuesta, solo alguno de ellos cuando sea conveniente.\n\nSi es \"false\":\n\nAdopta un tono muy cordial, empático y acogedor. Preséntate como DALIA, su asistente, y aprovecha esta primera interacción para conocer a la persona con quien hablas: indaga suavemente por datos clave que permitan identificarla y recordarla mejor en futuras conversaciones.\n\nSi el valor es \"Conversación existente\":\n\nContinúa la conversación basándote en el historial disponible en la memoria. Mantén coherencia con el contexto anterior, como si estuvieras retomando un diálogo pendiente.\n\nValida y confirma con la persona cualquier dato importante que falte o que sea necesario para brindarle una mejor atención. Esto puede incluir:\n\nNombre o forma preferida de ser llamado. En caso de que no lo sepas.\nNecesidades, dudas o intereses actuales.\nInformación previa que no esté clara o que se haya actualizado.\nNunca inventes información. Si no tienes datos suficientes, haz preguntas con calidez y naturalidad para obtenerlos sin incomodar.\n\n4.  Cómo Responder a Consultas (Uso de Herramientas de Información):\nPara encontrar la información y responder a las preguntas del cliente, debes utilizar tus herramientas siguiendo este estricto orden de prioridad:\n\n* **a. Prioridad 1: Conocimiento Interno del Negocio.** Para cualquier pregunta sobre productos, políticas de la tienda, información específica de la empresa o datos que deberían estar en nuestra base de conocimiento, utiliza **SIEMPRE PRIMERO** tu herramienta de **Base de Datos de la Tienda (Qdrant)**. Esta es tu fuente de verdad más fiable.  USA LA HERRAMIENTA \"Qdrant Vector Store\" PARA LA INFORMACION DE YoEco\n\n* **b. Prioridad 2: Información de Inventario.** Si la pregunta es específicamente sobre stock, disponibilidad o precios de productos, puedes usar tu herramienta de **Catálogo (Alegra)**.\n\n* **c. Prioridad 3: Búsqueda en Internet.** **SOLAMENTE SI** no encuentras una respuesta adecuada en tus herramientas internas (Base de Datos o Catálogo), Y la pregunta es sobre temas generales, eventos actuales o información del mundo exterior, utiliza tu herramienta de **Búsqueda en Internet**.\nHabla siempre con respeto, cercanía y claridad. Recuerda: no estás aquí para vender a toda costa, sino para conectar, orientar y acompañar con intención.\n\nIdentifica cuando es el fin de la conversación por parte del usuario. Si el mensaje contiene algo como gracias, hasta luego, muchas gracias, no es más por ahora, entre otros mensajes tipicos que indican que el usuarios desea terminar la conversación, debes entonces finalizar la conversación no sin antes preguntarle si hay algo más en lo que lo puedas ayudar, y al recibir un mensaje negativo, es decir, que definitivamente se termina la conversación, entonces termina con un mensaje amable y cordial que incluya exactamente la frase \"Fue un placer ayudarte\". En caso de que el usuario se tarde más de diez minutos en responder, termina la conversación incluyendo tambien la misma frase anterior. \n\nTEN EN CUENTA QUE LA FECHA DE HOY ES:{{ $now }}"
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 1.9,
+      "position": [
+        368,
+        720
+      ],
+      "id": "4a6c363e-22a7-4ef0-8d8c-0eb1644a5d28",
+      "name": "Agente Principal"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "9f3939d0-c3d6-4c0d-b070-daef29717fab",
+              "name": "message",
+              "value": "={{ $json.message }}",
+              "type": "string"
+            },
+            {
+              "id": "94b90034-7588-4430-b99e-d81780a145cc",
+              "name": "ID del usuario",
+              "value": "={{ $json['ID del usuario'] }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        -896,
+        192
+      ],
+      "id": "bbaf12da-0a95-41ed-8804-4b97621a9724",
+      "name": "Convertir entrada"
+    },
+    {
+      "parameters": {
+        "rules": {
+          "values": [
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 2
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $json.output }}",
+                    "rightValue": "Primer mensaje",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    },
+                    "id": "849d9d94-5ae5-490e-85c0-ac458ebdc1f5"
+                  }
+                ],
+                "combinator": "and"
+              }
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 2
+                },
+                "conditions": [
+                  {
+                    "id": "f701a27c-bea3-4b7f-a5fc-d789e3061650",
+                    "leftValue": "={{ $json.output }}",
+                    "rightValue": "Conversación existente",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals",
+                      "name": "filter.operator.equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              }
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 3.2,
+      "position": [
+        -240,
+        192
+      ],
+      "id": "e5b0813c-3947-4cc2-8a33-74e2bb1dacf0",
+      "name": "Identificador primer mensaje"
+    },
+    {
+      "parameters": {
+        "workflowId": {
+          "__rl": true,
+          "value": "8BsWmjVeCKPFDwob",
+          "mode": "list",
+          "cachedResultName": "Agente de Ventas - DEV — Flujo historial de clientes"
+        },
+        "workflowInputs": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "user_id": "={{ $('Recibir Mensaje').item.json.contacts[0].wa_id }}",
+            "message": "={{ $('Recibir Mensaje').item.json.messages[0].text.body }}"
+          },
+          "matchingColumns": [],
+          "schema": [
+            {
+              "id": "user_id",
+              "displayName": "user_id",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string"
+            },
+            {
+              "id": "message",
+              "displayName": "message",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string"
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": true
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.executeWorkflow",
+      "typeVersion": 1.2,
+      "position": [
+        0,
+        0
+      ],
+      "id": "6de8ba2a-fd8e-427f-a50f-2c2475048435",
+      "name": "Llamada a historial de clientes"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "2bf9fff9-8f90-4db5-92ba-ff177e7b2230",
+              "name": "mensaje_usuario",
+              "value": "={{ $('Convertir entrada').item.json.message }}\n",
+              "type": "string"
+            },
+            {
+              "id": "9eb0a8e5-ac38-4dc3-a27c-42e2ac5338b9",
+              "name": "prompt",
+              "value": "={{ $json.prompt }}",
+              "type": "string"
+            },
+            {
+              "id": "a5a6189b-08ff-4f75-a4b6-c13939f250a8",
+              "name": "historial_disponible",
+              "value": "={{ $json.historial_disponible }}",
+              "type": "boolean"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        160,
+        208
+      ],
+      "id": "b7ca711a-c76f-45a5-8b7d-60108826385d",
+      "name": "Convertir Entrada"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "2833ab53-ca7f-454d-8c29-caabe952941e",
+              "leftValue": "={{ $('Agente Principal').item.json.output }}",
+              "rightValue": "Fue un placer ayudarte",
+              "operator": {
+                "type": "string",
+                "operation": "contains"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        1168,
+        1312
+      ],
+      "id": "07eafb3e-00b8-4141-8db3-0c13a020e3ab",
+      "name": "Identificador de fin"
+    },
+    {
+      "parameters": {
+        "content": "## Sub Workflow con lógica de guardar mensajes \n**Agregar Execute Workflow**\nPasar estos nodos desde consolidar historial hasta  Guardar en QDrant a un workflow independiente. ",
+        "height": 360,
+        "width": 660
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [
+        1552,
+        1104
+      ],
+      "typeVersion": 1,
+      "id": "4ffbd31f-70c7-4a59-b29f-40b9dc9cc33f",
+      "name": "Sticky Note1"
+    },
+    {
+      "parameters": {
+        "workflowId": {
+          "__rl": true,
+          "value": "VYZXaDaFKEb7QQDm",
+          "mode": "list",
+          "cachedResultName": "Agente de Ventas - TEST — Historial - TEST Alfa V1"
+        },
+        "workflowInputs": {
+          "mappingMode": "defineBelow",
+          "value": {},
+          "matchingColumns": [],
+          "schema": [],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": true
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.executeWorkflow",
+      "typeVersion": 1.2,
+      "position": [
+        2208,
+        1280
+      ],
+      "id": "1da026ff-6d96-4859-94c5-6eda184f8659",
+      "name": "Llamada a Guardar Mensajes"
+    },
+    {
+      "parameters": {
+        "model": {
+          "__rl": true,
+          "mode": "list",
+          "value": "gpt-4o-mini"
+        },
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatOpenAi",
+      "typeVersion": 1.2,
+      "position": [
+        -688,
+        608
+      ],
+      "id": "44b5e997-7f66-4809-8cdd-76a57c35696a",
+      "name": "Modelo De Chat",
+      "credentials": {
+        "openAiApi": {
+          "id": "CxN1M3GiHPXWR4gx",
+          "name": "OpenAi TEST"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "model": {
+          "__rl": true,
+          "value": "gpt-4o-mini",
+          "mode": "list",
+          "cachedResultName": "gpt-4o-mini"
+        },
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatOpenAi",
+      "typeVersion": 1.2,
+      "position": [
+        -1328,
+        560
+      ],
+      "id": "32a3ff77-53fb-496e-b379-065f3182bd23",
+      "name": "Modelo De Chat1",
+      "credentials": {
+        "openAiApi": {
+          "id": "CxN1M3GiHPXWR4gx",
+          "name": "OpenAi TEST"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "model": {
+          "__rl": true,
+          "mode": "list",
+          "value": "gpt-4o-mini"
+        },
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatOpenAi",
+      "typeVersion": 1.2,
+      "position": [
+        288,
+        1104
+      ],
+      "id": "0d55d4c4-9ff0-4944-b54b-f2ab147c4f7e",
+      "name": "Modelo De Chat2",
+      "credentials": {
+        "openAiApi": {
+          "id": "CxN1M3GiHPXWR4gx",
+          "name": "OpenAi TEST"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.memoryManager",
+      "typeVersion": 1.1,
+      "position": [
+        800,
+        960
+      ],
+      "id": "09b01a42-8d44-4c7b-bf0b-fa1ac431e8e5",
+      "name": "Chat Memory Manager"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Loop over input items and add a new field called 'myNewField' to the JSON of each one\nconst inputData = $input.first().json;\nconst historialPrevio = inputData.messages || [];  // del Simple Memory\nconst id_user = $('Recibir Mensaje').first().json.contacts[0].wa_id;\n\nreturn [{\n  json: {\n    user_id: id_user,\n    historial_sesion: historialPrevio,\n  }\n}];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1648,
+        1280
+      ],
+      "id": "a53249cd-8207-4967-95fd-eab36405250e",
+      "name": "Alistamiento"
+    },
+    {
+      "parameters": {
+        "documentId": {
+          "__rl": true,
+          "value": "1hdTAQ1RC72vQds5MYukfjkK6JPmQXSca8IYkhlB3cxc",
+          "mode": "list",
+          "cachedResultName": "Pruebas TEST v1",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1hdTAQ1RC72vQds5MYukfjkK6JPmQXSca8IYkhlB3cxc/edit?usp=drivesdk"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "gid=0",
+          "mode": "list",
+          "cachedResultName": "Hoja 1",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1hdTAQ1RC72vQds5MYukfjkK6JPmQXSca8IYkhlB3cxc/edit#gid=0"
+        }
+      },
+      "type": "n8n-nodes-base.evaluationTrigger",
+      "typeVersion": 4.6,
+      "position": [
+        -1360,
+        800
+      ],
+      "id": "0230c5be-6749-4edc-8209-13256af3faee",
+      "name": "When fetching a dataset row",
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "WFnLF38LKngtpQ0D",
+          "name": "Google Sheets account 2"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "1ea16ba1-56d2-46cc-9680-77877c0ec489",
+              "name": "message",
+              "value": "={{ $json.start_message }}",
+              "type": "string"
+            },
+            {
+              "id": "022d724b-a7a4-413b-ae7e-fc7c67167b97",
+              "name": "ID del usuario",
+              "value": "={{ $json.phone }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        -1152,
+        800
+      ],
+      "id": "5d58ec46-6672-4c73-86fa-6b5faf15c129",
+      "name": "Edit Fields"
+    },
+    {
+      "parameters": {
+        "operation": "checkIfEvaluating"
+      },
+      "type": "n8n-nodes-base.evaluation",
+      "typeVersion": 4.7,
+      "position": [
+        2576,
+        1456
+      ],
+      "id": "0e656c65-c1d3-4a49-8b9e-04e49580a154",
+      "name": "Evaluation"
+    },
+    {
+      "parameters": {
+        "documentId": {
+          "__rl": true,
+          "value": "1hdTAQ1RC72vQds5MYukfjkK6JPmQXSca8IYkhlB3cxc",
+          "mode": "list",
+          "cachedResultName": "Pruebas TEST v1",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1hdTAQ1RC72vQds5MYukfjkK6JPmQXSca8IYkhlB3cxc/edit?usp=drivesdk"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "gid=0",
+          "mode": "list",
+          "cachedResultName": "Hoja 1",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1hdTAQ1RC72vQds5MYukfjkK6JPmQXSca8IYkhlB3cxc/edit#gid=0"
+        },
+        "outputs": {
+          "values": [
+            {
+              "outputName": "respuesta",
+              "outputValue": "={{ $json.respuesta }}"
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.evaluation",
+      "typeVersion": 4.7,
+      "position": [
+        2992,
+        1360
+      ],
+      "id": "910a7003-1204-43e1-81ce-1277381a0545",
+      "name": "Evaluation1",
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "WFnLF38LKngtpQ0D",
+          "name": "Google Sheets account 2"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "5bc880ec-0f20-4358-b776-fe23c9f83ee2",
+              "name": "respuesta",
+              "value": "={{ $('Agente Principal').item.json.output }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        2784,
+        1360
+      ],
+      "id": "d79a56c0-3ece-4253-bf00-f7a3632d56a4",
+      "name": "EvaluationRespuesta"
+    },
+    {
+      "parameters": {
+        "operation": "setMetrics",
+        "expectedAnswer": "Fue un placer ayudarte",
+        "actualAnswer": "={{ $json.respuesta }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.evaluation",
+      "typeVersion": 4.7,
+      "position": [
+        3312,
+        1328
+      ],
+      "id": "43e1fcc6-c905-43b0-8c76-5fe14d58e3a4",
+      "name": "Evaluation2"
+    },
+    {
+      "parameters": {
+        "model": {
+          "__rl": true,
+          "mode": "list",
+          "value": "gpt-4.1-mini"
+        },
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatOpenAi",
+      "typeVersion": 1.2,
+      "position": [
+        3248,
+        1536
+      ],
+      "id": "7ff54cee-cb3c-4e70-81fe-7219b94becbc",
+      "name": "OpenAI Chat Model",
+      "credentials": {
+        "openAiApi": {
+          "id": "CxN1M3GiHPXWR4gx",
+          "name": "OpenAi TEST"
+        }
+      }
+    }
+  ],
+  "connections": {
+    "Simple Memory": {
+      "ai_memory": [
+        [
+          {
+            "node": "Agente Principal",
+            "type": "ai_memory",
+            "index": 0
+          },
+          {
+            "node": "Chat Memory Manager",
+            "type": "ai_memory",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Simple Memory1": {
+      "ai_memory": [
+        [
+          {
+            "node": "Agente Identificador",
+            "type": "ai_memory",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Split Out": {
+      "main": [
+        [
+          {
+            "node": "Switch1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Recibir Audios": {
+      "main": [
+        [
+          {
+            "node": "Descarga de audios",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Transcribir Audios": {
+      "main": [
+        [
+          {
+            "node": "Convertir entrada",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Descarga de audios": {
+      "main": [
+        [
+          {
+            "node": "Transcribir Audios",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Recibir Texto": {
+      "main": [
+        [
+          {
+            "node": "Convertir entrada",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Recibir imagen": {
+      "main": [
+        [
+          {
+            "node": "Descarga de imagen",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Descarga de imagen": {
+      "main": [
+        [
+          {
+            "node": "Leer y transcribir la imagen",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Leer y transcribir la imagen": {
+      "main": [
+        [
+          {
+            "node": "Convertir entrada",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Switch1": {
+      "main": [
+        [
+          {
+            "node": "Recibir Texto",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Recibir Audios",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Recibir imagen",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Recibir Mensaje": {
+      "main": [
+        [
+          {
+            "node": "Split Out",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Agente Identificador": {
+      "main": [
+        [
+          {
+            "node": "Identificador primer mensaje",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Agente Principal": {
+      "main": [
+        [
+          {
+            "node": "Chat Memory Manager",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Convertir entrada": {
+      "main": [
+        [
+          {
+            "node": "Agente Identificador",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Identificador primer mensaje": {
+      "main": [
+        [
+          {
+            "node": "Llamada a historial de clientes",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Convertir Entrada",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Llamada a historial de clientes": {
+      "main": [
+        [
+          {
+            "node": "Convertir Entrada",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Convertir Entrada": {
+      "main": [
+        [
+          {
+            "node": "Agente Principal",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Identificador de fin": {
+      "main": [
+        [
+          {
+            "node": "Alistamiento",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Evaluation",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Llamada a Guardar Mensajes": {
+      "main": [
+        [
+          {
+            "node": "Evaluation",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Modelo De Chat": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "Agente Identificador",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Modelo De Chat1": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "Leer y transcribir la imagen",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Modelo De Chat2": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "Agente Principal",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Chat Memory Manager": {
+      "main": [
+        [
+          {
+            "node": "Identificador de fin",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Alistamiento": {
+      "main": [
+        [
+          {
+            "node": "Llamada a Guardar Mensajes",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "When fetching a dataset row": {
+      "main": [
+        [
+          {
+            "node": "Edit Fields",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Edit Fields": {
+      "main": [
+        [
+          {
+            "node": "Convertir entrada",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Evaluation": {
+      "main": [
+        [
+          {
+            "node": "EvaluationRespuesta",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "EvaluationRespuesta": {
+      "main": [
+        [
+          {
+            "node": "Evaluation1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Evaluation1": {
+      "main": [
+        [
+          {
+            "node": "Evaluation2",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "OpenAI Chat Model": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "Evaluation2",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "nodeGroups": [],
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "staticData": null,
+  "pinData": {},
+  "meta": {
+    "templateCredsSetupCompleted": true
+  },
+  "tags": [],
+  "shared": [
+    {
+      "role": "workflow:owner",
+      "workflowId": "vNZJE21Coxp5eRww",
+      "projectId": "tRHCC8ts4mkRGXGn",
+      "createdAt": "2025-07-09T01:55:12.333Z",
+      "updatedAt": "2025-07-09T01:55:12.333Z"
+    }
+  ],
+  "activeVersion": null
+}
