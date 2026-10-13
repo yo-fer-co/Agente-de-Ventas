@@ -1,0 +1,524 @@
+{
+  "id": "CbsKgjvgC5qbo1Z8",
+  "name": "Test: Buscar y Notificar Productos por WhatsApp",
+  "active": false,
+  "activeVersionId": null,
+  "createdAt": "2026-08-21T22:00:31.331Z",
+  "updatedAt": "2026-10-07T23:32:39.000Z",
+  "isArchived": true,
+  "versionId": "4fb0d6bd-2f9c-4ef9-9281-68c46df0b4fa",
+  "triggerCount": 0,
+  "nodes": [
+    {
+      "parameters": {
+        "content": "## Test: Buscar y Notificar Productos por WhatsApp\n\nWorkflow NUEVO y separado -- no modifica Catalogo Qdrant (DEV) ni Agente Asesor, solo prueba el pipeline nuevo end-to-end (busqueda semantica + armado de mensaje + envio real). Piensa en esto como un prototipo de lo que sera la Fase 3 (adaptacion de Agente Asesor), no como el reemplazo final.\n\nInput: `query` (texto de busqueda, ej. 'gorros para bebe'), `session_id` (numero de WhatsApp destino, formato igual al que ya usa 'Flujo de enviar mensaje', ej. 573150737341).\n\nFlujo: genera embedding del query -> busca en Baby'sWorld_Catalogo_Test (hasta 30 puntos candidatos) -> agrupa por product_id (cada punto es una variante) -> se queda con los 3 productos de mejor score, CADA UNO CON TODAS SUS VARIANTES (nunca se recorta la lista de variantes, solo la cantidad de productos) -> por cada producto manda UN mensaje de texto con los datos (titulo, categoria, precio, descripcion corta, y el detalle de cada variante) y despues UNA imagen por cada URL de imagen distinta (principal + cada variante con imagen propia).\n\nReutiliza 'Flujo de enviar mensaje (DEV)' (el mismo subflujo de envio que ya usa todo el proyecto) -- no se reimplementa el envio de WhatsApp. Ese subflujo espera la imagen como binario adjunto al item (mediaPath: useMedian8n), por eso hay un nodo HTTP Request que descarga cada imagen antes de llamarlo.\n\nEnvironment se manda fijo en 'dev' (no 'uat') para que el envio sea real y no se desvie al mock de pruebas interno de ese subflujo.",
+        "height": 700,
+        "width": 640,
+        "color": 4
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        2352,
+        16
+      ],
+      "id": "887ee901-bf28-479e-afc4-9c5ce07cf97e",
+      "name": "Sticky_Test_Note"
+    },
+    {
+      "parameters": {
+        "workflowInputs": {
+          "values": [
+            {
+              "name": "query"
+            },
+            {
+              "name": "session_id"
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.executeWorkflowTrigger",
+      "typeVersion": 1.1,
+      "position": [
+        2784,
+        336
+      ],
+      "id": "7e6f1591-9a5e-4db5-8b3b-d2ae900e5c95",
+      "name": "Trigger"
+    },
+    {
+      "parameters": {
+        "workflowId": {
+          "__rl": true,
+          "value": "niCsAI2eiIYN658L",
+          "mode": "list",
+          "cachedResultUrl": "/workflow/niCsAI2eiIYN658L",
+          "cachedResultName": "Babys World — Subflow: Generate OpenAI Embedding"
+        },
+        "workflowInputs": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "text": "={{ $json.query }}"
+          },
+          "matchingColumns": [
+            "text"
+          ],
+          "schema": [
+            {
+              "id": "text",
+              "displayName": "text",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string",
+              "removed": false
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": true
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.executeWorkflow",
+      "typeVersion": 1.2,
+      "position": [
+        3040,
+        336
+      ],
+      "id": "c68d4258-bb47-43e0-961c-a585e21ced60",
+      "name": "Call_Generate_Embedding"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://1537c683-48da-4631-ab76-ad698b6b9881.us-east-1-0.aws.cloud.qdrant.io:6333/collections/Baby'sWorld_Catalogo_Test/points/search",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "qdrantApi",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ { vector: $json.vector, limit: 30, with_payload: true } }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        3296,
+        336
+      ],
+      "id": "5a428851-7833-43ab-b550-8f1edbcfd866",
+      "name": "Search_Qdrant",
+      "credentials": {
+        "qdrantApi": {
+          "id": "ZYv8vdr6tkTS4jYz",
+          "name": "QdrantApi account 3"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const items = $input.first().json.result ?? [];\nreturn items.map((i) => ({ json: i }));"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        3552,
+        336
+      ],
+      "id": "3e9f1209-5c8f-4f54-89b3-d7f76c0af78e",
+      "name": "Flatten_Search_Results"
+    },
+    {
+      "parameters": {
+        "jsCode": "const points = $input.all().map(i => i.json);\n\nconst productos = {};\nfor (const p of points) {\n  const payload = p.payload || {};\n  const pid = payload.product_id;\n  if (pid === undefined || pid === null) continue;\n  if (!productos[pid]) {\n    productos[pid] = {\n      product_id: pid,\n      title: payload.title ?? null,\n      product_type: payload.product_type ?? null,\n      descripcion: payload.descripcion ?? null,\n      main_image_url: payload.main_image_url ?? null,\n      top_score: p.score ?? 0,\n      variantesPorId: {}\n    };\n  }\n  const prod = productos[pid];\n  prod.top_score = Math.max(prod.top_score, p.score ?? 0);\n  if (!prod.main_image_url && payload.main_image_url) prod.main_image_url = payload.main_image_url;\n\n  const vid = payload.variant_id;\n  const key = (vid ?? `sin-variant-${Object.keys(prod.variantesPorId).length}`);\n  if (!prod.variantesPorId[key]) {\n    prod.variantesPorId[key] = {\n      variant_id: vid ?? null,\n      sku: payload.sku ?? null,\n      color: payload.color ?? null,\n      price: payload.price ?? null,\n      inventory: payload.inventory ?? null,\n      variant_image_url: payload.variant_image_url ?? null\n    };\n  }\n}\n\n// Maximo 3 productos distintos por mensaje (ordenados por score de busqueda), pero\n// SIEMPRE todas las variantes de cada producto -- nunca se recorta la lista de variantes.\nconst lista = Object.values(productos)\n  .sort((a, b) => b.top_score - a.top_score)\n  .slice(0, 3)\n  .map((prod) => {\n    const variantes = Object.values(prod.variantesPorId);\n    const precios = variantes.map((v) => v.price).filter((p) => p !== null && p !== undefined);\n    const precio_min = precios.length ? Math.min(...precios) : null;\n    const precio_max = precios.length ? Math.max(...precios) : null;\n\n    const urls = new Set();\n    if (prod.main_image_url) urls.add(prod.main_image_url);\n    for (const v of variantes) {\n      if (v.variant_image_url) urls.add(v.variant_image_url);\n    }\n\n    return {\n      product_id: prod.product_id,\n      title: prod.title,\n      product_type: prod.product_type,\n      descripcion: prod.descripcion,\n      precio_min,\n      precio_max,\n      variantes,\n      image_urls: Array.from(urls),\n      main_image_url: prod.main_image_url\n    };\n  });\n\nreturn lista.map((p) => ({ json: p }));"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        3808,
+        336
+      ],
+      "id": "64d33216-d07d-445b-ac07-f557018a1eb7",
+      "name": "Group_And_Cap_Products"
+    },
+    {
+      "parameters": {
+        "jsCode": "const items = $input.all();\n\nreturn items.map((entry) => {\n  const p = entry.json;\n\n  const precio = (p.precio_min !== null && p.precio_max !== null)\n    ? (p.precio_min === p.precio_max ? `$${p.precio_min}` : `$${p.precio_min} - $${p.precio_max}`)\n    : 'Precio no disponible';\n\n  const categoria = p.product_type || 'Sin categoria';\n  const descripcionCorta = p.descripcion\n    ? (p.descripcion.length > 160 ? `${p.descripcion.slice(0, 160)}...` : p.descripcion)\n    : '';\n\n  const lineasVariantes = (p.variantes || []).map((v) => {\n    const color = v.color || 'Sin color';\n    const sku = v.sku ? ` (SKU ${v.sku})` : '';\n    const stock = (v.inventory !== null && v.inventory !== undefined) ? `${v.inventory} en stock` : 'stock no disponible';\n    const precioVariante = (v.price !== null && v.price !== undefined) ? `$${v.price}` : 'precio no disponible';\n    return `- ${color}${sku}: ${precioVariante}, ${stock}`;\n  }).join('\\n');\n\n  const texto = [\n    `*${p.title || 'Producto'}*`,\n    `Categoria: ${categoria}`,\n    `Precio: ${precio}`,\n    descripcionCorta,\n    '',\n    'Variantes disponibles:',\n    lineasVariantes\n  ].filter(Boolean).join('\\n');\n\n  return { json: { ...p, text_body: texto } };\n});"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        4064,
+        192
+      ],
+      "id": "41a451ad-7e89-4acf-96a0-7b1145c061cb",
+      "name": "Build_Text_Message"
+    },
+    {
+      "parameters": {
+        "workflowId": {
+          "__rl": true,
+          "value": "moR2mUZuRnJIiNZq",
+          "mode": "list",
+          "cachedResultUrl": "/workflow/moR2mUZuRnJIiNZq",
+          "cachedResultName": "Babys World — Flujo de enviar mensaje (DEV)"
+        },
+        "workflowInputs": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "session_id": "={{ $('Trigger').first().json.session_id }}",
+            "text_body": "={{ $json.text_body }}",
+            "caption": null,
+            "imagen no disponible": null,
+            "environment": "dev",
+            "channel": "whatsapp"
+          },
+          "matchingColumns": [
+            "session_id",
+            "text_body",
+            "caption",
+            "imagen no disponible",
+            "environment",
+            "channel"
+          ],
+          "schema": [
+            {
+              "id": "session_id",
+              "displayName": "session_id",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string",
+              "removed": false
+            },
+            {
+              "id": "text_body",
+              "displayName": "text_body",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string",
+              "removed": false
+            },
+            {
+              "id": "caption",
+              "displayName": "caption",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string",
+              "removed": false
+            },
+            {
+              "id": "imagen no disponible",
+              "displayName": "imagen no disponible",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string",
+              "removed": false
+            },
+            {
+              "id": "environment",
+              "displayName": "environment",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string",
+              "removed": false
+            },
+            {
+              "id": "channel",
+              "displayName": "channel",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string",
+              "removed": false
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": true
+        },
+        "mode": "each",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.executeWorkflow",
+      "typeVersion": 1.2,
+      "position": [
+        4320,
+        192
+      ],
+      "id": "66c7ed65-b997-4365-8bf7-ce6b45264033",
+      "name": "Send_Text"
+    },
+    {
+      "parameters": {
+        "jsCode": "const items = $input.all();\nconst salida = [];\n\nfor (const entry of items) {\n  const p = entry.json;\n  const urls = p.image_urls || [];\n  urls.forEach((url, idx) => {\n    salida.push({\n      json: {\n        product_id: p.product_id,\n        title: p.title,\n        image_url: url,\n        caption: `${p.title || 'Producto'}${urls.length > 1 ? ` (imagen ${idx + 1}/${urls.length})` : ''}`\n      }\n    });\n  });\n}\n\nreturn salida;"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        4064,
+        480
+      ],
+      "id": "b70c2029-66b4-409c-a060-6f010c490f1b",
+      "name": "Expand_Images"
+    },
+    {
+      "parameters": {
+        "url": "={{ $json.image_url }}",
+        "options": {
+          "response": {
+            "response": {
+              "responseFormat": "file"
+            }
+          }
+        }
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        4320,
+        480
+      ],
+      "id": "1e3e01fc-184a-4915-8b21-496e3cd44273",
+      "name": "Download_Image"
+    },
+    {
+      "parameters": {
+        "workflowId": {
+          "__rl": true,
+          "value": "moR2mUZuRnJIiNZq",
+          "mode": "list",
+          "cachedResultUrl": "/workflow/moR2mUZuRnJIiNZq",
+          "cachedResultName": "Babys World — Flujo de enviar mensaje (DEV)"
+        },
+        "workflowInputs": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "session_id": "={{ $('Trigger').first().json.session_id }}",
+            "text_body": null,
+            "caption": "={{ $json.caption }}",
+            "imagen no disponible": null,
+            "environment": "dev",
+            "channel": "whatsapp"
+          },
+          "matchingColumns": [
+            "session_id",
+            "text_body",
+            "caption",
+            "imagen no disponible",
+            "environment",
+            "channel"
+          ],
+          "schema": [
+            {
+              "id": "session_id",
+              "displayName": "session_id",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string",
+              "removed": false
+            },
+            {
+              "id": "text_body",
+              "displayName": "text_body",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string",
+              "removed": false
+            },
+            {
+              "id": "caption",
+              "displayName": "caption",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string",
+              "removed": false
+            },
+            {
+              "id": "imagen no disponible",
+              "displayName": "imagen no disponible",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string",
+              "removed": false
+            },
+            {
+              "id": "environment",
+              "displayName": "environment",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string",
+              "removed": false
+            },
+            {
+              "id": "channel",
+              "displayName": "channel",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string",
+              "removed": false
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": true
+        },
+        "mode": "each",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.executeWorkflow",
+      "typeVersion": 1.2,
+      "position": [
+        4576,
+        480
+      ],
+      "id": "745fa3a3-4c3e-417c-a8e8-5a699df700ae",
+      "name": "Send_Image"
+    }
+  ],
+  "connections": {
+    "Trigger": {
+      "main": [
+        [
+          {
+            "node": "Call_Generate_Embedding",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Call_Generate_Embedding": {
+      "main": [
+        [
+          {
+            "node": "Search_Qdrant",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Search_Qdrant": {
+      "main": [
+        [
+          {
+            "node": "Flatten_Search_Results",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Flatten_Search_Results": {
+      "main": [
+        [
+          {
+            "node": "Group_And_Cap_Products",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Group_And_Cap_Products": {
+      "main": [
+        [
+          {
+            "node": "Build_Text_Message",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Expand_Images",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Build_Text_Message": {
+      "main": [
+        [
+          {
+            "node": "Send_Text",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Expand_Images": {
+      "main": [
+        [
+          {
+            "node": "Download_Image",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Download_Image": {
+      "main": [
+        [
+          {
+            "node": "Send_Image",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "nodeGroups": [],
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate",
+    "availableInMCP": false
+  },
+  "staticData": null,
+  "pinData": {
+    "Trigger": [
+      {
+        "json": {
+          "query": "COCHE MALETA JUMPY",
+          "session_id": "573150737341"
+        }
+      }
+    ]
+  },
+  "meta": null,
+  "tags": [],
+  "shared": [
+    {
+      "role": "workflow:owner",
+      "workflowId": "CbsKgjvgC5qbo1Z8",
+      "projectId": "8h8pwWGcWlnGEym3",
+      "createdAt": "2026-08-21T22:00:31.334Z",
+      "updatedAt": "2026-08-21T22:00:31.334Z"
+    }
+  ],
+  "activeVersion": null
+}
