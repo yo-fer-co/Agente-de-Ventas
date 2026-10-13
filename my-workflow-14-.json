@@ -1,0 +1,83 @@
+{
+  "id": "l98R7_FE6CDwtJiOhY5xi",
+  "name": "My workflow 14",
+  "active": false,
+  "activeVersionId": null,
+  "createdAt": "2026-02-04T20:14:22.792Z",
+  "updatedAt": "2026-02-26T01:22:29.000Z",
+  "isArchived": true,
+  "versionId": "9cdaf50c-92fb-477f-b556-fa988e012b2a",
+  "triggerCount": 1,
+  "nodes": [
+    {
+      "parameters": {
+        "path": "d9d06683-b7b5-49d3-a065-877568cd777d"
+      },
+      "type": "@n8n/n8n-nodes-langchain.mcpTrigger",
+      "typeVersion": 2,
+      "position": [
+        256,
+        288
+      ],
+      "id": "f3772397-8877-47c6-bb1f-2b68fd540c55",
+      "name": "MCP Drive",
+      "webhookId": "d9d06683-b7b5-49d3-a065-877568cd777d"
+    },
+    {
+      "parameters": {
+        "resource": "fileFolder",
+        "queryString": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('Search_Query', ``, 'string') }}",
+        "filter": {},
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleDriveTool",
+      "typeVersion": 3,
+      "position": [
+        352,
+        496
+      ],
+      "id": "24aa2e38-56df-4e9d-a60c-200f3dbf34d4",
+      "name": "Search files and folders in Google Drive",
+      "credentials": {
+        "googleDriveOAuth2Api": {
+          "id": "55RafwUzcXl8phIg",
+          "name": "Google Drive account 3"
+        }
+      }
+    }
+  ],
+  "connections": {
+    "Search files and folders in Google Drive": {
+      "ai_tool": [
+        [
+          {
+            "node": "MCP Drive",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "nodeGroups": [],
+  "settings": {
+    "executionOrder": "v1",
+    "availableInMCP": false
+  },
+  "staticData": null,
+  "pinData": {},
+  "meta": {
+    "templateCredsSetupCompleted": true
+  },
+  "tags": [],
+  "shared": [
+    {
+      "role": "workflow:owner",
+      "workflowId": "l98R7_FE6CDwtJiOhY5xi",
+      "projectId": "8h8pwWGcWlnGEym3",
+      "createdAt": "2026-02-04T20:14:22.796Z",
+      "updatedAt": "2026-02-04T20:14:22.796Z"
+    }
+  ],
+  "activeVersion": null
+}
