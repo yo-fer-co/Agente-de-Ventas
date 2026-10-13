@@ -1,0 +1,827 @@
+{
+  "id": "S8ofHbHiVmXUYubY",
+  "name": "DALIA_M9.01_Fuentes_y_adquisicion",
+  "active": true,
+  "activeVersionId": "617b48fb-7854-47ed-9d47-5c6b0b4b2070",
+  "createdAt": "2026-10-04T03:16:20.700Z",
+  "updatedAt": "2026-10-04T03:37:41.544Z",
+  "isArchived": false,
+  "versionId": "617b48fb-7854-47ed-9d47-5c6b0b4b2070",
+  "triggerCount": 1,
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "triggerAtMinute": 12
+            }
+          ]
+        }
+      },
+      "id": "b9860eaf-d5fd-400f-a226-54a30bdeb16c",
+      "name": "Cada hora",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.4,
+      "position": [
+        0,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "select dalia.m9_acquisition_cycle('M9.01') as report;",
+        "options": {}
+      },
+      "id": "accbb2ef-b9c7-420d-821f-a948c31469ba",
+      "name": "Ciclo de adquisicion",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.7,
+      "position": [
+        224,
+        0
+      ],
+      "credentials": {
+        "postgres": {
+          "id": "HfCgVAjUygK1vrkU",
+          "name": "DALIA dev Supabase"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "inputSource": "passthrough"
+      },
+      "id": "22b8ce89-1a5b-47ce-bd49-45705fa1acba",
+      "name": "Job recibido",
+      "type": "n8n-nodes-base.executeWorkflowTrigger",
+      "typeVersion": 1.2,
+      "position": [
+        0,
+        320
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "select dalia.m9_acquire_step($1::uuid, $2::int) as step;",
+        "options": {
+          "queryReplacement": "={{ [ $json.payload.source_id, $json.payload.version_no ] }}"
+        }
+      },
+      "id": "96e68e47-7225-465f-85cd-7f51b0e3351f",
+      "name": "Siguiente pagina",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.7,
+      "position": [
+        224,
+        320
+      ],
+      "credentials": {
+        "postgres": {
+          "id": "HfCgVAjUygK1vrkU",
+          "name": "DALIA dev Supabase"
+        }
+      },
+      "onError": "continueErrorOutput"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose",
+            "version": 1
+          },
+          "conditions": [
+            {
+              "leftValue": "={{ $json.step.action === \"fetch\" }}",
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "b760e240-611a-4e73-b841-6f6008bdfc23",
+      "name": "Requiere puerto",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        448,
+        256
+      ]
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "p1",
+              "name": "port",
+              "value": "={{ $json.step.port_request.port }}",
+              "type": "string"
+            },
+            {
+              "id": "p2",
+              "name": "operation",
+              "value": "={{ $json.step.port_request.operation }}",
+              "type": "string"
+            },
+            {
+              "id": "p3",
+              "name": "input",
+              "value": "={{ $json.step.port_request.input }}",
+              "type": "object"
+            },
+            {
+              "id": "p4",
+              "name": "envelope",
+              "value": "={{ $json.step.port_request.envelope ?? {} }}",
+              "type": "object"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "c57f9416-ca1a-4960-8f95-e6e81ed4feb0",
+      "name": "Preparar lectura",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        672,
+        224
+      ]
+    },
+    {
+      "parameters": {
+        "workflowId": {
+          "__rl": true,
+          "mode": "id",
+          "value": "5gbpWhv0zIA8bZ0w"
+        },
+        "mode": "each",
+        "options": {
+          "waitForSubWorkflow": true
+        }
+      },
+      "id": "3d85f886-4f5c-4b00-b137-703f16ef4776",
+      "name": "Leer pagina por INT.port",
+      "type": "n8n-nodes-base.executeWorkflow",
+      "typeVersion": 1.3,
+      "position": [
+        896,
+        224
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "select dalia.m9_acquire_page($1::uuid, $2::int, $3::jsonb) as result;",
+        "options": {
+          "queryReplacement": "={{ [ $(\"Job recibido\").item.json.payload.source_id, $(\"Job recibido\").item.json.payload.version_no, JSON.stringify($json) ] }}"
+        }
+      },
+      "id": "8384178a-5d88-4ae0-bfb0-13e0ec641e94",
+      "name": "Aplicar resultado",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.7,
+      "position": [
+        1120,
+        224
+      ],
+      "credentials": {
+        "postgres": {
+          "id": "HfCgVAjUygK1vrkU",
+          "name": "DALIA dev Supabase"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose",
+            "version": 1
+          },
+          "conditions": [
+            {
+              "leftValue": "={{ $json.result.job === \"retry\" }}",
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "0148b0b5-51af-46ee-a1af-7b6ef6e1eb4b",
+      "name": "Reintentar",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        1344,
+        224
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "select dalia.sys_fail_job($1::uuid, $2::jsonb, true) as job_status;",
+        "options": {
+          "queryReplacement": "={{ [ $(\"Job recibido\").item.json.job_id, JSON.stringify({ code: $json.result?.status ?? \"HANDLER_ERROR\", message: $json.error?.message ?? $json.result?.error?.message ?? $json.error ?? \"reintentar\" }) ] }}"
+        }
+      },
+      "id": "a5c3af69-2271-4980-aa9a-3a9dbb7f278a",
+      "name": "Fallar job (reintentable)",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.7,
+      "position": [
+        1568,
+        224
+      ],
+      "credentials": {
+        "postgres": {
+          "id": "HfCgVAjUygK1vrkU",
+          "name": "DALIA dev Supabase"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "select dalia.sys_complete_job($1::uuid, $2::jsonb) as job_status;",
+        "options": {
+          "queryReplacement": "={{ [ $(\"Job recibido\").item.json.job_id, JSON.stringify($json.result ?? $json.step ?? {}) ] }}"
+        }
+      },
+      "id": "53dc6150-bf0a-428c-86c0-907e87c54c4a",
+      "name": "Completar job",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.7,
+      "position": [
+        1568,
+        448
+      ],
+      "credentials": {
+        "postgres": {
+          "id": "HfCgVAjUygK1vrkU",
+          "name": "DALIA dev Supabase"
+        }
+      }
+    }
+  ],
+  "connections": {
+    "Cada hora": {
+      "main": [
+        [
+          {
+            "node": "Ciclo de adquisicion",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Job recibido": {
+      "main": [
+        [
+          {
+            "node": "Siguiente pagina",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Siguiente pagina": {
+      "main": [
+        [
+          {
+            "node": "Requiere puerto",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Fallar job (reintentable)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Requiere puerto": {
+      "main": [
+        [
+          {
+            "node": "Preparar lectura",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Completar job",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Preparar lectura": {
+      "main": [
+        [
+          {
+            "node": "Leer pagina por INT.port",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Leer pagina por INT.port": {
+      "main": [
+        [
+          {
+            "node": "Aplicar resultado",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Aplicar resultado": {
+      "main": [
+        [
+          {
+            "node": "Reintentar",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Reintentar": {
+      "main": [
+        [
+          {
+            "node": "Fallar job (reintentable)",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Completar job",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "nodeGroups": [],
+  "settings": {
+    "executionOrder": "v1",
+    "availableInMCP": true,
+    "errorWorkflow": "cjjQno2MxMTT3Icc",
+    "timezone": "America/Bogota",
+    "saveDataSuccessExecution": "none",
+    "callerPolicy": "workflowsFromSameOwner",
+    "binaryMode": "separate"
+  },
+  "staticData": {
+    "node:Cada hora": {
+      "recurrenceRules": [
+        null
+      ],
+      "recurrenceRuleSignatures": [
+        null
+      ]
+    }
+  },
+  "pinData": {},
+  "meta": {
+    "aiBuilderAssisted": true,
+    "builderVariant": "mcp"
+  },
+  "tags": [],
+  "shared": [
+    {
+      "role": "workflow:owner",
+      "workflowId": "S8ofHbHiVmXUYubY",
+      "projectId": "tRHCC8ts4mkRGXGn",
+      "createdAt": "2026-10-09T21:09:17.791Z",
+      "updatedAt": "2026-10-09T21:09:17.791Z"
+    }
+  ],
+  "activeVersion": {
+    "versionId": "617b48fb-7854-47ed-9d47-5c6b0b4b2070",
+    "workflowId": "S8ofHbHiVmXUYubY",
+    "nodes": [
+      {
+        "parameters": {
+          "rule": {
+            "interval": [
+              {
+                "triggerAtMinute": 12
+              }
+            ]
+          }
+        },
+        "id": "b9860eaf-d5fd-400f-a226-54a30bdeb16c",
+        "name": "Cada hora",
+        "type": "n8n-nodes-base.scheduleTrigger",
+        "typeVersion": 1.4,
+        "position": [
+          0,
+          0
+        ]
+      },
+      {
+        "parameters": {
+          "operation": "executeQuery",
+          "query": "select dalia.m9_acquisition_cycle('M9.01') as report;",
+          "options": {}
+        },
+        "id": "accbb2ef-b9c7-420d-821f-a948c31469ba",
+        "name": "Ciclo de adquisicion",
+        "type": "n8n-nodes-base.postgres",
+        "typeVersion": 2.7,
+        "position": [
+          224,
+          0
+        ],
+        "credentials": {
+          "postgres": {
+            "id": "HfCgVAjUygK1vrkU",
+            "name": "DALIA dev Supabase"
+          }
+        }
+      },
+      {
+        "parameters": {
+          "inputSource": "passthrough"
+        },
+        "id": "22b8ce89-1a5b-47ce-bd49-45705fa1acba",
+        "name": "Job recibido",
+        "type": "n8n-nodes-base.executeWorkflowTrigger",
+        "typeVersion": 1.2,
+        "position": [
+          0,
+          320
+        ]
+      },
+      {
+        "parameters": {
+          "operation": "executeQuery",
+          "query": "select dalia.m9_acquire_step($1::uuid, $2::int) as step;",
+          "options": {
+            "queryReplacement": "={{ [ $json.payload.source_id, $json.payload.version_no ] }}"
+          }
+        },
+        "id": "96e68e47-7225-465f-85cd-7f51b0e3351f",
+        "name": "Siguiente pagina",
+        "type": "n8n-nodes-base.postgres",
+        "typeVersion": 2.7,
+        "position": [
+          224,
+          320
+        ],
+        "credentials": {
+          "postgres": {
+            "id": "HfCgVAjUygK1vrkU",
+            "name": "DALIA dev Supabase"
+          }
+        },
+        "onError": "continueErrorOutput"
+      },
+      {
+        "parameters": {
+          "conditions": {
+            "options": {
+              "caseSensitive": true,
+              "leftValue": "",
+              "typeValidation": "loose",
+              "version": 1
+            },
+            "conditions": [
+              {
+                "leftValue": "={{ $json.step.action === \"fetch\" }}",
+                "operator": {
+                  "type": "boolean",
+                  "operation": "true",
+                  "singleValue": true
+                }
+              }
+            ],
+            "combinator": "and"
+          },
+          "options": {}
+        },
+        "id": "b760e240-611a-4e73-b841-6f6008bdfc23",
+        "name": "Requiere puerto",
+        "type": "n8n-nodes-base.if",
+        "typeVersion": 2.2,
+        "position": [
+          448,
+          256
+        ]
+      },
+      {
+        "parameters": {
+          "assignments": {
+            "assignments": [
+              {
+                "id": "p1",
+                "name": "port",
+                "value": "={{ $json.step.port_request.port }}",
+                "type": "string"
+              },
+              {
+                "id": "p2",
+                "name": "operation",
+                "value": "={{ $json.step.port_request.operation }}",
+                "type": "string"
+              },
+              {
+                "id": "p3",
+                "name": "input",
+                "value": "={{ $json.step.port_request.input }}",
+                "type": "object"
+              },
+              {
+                "id": "p4",
+                "name": "envelope",
+                "value": "={{ $json.step.port_request.envelope ?? {} }}",
+                "type": "object"
+              }
+            ]
+          },
+          "options": {}
+        },
+        "id": "c57f9416-ca1a-4960-8f95-e6e81ed4feb0",
+        "name": "Preparar lectura",
+        "type": "n8n-nodes-base.set",
+        "typeVersion": 3.4,
+        "position": [
+          672,
+          224
+        ]
+      },
+      {
+        "parameters": {
+          "workflowId": {
+            "__rl": true,
+            "mode": "id",
+            "value": "5gbpWhv0zIA8bZ0w"
+          },
+          "mode": "each",
+          "options": {
+            "waitForSubWorkflow": true
+          }
+        },
+        "id": "3d85f886-4f5c-4b00-b137-703f16ef4776",
+        "name": "Leer pagina por INT.port",
+        "type": "n8n-nodes-base.executeWorkflow",
+        "typeVersion": 1.3,
+        "position": [
+          896,
+          224
+        ]
+      },
+      {
+        "parameters": {
+          "operation": "executeQuery",
+          "query": "select dalia.m9_acquire_page($1::uuid, $2::int, $3::jsonb) as result;",
+          "options": {
+            "queryReplacement": "={{ [ $(\"Job recibido\").item.json.payload.source_id, $(\"Job recibido\").item.json.payload.version_no, JSON.stringify($json) ] }}"
+          }
+        },
+        "id": "8384178a-5d88-4ae0-bfb0-13e0ec641e94",
+        "name": "Aplicar resultado",
+        "type": "n8n-nodes-base.postgres",
+        "typeVersion": 2.7,
+        "position": [
+          1120,
+          224
+        ],
+        "credentials": {
+          "postgres": {
+            "id": "HfCgVAjUygK1vrkU",
+            "name": "DALIA dev Supabase"
+          }
+        }
+      },
+      {
+        "parameters": {
+          "conditions": {
+            "options": {
+              "caseSensitive": true,
+              "leftValue": "",
+              "typeValidation": "loose",
+              "version": 1
+            },
+            "conditions": [
+              {
+                "leftValue": "={{ $json.result.job === \"retry\" }}",
+                "operator": {
+                  "type": "boolean",
+                  "operation": "true",
+                  "singleValue": true
+                }
+              }
+            ],
+            "combinator": "and"
+          },
+          "options": {}
+        },
+        "id": "0148b0b5-51af-46ee-a1af-7b6ef6e1eb4b",
+        "name": "Reintentar",
+        "type": "n8n-nodes-base.if",
+        "typeVersion": 2.2,
+        "position": [
+          1344,
+          224
+        ]
+      },
+      {
+        "parameters": {
+          "operation": "executeQuery",
+          "query": "select dalia.sys_fail_job($1::uuid, $2::jsonb, true) as job_status;",
+          "options": {
+            "queryReplacement": "={{ [ $(\"Job recibido\").item.json.job_id, JSON.stringify({ code: $json.result?.status ?? \"HANDLER_ERROR\", message: $json.error?.message ?? $json.result?.error?.message ?? $json.error ?? \"reintentar\" }) ] }}"
+          }
+        },
+        "id": "a5c3af69-2271-4980-aa9a-3a9dbb7f278a",
+        "name": "Fallar job (reintentable)",
+        "type": "n8n-nodes-base.postgres",
+        "typeVersion": 2.7,
+        "position": [
+          1568,
+          224
+        ],
+        "credentials": {
+          "postgres": {
+            "id": "HfCgVAjUygK1vrkU",
+            "name": "DALIA dev Supabase"
+          }
+        }
+      },
+      {
+        "parameters": {
+          "operation": "executeQuery",
+          "query": "select dalia.sys_complete_job($1::uuid, $2::jsonb) as job_status;",
+          "options": {
+            "queryReplacement": "={{ [ $(\"Job recibido\").item.json.job_id, JSON.stringify($json.result ?? $json.step ?? {}) ] }}"
+          }
+        },
+        "id": "53dc6150-bf0a-428c-86c0-907e87c54c4a",
+        "name": "Completar job",
+        "type": "n8n-nodes-base.postgres",
+        "typeVersion": 2.7,
+        "position": [
+          1568,
+          448
+        ],
+        "credentials": {
+          "postgres": {
+            "id": "HfCgVAjUygK1vrkU",
+            "name": "DALIA dev Supabase"
+          }
+        }
+      }
+    ],
+    "connections": {
+      "Cada hora": {
+        "main": [
+          [
+            {
+              "node": "Ciclo de adquisicion",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Job recibido": {
+        "main": [
+          [
+            {
+              "node": "Siguiente pagina",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Siguiente pagina": {
+        "main": [
+          [
+            {
+              "node": "Requiere puerto",
+              "type": "main",
+              "index": 0
+            }
+          ],
+          [
+            {
+              "node": "Fallar job (reintentable)",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Requiere puerto": {
+        "main": [
+          [
+            {
+              "node": "Preparar lectura",
+              "type": "main",
+              "index": 0
+            }
+          ],
+          [
+            {
+              "node": "Completar job",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Preparar lectura": {
+        "main": [
+          [
+            {
+              "node": "Leer pagina por INT.port",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Leer pagina por INT.port": {
+        "main": [
+          [
+            {
+              "node": "Aplicar resultado",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Aplicar resultado": {
+        "main": [
+          [
+            {
+              "node": "Reintentar",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Reintentar": {
+        "main": [
+          [
+            {
+              "node": "Fallar job (reintentable)",
+              "type": "main",
+              "index": 0
+            }
+          ],
+          [
+            {
+              "node": "Completar job",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      }
+    },
+    "nodeGroups": [],
+    "authors": "Fabian Bocanegra",
+    "name": "Version 617b48fb",
+    "description": "",
+    "autosaved": true,
+    "createdAt": "2026-10-04T03:37:41.545Z",
+    "updatedAt": "2026-10-04T03:37:45.000Z"
+  }
+}
