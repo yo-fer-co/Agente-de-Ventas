@@ -1,0 +1,154 @@
+{
+  "id": "ESIfjC2eCqa00ocO",
+  "name": "Agente para TEST",
+  "active": false,
+  "activeVersionId": null,
+  "createdAt": "2025-09-12T03:58:51.766Z",
+  "updatedAt": "2025-09-12T04:00:42.000Z",
+  "isArchived": false,
+  "versionId": "cf979489-59dd-4720-95ef-7196b8f0fe6f",
+  "triggerCount": 0,
+  "nodes": [
+    {
+      "parameters": {
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.chatTrigger",
+      "typeVersion": 1.3,
+      "position": [
+        -368,
+        -80
+      ],
+      "id": "392186d3-f0b6-4c12-bc94-2e6170e76287",
+      "name": "When chat message received",
+      "webhookId": "9278711e-cf35-4fb3-a5d5-e0eb0e19d729"
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 2.2,
+      "position": [
+        -160,
+        -80
+      ],
+      "id": "134ecbac-da3b-4b11-8d84-c19420c043ba",
+      "name": "AI Agent"
+    },
+    {
+      "parameters": {
+        "model": {
+          "__rl": true,
+          "mode": "list",
+          "value": "gpt-4.1-mini"
+        },
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatOpenAi",
+      "typeVersion": 1.2,
+      "position": [
+        -304,
+        128
+      ],
+      "id": "9f2caf33-ed73-4595-8b8f-cf60bb6935cd",
+      "name": "OpenAI Chat Model",
+      "credentials": {
+        "openAiApi": {
+          "id": "CxN1M3GiHPXWR4gx",
+          "name": "OpenAi TEST"
+        }
+      }
+    },
+    {
+      "parameters": {},
+      "type": "@n8n/n8n-nodes-langchain.memoryBufferWindow",
+      "typeVersion": 1.3,
+      "position": [
+        -160,
+        128
+      ],
+      "id": "f5c00aa3-80e3-40f0-bf15-540c9d84841e",
+      "name": "Simple Memory"
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "type": "n8n-nodes-base.executeWorkflow",
+      "typeVersion": 1.2,
+      "position": [
+        192,
+        -80
+      ],
+      "id": "476e0506-2247-4a4a-a985-4902c515d6cf",
+      "name": "Execute Workflow"
+    }
+  ],
+  "connections": {
+    "When chat message received": {
+      "main": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "OpenAI Chat Model": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Simple Memory": {
+      "ai_memory": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_memory",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "AI Agent": {
+      "main": [
+        [
+          {
+            "node": "Execute Workflow",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "nodeGroups": [],
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "staticData": null,
+  "pinData": {},
+  "meta": {
+    "templateCredsSetupCompleted": true
+  },
+  "tags": [],
+  "shared": [
+    {
+      "role": "workflow:owner",
+      "workflowId": "ESIfjC2eCqa00ocO",
+      "projectId": "tRHCC8ts4mkRGXGn",
+      "createdAt": "2025-09-12T03:58:51.769Z",
+      "updatedAt": "2025-09-12T03:58:51.769Z"
+    }
+  ],
+  "activeVersion": null
+}
