@@ -1,0 +1,993 @@
+{
+  "id": "9jGorCFmBLrKUOWX",
+  "name": "DALIA_M6.01_Solicitud_y_enrutamiento",
+  "active": true,
+  "activeVersionId": "3b80323d-6f74-47a1-a48b-de1f44ce6e57",
+  "createdAt": "2026-10-04T15:36:49.856Z",
+  "updatedAt": "2026-10-04T15:38:11.489Z",
+  "isArchived": false,
+  "versionId": "3b80323d-6f74-47a1-a48b-de1f44ce6e57",
+  "triggerCount": 0,
+  "nodes": [
+    {
+      "id": "2d5b318e-e753-4b3a-b3d6-0dedef88e6c3",
+      "name": "Entrada",
+      "type": "n8n-nodes-base.executeWorkflowTrigger",
+      "typeVersion": 1.2,
+      "position": [
+        0,
+        272
+      ],
+      "parameters": {
+        "inputSource": "passthrough"
+      }
+    },
+    {
+      "id": "b1ac51a7-2bdd-49d0-92f7-d94c64929422",
+      "name": "Abrir caso",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.7,
+      "position": [
+        224,
+        272
+      ],
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "select dalia.m6_open_handoff($1::jsonb) as r;",
+        "options": {
+          "queryReplacement": "={{ [ JSON.stringify($json) ] }}"
+        }
+      },
+      "credentials": {
+        "postgres": {
+          "id": "HfCgVAjUygK1vrkU",
+          "name": "DALIA dev Supabase"
+        }
+      },
+      "onError": "continueErrorOutput"
+    },
+    {
+      "id": "df34dd0b-4fec-436f-ac6d-977ad64b0895",
+      "name": "Caso nuevo",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        448,
+        176
+      ],
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose"
+          },
+          "conditions": [
+            {
+              "leftValue": "={{ $json.r.status === \"requested\" }}",
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        }
+      }
+    },
+    {
+      "id": "75886034-6178-4131-8974-1fdd51eb87a6",
+      "name": "Requiere memoria",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        672,
+        80
+      ],
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose"
+          },
+          "conditions": [
+            {
+              "leftValue": "={{ $json.r.needs.memory === true }}",
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        }
+      }
+    },
+    {
+      "id": "1069c353-5ce0-42c9-8b99-01393524323b",
+      "name": "Solicitud de contexto a M4",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        896,
+        0
+      ],
+      "parameters": {
+        "mode": "raw",
+        "jsonOutput": "={{ JSON.stringify($json.r.m4_request) }}",
+        "options": {}
+      }
+    },
+    {
+      "id": "c9343758-4808-45a3-a746-e9a28c848e9a",
+      "name": "Contexto de memoria (M4.01)",
+      "type": "n8n-nodes-base.executeWorkflow",
+      "typeVersion": 1.3,
+      "position": [
+        1120,
+        0
+      ],
+      "parameters": {
+        "mode": "each",
+        "source": "database",
+        "workflowId": {
+          "__rl": true,
+          "mode": "id",
+          "value": "Ys1IC6QH1dER3mJN"
+        },
+        "options": {
+          "waitForSubWorkflow": true
+        }
+      },
+      "onError": "continueRegularOutput"
+    },
+    {
+      "id": "c4973881-949c-42df-868c-17dca0cb6946",
+      "name": "Guardar contexto de memoria",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.7,
+      "position": [
+        1344,
+        0
+      ],
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "select dalia.m6_attach_memory($1::uuid, $2::jsonb) as a;",
+        "options": {
+          "queryReplacement": "={{ [ $(\"Abrir caso\").first().json.r.handoff_id, JSON.stringify($json.result ?? { status: \"unavailable\", error: $json.error ?? null }) ] }}"
+        }
+      },
+      "credentials": {
+        "postgres": {
+          "id": "HfCgVAjUygK1vrkU",
+          "name": "DALIA dev Supabase"
+        }
+      }
+    },
+    {
+      "id": "6a385b34-eb71-4b7c-a959-05d95c7188d1",
+      "name": "Requiere resumen",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        1568,
+        80
+      ],
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose"
+          },
+          "conditions": [
+            {
+              "leftValue": "={{ $(\"Abrir caso\").first().json.r.needs.summary === true }}",
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        }
+      }
+    },
+    {
+      "id": "8f8111ef-97b8-4db7-b7c5-ce062aef8d3a",
+      "name": "Caso existente",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        672,
+        272
+      ],
+      "parameters": {
+        "mode": "manual",
+        "includeOtherFields": false,
+        "assignments": {
+          "assignments": [
+            {
+              "id": "r1",
+              "name": "result",
+              "value": "={{ $json.r }}",
+              "type": "object"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "82c4a22b-d456-42ad-a5e5-078bd8dad226",
+      "name": "Solicitud de resumen a M3",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        1792,
+        0
+      ],
+      "parameters": {
+        "mode": "raw",
+        "jsonOutput": "={{ JSON.stringify($(\"Abrir caso\").first().json.r.m3_request) }}",
+        "options": {}
+      }
+    },
+    {
+      "id": "e9f5527e-a325-4aca-b64a-97e2938339fb",
+      "name": "Resumen para el asesor (M3.03)",
+      "type": "n8n-nodes-base.executeWorkflow",
+      "typeVersion": 1.3,
+      "position": [
+        2016,
+        0
+      ],
+      "parameters": {
+        "mode": "each",
+        "source": "database",
+        "workflowId": {
+          "__rl": true,
+          "mode": "id",
+          "value": "xzFPZ492fyYSBT8l"
+        },
+        "options": {
+          "waitForSubWorkflow": true
+        }
+      },
+      "onError": "continueRegularOutput"
+    },
+    {
+      "id": "d0f3b3ed-32ab-44f6-a75f-02872be280e7",
+      "name": "Guardar resumen",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.7,
+      "position": [
+        2240,
+        0
+      ],
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "select dalia.m6_attach_summary($1::uuid, $2::jsonb) as a;",
+        "options": {
+          "queryReplacement": "={{ [ $(\"Abrir caso\").first().json.r.handoff_id, JSON.stringify($json.result ?? { status: \"unavailable\" }) ] }}"
+        }
+      },
+      "credentials": {
+        "postgres": {
+          "id": "HfCgVAjUygK1vrkU",
+          "name": "DALIA dev Supabase"
+        }
+      }
+    },
+    {
+      "id": "9fac79ae-dbd8-4712-931d-7d7acb52e31f",
+      "name": "Encolar caso",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.7,
+      "position": [
+        2464,
+        80
+      ],
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "select dalia.m6_queue_handoff($1::uuid) as result;",
+        "options": {
+          "queryReplacement": "={{ [ $(\"Abrir caso\").first().json.r.handoff_id ] }}"
+        }
+      },
+      "credentials": {
+        "postgres": {
+          "id": "HfCgVAjUygK1vrkU",
+          "name": "DALIA dev Supabase"
+        }
+      }
+    },
+    {
+      "id": "7978cd22-3d48-4e10-b6e5-576fd1baf634",
+      "name": "Solicitud invalida",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        448,
+        368
+      ],
+      "parameters": {
+        "mode": "manual",
+        "includeOtherFields": false,
+        "assignments": {
+          "assignments": [
+            {
+              "id": "r1",
+              "name": "result",
+              "value": "={{ { status: \"invalid\", error: $json.error?.message ?? $json.error ?? \"solicitud inválida\" } }}",
+              "type": "object"
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "connections": {
+    "Entrada": {
+      "main": [
+        [
+          {
+            "node": "Abrir caso",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Abrir caso": {
+      "main": [
+        [
+          {
+            "node": "Caso nuevo",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Solicitud invalida",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Caso nuevo": {
+      "main": [
+        [
+          {
+            "node": "Requiere memoria",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Caso existente",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Requiere memoria": {
+      "main": [
+        [
+          {
+            "node": "Solicitud de contexto a M4",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Requiere resumen",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Solicitud de contexto a M4": {
+      "main": [
+        [
+          {
+            "node": "Contexto de memoria (M4.01)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Contexto de memoria (M4.01)": {
+      "main": [
+        [
+          {
+            "node": "Guardar contexto de memoria",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Guardar contexto de memoria": {
+      "main": [
+        [
+          {
+            "node": "Requiere resumen",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Requiere resumen": {
+      "main": [
+        [
+          {
+            "node": "Solicitud de resumen a M3",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Encolar caso",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Solicitud de resumen a M3": {
+      "main": [
+        [
+          {
+            "node": "Resumen para el asesor (M3.03)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Resumen para el asesor (M3.03)": {
+      "main": [
+        [
+          {
+            "node": "Guardar resumen",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Guardar resumen": {
+      "main": [
+        [
+          {
+            "node": "Encolar caso",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "nodeGroups": [],
+  "settings": {
+    "executionOrder": "v1",
+    "availableInMCP": true,
+    "errorWorkflow": "cjjQno2MxMTT3Icc",
+    "timezone": "America/Bogota",
+    "saveDataSuccessExecution": "none",
+    "callerPolicy": "workflowsFromSameOwner"
+  },
+  "staticData": null,
+  "pinData": null,
+  "meta": {
+    "aiBuilderAssisted": true,
+    "builderVariant": "mcp"
+  },
+  "tags": [],
+  "shared": [
+    {
+      "role": "workflow:owner",
+      "workflowId": "9jGorCFmBLrKUOWX",
+      "projectId": "tRHCC8ts4mkRGXGn",
+      "createdAt": "2026-10-09T21:09:17.818Z",
+      "updatedAt": "2026-10-09T21:09:17.818Z"
+    }
+  ],
+  "activeVersion": {
+    "versionId": "3b80323d-6f74-47a1-a48b-de1f44ce6e57",
+    "workflowId": "9jGorCFmBLrKUOWX",
+    "nodes": [
+      {
+        "id": "2d5b318e-e753-4b3a-b3d6-0dedef88e6c3",
+        "name": "Entrada",
+        "type": "n8n-nodes-base.executeWorkflowTrigger",
+        "typeVersion": 1.2,
+        "position": [
+          0,
+          272
+        ],
+        "parameters": {
+          "inputSource": "passthrough"
+        }
+      },
+      {
+        "id": "b1ac51a7-2bdd-49d0-92f7-d94c64929422",
+        "name": "Abrir caso",
+        "type": "n8n-nodes-base.postgres",
+        "typeVersion": 2.7,
+        "position": [
+          224,
+          272
+        ],
+        "parameters": {
+          "operation": "executeQuery",
+          "query": "select dalia.m6_open_handoff($1::jsonb) as r;",
+          "options": {
+            "queryReplacement": "={{ [ JSON.stringify($json) ] }}"
+          }
+        },
+        "credentials": {
+          "postgres": {
+            "id": "HfCgVAjUygK1vrkU",
+            "name": "DALIA dev Supabase"
+          }
+        },
+        "onError": "continueErrorOutput"
+      },
+      {
+        "id": "df34dd0b-4fec-436f-ac6d-977ad64b0895",
+        "name": "Caso nuevo",
+        "type": "n8n-nodes-base.if",
+        "typeVersion": 2.2,
+        "position": [
+          448,
+          176
+        ],
+        "parameters": {
+          "conditions": {
+            "options": {
+              "caseSensitive": true,
+              "leftValue": "",
+              "typeValidation": "loose"
+            },
+            "conditions": [
+              {
+                "leftValue": "={{ $json.r.status === \"requested\" }}",
+                "operator": {
+                  "type": "boolean",
+                  "operation": "true",
+                  "singleValue": true
+                }
+              }
+            ],
+            "combinator": "and"
+          }
+        }
+      },
+      {
+        "id": "75886034-6178-4131-8974-1fdd51eb87a6",
+        "name": "Requiere memoria",
+        "type": "n8n-nodes-base.if",
+        "typeVersion": 2.2,
+        "position": [
+          672,
+          80
+        ],
+        "parameters": {
+          "conditions": {
+            "options": {
+              "caseSensitive": true,
+              "leftValue": "",
+              "typeValidation": "loose"
+            },
+            "conditions": [
+              {
+                "leftValue": "={{ $json.r.needs.memory === true }}",
+                "operator": {
+                  "type": "boolean",
+                  "operation": "true",
+                  "singleValue": true
+                }
+              }
+            ],
+            "combinator": "and"
+          }
+        }
+      },
+      {
+        "id": "1069c353-5ce0-42c9-8b99-01393524323b",
+        "name": "Solicitud de contexto a M4",
+        "type": "n8n-nodes-base.set",
+        "typeVersion": 3.4,
+        "position": [
+          896,
+          0
+        ],
+        "parameters": {
+          "mode": "raw",
+          "jsonOutput": "={{ JSON.stringify($json.r.m4_request) }}",
+          "options": {}
+        }
+      },
+      {
+        "id": "c9343758-4808-45a3-a746-e9a28c848e9a",
+        "name": "Contexto de memoria (M4.01)",
+        "type": "n8n-nodes-base.executeWorkflow",
+        "typeVersion": 1.3,
+        "position": [
+          1120,
+          0
+        ],
+        "parameters": {
+          "mode": "each",
+          "source": "database",
+          "workflowId": {
+            "__rl": true,
+            "mode": "id",
+            "value": "Ys1IC6QH1dER3mJN"
+          },
+          "options": {
+            "waitForSubWorkflow": true
+          }
+        },
+        "onError": "continueRegularOutput"
+      },
+      {
+        "id": "c4973881-949c-42df-868c-17dca0cb6946",
+        "name": "Guardar contexto de memoria",
+        "type": "n8n-nodes-base.postgres",
+        "typeVersion": 2.7,
+        "position": [
+          1344,
+          0
+        ],
+        "parameters": {
+          "operation": "executeQuery",
+          "query": "select dalia.m6_attach_memory($1::uuid, $2::jsonb) as a;",
+          "options": {
+            "queryReplacement": "={{ [ $(\"Abrir caso\").first().json.r.handoff_id, JSON.stringify($json.result ?? { status: \"unavailable\", error: $json.error ?? null }) ] }}"
+          }
+        },
+        "credentials": {
+          "postgres": {
+            "id": "HfCgVAjUygK1vrkU",
+            "name": "DALIA dev Supabase"
+          }
+        }
+      },
+      {
+        "id": "6a385b34-eb71-4b7c-a959-05d95c7188d1",
+        "name": "Requiere resumen",
+        "type": "n8n-nodes-base.if",
+        "typeVersion": 2.2,
+        "position": [
+          1568,
+          80
+        ],
+        "parameters": {
+          "conditions": {
+            "options": {
+              "caseSensitive": true,
+              "leftValue": "",
+              "typeValidation": "loose"
+            },
+            "conditions": [
+              {
+                "leftValue": "={{ $(\"Abrir caso\").first().json.r.needs.summary === true }}",
+                "operator": {
+                  "type": "boolean",
+                  "operation": "true",
+                  "singleValue": true
+                }
+              }
+            ],
+            "combinator": "and"
+          }
+        }
+      },
+      {
+        "id": "8f8111ef-97b8-4db7-b7c5-ce062aef8d3a",
+        "name": "Caso existente",
+        "type": "n8n-nodes-base.set",
+        "typeVersion": 3.4,
+        "position": [
+          672,
+          272
+        ],
+        "parameters": {
+          "mode": "manual",
+          "includeOtherFields": false,
+          "assignments": {
+            "assignments": [
+              {
+                "id": "r1",
+                "name": "result",
+                "value": "={{ $json.r }}",
+                "type": "object"
+              }
+            ]
+          }
+        }
+      },
+      {
+        "id": "82c4a22b-d456-42ad-a5e5-078bd8dad226",
+        "name": "Solicitud de resumen a M3",
+        "type": "n8n-nodes-base.set",
+        "typeVersion": 3.4,
+        "position": [
+          1792,
+          0
+        ],
+        "parameters": {
+          "mode": "raw",
+          "jsonOutput": "={{ JSON.stringify($(\"Abrir caso\").first().json.r.m3_request) }}",
+          "options": {}
+        }
+      },
+      {
+        "id": "e9f5527e-a325-4aca-b64a-97e2938339fb",
+        "name": "Resumen para el asesor (M3.03)",
+        "type": "n8n-nodes-base.executeWorkflow",
+        "typeVersion": 1.3,
+        "position": [
+          2016,
+          0
+        ],
+        "parameters": {
+          "mode": "each",
+          "source": "database",
+          "workflowId": {
+            "__rl": true,
+            "mode": "id",
+            "value": "xzFPZ492fyYSBT8l"
+          },
+          "options": {
+            "waitForSubWorkflow": true
+          }
+        },
+        "onError": "continueRegularOutput"
+      },
+      {
+        "id": "d0f3b3ed-32ab-44f6-a75f-02872be280e7",
+        "name": "Guardar resumen",
+        "type": "n8n-nodes-base.postgres",
+        "typeVersion": 2.7,
+        "position": [
+          2240,
+          0
+        ],
+        "parameters": {
+          "operation": "executeQuery",
+          "query": "select dalia.m6_attach_summary($1::uuid, $2::jsonb) as a;",
+          "options": {
+            "queryReplacement": "={{ [ $(\"Abrir caso\").first().json.r.handoff_id, JSON.stringify($json.result ?? { status: \"unavailable\" }) ] }}"
+          }
+        },
+        "credentials": {
+          "postgres": {
+            "id": "HfCgVAjUygK1vrkU",
+            "name": "DALIA dev Supabase"
+          }
+        }
+      },
+      {
+        "id": "9fac79ae-dbd8-4712-931d-7d7acb52e31f",
+        "name": "Encolar caso",
+        "type": "n8n-nodes-base.postgres",
+        "typeVersion": 2.7,
+        "position": [
+          2464,
+          80
+        ],
+        "parameters": {
+          "operation": "executeQuery",
+          "query": "select dalia.m6_queue_handoff($1::uuid) as result;",
+          "options": {
+            "queryReplacement": "={{ [ $(\"Abrir caso\").first().json.r.handoff_id ] }}"
+          }
+        },
+        "credentials": {
+          "postgres": {
+            "id": "HfCgVAjUygK1vrkU",
+            "name": "DALIA dev Supabase"
+          }
+        }
+      },
+      {
+        "id": "7978cd22-3d48-4e10-b6e5-576fd1baf634",
+        "name": "Solicitud invalida",
+        "type": "n8n-nodes-base.set",
+        "typeVersion": 3.4,
+        "position": [
+          448,
+          368
+        ],
+        "parameters": {
+          "mode": "manual",
+          "includeOtherFields": false,
+          "assignments": {
+            "assignments": [
+              {
+                "id": "r1",
+                "name": "result",
+                "value": "={{ { status: \"invalid\", error: $json.error?.message ?? $json.error ?? \"solicitud inválida\" } }}",
+                "type": "object"
+              }
+            ]
+          }
+        }
+      }
+    ],
+    "connections": {
+      "Entrada": {
+        "main": [
+          [
+            {
+              "node": "Abrir caso",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Abrir caso": {
+        "main": [
+          [
+            {
+              "node": "Caso nuevo",
+              "type": "main",
+              "index": 0
+            }
+          ],
+          [
+            {
+              "node": "Solicitud invalida",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Caso nuevo": {
+        "main": [
+          [
+            {
+              "node": "Requiere memoria",
+              "type": "main",
+              "index": 0
+            }
+          ],
+          [
+            {
+              "node": "Caso existente",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Requiere memoria": {
+        "main": [
+          [
+            {
+              "node": "Solicitud de contexto a M4",
+              "type": "main",
+              "index": 0
+            }
+          ],
+          [
+            {
+              "node": "Requiere resumen",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Solicitud de contexto a M4": {
+        "main": [
+          [
+            {
+              "node": "Contexto de memoria (M4.01)",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Contexto de memoria (M4.01)": {
+        "main": [
+          [
+            {
+              "node": "Guardar contexto de memoria",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Guardar contexto de memoria": {
+        "main": [
+          [
+            {
+              "node": "Requiere resumen",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Requiere resumen": {
+        "main": [
+          [
+            {
+              "node": "Solicitud de resumen a M3",
+              "type": "main",
+              "index": 0
+            }
+          ],
+          [
+            {
+              "node": "Encolar caso",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Solicitud de resumen a M3": {
+        "main": [
+          [
+            {
+              "node": "Resumen para el asesor (M3.03)",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Resumen para el asesor (M3.03)": {
+        "main": [
+          [
+            {
+              "node": "Guardar resumen",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Guardar resumen": {
+        "main": [
+          [
+            {
+              "node": "Encolar caso",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      }
+    },
+    "nodeGroups": [],
+    "authors": "Fabian Bocanegra (via MCP)",
+    "name": "Lote 8 M6.01 instalación DEV",
+    "description": "Created with 14 nodes: Entrada, Abrir caso, Caso nuevo, Requiere memoria, Solicitud de contexto a M4 and 9 more",
+    "autosaved": false,
+    "createdAt": "2026-10-04T15:36:49.860Z",
+    "updatedAt": "2026-10-04T15:36:49.860Z"
+  }
+}
