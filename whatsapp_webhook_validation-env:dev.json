@@ -1,0 +1,142 @@
+{
+  "id": "NylUZhM2-SO_XX_E9tVaI",
+  "name": "whatsapp_webhook_validation",
+  "active": false,
+  "activeVersionId": null,
+  "createdAt": "2026-02-09T18:47:06.191Z",
+  "updatedAt": "2026-10-07T23:42:49.000Z",
+  "isArchived": true,
+  "versionId": "8827cebb-32c2-4395-9a32-d5310846a842",
+  "triggerCount": 0,
+  "nodes": [
+    {
+      "parameters": {
+        "path": "whatsapp",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "name": "Facebook Webhook GET",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 1,
+      "position": [
+        -272,
+        16
+      ],
+      "webhookId": "whatsapp-webhook",
+      "id": "c78d3608-867e-428c-ba98-362dfe3c19cf"
+    },
+    {
+      "parameters": {
+        "respondWith": "text",
+        "responseBody": "=  {{ $json.query['hub.challenge'] }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.5,
+      "position": [
+        272,
+        -96
+      ],
+      "id": "892d8972-2bad-463b-9e5b-28b7fa484cca",
+      "name": "Respond with Challenge"
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "{\n    \"message\": \"Invalid webhook verification request.\"\n}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.5,
+      "position": [
+        272,
+        128
+      ],
+      "id": "551f21d6-3446-40f5-af47-0bd5081b309a",
+      "name": "Respond with error"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "string": [
+            {
+              "value1": "={{ $json.query['hub.verify_token'] }}",
+              "value2": "yoeco_dev"
+            },
+            {
+              "value1": "={{ $json.query['app'] }}",
+              "value2": "babys_world"
+            }
+          ]
+        }
+      },
+      "id": "65bc5b6c-964b-49ac-99ab-81de8b9fe9f9",
+      "name": "Validate Token y App",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 1,
+      "position": [
+        -16,
+        16
+      ]
+    }
+  ],
+  "connections": {
+    "Facebook Webhook GET": {
+      "main": [
+        [
+          {
+            "node": "Validate Token y App",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Validate Token y App": {
+      "main": [
+        [
+          {
+            "node": "Respond with Challenge",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Respond with error",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "nodeGroups": [],
+  "settings": {
+    "executionOrder": "v1",
+    "availableInMCP": false
+  },
+  "staticData": null,
+  "pinData": {},
+  "meta": {
+    "templateCredsSetupCompleted": true
+  },
+  "tags": [
+    {
+      "id": "6e1haF3pXukz6KVf",
+      "name": "env:dev",
+      "createdAt": "2025-05-27T01:29:25.680Z",
+      "updatedAt": "2026-02-11T00:17:23.837Z"
+    }
+  ],
+  "shared": [
+    {
+      "role": "workflow:owner",
+      "workflowId": "NylUZhM2-SO_XX_E9tVaI",
+      "projectId": "8h8pwWGcWlnGEym3",
+      "createdAt": "2026-02-09T18:47:06.200Z",
+      "updatedAt": "2026-02-09T18:47:06.200Z"
+    }
+  ],
+  "activeVersion": null
+}
