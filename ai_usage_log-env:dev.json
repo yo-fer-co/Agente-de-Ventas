@@ -1,0 +1,224 @@
+{
+  "id": "rH2mRbC4Gc-X8_3SA06Zw",
+  "name": "ai_usage_log",
+  "active": false,
+  "activeVersionId": null,
+  "createdAt": "2026-02-09T21:19:26.939Z",
+  "updatedAt": "2026-05-07T22:20:56.000Z",
+  "isArchived": false,
+  "versionId": "3277df8e-ad30-4bf6-b547-a0c6943b71a3",
+  "triggerCount": 0,
+  "nodes": [
+    {
+      "parameters": {
+        "inputSource": "passthrough"
+      },
+      "type": "n8n-nodes-base.executeWorkflowTrigger",
+      "typeVersion": 1.1,
+      "position": [
+        944,
+        48
+      ],
+      "id": "f65f1901-1926-4651-a7cf-3c7aecac4cd8",
+      "name": "When Executed by Another Workflow"
+    },
+    {
+      "parameters": {
+        "useCustomSchema": true,
+        "tableId": "ai_usage_log",
+        "fieldsUi": {
+          "fieldValues": [
+            {
+              "fieldId": "process_id",
+              "fieldValue": "={{ $('Get an execution1').item.json.workflowData.name }}"
+            },
+            {
+              "fieldId": "model_name",
+              "fieldValue": "={{ $json.model_name }}"
+            },
+            {
+              "fieldId": "prompt_tokens",
+              "fieldValue": "={{ $json.prompt_tokens }}"
+            },
+            {
+              "fieldId": "completion_tokens",
+              "fieldValue": "={{ $json.completion_tokens }}"
+            },
+            {
+              "fieldId": "total_tokens",
+              "fieldValue": "={{ $json.total_tokens }}"
+            },
+            {
+              "fieldId": "ai_response",
+              "fieldValue": "={{ $json.ai_response }}"
+            },
+            {
+              "fieldId": "environment",
+              "fieldValue": "={{ $('When Executed by Another Workflow').item.json.environment }}"
+            },
+            {
+              "fieldId": "estimated_cost_usd",
+              "fieldValue": "={{ ($json.prompt_tokens * 0.00000015) + ($json.completion_tokens * 0.0000006) }}"
+            }
+          ]
+        }
+      },
+      "name": "save ai usage log1",
+      "type": "n8n-nodes-base.supabase",
+      "typeVersion": 1,
+      "position": [
+        1808,
+        48
+      ],
+      "id": "7d4ddadc-1f57-41bb-960c-62e9f2a49387",
+      "credentials": {
+        "supabaseApi": {
+          "id": "kIgZyufmgS2O0dQO",
+          "name": "Supabase account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "amount": 2,
+        "unit": "minutes"
+      },
+      "type": "n8n-nodes-base.wait",
+      "typeVersion": 1.1,
+      "position": [
+        1136,
+        48
+      ],
+      "id": "9c0691e2-a7e3-4ad1-b640-d7e4d5356b21",
+      "name": "Wait1",
+      "webhookId": "95751a09-7261-4e26-87ca-ceb6bb933ddd"
+    },
+    {
+      "parameters": {
+        "resource": "execution",
+        "operation": "get",
+        "executionId": "={{ $('When Executed by Another Workflow').item.json.execution_id }}",
+        "options": {
+          "activeWorkflows": true
+        },
+        "requestOptions": {}
+      },
+      "type": "n8n-nodes-base.n8n",
+      "typeVersion": 1,
+      "position": [
+        1344,
+        48
+      ],
+      "id": "6c3f3e92-36db-467e-92b0-a8b1237de94b",
+      "name": "Get an execution1",
+      "credentials": {
+        "n8nApi": {
+          "id": "AZG1Am7cleMDHzng",
+          "name": "n8n account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const executionData = $input.first().json;\n\nlet prompt_tokens = 0;\nlet completion_tokens = 0;\nlet ai_response = \"No se encontró la respuesta\";\n\n// 1. Cazamos los tokens recorriendo todo el historial\nJSON.stringify(executionData, (key, value) => {\n  if (key === 'tokenUsage' || key === 'tokenUsageEstimate') {\n    prompt_tokens += value.promptTokens || 0;\n    completion_tokens += value.completionTokens || 0;\n  }\n  return value;\n});\n\n// 2. Cazamos la respuesta del Agente\ntry {\n  // n8n guarda los resultados de todos los nodos en esta ruta:\n  const runData = executionData.data.resultData.runData;\n  \n  // Buscamos tu nodo exactamente por su nombre\n  if (runData && runData[\"Agente Principal\"]) {\n    // Sacamos el texto crudo que devolvió el nodo\n    const rawOutput = runData[\"Agente Principal\"][0].data.main[0][0].json.output;\n    \n    // Como tu agente devuelve un JSON (con replyText, sendImage, etc.), lo parseamos\n    try {\n      const parsedData = JSON.parse(rawOutput);\n      // Agarramos solo el mensaje para el cliente\n      ai_response = parsedData.replyText || rawOutput; \n    } catch (e) {\n      // Si por alguna razón el agente no devolvió un JSON perfecto, guardamos el texto tal cual\n      ai_response = rawOutput;\n    }\n  }\n} catch (error) {\n  ai_response = \"Error buscando la respuesta: \" + error.message;\n}\n\n// 3. Devolvemos todo listo para tu base de datos\nreturn {\n  json: {\n    prompt_tokens: prompt_tokens,\n    completion_tokens: completion_tokens,\n    total_tokens: prompt_tokens + completion_tokens,\n    ai_response: ai_response,\n    model_name: \"gpt-5.1\" \n  }\n};"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1552,
+        48
+      ],
+      "id": "8dcef39c-738f-4ab6-bbb5-9da7cb4bfb25",
+      "name": "Code in JavaScript2"
+    }
+  ],
+  "connections": {
+    "When Executed by Another Workflow": {
+      "main": [
+        [
+          {
+            "node": "Wait1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Wait1": {
+      "main": [
+        [
+          {
+            "node": "Get an execution1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get an execution1": {
+      "main": [
+        [
+          {
+            "node": "Code in JavaScript2",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code in JavaScript2": {
+      "main": [
+        [
+          {
+            "node": "save ai usage log1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "nodeGroups": [],
+  "settings": {
+    "executionOrder": "v1",
+    "availableInMCP": false
+  },
+  "staticData": {
+    "node:Schedule Trigger": {
+      "recurrenceRules": []
+    }
+  },
+  "pinData": {
+    "When Executed by Another Workflow": [
+      {
+        "json": {
+          "session_id": "573108058407",
+          "message": "hola",
+          "execution_id": "62792",
+          "environment": "dev"
+        }
+      }
+    ]
+  },
+  "meta": {
+    "templateCredsSetupCompleted": true
+  },
+  "tags": [
+    {
+      "id": "6e1haF3pXukz6KVf",
+      "name": "env:dev",
+      "createdAt": "2025-05-27T01:29:25.680Z",
+      "updatedAt": "2026-02-11T00:17:23.837Z"
+    }
+  ],
+  "shared": [
+    {
+      "role": "workflow:owner",
+      "workflowId": "rH2mRbC4Gc-X8_3SA06Zw",
+      "projectId": "8h8pwWGcWlnGEym3",
+      "createdAt": "2026-02-09T21:19:26.943Z",
+      "updatedAt": "2026-02-09T21:19:26.943Z"
+    }
+  ],
+  "activeVersion": null
+}
