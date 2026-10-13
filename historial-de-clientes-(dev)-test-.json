@@ -1,0 +1,538 @@
+{
+  "id": "RJcAwSlbWITOAixs",
+  "name": "Historial De Clientes (DEV) Test",
+  "active": false,
+  "activeVersionId": null,
+  "createdAt": "2026-05-28T22:00:29.096Z",
+  "updatedAt": "2026-05-28T22:01:06.458Z",
+  "isArchived": false,
+  "versionId": "65342963-d8f8-42cf-9684-82a486522386",
+  "triggerCount": 0,
+  "nodes": [
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "f9ef56eb-0476-4526-b90a-f5babc081aa2",
+              "name": "user_id",
+              "value": "={{ $json.user_id }}",
+              "type": "string"
+            },
+            {
+              "id": "7ef0a44a-bbd8-47a5-8a11-5fd95ea502de",
+              "name": "message",
+              "value": "={{ $json.message }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        656,
+        144
+      ],
+      "id": "2b93032e-a630-4b07-814c-07955c4e099d",
+      "name": "Edit Fields"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.openai.com/v1/embeddings",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "openAiApi",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"input\": \"{{$json[\"message\"]}}\",\n  \"model\": \"text-embedding-ada-002\"\n}\n",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        880,
+        144
+      ],
+      "id": "2955463c-3973-4567-9308-ff1bcfd71f1e",
+      "name": "Embedding inicial",
+      "credentials": {
+        "openAiApi": {
+          "id": "zACGOxtwAjrFvDag",
+          "name": "OpenAi_YoEco_DEV"
+        }
+      },
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "jsCode": "return [{\n  json: {\n    user_id: $('Edit Fields').first().json.user_id,\n    message: $('Edit Fields').first().json.message,\n    embedding: $input.first().json.data[0].embedding\n  }\n}];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1104,
+        144
+      ],
+      "id": "72972714-cde2-4f89-90e8-8415071d5cce",
+      "name": "Set parametros"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://1537c683-48da-4631-ab76-ad698b6b9881.us-east-1-0.aws.cloud.qdrant.io/collections/BabysWorld_Clientes_TEST/points/search",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "qdrantApi",
+        "sendBody": true,
+        "contentType": "raw",
+        "rawContentType": "Json",
+        "body": "={{ JSON.stringify({\n  vector: $json.embedding,\n  limit: 999,\n  with_payload: true,\n  filter: {\n    must: [\n      {\n        key: 'user_id',\n        match: {\n          value: Number($json.user_id)\n        },\n      },\n    ],\n  },\n}) }}\n",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        1312,
+        144
+      ],
+      "id": "663d7818-333a-4e28-99ce-1bb15b81ecd3",
+      "name": "Consulta Qdrant",
+      "credentials": {
+        "qdrantApi": {
+          "id": "ZYv8vdr6tkTS4jYz",
+          "name": "QdrantApi account 3"
+        }
+      },
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "workflowInputs": {
+          "values": [
+            {
+              "name": "user_id"
+            },
+            {
+              "name": "message"
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.executeWorkflowTrigger",
+      "typeVersion": 1.1,
+      "position": [
+        0,
+        0
+      ],
+      "id": "f228ba13-98eb-44a0-8471-313bb657eaee",
+      "name": "When Executed by Another Workflow"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "68a5fdff-a84d-4e1d-9c17-42b853e7de87",
+              "name": "user_id",
+              "value": "={{ $('Agrega historial a prompt').item.json.user_id }}",
+              "type": "string"
+            },
+            {
+              "id": "6e4aed49-b622-4ac5-bb7d-22bfd5007352",
+              "name": "prompt",
+              "value": "={{ $json.output }}",
+              "type": "string"
+            },
+            {
+              "id": "5a71bd91-e971-4545-81fb-15765f3809fd",
+              "name": "historial_disponible",
+              "value": "={{ $('Agrega historial a prompt').item.json.historial_disponible }}",
+              "type": "boolean"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        2112,
+        144
+      ],
+      "id": "b2dbcfa1-e9d4-4431-a408-a111e2fec20b",
+      "name": "Edit Fields3"
+    },
+    {
+      "parameters": {},
+      "type": "n8n-nodes-base.noOp",
+      "typeVersion": 1,
+      "position": [
+        272,
+        144
+      ],
+      "id": "3dd10a15-8690-4f91-bffa-a00f5fff25e2",
+      "name": "No Operation, do nothing"
+    },
+    {
+      "parameters": {
+        "documentId": {
+          "__rl": true,
+          "value": "1xmb3wkw8XTrtEHwfTZtRbpF-diKtSskRZnq-MF2p4dA",
+          "mode": "list",
+          "cachedResultName": "evaluations",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1xmb3wkw8XTrtEHwfTZtRbpF-diKtSskRZnq-MF2p4dA/edit?usp=drivesdk"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "gid=0",
+          "mode": "list",
+          "cachedResultName": "Hoja 1",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1xmb3wkw8XTrtEHwfTZtRbpF-diKtSskRZnq-MF2p4dA/edit#gid=0"
+        }
+      },
+      "type": "n8n-nodes-base.evaluationTrigger",
+      "typeVersion": 4.6,
+      "position": [
+        0,
+        256
+      ],
+      "id": "cc445a4e-89f8-46fc-9581-ba41874f1182",
+      "name": "When fetching a dataset row",
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "Pf0TYy2joLTmqt2C",
+          "name": "Google Sheets account 3"
+        }
+      },
+      "disabled": true
+    },
+    {
+      "parameters": {
+        "documentId": {
+          "__rl": true,
+          "value": "1xmb3wkw8XTrtEHwfTZtRbpF-diKtSskRZnq-MF2p4dA",
+          "mode": "list",
+          "cachedResultName": "evaluations",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1xmb3wkw8XTrtEHwfTZtRbpF-diKtSskRZnq-MF2p4dA/edit?usp=drivesdk"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "gid=0",
+          "mode": "list",
+          "cachedResultName": "Hoja 1",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1xmb3wkw8XTrtEHwfTZtRbpF-diKtSskRZnq-MF2p4dA/edit#gid=0"
+        },
+        "outputs": {
+          "values": [
+            {
+              "outputName": "user",
+              "outputValue": "={{ $json.user_id }}"
+            },
+            {
+              "outputName": "prompt",
+              "outputValue": "={{ $('Agrega historial a prompt').item.json.prompt }}"
+            },
+            {
+              "outputName": "historial_disponible",
+              "outputValue": "={{ $('Agrega historial a prompt').item.json.historial_disponible }}"
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.evaluation",
+      "typeVersion": 4.7,
+      "position": [
+        2400,
+        144
+      ],
+      "id": "b95c1a0f-f561-48e0-a958-0e8cd84b2bf9",
+      "name": "Evaluation",
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "Pf0TYy2joLTmqt2C",
+          "name": "Google Sheets account 3"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "=Toma los datos más importantes como interés de compra, nombre entre otros datos del cliente y júntalos en un  párrafo en tercera persona para la interpretación de otro agente\ntexto:({{ $json.prompt }}) ",
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 3,
+      "position": [
+        1744,
+        144
+      ],
+      "id": "d4b30e44-234b-4d8e-a26c-6341131677e1",
+      "name": "AI Agent"
+    },
+    {
+      "parameters": {
+        "model": {
+          "__rl": true,
+          "mode": "list",
+          "value": "gpt-4.1-mini"
+        },
+        "builtInTools": {},
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatOpenAi",
+      "typeVersion": 1.3,
+      "position": [
+        1744,
+        304
+      ],
+      "id": "7e8bcdc9-2329-4650-a7dc-3372386b9de3",
+      "name": "OpenAI Chat Model",
+      "retryOnFail": true,
+      "credentials": {
+        "openAiApi": {
+          "id": "zACGOxtwAjrFvDag",
+          "name": "OpenAi_YoEco_DEV"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "workflowId": {
+          "__rl": true,
+          "value": "rH2mRbC4Gc-X8_3SA06Zw",
+          "mode": "list",
+          "cachedResultUrl": "/workflow/rH2mRbC4Gc-X8_3SA06Zw",
+          "cachedResultName": "Babys World — ai_usage_log"
+        },
+        "workflowInputs": {
+          "mappingMode": "defineBelow",
+          "value": {},
+          "matchingColumns": [],
+          "schema": [],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": true
+        },
+        "mode": "each",
+        "options": {
+          "waitForSubWorkflow": false
+        }
+      },
+      "type": "n8n-nodes-base.executeWorkflow",
+      "typeVersion": 1.3,
+      "position": [
+        2240,
+        -16
+      ],
+      "id": "fb0ce23d-8f0b-4a6f-8d1d-c43b778c665e",
+      "name": "Call 'ai_usage_log'",
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "jsCode": "return {\n  json: {\n    // $execution.id es una variable global de n8n que trae el ID único de esta corrida\n    execution_id: $execution.id, \n    // Mantenemos tu variable de entorno que vi en tu JSON anterior\n    environment: $('When Executed by Another Workflow').item.json.environment || 'dev' \n  }\n};"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        2064,
+        -16
+      ],
+      "id": "397b4a99-204f-400f-8a7d-1abc73be0295",
+      "name": "build_token_usage_dto"
+    },
+    {
+      "parameters": {
+        "jsCode": "const historial = $input.first().json.result || [];\nconst textos = historial.map(i => i.payload?.text || \"\").filter(Boolean).join(\"\\n---\\n\");\nconst user_id = $('Edit Fields').first().json.user_id;\nconst mensajeActual = $('Edit Fields').first().json.message;\n\nlet prompt = \"\";\n\nif (historial.length > 0) {\n  prompt = `Historial de usuario:\\n${textos}\\n\\nMensaje actual:\\n${mensajeActual}`;\n} else {\n  prompt = `Mensaje de nuevo usuario:\\n${mensajeActual}`;\n}\n\nreturn [{\n  json: {\n    user_id,\n    prompt,\n    historial_disponible: historial.length > 0\n  }\n}];\n"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1536,
+        144
+      ],
+      "id": "5be5e8fc-b60c-4abb-89cc-1d41bb4873db",
+      "name": "Agrega historial a prompt"
+    }
+  ],
+  "connections": {
+    "Edit Fields": {
+      "main": [
+        [
+          {
+            "node": "Embedding inicial",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Embedding inicial": {
+      "main": [
+        [
+          {
+            "node": "Set parametros",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Set parametros": {
+      "main": [
+        [
+          {
+            "node": "Consulta Qdrant",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Consulta Qdrant": {
+      "main": [
+        [
+          {
+            "node": "Agrega historial a prompt",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "When Executed by Another Workflow": {
+      "main": [
+        [
+          {
+            "node": "No Operation, do nothing",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Edit Fields3": {
+      "main": [
+        [
+          {
+            "node": "Evaluation",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "No Operation, do nothing": {
+      "main": [
+        [
+          {
+            "node": "Edit Fields",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "When fetching a dataset row": {
+      "main": [
+        [
+          {
+            "node": "No Operation, do nothing",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Evaluation": {
+      "main": [
+        []
+      ]
+    },
+    "AI Agent": {
+      "main": [
+        [
+          {
+            "node": "Edit Fields3",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "build_token_usage_dto",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "OpenAI Chat Model": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "build_token_usage_dto": {
+      "main": [
+        [
+          {
+            "node": "Call 'ai_usage_log'",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Agrega historial a prompt": {
+      "main": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "nodeGroups": [],
+  "settings": {
+    "executionOrder": "v1",
+    "callerPolicy": "workflowsFromSameOwner",
+    "errorWorkflow": "5j9hfL5IlhLCpydB",
+    "binaryMode": "separate",
+    "availableInMCP": false
+  },
+  "staticData": null,
+  "pinData": {
+    "When Executed by Another Workflow": [
+      {
+        "json": {
+          "user_id": "573197933815",
+          "message": "Hola buenas tardes"
+        },
+        "pairedItem": {
+          "item": 0
+        }
+      }
+    ]
+  },
+  "meta": {
+    "templateCredsSetupCompleted": true
+  },
+  "tags": [],
+  "shared": [
+    {
+      "role": "workflow:owner",
+      "workflowId": "RJcAwSlbWITOAixs",
+      "projectId": "8h8pwWGcWlnGEym3",
+      "createdAt": "2026-05-28T22:00:29.099Z",
+      "updatedAt": "2026-05-28T22:00:29.099Z"
+    }
+  ],
+  "activeVersion": null
+}
