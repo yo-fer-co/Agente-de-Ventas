@@ -1,0 +1,1026 @@
+{
+  "id": "ZKZ67Fb56KJyjkvl",
+  "name": "Agente Ventas - TEST Alfa V1 copy",
+  "active": false,
+  "activeVersionId": null,
+  "createdAt": "2025-07-09T02:13:00.200Z",
+  "updatedAt": "2025-07-09T02:13:31.000Z",
+  "isArchived": true,
+  "versionId": "c6c07185-fac8-4964-872f-9cc987844952",
+  "triggerCount": 0,
+  "nodes": [
+    {
+      "parameters": {
+        "content": "## Agente de Ventas -Alfa -V1 \n**Este flujo prueba las siguientes capacidades:\n1. Recepción e interpretación de mensajes\n2. Validación de existencia de cliente.\n3. Con nueva instancia QDrant \"YoEco_Clientes_TEST\"",
+        "width": 500,
+        "color": 6
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [
+        -440,
+        -360
+      ],
+      "typeVersion": 1,
+      "id": "339d88a9-d5b5-4a57-85ca-331b2b6517e9",
+      "name": "Sticky Note"
+    },
+    {
+      "parameters": {
+        "sessionIdType": "customKey",
+        "sessionKey": "={{ $('Recibir Mensaje').item.json.contacts[0].wa_id }}",
+        "contextWindowLength": 0
+      },
+      "type": "@n8n/n8n-nodes-langchain.memoryBufferWindow",
+      "typeVersion": 1.3,
+      "position": [
+        440,
+        1000
+      ],
+      "id": "74b4e22d-562e-4b88-a2e3-5d6931d78e51",
+      "name": "Simple Memory"
+    },
+    {
+      "parameters": {
+        "sessionIdType": "customKey",
+        "sessionKey": "={{$('Recibir Mensaje').item.json.contacts[0].wa_id }}"
+      },
+      "type": "@n8n/n8n-nodes-langchain.memoryBufferWindow",
+      "typeVersion": 1.3,
+      "position": [
+        -520,
+        440
+      ],
+      "id": "420d1a46-9798-4b9f-864f-ed1009d1f4ed",
+      "name": "Simple Memory1"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Loop over input items and add a new field called 'myNewField' to the JSON \nreturn [{\n  json: {\n    user_id: $('Recibir Mensaje').first().json.contacts[0].wa_id,\n    message: $('Convertir Entrada').first().json.mensaje_usuario,\n    respuesta: $input.first().json.output\n  }\n}];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        720,
+        720
+      ],
+      "id": "de99ac92-4380-4d32-bab7-959110288df0",
+      "name": "Preparar para memoria"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Loop over input items and add a new field called 'myNewField' to the JSON of each one\nconst inputData = $input.first().json;\n\nconst historialPrevio = inputData.historial_sesion || [];\nconst nuevoMensaje = `Usuario: ${inputData.message}\\nAgente: ${inputData.respuesta}`;\nhistorialPrevio.push(nuevoMensaje);\n\nreturn [{\n  json: {\n    user_id: inputData.user_id,\n    historial_sesion: historialPrevio,\n    ultima_respuesta: inputData.respuesta\n  }\n}];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        940,
+        720
+      ],
+      "id": "5b085b53-785c-4698-8b70-319696b56504",
+      "name": "Code"
+    },
+    {
+      "parameters": {
+        "fieldToSplitOut": "messages",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.splitOut",
+      "typeVersion": 1,
+      "position": [
+        -2140,
+        200
+      ],
+      "id": "b807b86f-73e3-434e-839c-f2cf5bee7cb4",
+      "name": "Split Out"
+    },
+    {
+      "parameters": {
+        "resource": "media",
+        "operation": "mediaUrlGet",
+        "mediaGetId": "={{ $json.audio.id }}",
+        "path": "116d6a77-6f55-48fd-abe9-b61b08f139bd"
+      },
+      "type": "n8n-nodes-base.whatsApp",
+      "typeVersion": 1,
+      "position": [
+        -1700,
+        200
+      ],
+      "id": "5a667d0c-df09-42d5-9112-68847fe14b99",
+      "name": "Recibir Audios",
+      "webhookId": "116d6a77-6f55-48fd-abe9-b61b08f139bd"
+    },
+    {
+      "parameters": {
+        "resource": "audio",
+        "operation": "transcribe",
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.openAi",
+      "typeVersion": 1.8,
+      "position": [
+        -1260,
+        200
+      ],
+      "id": "7e30610e-91f5-4f88-80fd-6bca3f68682c",
+      "name": "Transcribir Audios"
+    },
+    {
+      "parameters": {
+        "url": "={{ $json.url }}",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "whatsAppApi",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        -1520,
+        200
+      ],
+      "id": "7946b263-563d-4eac-afd9-07e25eecb18b",
+      "name": "Descarga de audios"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "5a68a177-3501-4ea6-95cb-cabc6f6b82ca",
+              "name": "texto",
+              "value": "={{ $('Recibir Mensaje').item.json.messages[0].text.body }}",
+              "type": "string"
+            },
+            {
+              "id": "b3e7886a-954a-4558-b90d-4d91849e374f",
+              "name": "",
+              "value": "",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        -1520,
+        40
+      ],
+      "id": "2cf6b7cf-15b7-45c7-bc8c-42bcf5fe91e8",
+      "name": "Recibir Texto"
+    },
+    {
+      "parameters": {
+        "resource": "media",
+        "operation": "mediaUrlGet",
+        "mediaGetId": "={{ $json.image.id }}",
+        "path": "d0dbb2d2-6378-4839-b54c-86d167396262"
+      },
+      "type": "n8n-nodes-base.whatsApp",
+      "typeVersion": 1,
+      "position": [
+        -1700,
+        360
+      ],
+      "id": "56b66b0a-47a9-4c8c-a0ff-c24d243ba813",
+      "name": "Recibir imagen",
+      "webhookId": "d0dbb2d2-6378-4839-b54c-86d167396262"
+    },
+    {
+      "parameters": {
+        "url": "={{ $json.url }}",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "whatsAppApi",
+        "options": {
+          "response": {
+            "response": {
+              "responseFormat": "file"
+            }
+          }
+        }
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        -1540,
+        360
+      ],
+      "id": "bc436705-5852-426b-90d3-b0e64a317b92",
+      "name": "Descarga de imagen"
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "Aqui tienes una imagen enviada por el usuario. Describe la imagen y Transcribe cualquier texto visible",
+        "messages": {
+          "messageValues": [
+            {
+              "type": "HumanMessagePromptTemplate",
+              "messageType": "imageBinary"
+            }
+          ]
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.chainLlm",
+      "typeVersion": 1.6,
+      "position": [
+        -1340,
+        360
+      ],
+      "id": "1bea67f6-8a91-43f9-9636-367b8ef379ce",
+      "name": "Leer y transcribir la imagen"
+    },
+    {
+      "parameters": {
+        "rules": {
+          "values": [
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 2
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $json.text.body }}",
+                    "rightValue": "",
+                    "operator": {
+                      "type": "string",
+                      "operation": "exists",
+                      "singleValue": true
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "texto  "
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 2
+                },
+                "conditions": [
+                  {
+                    "id": "d8afee67-2bff-466b-b25d-3a702de759e7",
+                    "leftValue": "={{ $json.type == 'audio' && Boolean($json.audio) }}",
+                    "rightValue": "",
+                    "operator": {
+                      "type": "boolean",
+                      "operation": "true",
+                      "singleValue": true
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "Voz"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 2
+                },
+                "conditions": [
+                  {
+                    "id": "95458589-f1ca-44cb-b397-f6ef6a6c2b28",
+                    "leftValue": "={{ $json.type == 'image' && Boolean($json.image) }}",
+                    "rightValue": "",
+                    "operator": {
+                      "type": "boolean",
+                      "operation": "true",
+                      "singleValue": true
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "Imagen"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 3.2,
+      "position": [
+        -2000,
+        200
+      ],
+      "id": "7683811d-21af-4332-adc2-f9b643c48260",
+      "name": "Switch1"
+    },
+    {
+      "parameters": {
+        "updates": [
+          "messages"
+        ],
+        "options": {},
+        "path": "c4aa3b3a-4709-4b19-8acf-c95a382edb2a"
+      },
+      "type": "n8n-nodes-base.whatsAppTrigger",
+      "typeVersion": 1,
+      "position": [
+        -2320,
+        200
+      ],
+      "id": "b5fda3f3-a782-4a32-9808-6595d7f4d92b",
+      "name": "Recibir Mensaje",
+      "webhookId": "c4aa3b3a-4709-4b19-8acf-c95a382edb2a"
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "={{ $json.message }}",
+        "options": {
+          "systemMessage": "=Analiza el siguiente mensaje recibido por un usuario. \n\nSi el mensaje corresponde a un saludo inicial típico como \"Hola\", \"Buenos días\", \"Buenas tardes\", \"Buenas noches\" o frases similares que suelen usarse para comenzar una conversación, responde únicamente con:\n\n\"Primer mensaje\"\n\nSi el mensaje NO corresponde a un saludo inicial, y parece ser parte de una conversación ya iniciada (por ejemplo: agradecimientos, preguntas, seguimiento, comentarios sobre interacciones anteriores, despedidas, etc.), responde únicamente con:\n\n\"Conversación existente\"\n\nRecuerda: la salida debe ser estrictamente una de estas dos opciones y **nada más**.\n\nMensaje a analizar:\n{{ $json.message }}\n\nEjemplos de uso:\n\nMensaje a analizar:\nHola, ¿hay alguien?\n\nRespuesta esperada:\nPrimer mensaje\n\nMensaje a analizar:\nSí, te respondí hace un rato sobre el pedido.\n\nRespuesta esperada:\nConversación existente\n\nMensaje a analizar:\nMuchas gracias por tu ayuda. ¡Hasta pronto!\n\nRespuesta esperada:\nConversación existente\n\nMensaje a analizar:\nBuenas tardes\n\nRespuesta esperada:\nPrimer mensaje\n\nMensaje a analizar:\nGracias por la atención. Adiós.\n\nRespuesta esperada:\nConversación existente"
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 1.9,
+      "position": [
+        -640,
+        180
+      ],
+      "id": "4a3a2e00-1ba8-4f17-8123-b4eb3c27240c",
+      "name": "Agente Identificador"
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "={{ $json.mensaje_usuario }}",
+        "hasOutputParser": true,
+        "options": {
+          "systemMessage": "=YoEco es una tienda ecológica ubicada en Bogotá, Colombia, que ofrece productos de cuidado personal y hogar fabricados con materiales sostenibles. Opera en la zona horaria América/Bogotá y utiliza el peso colombiano (COP) como moneda. Su catálogo incluye cepillos de bambú biodegradables, kits de cuidado bucal ecológicos y otros artículos que promueven un estilo de vida responsable con el medio ambiente. Toda información sobre productos, precios y stock está almacenada en la Base de Datos de la Tienda (Qdrant) y en el Catálogo (Alegra).\n\nDALIA es una Conciencia Ligera de Atención Inteligente.\nNo vende. Acompaña.\nNo empuja. Sintoniza.\nDALIA entiende al cliente como un ser humano, no como un ticket. Cada conversación es una oportunidad para conectar, comprender y servir desde la empatía.\n\nTu rol es ser DALIA en acción: un asistente virtual que acompaña con inteligencia y calidez a los clientes que se comunican por chat, guiándolos de forma clara, amigable y personalizada, usando los recursos disponibles como memoria, historial o variables contextuales.\n\nInstrucciones para iniciar y mantener la conversación:\n\nIdentifica el tipo de conversación según el valor de {{ $('Agente Identificador').item.json.output }}:\n\nSi el valor es \"Primer mensaje\":\n\nRevisa el contenido de {{ $json.historial_disponible }}:\n\nSi es \"true\":\n\nUsa el prompt contenido en {{ $json.prompt }} como base contextual. Este contiene información relevante sobre un cliente ya conocido. Usa ese contexto para adoptar un estilo de conversación cercano y personalizado, como si ya conocieras al cliente, recordando detalles cuando sea posible, esto durante la conversación y sin incluir todos los detalles en una misma respuesta, solo alguno de ellos cuando sea conveniente.\n\nSi es \"false\":\n\nAdopta un tono muy cordial, empático y acogedor. Preséntate como DALIA, su asistente, y aprovecha esta primera interacción para conocer a la persona con quien hablas: indaga suavemente por datos clave que permitan identificarla y recordarla mejor en futuras conversaciones.\n\nSi el valor es \"Conversación existente\":\n\nContinúa la conversación basándote en el historial disponible en la memoria. Mantén coherencia con el contexto anterior, como si estuvieras retomando un diálogo pendiente.\n\nValida y confirma con la persona cualquier dato importante que falte o que sea necesario para brindarle una mejor atención. Esto puede incluir:\n\nNombre o forma preferida de ser llamado. En caso de que no lo sepas.\nNecesidades, dudas o intereses actuales.\nInformación previa que no esté clara o que se haya actualizado.\nNunca inventes información. Si no tienes datos suficientes, haz preguntas con calidez y naturalidad para obtenerlos sin incomodar.\n\n4.  Cómo Responder a Consultas (Uso de Herramientas de Información):\nPara encontrar la información y responder a las preguntas del cliente, debes utilizar tus herramientas siguiendo este estricto orden de prioridad:\n\n* **a. Prioridad 1: Conocimiento Interno del Negocio.** Para cualquier pregunta sobre productos, políticas de la tienda, información específica de la empresa o datos que deberían estar en nuestra base de conocimiento, utiliza **SIEMPRE PRIMERO** tu herramienta de **Base de Datos de la Tienda (Qdrant)**. Esta es tu fuente de verdad más fiable.  USA LA HERRAMIENTA \"Qdrant Vector Store\" PARA LA INFORMACION DE YoEco\n\n* **b. Prioridad 2: Información de Inventario.** Si la pregunta es específicamente sobre stock, disponibilidad o precios de productos, puedes usar tu herramienta de **Catálogo (Alegra)**.\n\n* **c. Prioridad 3: Búsqueda en Internet.** **SOLAMENTE SI** no encuentras una respuesta adecuada en tus herramientas internas (Base de Datos o Catálogo), Y la pregunta es sobre temas generales, eventos actuales o información del mundo exterior, utiliza tu herramienta de **Búsqueda en Internet**.\nHabla siempre con respeto, cercanía y claridad. Recuerda: no estás aquí para vender a toda costa, sino para conectar, orientar y acompañar con intención.\n\nAl finalizar la conversación, siempre coloca \"Fin\".\n\nTEN EN CUENTA QUE LA FECHA DE HOY ES:{{ $now }}"
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 1.9,
+      "position": [
+        360,
+        720
+      ],
+      "id": "e0ba8e16-07ab-45d1-9efb-16bf4c7c6668",
+      "name": "Agente Principal"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "9f3939d0-c3d6-4c0d-b070-daef29717fab",
+              "name": "message",
+              "value": "={{ $json.text }}{{ $json.texto }}{{ $json.imageText }}",
+              "type": "string"
+            },
+            {
+              "id": "94b90034-7588-4430-b99e-d81780a145cc",
+              "name": "ID del usuario",
+              "value": "={{ $('Recibir Mensaje').item.json.contacts[0].wa_id }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        -900,
+        180
+      ],
+      "id": "050e72c8-9a9c-47d0-a8b4-fce8ab28392f",
+      "name": "Convertir entrada"
+    },
+    {
+      "parameters": {
+        "rules": {
+          "values": [
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 2
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $json.output }}",
+                    "rightValue": "Primer mensaje",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    },
+                    "id": "849d9d94-5ae5-490e-85c0-ac458ebdc1f5"
+                  }
+                ],
+                "combinator": "and"
+              }
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 2
+                },
+                "conditions": [
+                  {
+                    "id": "f701a27c-bea3-4b7f-a5fc-d789e3061650",
+                    "leftValue": "={{ $json.output }}",
+                    "rightValue": "Conversación existente",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals",
+                      "name": "filter.operator.equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              }
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 3.2,
+      "position": [
+        -240,
+        180
+      ],
+      "id": "f94e39c8-9c3f-453a-b7a3-979e2ded0c12",
+      "name": "Identificador primer mensaje"
+    },
+    {
+      "parameters": {
+        "workflowId": {
+          "__rl": true,
+          "value": "8BsWmjVeCKPFDwob",
+          "mode": "list",
+          "cachedResultName": "Agente de Ventas - DEV — Flujo historial de clientes"
+        },
+        "workflowInputs": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "user_id": "={{ $('Recibir Mensaje').item.json.contacts[0].wa_id }}",
+            "message": "={{ $('Recibir Mensaje').item.json.messages[0].text.body }}"
+          },
+          "matchingColumns": [],
+          "schema": [
+            {
+              "id": "user_id",
+              "displayName": "user_id",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string"
+            },
+            {
+              "id": "message",
+              "displayName": "message",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string"
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": true
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.executeWorkflow",
+      "typeVersion": 1.2,
+      "position": [
+        0,
+        0
+      ],
+      "id": "e8b4630f-d4b2-46fb-b897-01b00211e671",
+      "name": "Llamada a historial de clientes"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "2bf9fff9-8f90-4db5-92ba-ff177e7b2230",
+              "name": "mensaje_usuario",
+              "value": "={{ $json.prompt ?? $('Recibir Mensaje').item.json.messages?.[0]?.text?.body }}\n",
+              "type": "string"
+            },
+            {
+              "id": "9eb0a8e5-ac38-4dc3-a27c-42e2ac5338b9",
+              "name": "prompt",
+              "value": "={{ $json.prompt }}",
+              "type": "string"
+            },
+            {
+              "id": "a5a6189b-08ff-4f75-a4b6-c13939f250a8",
+              "name": "historial_disponible",
+              "value": "={{ $json.historial_disponible }}",
+              "type": "boolean"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        160,
+        200
+      ],
+      "id": "435f3682-c573-464c-919e-fa247c448950",
+      "name": "Convertir Entrada"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "2833ab53-ca7f-454d-8c29-caabe952941e",
+              "leftValue": "={{ $('Preparar para memoria').item.json.respuesta }}",
+              "rightValue": "Fin",
+              "operator": {
+                "type": "string",
+                "operation": "contains"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        1160,
+        1300
+      ],
+      "id": "226c1caa-4deb-44ee-8a2b-dfdbfc10c803",
+      "name": "Identificador de fin"
+    },
+    {
+      "parameters": {
+        "content": "## Sub Workflow con lógica de guardar mensajes \n**Agregar Execute Workflow**\nPasar estos nodos desde consolidar historial hasta  Guardar en QDrant a un workflow independiente. ",
+        "height": 320,
+        "width": 1040
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [
+        1400,
+        1120
+      ],
+      "typeVersion": 1,
+      "id": "9f07ebc8-cbdd-4b91-8a4e-e74de63bf72b",
+      "name": "Sticky Note1"
+    },
+    {
+      "parameters": {
+        "workflowId": {
+          "__rl": true,
+          "value": "vwpEt75joOt3W7Ao",
+          "mode": "list",
+          "cachedResultName": "Agente de Ventas - DEV — Historial"
+        },
+        "workflowInputs": {
+          "mappingMode": "defineBelow",
+          "value": {},
+          "matchingColumns": [],
+          "schema": [],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": true
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.executeWorkflow",
+      "typeVersion": 1.2,
+      "position": [
+        1600,
+        1280
+      ],
+      "id": "2dd3ad71-5d90-4c40-b395-1fac15c8444b",
+      "name": "Llamada a Guardar Mensajes"
+    },
+    {
+      "parameters": {
+        "operation": "send",
+        "phoneNumberId": "700898256429230",
+        "recipientPhoneNumber": "={{ $node[\"Recibir Mensaje\"].json.contacts[0].wa_id }}",
+        "textBody": "={{ $('Agente Principal').item.json.output }}",
+        "additionalFields": {},
+        "path": "2d834196-2c27-4095-a49a-190270891000"
+      },
+      "type": "n8n-nodes-base.whatsApp",
+      "typeVersion": 1,
+      "position": [
+        2100,
+        1960
+      ],
+      "id": "ab839320-c76e-49b7-8edf-f9e9c1719794",
+      "name": "Enviar Mensaje",
+      "webhookId": "2d834196-2c27-4095-a49a-190270891000"
+    },
+    {
+      "parameters": {
+        "model": {
+          "__rl": true,
+          "mode": "list",
+          "value": "gpt-4o-mini"
+        },
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatOpenAi",
+      "typeVersion": 1.2,
+      "position": [
+        -620,
+        600
+      ],
+      "id": "633b8c67-0caa-4694-aeb1-3a4b6fb47a73",
+      "name": "Modelo De Chat"
+    },
+    {
+      "parameters": {
+        "model": {
+          "__rl": true,
+          "value": "gpt-4o-mini",
+          "mode": "list",
+          "cachedResultName": "gpt-4o-mini"
+        },
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatOpenAi",
+      "typeVersion": 1.2,
+      "position": [
+        -1380,
+        540
+      ],
+      "id": "f64757c3-21db-42ac-9b01-37141d928f28",
+      "name": "Modelo De Chat1"
+    },
+    {
+      "parameters": {
+        "model": {
+          "__rl": true,
+          "mode": "list",
+          "value": "gpt-4o-mini"
+        },
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatOpenAi",
+      "typeVersion": 1.2,
+      "position": [
+        360,
+        1160
+      ],
+      "id": "304bbb45-c3f9-4f5f-9420-89189a330dce",
+      "name": "Modelo De Chat2"
+    }
+  ],
+  "connections": {
+    "Simple Memory": {
+      "ai_memory": [
+        [
+          {
+            "node": "Agente Principal",
+            "type": "ai_memory",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Simple Memory1": {
+      "ai_memory": [
+        [
+          {
+            "node": "Agente Identificador",
+            "type": "ai_memory",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Preparar para memoria": {
+      "main": [
+        [
+          {
+            "node": "Code",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code": {
+      "main": [
+        [
+          {
+            "node": "Identificador de fin",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Split Out": {
+      "main": [
+        [
+          {
+            "node": "Switch1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Recibir Audios": {
+      "main": [
+        [
+          {
+            "node": "Descarga de audios",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Transcribir Audios": {
+      "main": [
+        [
+          {
+            "node": "Convertir entrada",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Descarga de audios": {
+      "main": [
+        [
+          {
+            "node": "Transcribir Audios",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Recibir Texto": {
+      "main": [
+        [
+          {
+            "node": "Convertir entrada",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Recibir imagen": {
+      "main": [
+        [
+          {
+            "node": "Descarga de imagen",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Descarga de imagen": {
+      "main": [
+        [
+          {
+            "node": "Leer y transcribir la imagen",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Leer y transcribir la imagen": {
+      "main": [
+        [
+          {
+            "node": "Convertir entrada",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Switch1": {
+      "main": [
+        [
+          {
+            "node": "Recibir Texto",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Recibir Audios",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Recibir imagen",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Recibir Mensaje": {
+      "main": [
+        [
+          {
+            "node": "Split Out",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Agente Identificador": {
+      "main": [
+        [
+          {
+            "node": "Identificador primer mensaje",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Agente Principal": {
+      "main": [
+        [
+          {
+            "node": "Preparar para memoria",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Convertir entrada": {
+      "main": [
+        [
+          {
+            "node": "Agente Identificador",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Identificador primer mensaje": {
+      "main": [
+        [
+          {
+            "node": "Llamada a historial de clientes",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Convertir Entrada",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Llamada a historial de clientes": {
+      "main": [
+        [
+          {
+            "node": "Convertir Entrada",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Convertir Entrada": {
+      "main": [
+        [
+          {
+            "node": "Agente Principal",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Identificador de fin": {
+      "main": [
+        [
+          {
+            "node": "Llamada a Guardar Mensajes",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Enviar Mensaje",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Llamada a Guardar Mensajes": {
+      "main": [
+        [
+          {
+            "node": "Enviar Mensaje",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Modelo De Chat": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "Agente Identificador",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Modelo De Chat1": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "Leer y transcribir la imagen",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Modelo De Chat2": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "Agente Principal",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "nodeGroups": [],
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "staticData": null,
+  "pinData": {},
+  "meta": null,
+  "tags": [],
+  "shared": [
+    {
+      "role": "workflow:owner",
+      "workflowId": "ZKZ67Fb56KJyjkvl",
+      "projectId": "tRHCC8ts4mkRGXGn",
+      "createdAt": "2025-07-09T02:13:00.202Z",
+      "updatedAt": "2025-07-09T02:13:00.202Z"
+    }
+  ],
+  "activeVersion": null
+}
