@@ -1,0 +1,711 @@
+{
+  "id": "SyQJKM6KcH9OBRMV",
+  "name": "Persistencia M5",
+  "active": false,
+  "activeVersionId": null,
+  "createdAt": "2026-07-07T19:45:12.316Z",
+  "updatedAt": "2026-07-24T21:58:48.860Z",
+  "isArchived": false,
+  "versionId": "b7523e1b-2e39-4a22-946d-aaa69b4dc923",
+  "triggerCount": 0,
+  "nodes": [
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "SELECT commerce.create_transaction(\n    'yoeco', -- business_id\n    'session_demo_999', -- session_id\n    'user_demo_123', -- user_id\n    'COP', -- currency\n    '{\"channel\": \"whatsapp\"}'::jsonb, -- metadata\n    '[{\"product_id\": \"YE-202605\", \"sku\": \"YE-202605\", \"name\": \"Termo de Bambú YoEco – 500 ML\", \"quantity\": 1, \"unit_price\": 90000}]'::jsonb -- items\n) AS transaction_id;",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [
+        448,
+        144
+      ],
+      "id": "bb559db4-c421-4c28-8247-9aed260fa7e5",
+      "name": "Execute a SQL query",
+      "credentials": {
+        "postgres": {
+          "id": "YQQz8BhJGmfwa1CY",
+          "name": "Postgres account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "resource": "fileFolder",
+        "queryString": "DALIA_M5_Documents",
+        "filter": {
+          "folderId": {
+            "mode": "list",
+            "value": "root",
+            "cachedResultName": "/ (Root folder)"
+          }
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleDrive",
+      "typeVersion": 3,
+      "position": [
+        1040,
+        160
+      ],
+      "id": "9f8ce3bb-c0c7-40dc-bd06-984af875ff10",
+      "name": "Search files and folders",
+      "credentials": {
+        "googleDriveOAuth2Api": {
+          "id": "55RafwUzcXl8phIg",
+          "name": "Google Drive account 3"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "resource": "folder",
+        "name": "=Trx_{{ $('Execute a SQL query').item.json.create_transaction }}",
+        "driveId": {
+          "__rl": true,
+          "mode": "list",
+          "value": "My Drive"
+        },
+        "folderId": {
+          "__rl": true,
+          "value": "1OokHv7Tko2p-vIkXamklQt3ow7Ir-dam",
+          "mode": "id"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleDrive",
+      "typeVersion": 3,
+      "position": [
+        1248,
+        160
+      ],
+      "id": "ec00839f-ea40-4155-b60a-ec877cb2fbc5",
+      "name": "Create folder",
+      "credentials": {
+        "googleDriveOAuth2Api": {
+          "id": "55RafwUzcXl8phIg",
+          "name": "Google Drive account 3"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "insert into commerce.documents (\n    transaction_id,\n    document_type,\n    drive_file_id,       -- Column obligatoria añadida\n    drive_folder_id,\n    drive_url,\n    file_name,\n    mime_type\n) values (\n    '{{ $('Execute a SQL query').item.json.create_transaction }}'::uuid,\n    'transaction_folder'::text,\n    '{{ $('Create folder').item.json.id }}'::text, -- Usamos el ID aquí también\n    '{{ $('Create folder').item.json.id }}'::text,\n    'https://drive.google.com/drive/folders/{{ $('Create folder').item.json.id }}'::text,\n    '{{ $('Create folder').item.json.name }}'::text,\n    'application/vnd.google-apps.folder'::text\n);",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [
+        1456,
+        160
+      ],
+      "id": "b46e7ec1-4d65-4590-bb1e-8c5e2a326ed3",
+      "name": "Execute a SQL query1",
+      "credentials": {
+        "postgres": {
+          "id": "YQQz8BhJGmfwa1CY",
+          "name": "Postgres account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const input = items[0]?.json || {};\n\n// Datos de prueba para probar la rama directamente en n8n\nreturn [{\n  json: {\n    business_id: input.business_id || 'yoeco',\n    transaction_id: input.transaction_id || 'txn_demo_prueba',\n    document_type: input.document_type || 'invoice', // invoice, receipt, shipping, evidence\n    file_name: input.file_name || 'factura_demo_FV001.pdf',\n    mime_type: input.mime_type || 'application/pdf',\n    // Reemplaza esto con el ID real de tu carpeta raíz DALIA_M5_Documents\n    root_folder_id: '1OokHv7Tko2p-vIkXamklQt3ow7Ir-dam' \n  }\n}];\n"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        384,
+        416
+      ],
+      "id": "89065774-c172-49b4-8839-f5aaf0c46ac7",
+      "name": "Prepare Upload Data"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "905f17f1-095a-4fb3-ba1c-c5988dac94b8",
+              "leftValue": "={{ $json.id }}",
+              "rightValue": "",
+              "operator": {
+                "type": "string",
+                "operation": "notEmpty",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        816,
+        464
+      ],
+      "id": "acbb402b-385d-4c21-ad29-9f688b4b406c",
+      "name": "Business Folder Exists?"
+    },
+    {
+      "parameters": {
+        "resource": "folder",
+        "name": "={{ $('Prepare Upload Data').item.json.business_id }}",
+        "driveId": {
+          "__rl": true,
+          "mode": "list",
+          "value": "My Drive"
+        },
+        "folderId": {
+          "__rl": true,
+          "value": "1OokHv7Tko2p-vIkXamklQt3ow7Ir-dam",
+          "mode": "list",
+          "cachedResultName": "DALIA_M5_Documents",
+          "cachedResultUrl": "https://drive.google.com/drive/folders/1OokHv7Tko2p-vIkXamklQt3ow7Ir-dam"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleDrive",
+      "typeVersion": 3,
+      "position": [
+        1024,
+        576
+      ],
+      "id": "95d2d1f0-f4be-41f9-b65e-923280e7eee5",
+      "name": "Create Business Folder",
+      "credentials": {
+        "googleDriveOAuth2Api": {
+          "id": "55RafwUzcXl8phIg",
+          "name": "Google Drive account 3"
+        }
+      }
+    },
+    {
+      "parameters": {},
+      "type": "n8n-nodes-base.merge",
+      "typeVersion": 3.2,
+      "position": [
+        1232,
+        448
+      ],
+      "id": "b2b87404-e477-4172-a24a-701766a2504b",
+      "name": "Merge"
+    },
+    {
+      "parameters": {
+        "resource": "fileFolder",
+        "searchMethod": "query",
+        "queryString": "=name = '{{ $('Prepare Upload Data').item.json.transaction_id }}' and '{{ $json.id }}' in parents and trashed = false",
+        "filter": {},
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleDrive",
+      "typeVersion": 3,
+      "position": [
+        1440,
+        448
+      ],
+      "id": "cb9468e4-7ff3-4236-bf8d-3ea852c50df1",
+      "name": "Search Transaction Folder",
+      "alwaysOutputData": true,
+      "credentials": {
+        "googleDriveOAuth2Api": {
+          "id": "55RafwUzcXl8phIg",
+          "name": "Google Drive account 3"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "d91b4f19-b168-4625-8f1e-44498f5ba390",
+              "leftValue": "={{ $json.id }}",
+              "rightValue": "",
+              "operator": {
+                "type": "string",
+                "operation": "notEmpty",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        1648,
+        448
+      ],
+      "id": "f055f1da-4741-49fc-86b5-890edd0006af",
+      "name": "Transaction Folder Exists?"
+    },
+    {
+      "parameters": {
+        "resource": "folder",
+        "name": "={{ $('Prepare Upload Data').item.json.transaction_id }}",
+        "driveId": {
+          "__rl": true,
+          "mode": "list",
+          "value": "My Drive"
+        },
+        "folderId": {
+          "__rl": true,
+          "value": "={{ $('Merge').item.json.id }}",
+          "mode": "id"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleDrive",
+      "typeVersion": 3,
+      "position": [
+        1856,
+        544
+      ],
+      "id": "945eb511-5ce7-472a-ab95-6b3fd39f72d1",
+      "name": "Create Transaction Folder",
+      "credentials": {
+        "googleDriveOAuth2Api": {
+          "id": "55RafwUzcXl8phIg",
+          "name": "Google Drive account 3"
+        }
+      }
+    },
+    {
+      "parameters": {},
+      "type": "n8n-nodes-base.merge",
+      "typeVersion": 3.2,
+      "position": [
+        2096,
+        400
+      ],
+      "id": "ca3565f2-d6c8-4856-9be7-3a268eea8acb",
+      "name": "Merge1"
+    },
+    {
+      "parameters": {
+        "resource": "fileFolder",
+        "searchMethod": "query",
+        "queryString": "=name = '{{ $('Prepare Upload Data').item.json.document_type + 's' }}' and '{{ $json.id }}' in parents and trashed = false",
+        "filter": {},
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleDrive",
+      "typeVersion": 3,
+      "position": [
+        2304,
+        400
+      ],
+      "id": "0b4efa6a-052e-4613-ab6c-e69b524e58e7",
+      "name": "Search Document Subfolder",
+      "alwaysOutputData": true,
+      "credentials": {
+        "googleDriveOAuth2Api": {
+          "id": "55RafwUzcXl8phIg",
+          "name": "Google Drive account 3"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "283c4ce7-f9e8-4aa6-b96b-7cd0a34c52a0",
+              "leftValue": "={{ $json.id }}",
+              "rightValue": "",
+              "operator": {
+                "type": "string",
+                "operation": "notEmpty",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        2512,
+        400
+      ],
+      "id": "bd2328e0-020a-4d62-aec2-c9cb2f869e9f",
+      "name": "Subfolder Exists?"
+    },
+    {
+      "parameters": {
+        "resource": "folder",
+        "name": "={{ $('Prepare Upload Data').item.json.document_type + 's' }}",
+        "driveId": {
+          "__rl": true,
+          "mode": "list",
+          "value": "My Drive"
+        },
+        "folderId": {
+          "__rl": true,
+          "value": "={{ $('Merge1').item.json.id }}",
+          "mode": "id"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleDrive",
+      "typeVersion": 3,
+      "position": [
+        2720,
+        496
+      ],
+      "id": "f5b4c5c6-9f39-4ad4-b8bd-8a2ca95c5760",
+      "name": "Create Document Subfolder",
+      "credentials": {
+        "googleDriveOAuth2Api": {
+          "id": "55RafwUzcXl8phIg",
+          "name": "Google Drive account 3"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "name": "={{ $('Prepare Upload Data').first().json.file_name }}",
+        "driveId": {
+          "__rl": true,
+          "mode": "list",
+          "value": "My Drive"
+        },
+        "folderId": {
+          "__rl": true,
+          "value": "={{ $json.id }}",
+          "mode": "id"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleDrive",
+      "typeVersion": 3,
+      "position": [
+        3136,
+        352
+      ],
+      "id": "5a90fb7b-89f5-497d-a3be-d99bb7a3af1a",
+      "name": "Upload File to Drive",
+      "credentials": {
+        "googleDriveOAuth2Api": {
+          "id": "55RafwUzcXl8phIg",
+          "name": "Google Drive account 3"
+        }
+      },
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "INSERT INTO commerce.documents (\n    transaction_id,\n    document_type,\n    drive_file_id,\n    drive_folder_id,\n    drive_url,\n    file_name,\n    mime_type,\n    metadata\n)\nVALUES (\n    $1,\n    $2,\n    $3,\n    $4,\n    $5,\n    $6,\n    $7,\n    $8::jsonb\n)\nRETURNING *;",
+        "options": {
+          "queryReplacement": "={{ [   $('Prepare Upload Data').first().json.transaction_id,   $('Prepare Upload Data').first().json.document_type,   $('Upload File to Drive').first().json.id,   $('Upload File to Drive').first().json.parents[0],   $('Upload File to Drive').first().json.webViewLink,   $('Prepare Upload Data').first().json.file_name,   $('Prepare Upload Data').first().json.mime_type,   JSON.stringify({ \"source\": \"n8n_uploader_flow\" }) ] }}"
+        }
+      },
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [
+        3344,
+        352
+      ],
+      "id": "9da2cd7a-2df7-4c53-b66d-2e1e0bbfafc0",
+      "name": "Register Document in Supabase",
+      "credentials": {
+        "postgres": {
+          "id": "YQQz8BhJGmfwa1CY",
+          "name": "Postgres account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "resource": "fileFolder",
+        "searchMethod": "query",
+        "queryString": "=name = '{{ $json.business_id }}' and '{{ $json.root_folder_id }}' in parents and trashed = false",
+        "filter": {},
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleDrive",
+      "typeVersion": 3,
+      "position": [
+        608,
+        480
+      ],
+      "id": "07980044-106d-482a-9b03-d1f5547a3ffa",
+      "name": "Search Business Folder",
+      "alwaysOutputData": true,
+      "credentials": {
+        "googleDriveOAuth2Api": {
+          "id": "55RafwUzcXl8phIg",
+          "name": "Google Drive account 3"
+        }
+      },
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {},
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [
+        144,
+        416
+      ],
+      "id": "896e0b7c-9617-4052-9edd-8ed01a5fde76",
+      "name": "When clicking ‘Execute workflow’"
+    }
+  ],
+  "connections": {
+    "Search files and folders": {
+      "main": [
+        [
+          {
+            "node": "Create folder",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Execute a SQL query": {
+      "main": [
+        []
+      ]
+    },
+    "Create folder": {
+      "main": [
+        [
+          {
+            "node": "Execute a SQL query1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Prepare Upload Data": {
+      "main": [
+        [
+          {
+            "node": "Search Business Folder",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Business Folder Exists?": {
+      "main": [
+        [
+          {
+            "node": "Merge",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Create Business Folder",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Create Business Folder": {
+      "main": [
+        [
+          {
+            "node": "Merge",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Merge": {
+      "main": [
+        [
+          {
+            "node": "Search Transaction Folder",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Search Transaction Folder": {
+      "main": [
+        [
+          {
+            "node": "Transaction Folder Exists?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Transaction Folder Exists?": {
+      "main": [
+        [
+          {
+            "node": "Merge1",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Create Transaction Folder",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Create Transaction Folder": {
+      "main": [
+        [
+          {
+            "node": "Merge1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Merge1": {
+      "main": [
+        [
+          {
+            "node": "Search Document Subfolder",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Search Document Subfolder": {
+      "main": [
+        [
+          {
+            "node": "Subfolder Exists?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Subfolder Exists?": {
+      "main": [
+        [
+          {
+            "node": "Upload File to Drive",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Create Document Subfolder",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Create Document Subfolder": {
+      "main": [
+        [
+          {
+            "node": "Upload File to Drive",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Upload File to Drive": {
+      "main": [
+        [
+          {
+            "node": "Register Document in Supabase",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Search Business Folder": {
+      "main": [
+        [
+          {
+            "node": "Business Folder Exists?",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        []
+      ]
+    },
+    "When clicking ‘Execute workflow’": {
+      "main": [
+        [
+          {
+            "node": "Prepare Upload Data",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "nodeGroups": [],
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate",
+    "availableInMCP": false
+  },
+  "staticData": null,
+  "pinData": {},
+  "meta": {
+    "templateCredsSetupCompleted": true
+  },
+  "tags": [],
+  "shared": [
+    {
+      "role": "workflow:owner",
+      "workflowId": "SyQJKM6KcH9OBRMV",
+      "projectId": "8h8pwWGcWlnGEym3",
+      "createdAt": "2026-07-07T19:45:12.317Z",
+      "updatedAt": "2026-07-07T19:45:12.317Z"
+    }
+  ],
+  "activeVersion": null
+}
