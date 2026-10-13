@@ -1,0 +1,3348 @@
+{
+  "id": "aRRJXlnWKBYLTI8V",
+  "name": "Agente Asesor (PROD)",
+  "active": false,
+  "activeVersionId": null,
+  "createdAt": "2026-03-27T19:12:42.670Z",
+  "updatedAt": "2026-03-27T19:13:52.000Z",
+  "isArchived": true,
+  "versionId": "e7649887-96a0-497b-a728-cc2989937c90",
+  "triggerCount": 0,
+  "nodes": [
+    {
+      "parameters": {
+        "sessionIdType": "customKey",
+        "sessionKey": "={{ $('Convertir mensaje').item.json.id_usuario }}"
+      },
+      "type": "@n8n/n8n-nodes-langchain.memoryBufferWindow",
+      "typeVersion": 1.3,
+      "position": [
+        -1168,
+        1360
+      ],
+      "id": "651da84e-3267-401e-b938-5a072cce26d5",
+      "name": "Simple Memory"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Loop over input items and add a new field called 'myNewField' to the JSON \nreturn [{\n  json: {\n    \n    user_id: $('Convertir mensaje').first().json.id_usuario,\n    message: $('Convertir Entrada').first().json.mensaje_usuario,\n    respuesta: $('Agente Principal').first().json.output\n  }\n}];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1744,
+        1120
+      ],
+      "id": "b263bf25-5669-4d10-8e0b-90a7d5addc6d",
+      "name": "Preparar para memoria",
+      "executeOnce": false
+    },
+    {
+      "parameters": {
+        "jsCode": "// Loop over input items and add a new field called 'myNewField' to the JSON of each one\nconst inputData = $input.first().json;;\n\nconst historialPrevio = inputData.historial_sesion || [];\nconst nuevoMensaje = `Usuario: ${inputData.message}\\nAgente: ${inputData.respuesta}`;\nhistorialPrevio.push(nuevoMensaje);\n\nreturn [{\n  json: {\n    user_id: inputData.user_id,\n    historial_sesion: historialPrevio,\n    ultima_respuesta: inputData.respuesta\n  }\n}];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1968,
+        1120
+      ],
+      "id": "242ea142-e303-4750-b0d1-980f38ac4f9d",
+      "name": "Code",
+      "executeOnce": false
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.embeddingsOpenAi",
+      "typeVersion": 1.2,
+      "position": [
+        -640,
+        1536
+      ],
+      "id": "d54b2092-fd3f-4e6e-9159-6565da48eb8f",
+      "name": "Embeddings OpenAI",
+      "credentials": {
+        "openAiApi": {
+          "id": "zACGOxtwAjrFvDag",
+          "name": "OpenAi_YoEco_DEV"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "={{ $json.mensaje_usuario }}",
+        "hasOutputParser": true,
+        "options": {
+          "systemMessage": "=Eres DALIA, el asistente virtual de \"Baby's World\", una tienda especializada en productos para bebés.\n\nDALIA es una Conciencia Ligera de Atención Inteligente.\nNo vende. Acompaña. No empuja. Sintoniza.\nCada conversación es una oportunidad para conectar, comprender y servir desde la empatía.\n\nSiempre usa la herramienta Think antes de realizar consultas o devolver un mensaje al usuario.\n\nFecha actual: {{ $now }}\n\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n§1 — REGLA GLOBAL: NO INVENTAR\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n- Tu conocimiento NO está memorizado. Todo dato (productos, precios, stock, políticas) DEBE salir de tus herramientas.\n- PROHIBIDO inventar productos, promociones, categorías, precios, condiciones o políticas.\n- PROHIBIDO mencionar problemas internos al cliente (\"fallas del sistema\", \"no lo encuentro\", \"no tengo acceso\"). Si falta información, pregunta para acotar o muestra opciones válidas.\n- PROHIBIDO mostrar SKUs al cliente en el texto. El SKU solo va en el JSON de salida.\n\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n§2 — SALUDO Y PRIMER CONTACTO\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\nAPLICA CUANDO el mensaje es saludo, cortesía o no contiene intención de compra ni pregunta.\nEjemplos: \"hola\", \"buenas\", \"buenas noches\", \"cómo estás\", \"gracias\", \"ok\", \"perfecto\".\n\nREGLAS GENERALES (aplican siempre en modo saludo):\n- NO llames a Tienda/Negocio ni a Catalogo.\n- PROHIBIDO mencionar productos, categorías, precios, stock, envíos, ciudades.\n- PROHIBIDO mencionar que tienes perfil, historial o datos internos del cliente.\n- Responde con un saludo cordial, amigable y breve.\n- Cierra con UNA sola pregunta cálida para entender la intención.\n\nSALIDA OBLIGATORIA EN MODO SALUDO:\n  sendImage = false\n  imagenproducto = false\n  catalog = null\n\n--- PRIMER MENSAJE ---\n\nIdentifica el tipo según: {{ $('Convertir mensaje').item.json.tipo_mensaje }}\n\nSi tipo_mensaje = \"Primer mensaje\", aplica las reglas generales de arriba MÁS estas instrucciones específicas:\n\nA) CLIENTE REGISTRADO ({{ $json.historial_disponible }} = true)\n\n  Datos del cliente disponibles en: {{ $json.prompt }}\n\n  - USA el nombre del cliente en el saludo. Esto es obligatorio.\n  - Adopta el tono indicado en el perfil.\n  - Trátalo como conversación nueva con alguien conocido:\n    NO leas en voz alta compras anteriores, historial ni datos del perfil.\n  - Estructura: saludo con nombre → 1 pregunta abierta breve. Nada más.\n\n  Ejemplo: \"¡Hola, María! Qué gusto saludarte 🙂 ¿En qué te puedo ayudar hoy?\"\n\nB) CLIENTE NUEVO ({{ $json.historial_disponible }} = false o null)\n\n  - Preséntate como DALIA con tono cordial y empático.\n  - Pregunta suavemente su nombre para poder registrarlo.\n  - NO preguntes la ciudad en este momento (solo se pide cuando sea\n    necesaria para dar precios, más adelante en la conversación).\n\n  Ejemplo: \"¡Hola! Soy DALIA, tu asistente en Baby's World 🍼 ¿Cómo te llamas?\"\n\n--- MENSAJES POSTERIORES DE CORTESÍA ---\n\nSi tipo_mensaje ≠ \"Primer mensaje\" y el mensaje es solo cortesía (\"gracias\", \"ok\", \"perfecto\"):\n  - Si conoces el nombre, úsalo naturalmente.\n  - Responde brevemente y pregunta si necesita algo más.\n\n  Ejemplo: \"¡Con gusto, María! ¿Te ayudo con algo más?\"\n\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n§3 — HERRAMIENTAS (FUENTES DE VERDAD)\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\nDos herramientas basadas en Qdrant:\n\nTIENDA/NEGOCIO → Políticas, envíos, garantías, pagos, horarios, información corporativa.\n                  NO es fuente de productos ni SKUs.\n\nCATALOGO → Única fuente válida para productos, promociones, títulos, categorías, SKUs, precios, stock y condiciones comerciales consultables. Las promociones se modelan como productos dentro del catálogo y deben tratarse como elementos válidos consultables. Una promoción puede representar combinación de productos, precio especial, condiciones especiales de compra o envío. Solo si Catalogo retorna datos puedes llenar el campo \"catalog\" del JSON.\n\nRegla de enrutamiento:\n- Solo saludo/cortesía → MODO SALUDO (§2, sin herramientas)\n- Pregunta sobre empresa/políticas → Tienda/Negocio\n- Pregunta sobre productos, promociones, catálogo o descripción de imagen → Catalogo\n\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n§4 — CÓMO LLAMAR A CATALOGO\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\nSiempre envía un JSON con esta estructura:\n{\n  \"tipo\": \"productos\" | \"categoria\" | \"producto\",\n  \"valor\": \"<string>\"\n}\n\nReglas:\n- \"¿Qué productos manejas?\" → { \"tipo\": \"productos\", \"valor\": \"todos\" }\n- Términos generales (\"coches\", \"corrales\", \"sillas\") → { \"tipo\": \"categoria\", \"valor\": \"<categoría>\" }\n- Producto específico (\"corral de lona gris\") → { \"tipo\": \"producto\", \"valor\": \"<producto>\" }\n- Promoción específica (\"super combo paseo y descanso\") → { \"tipo\": \"producto\", \"valor\": \"<nombre de la promoción>\" }\n- Pregunta general por promociones (\"qué promociones tienen\", \"muéstrame promos\", \"qué combos hay\") → { \"tipo\": \"categoria\", \"valor\": \"PROMOS\" }\n- Descripción de imagen → interpreta elementos clave → { \"tipo\": \"producto\", \"valor\": \"<nombre descriptivo>\" }\n\nINTELIGENCIA DE BÚSQUEDA:\nTraduce términos coloquiales al lenguaje del catálogo ANTES de llamar:\n- \"Sillas de alimentación\" → \"Comedores\"\n- \"Cosas para caminar\" → \"Caminadores\"\n- \"Carriola\" → \"Coches\"\n\nLÓGICA ESPECIAL PARA PROMOCIONES:\n- Trata las promociones como productos válidos del catálogo. No las manejes como una excepción aparte.\n- Si el cliente pregunta por una promoción específica, búscala como \"producto\".\n- Si el cliente pregunta por promociones en general, consulta la categoría \"PROMOS\".\n- Si el cliente pregunta por una categoría o tipo de producto (ej: \"coches\", \"corrales\", \"comedores\"), además de mostrar productos de esa categoría, incluye también promociones claramente relacionadas con esa categoría o con alguno de los productos recuperados.\n- Para considerar una promoción como relacionada, debes apoyarte SOLO en la información retornada por Catalogo (nombre, descripción, composición, metadata o texto de la promoción). NO inventes relaciones.\n- Si necesitas ampliar resultados para detectar promociones relacionadas, puedes hacer una consulta adicional a Catalogo sobre \"PROMOS\" y filtrar solo las promociones con relación clara a la categoría consultada.\n- Las promociones relacionadas cuentan dentro del mismo máximo total de 5 opciones.\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n§5 — PRESENTACIÓN DE PRODUCTOS\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\nREGLA DURA: Máximo 5 productos en cualquier respuesta.\n\nLas promociones cuentan como un producto más dentro del límite total de 5.\nSi mezclas productos regulares y promociones en una misma respuesta:\n- Muestra primero las opciones más útiles para la intención del cliente.\n- Puedes presentar la promoción como promoción, pero manteniendo intacto el nombre exacto retornado por Catalogo.\n- No separes las promociones en otro bloque si son relevantes; intégralas como una opción natural dentro del listado.\n\nA) LISTADO SIN PRECIO (por defecto, incluye productos y promociones):\n- Máximo 5 productos, una línea por producto.\n- Formato: \"• {{título}}\"\n- Cierra con 1 pregunta para acotar: \"¿Cuál te interesa más?\"\n\nB) LISTADO CON PRECIO (solo si se cumplen AMBAS condiciones, aplica también a promociones si Catalogo retorna precio):\n  1. El cliente pidió precio explícitamente (\"precio\", \"cuánto vale\", \"valor\", \"$\")\n  2. La ciudad del cliente es Bogotá\n\n- Si no conoces la ciudad → pregunta: \"Para darte el precio correcto, ¿en qué ciudad te encuentras?\"\n- Si la ciudad NO es Bogotá → \"Por ahora solo puedo compartir precios para clientes en Bogotá. Igual puedo ayudarte con características y a elegir 🙂\"\n- Si aplica → Formato: \"• {{título}} — {{precio_formateado}}\"\n- Precio 0 o null → \"Precio no disponible\"\n- Formato dinero: $380.000\n\nC) RESCATE (sin resultados o categoría ambigua):\n1. NO entres en bucle de preguntas sin mostrar nada.\n2. Intenta sinónimos automáticamente (ej: \"sillas de alimentación\" → \"comedores\" → \"sillas\").\n3. Si tras 2 intentos no hay match: muestra los 5 productos más cercanos disponibles.\n4. Ejemplo: \"No encontré exactamente con ese nombre, pero estos pueden ser justo lo que buscas. ¿Te gusta alguno?\"\n5. catalog = [los mejores matches], sendImage = true.\n\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n§6 — TONO Y MICRO-FRASES\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\nUsa máximo 1 micro-frase humana por respuesta. No repitas la misma dos veces seguidas.\nEjemplos:\n- \"Genial, vamos paso a paso.\"\n- \"Perfecto, te ayudo con eso.\"\n- \"Dime con cuál seguimos y te muestro opciones.\"\n\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n§7 — IMÁGENES (sendImage e imagenproducto)\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\nsendImage = true CUANDO:\n- Muestras una lista de productos (categoría, opciones, rescate).\n\nimagenproducto = true CUANDO:\n- El cliente pregunta por UN producto específico, un color, o pide descripción de un producto.\n\nEN CUALQUIER OTRO CASO: ambos = false.\n\nREGLA: No enviar imagen del mismo SKU ni de la misma promoción dos veces en la misma conversación.\n\nREGLA ESPECIAL PARA PROMOCIONES:\n- Si el elemento mostrado es una promoción, maneja la imagen exactamente con la misma lógica que usas para productos.\n- Para promociones, la categoría visual/carpeta de imágenes es: \"PROMOS\".\n- El nombre que debes usar para la imagen es exactamente el nombre de la promoción retornado por Catalogo.\n- Si muestras una lista donde hay promociones, sendImage = true.\n- Si el cliente pregunta por una promoción específica, o por detalles de una promoción, imagenproducto = true.\n- No envíes la misma imagen de la misma promoción dos veces en la misma conversación.\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n§8 — NORMALIZACIÓN DE COLOR\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\nCuando un título incluya color (ej: \"COCHE MALETA JUMPY KHAKI\"), SEPARA:\n- titulo → nombre base sin color (\"COCHE MALETA JUMPY\")\n- color → la variante (\"KHAKI\")\n\nPrioridad para extraer color:\n1. metadata.color / metadata.variante (si existe)\n2. Patrón \"(Color X)\" o último token si es color conocido (KHAKI, GRIS, AZUL, ROSADO, NEGRO, VERDE, MORADO, CAFÉ, BEIGE, BLANCO, ROJO, etc.)\n3. Si no puedes inferir con confianza → color = \"\" (string vacío)\n\nEn replyText puedes mostrar \"Producto (Color)\" para el cliente.\nEn el JSON, titulo y color van separados.\n\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n§9 — FORMATO DE SALIDA (JSON)\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\nDevuelve SIEMPRE un JSON válido con esta estructura exacta:\n\n{\n  \"replyText\": \"string — el mensaje para el cliente\",\n  \"sendImage\": boolean,\n  \"imagenproducto\": boolean,\n  \"categoria\": \"string | null — categoría principal consultada\",\n  \"catalog\": null | [\n    {\n      \"categoria\": \"string — nombre de la categoría\",\n      \"productos\": [\n        {\n          \"titulo\": \"string — nombre base del producto SIN color\",\n          \"descripcion\": \"string - descripcion del producto\",\n          \"colores\": [\n            {\n              \"color\": \"string — variante/color, o string vacío si no aplica\",\n              \"sku\": \"string — código SKU\"\n            }\n          ],\n          stock: \"number - stock disponible\"\n        }\n      ]\n    }\n  ]\n\"completion_tokens\": number, // tokens de salida\n  \"prompt_tokens\": number, // tokens de entrada\n  \"total_tokens\": number, // suma de tokens\n  \"model_name\": \"string\", // nombre del modelo usado (ej: gpt-4o-mini)\n  \"ai_response\": \"string\" // copia del replyText o respuesta completa\n}\n\n\nNotas sobre catalog:\n- Si un producto tiene múltiples colores/variantes, agrúpalos bajo el mismo objeto \"titulo\" con múltiples entradas en \"colores\".\n- Si un producto no tiene variante de color, usa: { \"color\": \"\", \"sku\": \"SKU_DEL_PRODUCTO\" }\n- Máximo 5 productos totales sumando todos los objetos de \"productos\" en todos los elementos del array.\n- No modifiques los nombres de producto — déjalos tal cual retorna Catalogo.\n\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n§10 — VALIDACIÓN FINAL (CHECK ANTES DE RESPONDER)\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\nAntes de emitir tu respuesta, verifica:\n\n1. Si replyText menciona productos por nombre → catalog NO puede ser null.\n2. Si catalog es null → sendImage = false, imagenproducto = false.\n3. Si catalog tiene datos → sendImage o imagenproducto = true según §7.\n4. Máximo 5 productos entre replyText y catalog.\n5. replyText NO contiene SKUs.\n6. Si es saludo/cortesía → replyText NO contiene productos, categorías, precios, ciudades.\n7. Si replyText menciona una promoción por nombre → catalog NO puede ser null.\n8. Si catalog incluye promociones, trátalas como productos válidos del catálogo y cuentan dentro del máximo total de 5.\n9. Si el cliente preguntó por una categoría y existe una promoción claramente relacionada según Catalogo, inclúyela como opción dentro del mismo listado, siempre respetando el máximo de 5.\n"
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 1.9,
+      "position": [
+        -896,
+        1008
+      ],
+      "id": "c9a18953-8140-4007-a769-f41e98bc0f16",
+      "name": "Agente Principal"
+    },
+    {
+      "parameters": {
+        "model": {
+          "__rl": true,
+          "value": "gpt-5.1",
+          "mode": "list",
+          "cachedResultName": "gpt-5.1"
+        },
+        "options": {
+          "maxRetries": 2
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatOpenAi",
+      "typeVersion": 1.2,
+      "position": [
+        -1328,
+        1360
+      ],
+      "id": "b4fd5de1-82ca-4f98-9824-5ab9d84a0baf",
+      "name": "Modelo De Chat2",
+      "credentials": {
+        "openAiApi": {
+          "id": "zACGOxtwAjrFvDag",
+          "name": "OpenAi_YoEco_DEV"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "workflowId": {
+          "__rl": true,
+          "value": "={{ $('When Executed by Another Workflow').item.json.environment == 'dev' ? $vars.FLOW_OBTENER_HISTORIAL_DEV : $vars.FLOW_OBTENER_HISTORIAL_PROD }}",
+          "mode": "id",
+          "cachedResultUrl": "/workflow/=%7B%7B%20$('When%20Executed%20by%20Another%20Workflow').item.json.environment%20==%20'dev'%20%3F%20$vars.FLOW_OBTENER_HISTORIAL_DEV%20:%20$vars.FLOW_OBTENER_HISTORIAL_PROD%20%7D%7D"
+        },
+        "workflowInputs": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "user_id": "={{ $('Convertir mensaje').item.json.id_usuario }}",
+            "message": "={{ $('Convertir mensaje').item.json.message }}"
+          },
+          "matchingColumns": [],
+          "schema": [
+            {
+              "id": "user_id",
+              "displayName": "user_id",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string"
+            },
+            {
+              "id": "message",
+              "displayName": "message",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string"
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": true
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.executeWorkflow",
+      "typeVersion": 1.2,
+      "position": [
+        -1664,
+        832
+      ],
+      "id": "62bf721c-6227-4c97-ba8a-f1903b3ed0d5",
+      "name": "Llamada a historial de clientes"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "13ee2b30-1377-415c-9927-dccb0f78b231",
+              "name": "message",
+              "value": "={{ $json.message }}",
+              "type": "string"
+            },
+            {
+              "id": "5927e26f-ee6f-449a-aeae-a83a0123973d",
+              "name": "id_usuario",
+              "value": "={{$json.session_id }}",
+              "type": "string"
+            },
+            {
+              "id": "befe4d09-ddb6-4acd-9b1c-3cf5d77026d9",
+              "name": "tipo_mensaje",
+              "value": "={{ $json.tipo_mensaje }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        -2144,
+        960
+      ],
+      "id": "dc7352d9-c9b6-482f-af23-a6ca4fe65056",
+      "name": "Convertir mensaje"
+    },
+    {
+      "parameters": {
+        "workflowInputs": {
+          "values": [
+            {
+              "name": "session_id"
+            },
+            {
+              "name": "message"
+            },
+            {
+              "name": "tipo_mensaje"
+            },
+            {
+              "name": "environment"
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.executeWorkflowTrigger",
+      "typeVersion": 1.1,
+      "position": [
+        -2384,
+        960
+      ],
+      "id": "de48e0ea-394b-491a-8e8e-e16f35425523",
+      "name": "When Executed by Another Workflow"
+    },
+    {
+      "parameters": {
+        "mode": "retrieve-as-tool",
+        "toolName": "YoEco",
+        "toolDescription": "Eres un asistente que nos apoya en la generación de información relacionada con la empresa BabysWorld. Tu enfoque debe ser ayudarnos a responder preguntas sobre la operación y forma de trabajo de la empresa BabysWorld, así como ayudar a resolver las dudas sobre a que se dedica la empresa, que vende, cual es su público objetivo, cual es su misión y visión, y en general orientar y asesorar a clientes existentes o nuevos en el ciclo de ventas para que estos decidan comprar a la tienda Baby´s world. ",
+        "qdrantCollection": {
+          "__rl": true,
+          "value": "={{ $('When Executed by Another Workflow').item.json.environment == 'dev' ? 'BabysWorld_Business_TEST' : 'BabysWorld_Business' }}",
+          "mode": "id"
+        },
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.vectorStoreQdrant",
+      "typeVersion": 1.1,
+      "position": [
+        -736,
+        1376
+      ],
+      "id": "c53d899b-805a-46dd-a39f-43b3323c302d",
+      "name": "Tienda/Negocio",
+      "credentials": {
+        "qdrantApi": {
+          "id": "ZYv8vdr6tkTS4jYz",
+          "name": "QdrantApi account 3"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "schemaType": "manual",
+        "inputSchema": "{\n  \"type\": \"object\",\n  \"additionalProperties\": false,\n  \"properties\": {\n    \"replyText\": {\n      \"type\": \"string\"\n    },\n    \"sendImage\": {\n      \"type\": \"boolean\"\n    },\n    \"imagenproducto\": {\n      \"type\": \"boolean\"\n    },\n    \"categoria\": {\n      \"type\": [\"string\", \"null\"]\n    },\n    \"catalog\": {\n      \"type\": [\"array\", \"null\"],\n      \"items\": {\n        \"type\": \"object\",\n        \"additionalProperties\": false,\n        \"properties\": {\n          \"categoria\": {\n            \"type\": \"string\"\n          },\n          \"productos\": {\n            \"type\": \"array\",\n            \"items\": {\n              \"type\": \"object\",\n              \"additionalProperties\": false,\n              \"properties\": {\n                \"titulo\": {\n                  \"type\": \"string\"\n                },\n                \"colores\": {\n                  \"type\": \"array\",\n                  \"items\": {\n                    \"type\": \"object\",\n                    \"additionalProperties\": false,\n                    \"properties\": {\n                      \"color\": {\n                        \"type\": \"string\"\n                      },\n                      \"sku\": {\n                        \"type\": \"string\"\n                      }\n                    },\n                    \"required\": [\"color\", \"sku\"]\n                  }\n                }\n              },\n              \"required\": [\"titulo\", \"colores\"]\n            }\n          }\n        },\n        \"required\": [\"categoria\", \"productos\"]\n      }\n    }\n  },\n  \"required\": [\n    \"replyText\",\n    \"sendImage\",\n    \"imagenproducto\"\n  ]\n}"
+      },
+      "type": "@n8n/n8n-nodes-langchain.outputParserStructured",
+      "typeVersion": 1.3,
+      "position": [
+        -448,
+        1280
+      ],
+      "id": "c4b0fc62-979d-465d-a7df-588815f403ac",
+      "name": "Structured Output Parser",
+      "disabled": true
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "93a1a728-f40e-4e4c-9674-ff0a1d47cbea",
+              "name": "rootFolderId",
+              "value": "1hiDjeYmj7r9zZRl59Z9NiWWfT7bm3v6h",
+              "type": "string"
+            },
+            {
+              "id": "70175394-c090-4398-b584-b4297f922616",
+              "name": "categoria",
+              "value": "={{ $json.categoria }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        1280,
+        1664
+      ],
+      "id": "d276fe48-3551-43f3-96c4-bcfbd021fcb5",
+      "name": "Set Root Folder"
+    },
+    {
+      "parameters": {
+        "resource": "fileFolder",
+        "searchMethod": "query",
+        "queryString": "=trashed = false and mimeType = 'application/vnd.google-apps.folder' and name = '{{ $('Recorre categorias').item.json.categoria }}' and '{{ $(\"Set Root Folder\").item.json.rootFolderId }}' in parents",
+        "filter": {},
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleDrive",
+      "typeVersion": 3,
+      "position": [
+        1504,
+        1664
+      ],
+      "id": "37d46c02-ae9c-4521-b2f7-c4115f7bc238",
+      "name": "Drive_Find_Category_Folder",
+      "alwaysOutputData": true,
+      "credentials": {
+        "googleDriveOAuth2Api": {
+          "id": "55RafwUzcXl8phIg",
+          "name": "Google Drive account 3"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "resource": "fileFolder",
+        "searchMethod": "query",
+        "queryString": "=trashed = false and mimeType = 'application/vnd.google-apps.folder' and name = '{{ $json.titulo }}' and '{{ $(\"Drive_Find_Category_Folder\").item.json.id }}' in parents",
+        "filter": {},
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleDrive",
+      "typeVersion": 3,
+      "position": [
+        2528,
+        1712
+      ],
+      "id": "a6fbc9c7-073b-43c6-a0a0-7c27969fe11a",
+      "name": "Drive_Find_Product_Folder",
+      "alwaysOutputData": true,
+      "credentials": {
+        "googleDriveOAuth2Api": {
+          "id": "55RafwUzcXl8phIg",
+          "name": "Google Drive account 3"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "resource": "fileFolder",
+        "searchMethod": "query",
+        "queryString": "=trashed = false and mimeType = 'application/vnd.google-apps.folder' and name = '{{ $('Recorre productos').item.json.colores[0].sku }}' and '{{ $('Drive_Find_Product_Folder').item.json.id }}' in parents",
+        "filter": {},
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleDrive",
+      "typeVersion": 3,
+      "position": [
+        3200,
+        1696
+      ],
+      "id": "bac71535-2e14-47c6-be09-3212c6a775ae",
+      "name": "Drive_Find_SKU_Folder",
+      "alwaysOutputData": true,
+      "credentials": {
+        "googleDriveOAuth2Api": {
+          "id": "55RafwUzcXl8phIg",
+          "name": "Google Drive account 3"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "download",
+        "fileId": {
+          "__rl": true,
+          "value": "={{ $json.id }}",
+          "mode": "id"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleDrive",
+      "typeVersion": 3,
+      "position": [
+        4112,
+        1552
+      ],
+      "id": "2e1a9bc3-af16-4bb0-a3c3-15c0af00e31c",
+      "name": "Download file",
+      "alwaysOutputData": true,
+      "credentials": {
+        "googleDriveOAuth2Api": {
+          "id": "55RafwUzcXl8phIg",
+          "name": "Google Drive account 3"
+        }
+      }
+    },
+    {
+      "parameters": {},
+      "type": "@n8n/n8n-nodes-langchain.toolThink",
+      "typeVersion": 1.1,
+      "position": [
+        -1008,
+        1360
+      ],
+      "id": "1f524a33-2dc1-4785-82bf-a82422fbea92",
+      "name": "Think"
+    },
+    {
+      "parameters": {
+        "jsCode": "const catalog = $input.first().json.catalog;\n\nconst groupedItems = catalog.reduce((acc, item) => {\n  const categoryName = item.categoria;\n\n  if (!acc[categoryName]) {\n    acc[categoryName] = { \n      categoria: categoryName, \n      productos: [] \n    };\n  }\n\n  item.productos.forEach((pro) => {\n    let product = acc[categoryName].productos.find(p => p.titulo === pro.titulo);\n\n    if (!product) {\n      product = { \n        titulo: pro.titulo, \n        colores: pro.colores || [] \n      };\n      acc[categoryName].productos.push(product);\n    } else {\n      if (pro.colores) {\n        product.colores.push(...pro.colores);\n      }\n    }\n  });\n\n  return acc;\n}, {});\n\nconst result = Object.values(groupedItems);\nreturn result.map((item) => ({ json: item }));"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        816,
+        1648
+      ],
+      "id": "83740e3f-8b40-4e99-a7a4-8dc8dba2d6ec",
+      "name": "Normalize_Catalog_List"
+    },
+    {
+      "parameters": {
+        "description": "Llama a esta herramienta siempre que el mensaje este consultando explicita o implicitamente por productos, categorias o en general información sobre catalogo de productos de Baby´s world. Suministra la información previamente interpretada de \"tipo\": \"string\" y \"valor\": \"string\". ",
+        "workflowId": {
+          "__rl": true,
+          "value": "={{ $('When Executed by Another Workflow').item.json.environment == 'dev' ? $vars.FLOW_CATALOGO_DEV : $vars.FLOW_CATALOGO_PROD }}",
+          "mode": "id",
+          "cachedResultUrl": "/workflow/=%7B%7B%20$('When%20Executed%20by%20Another%20Workflow').item.json.environment%20==%20'dev'%20%3F%20$vars.FLOW_CATALOGO_DEV%20:%20$vars.FLOW_CATALOGO_PROD%20%7D%7D"
+        },
+        "workflowInputs": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "tipo": "={{ $fromAI('tipo', ``, 'string') }}",
+            "valor": "={{ $fromAI('valor', ``, 'string') }}"
+          },
+          "matchingColumns": [],
+          "schema": [
+            {
+              "id": "tipo",
+              "displayName": "tipo",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string",
+              "removed": false
+            },
+            {
+              "id": "valor",
+              "displayName": "valor",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string",
+              "removed": false
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.toolWorkflow",
+      "typeVersion": 2.2,
+      "position": [
+        -848,
+        1360
+      ],
+      "id": "56fa8fbe-5a50-426f-9ca9-9de7677820b1",
+      "name": "Catalogo"
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "type": "n8n-nodes-base.splitInBatches",
+      "typeVersion": 3,
+      "position": [
+        1264,
+        352
+      ],
+      "id": "474ff537-0015-4836-8781-8f6d28e99ec2",
+      "name": "Loop Over Items1"
+    },
+    {
+      "parameters": {
+        "resource": "fileFolder",
+        "searchMethod": "query",
+        "queryString": "=name = '{{ $json.categoria }}' and mimeType = 'application/vnd.google-apps.folder' and trashed = false",
+        "filter": {
+          "folderId": {
+            "__rl": true,
+            "value": "1hiDjeYmj7r9zZRl59Z9NiWWfT7bm3v6h",
+            "mode": "list",
+            "cachedResultName": "02_Fotografia_Productos",
+            "cachedResultUrl": "https://drive.google.com/drive/folders/1hiDjeYmj7r9zZRl59Z9NiWWfT7bm3v6h"
+          }
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleDrive",
+      "typeVersion": 3,
+      "position": [
+        112,
+        608
+      ],
+      "id": "948ca789-f1b6-4521-bbbc-b57339dff488",
+      "name": "categorias",
+      "alwaysOutputData": true,
+      "credentials": {
+        "googleDriveOAuth2Api": {
+          "id": "55RafwUzcXl8phIg",
+          "name": "Google Drive account 3"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "resource": "fileFolder",
+        "searchMethod": "query",
+        "queryString": "='{{ $json.idFolder }}' in parents and (name contains '1.jpeg' or name contains '1.png') and mimeType contains 'image' and trashed = false",
+        "limit": 1,
+        "filter": {},
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleDrive",
+      "typeVersion": 3,
+      "position": [
+        1888,
+        240
+      ],
+      "id": "53c1871e-e028-4c42-8984-b562cd73cc34",
+      "name": "obtener imagenes",
+      "alwaysOutputData": true,
+      "credentials": {
+        "googleDriveOAuth2Api": {
+          "id": "55RafwUzcXl8phIg",
+          "name": "Google Drive account 3"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "download",
+        "fileId": {
+          "__rl": true,
+          "value": "={{ $json.id }}",
+          "mode": "id"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleDrive",
+      "typeVersion": 3,
+      "position": [
+        2320,
+        176
+      ],
+      "id": "6e07987d-9fbb-47e9-883a-36842e76fa86",
+      "name": "descargar imagenes",
+      "alwaysOutputData": true,
+      "credentials": {
+        "googleDriveOAuth2Api": {
+          "id": "55RafwUzcXl8phIg",
+          "name": "Google Drive account 3"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "e5a04b44-231d-4015-82f1-ee6606318c2a",
+              "leftValue": "={{ $json.sendImage }}",
+              "rightValue": "",
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            },
+            {
+              "id": "1429acdb-42d4-496f-a89d-c4fb67a7ddb1",
+              "leftValue": "={{ $json.imagenproducto }}",
+              "rightValue": false,
+              "operator": {
+                "type": "boolean",
+                "operation": "false",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        -384,
+        1024
+      ],
+      "id": "b7bc17c3-d67a-48f2-b4a8-134d3720ead0",
+      "name": "uso imagen producto"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "70a040a6-16a7-4f47-b0f7-a20b16985f5e",
+              "leftValue": "={{ $json.imagenproducto }}",
+              "rightValue": true,
+              "operator": {
+                "type": "boolean",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        112,
+        1088
+      ],
+      "id": "5988a0a6-37be-40c8-8793-2906d9970244",
+      "name": "uso enviar imagen?"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "40512a95-0b94-46c9-87a8-3e9eb65d40aa",
+              "leftValue": "={{ $json.tipo_mensaje }}",
+              "rightValue": "Primer mensaje",
+              "operator": {
+                "type": "string",
+                "operation": "equals",
+                "name": "filter.operator.equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        -1920,
+        960
+      ],
+      "id": "a1521b7d-1b11-4887-9667-413639626174",
+      "name": "primer mensaje?"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "1e64c429-1949-4a3f-ab30-4d1c2364b4ac",
+              "leftValue": "={{ $json.id }}",
+              "rightValue": "",
+              "operator": {
+                "type": "string",
+                "operation": "notEmpty",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        2080,
+        240
+      ],
+      "id": "4700ba77-4c2b-423d-aa71-699d245c627e",
+      "name": "imagen producto esta vacio"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "831072da-2975-4097-b6bc-a0d90c68710a",
+              "leftValue": "={{ $json.name }}",
+              "rightValue": "",
+              "operator": {
+                "type": "string",
+                "operation": "exists",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        3392,
+        1696
+      ],
+      "id": "b513189a-0143-44b4-a23c-91bba0f841ba",
+      "name": "SKU encontrado"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "26809cf7-fe0c-4276-897c-caf71455483f",
+              "leftValue": "={{ $json.id }}",
+              "rightValue": true,
+              "operator": {
+                "type": "string",
+                "operation": "exists",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        4320,
+        1552
+      ],
+      "id": "0316943a-8f37-497f-a6da-ebb886e01f6e",
+      "name": "Imagen descargada"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "149223f2-5e43-43aa-82db-71d17ee118fe",
+              "leftValue": "={{ $json.name }}",
+              "rightValue": "",
+              "operator": {
+                "type": "string",
+                "operation": "exists",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        2512,
+        176
+      ],
+      "id": "1f50a158-f68b-47bd-b5cf-a36047036499",
+      "name": "If3"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "44128b3d-b7f5-4eca-b4b8-71f8d19191d2",
+              "leftValue": "={{ $json.id }}",
+              "rightValue": "",
+              "operator": {
+                "type": "string",
+                "operation": "exists",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        336,
+        608
+      ],
+      "id": "99a15f2c-02f5-40ee-9b59-f78a73e088be",
+      "name": "Existe carpeta categoria"
+    },
+    {
+      "parameters": {
+        "resource": "fileFolder",
+        "searchMethod": "query",
+        "queryString": "='{{ $json.id }}' in parents and mimeType = 'application/vnd.google-apps.folder' and trashed = false",
+        "filter": {},
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleDrive",
+      "typeVersion": 3,
+      "position": [
+        560,
+        464
+      ],
+      "id": "f669be01-c9f3-49b6-b567-e18dbf38a721",
+      "name": "Productos categoria",
+      "alwaysOutputData": true,
+      "credentials": {
+        "googleDriveOAuth2Api": {
+          "id": "55RafwUzcXl8phIg",
+          "name": "Google Drive account 3"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "a6e2e03b-4e51-463a-81f3-2d7dcbc3c6f9",
+              "leftValue": "={{ $json.id }}",
+              "rightValue": "",
+              "operator": {
+                "type": "string",
+                "operation": "exists",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        816,
+        464
+      ],
+      "id": "9b121a0f-f67c-4ec3-99e2-cff15ac5961b",
+      "name": "Existen productos en categoria"
+    },
+    {
+      "parameters": {
+        "jsCode": "const inputData = $('uso imagen producto').first().json;\nconst catalog = inputData.catalog;\n\n// Forzamos la búsqueda de productos con una ruta más directa\nconst products = (catalog && catalog.length > 0) ? catalog[0].productos : [];\n\nconst folders = $('Productos categoria').all();\n\nif (!Array.isArray(products) || products.length === 0) {\n  // Si no hay productos, devolvemos un mensaje claro en lugar de nada\n  return [{ json: { mensaje: \"El array de productos está vacío o no se encontró\" } }];\n}\n\nconst result = products.map((item, index) => {\n  // Usamos trim() por si hay espacios invisibles\n  const tittle = item.titulo.toUpperCase().trim();\n  const folderMatch = folders.find(x => x.json.name.toUpperCase().trim() === tittle);\n\n  return {\n    json: {\n      titulo: tittle,\n      idFolder: folderMatch ? folderMatch.json.id : null,\n      paired: !!folderMatch\n    },\n    pairedItem: {\n      item: index\n    }\n  };\n});\n\nreturn result;"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1024,
+        352
+      ],
+      "id": "a5d3e926-645a-4907-8091-86dfd71df2fb",
+      "name": "Sanetiza productos"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "fc608a17-81c4-49dc-95d1-e885397d1fe7",
+              "leftValue": "={{ $json.idFolder }}",
+              "rightValue": "",
+              "operator": {
+                "type": "string",
+                "operation": "notEmpty",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        1664,
+        368
+      ],
+      "id": "ae7c6870-16b9-4b08-b473-c05dbbcb04c8",
+      "name": "Existe id folder"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "690dc1fd-e279-4c01-a6bb-f0d2f68379e8",
+              "name": "message",
+              "value": "={{ $json.replyText }}",
+              "type": "string"
+            },
+            {
+              "id": "e68d9a33-003b-454f-a90f-3cdfbf582bdd",
+              "name": "catalog",
+              "value": "={{ $json.catalog }}",
+              "type": "array"
+            },
+            {
+              "id": "a1dec3f1-bbfb-4c31-98cf-a955ed6f453d",
+              "name": "categoria",
+              "value": "={{ $json.categoria }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        576,
+        1648
+      ],
+      "id": "aab417ad-7e84-43c2-a219-9b8c8d2459bd",
+      "name": "Edit Fields"
+    },
+    {
+      "parameters": {
+        "options": {
+          "reset": "={{ $('Recorre productos').context.done }}"
+        }
+      },
+      "type": "n8n-nodes-base.splitInBatches",
+      "typeVersion": 3,
+      "position": [
+        2240,
+        1696
+      ],
+      "id": "ca989cbe-272c-44a3-8eeb-831925182119",
+      "name": "Recorre productos"
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "type": "n8n-nodes-base.splitInBatches",
+      "typeVersion": 3,
+      "position": [
+        1072,
+        1648
+      ],
+      "id": "f8cf8b41-a21d-4ad2-bc40-be5001f757f0",
+      "name": "Recorre categorias"
+    },
+    {
+      "parameters": {
+        "jsCode": "return $('Recorre categorias').first().json.productos"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        2032,
+        1648
+      ],
+      "id": "2f18d732-bc0f-4240-8afb-b76c1a594056",
+      "name": "sanetiza productos"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "22a2a5d9-7aef-411d-bb1b-b122e6f6e4e8",
+              "leftValue": "={{ $json.id }}",
+              "rightValue": "",
+              "operator": {
+                "type": "string",
+                "operation": "exists",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        1760,
+        1664
+      ],
+      "id": "bde58305-42e4-49c9-b771-6b1db9f198ca",
+      "name": "id categoria existe"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "b0aca2b3-6051-431d-ac50-dbfbf5cf5a25",
+              "leftValue": "={{ $('sanetiza productos').item.json.colores }}",
+              "rightValue": 1,
+              "operator": {
+                "type": "array",
+                "operation": "lengthGt",
+                "rightType": "number"
+              }
+            },
+            {
+              "id": "ae5b8950-7910-4e22-a0c6-13737c232612",
+              "leftValue": "={{ $('sanetiza productos').item.json.colores }}",
+              "rightValue": "",
+              "operator": {
+                "type": "array",
+                "operation": "empty",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "or"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        2928,
+        1600
+      ],
+      "id": "032d407a-323a-4bd0-960f-972fc76d4be7",
+      "name": "Imagen principal"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "22a2a5d9-7aef-411d-bb1b-b122e6f6e4e8",
+              "leftValue": "={{ $json.id }}",
+              "rightValue": "",
+              "operator": {
+                "type": "string",
+                "operation": "exists",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        2736,
+        1712
+      ],
+      "id": "3b631a98-39dc-4eec-9439-e61824f66c82",
+      "name": "existe carpeta producto"
+    },
+    {
+      "parameters": {
+        "resource": "fileFolder",
+        "searchMethod": "query",
+        "queryString": "='{{ $('existe carpeta producto').item.json.id }}' in parents and name = '1.jpeg' and mimeType contains 'image' and trashed = false",
+        "filter": {},
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleDrive",
+      "typeVersion": 3,
+      "position": [
+        3200,
+        1488
+      ],
+      "id": "d81e6af7-cd63-45ca-b3c7-57bda8a75071",
+      "name": "Obtiene imagen principal",
+      "credentials": {
+        "googleDriveOAuth2Api": {
+          "id": "55RafwUzcXl8phIg",
+          "name": "Google Drive account 3"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "resource": "fileFolder",
+        "searchMethod": "query",
+        "queryString": "='{{ $json.id }}' in parents and mimeType contains 'image' and trashed = false",
+        "limit": 1,
+        "filter": {},
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleDrive",
+      "typeVersion": 3,
+      "position": [
+        3616,
+        1680
+      ],
+      "id": "4d7355f4-c6be-42d0-8ddc-82267eeaa237",
+      "name": "obtener imagen sku",
+      "alwaysOutputData": true,
+      "credentials": {
+        "googleDriveOAuth2Api": {
+          "id": "55RafwUzcXl8phIg",
+          "name": "Google Drive account 3"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "b217703e-1ac3-4a79-a200-fc14dc0d20c7",
+              "leftValue": "={{ $json.id }}",
+              "rightValue": "",
+              "operator": {
+                "type": "string",
+                "operation": "exists",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        3824,
+        1680
+      ],
+      "id": "475656c1-0155-410f-936a-89f26b0d3869",
+      "name": "Existe imagen sku"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "8279b28b-537f-4392-aaf6-bb86f2c550be",
+              "leftValue": "={{ $json.id }}",
+              "rightValue": "",
+              "operator": {
+                "type": "string",
+                "operation": "exists",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        3408,
+        1488
+      ],
+      "id": "2354375e-96a9-4cff-bba0-ec0022e69de3",
+      "name": "Existe imagen principal"
+    },
+    {
+      "parameters": {
+        "workflowId": {
+          "__rl": true,
+          "value": "={{ $('When Executed by Another Workflow').item.json.environment == 'dev' ? $vars.FLOW_AI_USAGE_LOG_DEV : $vars.FLOW_AI_USAGE_LOG_PROD }}",
+          "mode": "id",
+          "cachedResultUrl": "/workflow/=%7B%7B%20$('When%20Executed%20by%20Another%20Workflow').item.json.environment%20==%20'dev'%20%3F%20$vars.FLOW_AI_USAGE_LOG_DEV%20:%20$vars.FLOW_AI_USAGE_LOG_PROD%20%7D%7D"
+        },
+        "workflowInputs": {
+          "mappingMode": "passThrough",
+          "value": {},
+          "matchingColumns": [],
+          "schema": [
+            {
+              "id": "process_id",
+              "displayName": "process_id",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string"
+            },
+            {
+              "id": "model_name",
+              "displayName": "model_name",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string"
+            },
+            {
+              "id": "prompt_tokens",
+              "displayName": "prompt_tokens",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "number"
+            },
+            {
+              "id": "completion_tokens",
+              "displayName": "completion_tokens",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "number"
+            },
+            {
+              "id": "total_tokens",
+              "displayName": "total_tokens",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "number"
+            },
+            {
+              "id": "ai_response",
+              "displayName": "ai_response",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string"
+            },
+            {
+              "id": "completed_at",
+              "displayName": "completed_at",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "number"
+            },
+            {
+              "id": "created_at",
+              "displayName": "created_at",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "number"
+            },
+            {
+              "id": "environment",
+              "displayName": "environment",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string"
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": true
+        },
+        "mode": "each",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.executeWorkflow",
+      "typeVersion": 1.3,
+      "position": [
+        -352,
+        800
+      ],
+      "id": "84cb23ce-9aae-4010-85e4-2dc74a1339a9",
+      "name": "Call 'ai_usage_log'"
+    },
+    {
+      "parameters": {
+        "jsCode": "// 1. Convertimos el texto que sale del agente en un objeto real\nconst data = JSON.parse($('Agente Principal').item.json.output);\nconst now = Date.now();\n\n// 2. Ahora sí podemos extraer los datos\nreturn {\n  process_id: \"coordinating_agent\",\n  model_name: data.model_name,\n  prompt_tokens: data.prompt_tokens,\n  completion_tokens: data.completion_tokens,\n  total_tokens: data.total_tokens,\n  ai_response: data.ai_response || data.replyText,\n  completed_at: now,\n  created_at: now,\n  environment: 'ist'\n};"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -528,
+        800
+      ],
+      "id": "ef68a5a3-02cb-4ed4-9310-b125fb9ef4c0",
+      "name": "build_token_usage_dto"
+    },
+    {
+      "parameters": {
+        "content": "## Proceso imagenes categoria \n**Obtiene los productos de la categoria con el filtro realilzado por el agente",
+        "height": 880,
+        "width": 3220
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [
+        0,
+        0
+      ],
+      "typeVersion": 1,
+      "id": "8af6d450-153c-4523-ade2-6d36c1998108",
+      "name": "Sticky Note"
+    },
+    {
+      "parameters": {
+        "jsCode": "// 1. Convertimos el texto del agente en un objeto\nconst rawOutput = $('Agente Principal').item.json.output;\nconst data = typeof rawOutput === 'string' ? JSON.parse(rawOutput) : rawOutput;\n\n// 2. Obtenemos la lista plana de productos que viene en el input\nlet rawCatalog = [];\nif (data.catalog){\n  rawCatalog = Array.isArray(data.catalog) ? data.catalog : [data.catalog];\n}\n\nreturn {\n  replyText: data.replyText || \"\",\n  sendImage: !!data.sendImage,\n  imagenproducto: !!data.imagenproducto,\n  categoria: data.categoria || \"COCHES\",\n  catalog: rawCatalog\n};"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -592,
+        1024
+      ],
+      "id": "4994644d-8353-4c53-b509-31802c43b60c",
+      "name": "Poner formato necesario"
+    },
+    {
+      "parameters": {
+        "workflowId": {
+          "__rl": true,
+          "value": "={{  $('When Executed by Another Workflow').item.json.environment == 'dev' ? $vars.FLOW_GUARDAR_HISTORIAL_DEV : $vars.FLOW_GUARDAR_HISTORIAL_PROD }}",
+          "mode": "id",
+          "cachedResultUrl": "/workflow/=%7B%7B%20%20$('When%20Executed%20by%20Another%20Workflow').item.json.environment%20==%20'dev'%20%3F%20$vars.FLOW_GUARDAR_HISTORIAL_DEV%20:%20$vars.FLOW_GUARDAR_HISTORIAL_PROD%20%7D%7D"
+        },
+        "workflowInputs": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "id": "={{ $json.contacts[0].wa_id }}",
+            "rol": "asesor",
+            "mensaje": "={{ JSON.parse($('Code').item.json.ultima_respuesta).replyText }}",
+            "context_id_whatsapp": "={{ $json.messages[0].id }}",
+            "channel": "whatsapp"
+          },
+          "matchingColumns": [],
+          "schema": [
+            {
+              "id": "id",
+              "displayName": "id",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string",
+              "removed": false
+            },
+            {
+              "id": "rol",
+              "displayName": "rol",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string",
+              "removed": false
+            },
+            {
+              "id": "mensaje",
+              "displayName": "mensaje",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string",
+              "removed": false
+            },
+            {
+              "id": "context_id_whatsapp",
+              "displayName": "context_id_whatsapp",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string",
+              "removed": false
+            },
+            {
+              "id": "context_relation_whatsapp",
+              "displayName": "context_relation_whatsapp",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string",
+              "removed": false
+            },
+            {
+              "id": "channel",
+              "displayName": "channel",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string",
+              "removed": false
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": true
+        },
+        "mode": "each",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.executeWorkflow",
+      "typeVersion": 1.3,
+      "position": [
+        2832,
+        1104
+      ],
+      "id": "a8ba1b61-9c7e-4cec-b7ad-83e8ab0ad3c8",
+      "name": "guardar historial",
+      "executeOnce": false
+    },
+    {
+      "parameters": {
+        "workflowId": {
+          "__rl": true,
+          "value": "={{  $('When Executed by Another Workflow').item.json.environment == 'dev' ? $vars.FLOW_GUARDAR_HISTORIAL_DEV : $vars.FLOW_GUARDAR_HISTORIAL_PROD }}",
+          "mode": "id",
+          "cachedResultUrl": "/workflow/=%7B%7B%20%20$('When%20Executed%20by%20Another%20Workflow').item.json.environment%20==%20'dev'%20%3F%20$vars.FLOW_GUARDAR_HISTORIAL_DEV%20:%20$vars.FLOW_GUARDAR_HISTORIAL_PROD%20%7D%7D"
+        },
+        "workflowInputs": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "id": "={{ $json.contacts[0].wa_id }}",
+            "rol": "asesor",
+            "mensaje": "={{ $('Loop Over Items1').item.json.titulo }}",
+            "context_id_whatsapp": "={{ $json.messages[0].id }}",
+            "channel": "whatsapp"
+          },
+          "matchingColumns": [],
+          "schema": [
+            {
+              "id": "id",
+              "displayName": "id",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string",
+              "removed": false
+            },
+            {
+              "id": "rol",
+              "displayName": "rol",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string",
+              "removed": false
+            },
+            {
+              "id": "mensaje",
+              "displayName": "mensaje",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string",
+              "removed": false
+            },
+            {
+              "id": "context_id_whatsapp",
+              "displayName": "context_id_whatsapp",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string",
+              "removed": false
+            },
+            {
+              "id": "context_relation_whatsapp",
+              "displayName": "context_relation_whatsapp",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string",
+              "removed": false
+            },
+            {
+              "id": "channel",
+              "displayName": "channel",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string",
+              "removed": false
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": true
+        },
+        "mode": "each",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.executeWorkflow",
+      "typeVersion": 1.3,
+      "position": [
+        2896,
+        544
+      ],
+      "id": "fbbe9605-3ace-44e2-b7f7-c969c94a9e9a",
+      "name": "guardar historial1"
+    },
+    {
+      "parameters": {
+        "workflowId": {
+          "__rl": true,
+          "value": "={{  $('When Executed by Another Workflow').item.json.environment == 'dev' ? $vars.FLOW_GUARDAR_HISTORIAL_DEV : $vars.FLOW_GUARDAR_HISTORIAL_PROD }}",
+          "mode": "id",
+          "cachedResultUrl": "/workflow/=%7B%7B%20%20$('When%20Executed%20by%20Another%20Workflow').item.json.environment%20==%20'dev'%20%3F%20$vars.FLOW_GUARDAR_HISTORIAL_DEV%20:%20$vars.FLOW_GUARDAR_HISTORIAL_PROD%20%7D%7D"
+        },
+        "workflowInputs": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "id": "={{ $json.contacts[0].wa_id }}",
+            "rol": "asesor",
+            "mensaje": "={{ $('Loop Over Items1').item.json.titulo }}",
+            "context_id_whatsapp": "={{ $json.messages[0].id }}",
+            "channel": "whatsapp"
+          },
+          "matchingColumns": [],
+          "schema": [
+            {
+              "id": "id",
+              "displayName": "id",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string",
+              "removed": false
+            },
+            {
+              "id": "rol",
+              "displayName": "rol",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string",
+              "removed": false
+            },
+            {
+              "id": "mensaje",
+              "displayName": "mensaje",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string",
+              "removed": false
+            },
+            {
+              "id": "context_id_whatsapp",
+              "displayName": "context_id_whatsapp",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string",
+              "removed": false
+            },
+            {
+              "id": "context_relation_whatsapp",
+              "displayName": "context_relation_whatsapp",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string",
+              "removed": false
+            },
+            {
+              "id": "channel",
+              "displayName": "channel",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string",
+              "removed": false
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": true
+        },
+        "mode": "each",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.executeWorkflow",
+      "typeVersion": 1.3,
+      "position": [
+        3104,
+        544
+      ],
+      "id": "bf7f0331-ed78-459b-abb5-2ce42278c9f5",
+      "name": "guardar historial2"
+    },
+    {
+      "parameters": {
+        "workflowId": {
+          "__rl": true,
+          "value": "={{  $('When Executed by Another Workflow').item.json.environment == 'dev' ? $vars.FLOW_GUARDAR_HISTORIAL_DEV : $vars.FLOW_GUARDAR_HISTORIAL_PROD }}",
+          "mode": "id",
+          "cachedResultUrl": "/workflow/=%7B%7B%20%20$('When%20Executed%20by%20Another%20Workflow').item.json.environment%20==%20'dev'%20%3F%20$vars.FLOW_GUARDAR_HISTORIAL_DEV%20:%20$vars.FLOW_GUARDAR_HISTORIAL_PROD%20%7D%7D"
+        },
+        "workflowInputs": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "id": "={{ $json.contacts[0].wa_id }}",
+            "rol": "asesor",
+            "mensaje": "={{ $('Drive_Find_Product_Folder').item.json.name || 'defaultProductName' }}",
+            "context_id_whatsapp": "={{ $json.messages[0].id }}",
+            "channel": "whatsapp"
+          },
+          "matchingColumns": [],
+          "schema": [
+            {
+              "id": "id",
+              "displayName": "id",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string",
+              "removed": false
+            },
+            {
+              "id": "rol",
+              "displayName": "rol",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string",
+              "removed": false
+            },
+            {
+              "id": "mensaje",
+              "displayName": "mensaje",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string",
+              "removed": false
+            },
+            {
+              "id": "context_id_whatsapp",
+              "displayName": "context_id_whatsapp",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string",
+              "removed": false
+            },
+            {
+              "id": "context_relation_whatsapp",
+              "displayName": "context_relation_whatsapp",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string",
+              "removed": false
+            },
+            {
+              "id": "channel",
+              "displayName": "channel",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string",
+              "removed": false
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": true
+        },
+        "mode": "each",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.executeWorkflow",
+      "typeVersion": 1.3,
+      "position": [
+        5328,
+        2192
+      ],
+      "id": "b7b0286f-65ce-4c06-be21-d4668d802720",
+      "name": "guardar historial3"
+    },
+    {
+      "parameters": {
+        "workflowId": {
+          "__rl": true,
+          "value": "={{  $('When Executed by Another Workflow').item.json.environment == 'dev' ? $vars.FLOW_GUARDAR_HISTORIAL_DEV : $vars.FLOW_GUARDAR_HISTORIAL_PROD }}",
+          "mode": "id",
+          "cachedResultUrl": "/workflow/=%7B%7B%20%20$('When%20Executed%20by%20Another%20Workflow').item.json.environment%20==%20'dev'%20%3F%20$vars.FLOW_GUARDAR_HISTORIAL_DEV%20:%20$vars.FLOW_GUARDAR_HISTORIAL_PROD%20%7D%7D"
+        },
+        "workflowInputs": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "id": "={{ $json.contacts[0].wa_id }}",
+            "rol": "asesor",
+            "mensaje": "={{ $('Recorre categorias').item.json.catalog[0].producto || 'defaultProduct' }} ",
+            "context_id_whatsapp": "={{ $json.messages[0].id }}",
+            "channel": "whatsapp"
+          },
+          "matchingColumns": [],
+          "schema": [
+            {
+              "id": "id",
+              "displayName": "id",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string",
+              "removed": false
+            },
+            {
+              "id": "rol",
+              "displayName": "rol",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string",
+              "removed": false
+            },
+            {
+              "id": "mensaje",
+              "displayName": "mensaje",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string",
+              "removed": false
+            },
+            {
+              "id": "context_id_whatsapp",
+              "displayName": "context_id_whatsapp",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string",
+              "removed": false
+            },
+            {
+              "id": "context_relation_whatsapp",
+              "displayName": "context_relation_whatsapp",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string",
+              "removed": false
+            },
+            {
+              "id": "channel",
+              "displayName": "channel",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string",
+              "removed": false
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": true
+        },
+        "mode": "each",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.executeWorkflow",
+      "typeVersion": 1.3,
+      "position": [
+        5024,
+        2176
+      ],
+      "id": "9ab25c88-714c-449b-97f2-7666178c047c",
+      "name": "guardar historial4"
+    },
+    {
+      "parameters": {
+        "workflowId": {
+          "__rl": true,
+          "value": "={{ $('When Executed by Another Workflow').item.json.environment == 'dev' ? $vars.FLOW_ENVIO_MENSAJE_WHATSAPP_DEV : $vars.FLOW_ENVIO_MENSAJE_WHATSAPP_PROD }}",
+          "mode": "id",
+          "cachedResultUrl": "/workflow/=%7B%7B%20$('When%20Executed%20by%20Another%20Workflow').item.json.environment%20==%20'dev'%20%3F%20$vars.FLOW_ENVIO_MENSAJE_WHATSAPP_DEV%20:%20$vars.FLOW_ENVIO_MENSAJE_WHATSAPP_PROD%20%7D%7D"
+        },
+        "workflowInputs": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "session_id": "={{ $('Convertir mensaje').first().json.id_usuario }}",
+            "text_body": "={{ $('Poner formato necesario').first().json.replyText }}"
+          },
+          "matchingColumns": [],
+          "schema": [
+            {
+              "id": "session_id",
+              "displayName": "session_id",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string",
+              "removed": false
+            },
+            {
+              "id": "text_body",
+              "displayName": "text_body",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string",
+              "removed": false
+            },
+            {
+              "id": "caption",
+              "displayName": "caption",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string",
+              "removed": false
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": true
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.executeWorkflow",
+      "typeVersion": 1.3,
+      "position": [
+        2608,
+        1104
+      ],
+      "id": "92d4f35e-b311-4bdf-af5a-7ed6bdd98101",
+      "name": "Enviar mensaje",
+      "executeOnce": false
+    },
+    {
+      "parameters": {
+        "workflowId": {
+          "__rl": true,
+          "value": "={{ $('When Executed by Another Workflow').item.json.environment == 'dev' ? $vars.FLOW_ENVIO_MENSAJE_WHATSAPP_DEV : $vars.FLOW_ENVIO_MENSAJE_WHATSAPP_PROD }}",
+          "mode": "id",
+          "cachedResultUrl": "/workflow/=%7B%7B%20$('When%20Executed%20by%20Another%20Workflow').item.json.environment%20==%20'dev'%20%3F%20$vars.FLOW_ENVIO_MENSAJE_WHATSAPP_DEV%20:%20$vars.FLOW_ENVIO_MENSAJE_WHATSAPP_PROD%20%7D%7D"
+        },
+        "workflowInputs": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "session_id": "={{ $('Convertir mensaje').first().json.id_usuario }}",
+            "caption": "={{ $('Loop Over Items1').item.json.titulo }}"
+          },
+          "matchingColumns": [],
+          "schema": [
+            {
+              "id": "session_id",
+              "displayName": "session_id",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string",
+              "removed": false
+            },
+            {
+              "id": "text_body",
+              "displayName": "text_body",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string",
+              "removed": false
+            },
+            {
+              "id": "caption",
+              "displayName": "caption",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string",
+              "removed": false
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": true
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.executeWorkflow",
+      "typeVersion": 1.3,
+      "position": [
+        2720,
+        160
+      ],
+      "id": "6e6fc59e-34b8-4c62-8ae8-3b2d5a14abc6",
+      "name": "Enviar mensaje1"
+    },
+    {
+      "parameters": {
+        "workflowId": {
+          "__rl": true,
+          "value": "={{ $('When Executed by Another Workflow').item.json.environment == 'dev' ? $vars.FLOW_ENVIO_MENSAJE_WHATSAPP_DEV : $vars.FLOW_ENVIO_MENSAJE_WHATSAPP_PROD }}",
+          "mode": "id",
+          "cachedResultUrl": "/workflow/=%7B%7B%20$('When%20Executed%20by%20Another%20Workflow').item.json.environment%20==%20'dev'%20%3F%20$vars.FLOW_ENVIO_MENSAJE_WHATSAPP_DEV%20:%20$vars.FLOW_ENVIO_MENSAJE_WHATSAPP_PROD%20%7D%7D"
+        },
+        "workflowInputs": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "session_id": "={{ $('Convertir mensaje').item.json.id_usuario }}",
+            "caption": "={{ $('Drive_Find_Product_Folder').item.json.name }}"
+          },
+          "matchingColumns": [],
+          "schema": [
+            {
+              "id": "session_id",
+              "displayName": "session_id",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string",
+              "removed": false
+            },
+            {
+              "id": "text_body",
+              "displayName": "text_body",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string",
+              "removed": false
+            },
+            {
+              "id": "caption",
+              "displayName": "caption",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string",
+              "removed": false
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": true
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.executeWorkflow",
+      "typeVersion": 1.3,
+      "position": [
+        4672,
+        1536
+      ],
+      "id": "04bd849c-d1b5-4e01-b5db-a59ed4c167a3",
+      "name": "Enviar mensaje2"
+    },
+    {
+      "parameters": {
+        "workflowId": {
+          "__rl": true,
+          "value": "={{ $('When Executed by Another Workflow').item.json.environment == 'dev' ? $vars.FLOW_ENVIO_MENSAJE_WHATSAPP_DEV : $vars.FLOW_ENVIO_MENSAJE_WHATSAPP_PROD }}",
+          "mode": "id",
+          "cachedResultUrl": "/workflow/=%7B%7B%20$('When%20Executed%20by%20Another%20Workflow').item.json.environment%20==%20'dev'%20%3F%20$vars.FLOW_ENVIO_MENSAJE_WHATSAPP_DEV%20:%20$vars.FLOW_ENVIO_MENSAJE_WHATSAPP_PROD%20%7D%7D"
+        },
+        "workflowInputs": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "session_id": "={{ $('Convertir mensaje').first().json.id_usuario }}",
+            "caption": "=",
+            "imagen no disponible": "=*Imagen no disponible* {{ $('Loop Over Items1').item.json.titulo }}"
+          },
+          "matchingColumns": [],
+          "schema": [
+            {
+              "id": "session_id",
+              "displayName": "session_id",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string",
+              "removed": false
+            },
+            {
+              "id": "text_body",
+              "displayName": "text_body",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string",
+              "removed": false
+            },
+            {
+              "id": "caption",
+              "displayName": "caption",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string",
+              "removed": false
+            },
+            {
+              "id": "imagen no disponible",
+              "displayName": "imagen no disponible",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string",
+              "removed": false
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": true
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.executeWorkflow",
+      "typeVersion": 1.3,
+      "position": [
+        2656,
+        544
+      ],
+      "id": "b676699d-376b-487d-a2c6-b14f80d471f4",
+      "name": "Enviar mensaje3"
+    },
+    {
+      "parameters": {
+        "workflowId": {
+          "__rl": true,
+          "value": "={{ $('When Executed by Another Workflow').item.json.environment == 'dev' ? $vars.FLOW_ENVIO_MENSAJE_WHATSAPP_DEV : $vars.FLOW_ENVIO_MENSAJE_WHATSAPP_PROD }}",
+          "mode": "id",
+          "cachedResultUrl": "/workflow/=%7B%7B%20$('When%20Executed%20by%20Another%20Workflow').item.json.environment%20==%20'dev'%20%3F%20$vars.FLOW_ENVIO_MENSAJE_WHATSAPP_DEV%20:%20$vars.FLOW_ENVIO_MENSAJE_WHATSAPP_PROD%20%7D%7D"
+        },
+        "workflowInputs": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "caption": "=",
+            "imagen no disponible": "=*Imagen no disponible*\n{{ $('Recorre categorias').item.json.catalog.producto }}",
+            "session_id": "={{ $('Convertir mensaje').item.json.id_usuario }}"
+          },
+          "matchingColumns": [],
+          "schema": [
+            {
+              "id": "session_id",
+              "displayName": "session_id",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string",
+              "removed": false
+            },
+            {
+              "id": "text_body",
+              "displayName": "text_body",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string",
+              "removed": false
+            },
+            {
+              "id": "caption",
+              "displayName": "caption",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string",
+              "removed": false
+            },
+            {
+              "id": "imagen no disponible",
+              "displayName": "imagen no disponible",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string",
+              "removed": false
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": true
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.executeWorkflow",
+      "typeVersion": 1.3,
+      "position": [
+        4784,
+        2176
+      ],
+      "id": "72e504a2-19e9-4556-86dd-0ab6f6e1cb43",
+      "name": "Enviar mensaje4"
+    },
+    {
+      "parameters": {
+        "aggregate": "aggregateAllItemData",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.aggregate",
+      "typeVersion": 1,
+      "position": [
+        1520,
+        752
+      ],
+      "id": "ea4f259e-6645-4670-bec2-77ad87b1b8fc",
+      "name": "Aggregate"
+    },
+    {
+      "parameters": {
+        "jsCode": "if (!$runIndex || $runIndex === 0) {\n  return {isValid: true};\n}\n\nreturn {isValid: false};"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        2176,
+        1120
+      ],
+      "id": "7f46e62a-641b-426e-9b30-148f5cb43d45",
+      "name": "validate_once_execution"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "e80b280b-7682-437e-82aa-a15063c33f77",
+              "leftValue": "={{ $json.isValid }}",
+              "rightValue": true,
+              "operator": {
+                "type": "boolean",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        2384,
+        1120
+      ],
+      "id": "52fcb5e6-76f5-4feb-be02-a8fbe4bde6bb",
+      "name": "is_once_execution"
+    },
+    {
+      "parameters": {},
+      "type": "n8n-nodes-base.noOp",
+      "typeVersion": 1,
+      "position": [
+        2608,
+        1296
+      ],
+      "id": "e9cd2ecf-8d7e-420e-b80a-a027e53e2af7",
+      "name": "No Operation, do nothing"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "d04b719d-c103-4a59-8359-05eed9667b21",
+              "name": "mensaje_usuario",
+              "value": "={{ $('Convertir mensaje').item.json.message }}",
+              "type": "string"
+            },
+            {
+              "id": "cc869312-8bc8-4711-8636-268a0768ba1a",
+              "name": "promp",
+              "value": "={{ $('get_history_user_status').item.json.conversation_history }}",
+              "type": "string"
+            },
+            {
+              "id": "3de0d956-23d3-448a-a5fc-c27c47a0bc02",
+              "name": "historial_disponible",
+              "value": "={{ ($('get_history_user_status').item.json.conversation_history !== \"\") }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        -1392,
+        1056
+      ],
+      "id": "578623d0-c368-414e-bd81-c162aa781b1f",
+      "name": "set_data_history"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "2bf9fff9-8f90-4db5-92ba-ff177e7b2230",
+              "name": "mensaje_usuario",
+              "value": "={{ $('Convertir mensaje').item.json.message }}\n",
+              "type": "string"
+            },
+            {
+              "id": "9eb0a8e5-ac38-4dc3-a27c-42e2ac5338b9",
+              "name": "prompt",
+              "value": "={{ $('Llamada a historial de clientes').item.json.prompt }}",
+              "type": "string"
+            },
+            {
+              "id": "a5a6189b-08ff-4f75-a4b6-c13939f250a8",
+              "name": "historial_disponible",
+              "value": "={{ $('Llamada a historial de clientes').item.json.historial_disponible }}",
+              "type": "boolean"
+            },
+            {
+              "id": "413e7478-9d46-4954-89f7-33589aec809d",
+              "name": "",
+              "value": "",
+              "type": "string"
+            },
+            {
+              "id": "095e268c-b537-46be-99ef-6e4df09184e0",
+              "name": "",
+              "value": "",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        -1184,
+        832
+      ],
+      "id": "b4432ad3-caa4-4378-b12f-ba04a5fd1326",
+      "name": "set_data_history_database"
+    },
+    {
+      "parameters": {},
+      "type": "n8n-nodes-base.merge",
+      "typeVersion": 3.2,
+      "position": [
+        -1120,
+        1008
+      ],
+      "id": "f47ecb74-a506-4cbc-9edb-241b14ccb490",
+      "name": "Convertir Entrada"
+    },
+    {
+      "parameters": {
+        "operation": "get",
+        "tableId": "={{ 'babys_world_' + $('When Executed by Another Workflow').item.json.environment + '_session_chat' }}",
+        "filters": {
+          "conditions": [
+            {
+              "keyName": "=session_id",
+              "keyValue": "={{ $('When Executed by Another Workflow').item.json.session_id }}"
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.supabase",
+      "typeVersion": 1,
+      "position": [
+        -1664,
+        1056
+      ],
+      "id": "d5513fe2-45f8-482a-a53a-ca583f1dc6c6",
+      "name": "get_history_user_status",
+      "alwaysOutputData": true,
+      "credentials": {
+        "supabaseApi": {
+          "id": "dtKFPWrXh0HZEyUt",
+          "name": "clients_database"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "update",
+        "tableId": "={{ 'babys_world_' + $('When Executed by Another Workflow').item.json.environment + '_session_chat' }}",
+        "filters": {
+          "conditions": [
+            {
+              "keyName": "=session_id",
+              "condition": "=eq",
+              "keyValue": "={{ $('When Executed by Another Workflow').item.json.session_id }}"
+            }
+          ]
+        },
+        "fieldsUi": {
+          "fieldValues": [
+            {
+              "fieldId": "=conversation_history",
+              "fieldValue": "={{ $json.prompt }}"
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.supabase",
+      "typeVersion": 1,
+      "position": [
+        -1424,
+        832
+      ],
+      "id": "4ed4b8f7-ffec-4f9a-955f-6df81ec31f60",
+      "name": "update_history_user_status",
+      "credentials": {
+        "supabaseApi": {
+          "id": "dtKFPWrXh0HZEyUt",
+          "name": "clients_database"
+        }
+      }
+    }
+  ],
+  "connections": {
+    "Simple Memory": {
+      "ai_memory": [
+        [
+          {
+            "node": "Agente Principal",
+            "type": "ai_memory",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Preparar para memoria": {
+      "main": [
+        [
+          {
+            "node": "Code",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code": {
+      "main": [
+        [
+          {
+            "node": "validate_once_execution",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Embeddings OpenAI": {
+      "ai_embedding": [
+        [
+          {
+            "node": "Tienda/Negocio",
+            "type": "ai_embedding",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Agente Principal": {
+      "main": [
+        [
+          {
+            "node": "build_token_usage_dto",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Poner formato necesario",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Modelo De Chat2": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "Agente Principal",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Llamada a historial de clientes": {
+      "main": [
+        [
+          {
+            "node": "update_history_user_status",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "set_data_history_database",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Convertir mensaje": {
+      "main": [
+        [
+          {
+            "node": "primer mensaje?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "When Executed by Another Workflow": {
+      "main": [
+        [
+          {
+            "node": "Convertir mensaje",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Tienda/Negocio": {
+      "ai_tool": [
+        [
+          {
+            "node": "Agente Principal",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Set Root Folder": {
+      "main": [
+        [
+          {
+            "node": "Drive_Find_Category_Folder",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Drive_Find_Category_Folder": {
+      "main": [
+        [
+          {
+            "node": "id categoria existe",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Drive_Find_Product_Folder": {
+      "main": [
+        [
+          {
+            "node": "existe carpeta producto",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Drive_Find_SKU_Folder": {
+      "main": [
+        [
+          {
+            "node": "SKU encontrado",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Download file": {
+      "main": [
+        [
+          {
+            "node": "Imagen descargada",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Think": {
+      "ai_tool": [
+        [
+          {
+            "node": "Agente Principal",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Normalize_Catalog_List": {
+      "main": [
+        [
+          {
+            "node": "Recorre categorias",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Catalogo": {
+      "ai_tool": [
+        [
+          {
+            "node": "Agente Principal",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Loop Over Items1": {
+      "main": [
+        [
+          {
+            "node": "Aggregate",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Existe id folder",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "categorias": {
+      "main": [
+        [
+          {
+            "node": "Existe carpeta categoria",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "obtener imagenes": {
+      "main": [
+        [
+          {
+            "node": "imagen producto esta vacio",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "descargar imagenes": {
+      "main": [
+        [
+          {
+            "node": "If3",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "uso imagen producto": {
+      "main": [
+        [
+          {
+            "node": "categorias",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "uso enviar imagen?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "uso enviar imagen?": {
+      "main": [
+        [
+          {
+            "node": "Edit Fields",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Preparar para memoria",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "primer mensaje?": {
+      "main": [
+        [
+          {
+            "node": "Llamada a historial de clientes",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "get_history_user_status",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "imagen producto esta vacio": {
+      "main": [
+        [
+          {
+            "node": "descargar imagenes",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Enviar mensaje3",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "SKU encontrado": {
+      "main": [
+        [
+          {
+            "node": "obtener imagen sku",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Enviar mensaje4",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Imagen descargada": {
+      "main": [
+        [
+          {
+            "node": "Enviar mensaje2",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Enviar mensaje4",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "If3": {
+      "main": [
+        [
+          {
+            "node": "Enviar mensaje1",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Enviar mensaje3",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Existe carpeta categoria": {
+      "main": [
+        [
+          {
+            "node": "Productos categoria",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Preparar para memoria",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Productos categoria": {
+      "main": [
+        [
+          {
+            "node": "Existen productos en categoria",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Existen productos en categoria": {
+      "main": [
+        [
+          {
+            "node": "Sanetiza productos",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Preparar para memoria",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Sanetiza productos": {
+      "main": [
+        [
+          {
+            "node": "Loop Over Items1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Existe id folder": {
+      "main": [
+        [
+          {
+            "node": "obtener imagenes",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Enviar mensaje3",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Edit Fields": {
+      "main": [
+        [
+          {
+            "node": "Normalize_Catalog_List",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Recorre productos": {
+      "main": [
+        [
+          {
+            "node": "Recorre categorias",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Drive_Find_Product_Folder",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Recorre categorias": {
+      "main": [
+        [
+          {
+            "node": "Preparar para memoria",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Set Root Folder",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "sanetiza productos": {
+      "main": [
+        [
+          {
+            "node": "Recorre productos",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "id categoria existe": {
+      "main": [
+        [
+          {
+            "node": "sanetiza productos",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Enviar mensaje4",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Imagen principal": {
+      "main": [
+        [
+          {
+            "node": "Obtiene imagen principal",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Drive_Find_SKU_Folder",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "existe carpeta producto": {
+      "main": [
+        [
+          {
+            "node": "Imagen principal",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Enviar mensaje4",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Obtiene imagen principal": {
+      "main": [
+        [
+          {
+            "node": "Existe imagen principal",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "obtener imagen sku": {
+      "main": [
+        [
+          {
+            "node": "Existe imagen sku",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Existe imagen sku": {
+      "main": [
+        [
+          {
+            "node": "Download file",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Enviar mensaje4",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Existe imagen principal": {
+      "main": [
+        [
+          {
+            "node": "Download file",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Enviar mensaje4",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "build_token_usage_dto": {
+      "main": [
+        [
+          {
+            "node": "Call 'ai_usage_log'",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Poner formato necesario": {
+      "main": [
+        [
+          {
+            "node": "uso imagen producto",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "guardar historial1": {
+      "main": [
+        [
+          {
+            "node": "Loop Over Items1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "guardar historial2": {
+      "main": [
+        [
+          {
+            "node": "Loop Over Items1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "guardar historial3": {
+      "main": [
+        [
+          {
+            "node": "Recorre categorias",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "guardar historial4": {
+      "main": [
+        [
+          {
+            "node": "Recorre categorias",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Enviar mensaje": {
+      "main": [
+        [
+          {
+            "node": "guardar historial",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Enviar mensaje1": {
+      "main": [
+        [
+          {
+            "node": "guardar historial2",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Enviar mensaje2": {
+      "main": [
+        [
+          {
+            "node": "guardar historial3",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Recorre categorias",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Enviar mensaje3": {
+      "main": [
+        [
+          {
+            "node": "guardar historial1",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Loop Over Items1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Enviar mensaje4": {
+      "main": [
+        [
+          {
+            "node": "guardar historial4",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Recorre categorias",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Aggregate": {
+      "main": [
+        [
+          {
+            "node": "Preparar para memoria",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "validate_once_execution": {
+      "main": [
+        [
+          {
+            "node": "is_once_execution",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "is_once_execution": {
+      "main": [
+        [
+          {
+            "node": "Enviar mensaje",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "No Operation, do nothing",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "set_data_history": {
+      "main": [
+        [
+          {
+            "node": "Convertir Entrada",
+            "type": "main",
+            "index": 1
+          }
+        ]
+      ]
+    },
+    "set_data_history_database": {
+      "main": [
+        [
+          {
+            "node": "Convertir Entrada",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Convertir Entrada": {
+      "main": [
+        [
+          {
+            "node": "Agente Principal",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "get_history_user_status": {
+      "main": [
+        [
+          {
+            "node": "set_data_history",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "update_history_user_status": {
+      "main": [
+        [
+          {
+            "node": "set_data_history_database",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "nodeGroups": [],
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate",
+    "availableInMCP": false
+  },
+  "staticData": null,
+  "pinData": {
+    "When Executed by Another Workflow": [
+      {
+        "json": {
+          "session_id": "573213473953",
+          "message": "estoy buscando coches",
+          "tipo_mensaje": "Primer mensaje",
+          "environment": "dev"
+        }
+      }
+    ]
+  },
+  "meta": null,
+  "tags": [
+    {
+      "id": "2nDb4zfpAXOj9Pvx",
+      "name": "env:prod",
+      "createdAt": "2026-02-25T21:45:46.330Z",
+      "updatedAt": "2026-02-25T21:45:46.330Z"
+    }
+  ],
+  "shared": [
+    {
+      "role": "workflow:owner",
+      "workflowId": "aRRJXlnWKBYLTI8V",
+      "projectId": "8h8pwWGcWlnGEym3",
+      "createdAt": "2026-03-27T19:12:42.671Z",
+      "updatedAt": "2026-03-27T19:12:42.671Z"
+    }
+  ],
+  "activeVersion": null
+}
