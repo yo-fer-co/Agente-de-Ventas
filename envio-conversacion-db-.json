@@ -1,0 +1,304 @@
+{
+  "id": "rbDnM48ISjyaWI75",
+  "name": "Envio Conversacion DB",
+  "active": true,
+  "activeVersionId": "1b86c3aa-7fc7-4d11-a194-343a142cd0de",
+  "createdAt": "2025-10-24T20:52:58.702Z",
+  "updatedAt": "2026-08-03T23:00:53.985Z",
+  "isArchived": false,
+  "versionId": "9831ad45-cb01-4f7b-83b4-9f0f2cfc6daf",
+  "triggerCount": 1,
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "triggerAtHour": 23,
+              "triggerAtMinute": 50
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [
+        0,
+        0
+      ],
+      "id": "f28362d1-0701-40bf-8fa5-8aec4d3811a6",
+      "name": "Schedule Trigger"
+    },
+    {
+      "parameters": {
+        "documentId": {
+          "__rl": true,
+          "value": "1BBigXd9cM014ZVimnIvaXCcIVYuoHFDSq2ndYbWqAk8",
+          "mode": "list",
+          "cachedResultName": "Historial Baby's World",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1BBigXd9cM014ZVimnIvaXCcIVYuoHFDSq2ndYbWqAk8/edit?usp=drivesdk"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "gid=0",
+          "mode": "list",
+          "cachedResultName": "Hoja 1",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1BBigXd9cM014ZVimnIvaXCcIVYuoHFDSq2ndYbWqAk8/edit#gid=0"
+        },
+        "filtersUI": {
+          "values": [
+            {
+              "lookupColumn": "fecha",
+              "lookupValue": "={{ $now.format(\"dd/MM/yyyy\") }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [
+        208,
+        0
+      ],
+      "id": "cef5d6e5-f89b-4a74-a039-6d6e2f442d45",
+      "name": "Obtiene datos fecha actual",
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "Pf0TYy2joLTmqt2C",
+          "name": "Google Sheets account 3"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "workflowId": {
+          "__rl": true,
+          "value": "KnuSTXLkmUxO7NUk",
+          "mode": "list",
+          "cachedResultUrl": "/workflow/KnuSTXLkmUxO7NUk",
+          "cachedResultName": "Babys World — Historial"
+        },
+        "workflowInputs": {
+          "mappingMode": "defineBelow",
+          "value": {},
+          "matchingColumns": [],
+          "schema": [],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": true
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.executeWorkflow",
+      "typeVersion": 1.3,
+      "position": [
+        416,
+        0
+      ],
+      "id": "be1a3eb3-1d0a-431f-a6f6-4993fe5a485c",
+      "name": "Call 'Historial'"
+    },
+    {
+      "parameters": {
+        "authentication": "accessToken",
+        "topic": "products/create"
+      },
+      "type": "n8n-nodes-base.shopifyTrigger",
+      "typeVersion": 1,
+      "position": [
+        272,
+        240
+      ],
+      "id": "793cdfa0-a9fc-4f19-bc93-3fc10bd383bd",
+      "name": "Shopify Trigger",
+      "webhookId": "b45a5b55-8d99-4d70-9c14-8c3b167c0d36",
+      "credentials": {
+        "shopifyAccessTokenApi": {
+          "id": "1okEHh52lkfJokAf",
+          "name": "Shopify Access Token account"
+        }
+      }
+    }
+  ],
+  "connections": {
+    "Schedule Trigger": {
+      "main": [
+        [
+          {
+            "node": "Obtiene datos fecha actual",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Obtiene datos fecha actual": {
+      "main": [
+        [
+          {
+            "node": "Call 'Historial'",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "nodeGroups": [],
+  "settings": {
+    "executionOrder": "v1",
+    "callerPolicy": "workflowsFromSameOwner",
+    "errorWorkflow": "5j9hfL5IlhLCpydB",
+    "binaryMode": "separate"
+  },
+  "staticData": {
+    "node:Schedule Trigger": {
+      "recurrenceRules": [
+        null
+      ],
+      "recurrenceRuleSignatures": [
+        null
+      ]
+    }
+  },
+  "pinData": {},
+  "meta": {
+    "templateCredsSetupCompleted": true
+  },
+  "tags": [],
+  "shared": [
+    {
+      "role": "workflow:owner",
+      "workflowId": "rbDnM48ISjyaWI75",
+      "projectId": "8h8pwWGcWlnGEym3",
+      "createdAt": "2025-10-24T20:52:58.704Z",
+      "updatedAt": "2025-10-24T20:52:58.704Z"
+    }
+  ],
+  "activeVersion": {
+    "versionId": "1b86c3aa-7fc7-4d11-a194-343a142cd0de",
+    "workflowId": "rbDnM48ISjyaWI75",
+    "nodes": [
+      {
+        "parameters": {
+          "rule": {
+            "interval": [
+              {
+                "triggerAtHour": 23,
+                "triggerAtMinute": 50
+              }
+            ]
+          }
+        },
+        "type": "n8n-nodes-base.scheduleTrigger",
+        "typeVersion": 1.2,
+        "position": [
+          0,
+          0
+        ],
+        "id": "f28362d1-0701-40bf-8fa5-8aec4d3811a6",
+        "name": "Schedule Trigger"
+      },
+      {
+        "parameters": {
+          "documentId": {
+            "__rl": true,
+            "value": "1BBigXd9cM014ZVimnIvaXCcIVYuoHFDSq2ndYbWqAk8",
+            "mode": "list",
+            "cachedResultName": "Historial Baby's World",
+            "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1BBigXd9cM014ZVimnIvaXCcIVYuoHFDSq2ndYbWqAk8/edit?usp=drivesdk"
+          },
+          "sheetName": {
+            "__rl": true,
+            "value": "gid=0",
+            "mode": "list",
+            "cachedResultName": "Hoja 1",
+            "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1BBigXd9cM014ZVimnIvaXCcIVYuoHFDSq2ndYbWqAk8/edit#gid=0"
+          },
+          "filtersUI": {
+            "values": [
+              {
+                "lookupColumn": "fecha",
+                "lookupValue": "={{ $now.format(\"dd/MM/yyyy\") }}"
+              }
+            ]
+          },
+          "options": {}
+        },
+        "type": "n8n-nodes-base.googleSheets",
+        "typeVersion": 4.7,
+        "position": [
+          208,
+          0
+        ],
+        "id": "cef5d6e5-f89b-4a74-a039-6d6e2f442d45",
+        "name": "Obtiene datos fecha actual",
+        "credentials": {
+          "googleSheetsOAuth2Api": {
+            "id": "Pf0TYy2joLTmqt2C",
+            "name": "Google Sheets account 3"
+          }
+        }
+      },
+      {
+        "parameters": {
+          "workflowId": {
+            "__rl": true,
+            "value": "KnuSTXLkmUxO7NUk",
+            "mode": "list",
+            "cachedResultUrl": "/workflow/KnuSTXLkmUxO7NUk",
+            "cachedResultName": "Babys World — Historial"
+          },
+          "workflowInputs": {
+            "mappingMode": "defineBelow",
+            "value": {},
+            "matchingColumns": [],
+            "schema": [],
+            "attemptToConvertTypes": false,
+            "convertFieldsToString": true
+          },
+          "options": {}
+        },
+        "type": "n8n-nodes-base.executeWorkflow",
+        "typeVersion": 1.3,
+        "position": [
+          416,
+          0
+        ],
+        "id": "be1a3eb3-1d0a-431f-a6f6-4993fe5a485c",
+        "name": "Call 'Historial'"
+      }
+    ],
+    "connections": {
+      "Schedule Trigger": {
+        "main": [
+          [
+            {
+              "node": "Obtiene datos fecha actual",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Obtiene datos fecha actual": {
+        "main": [
+          [
+            {
+              "node": "Call 'Historial'",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      }
+    },
+    "nodeGroups": [],
+    "authors": "system migration",
+    "name": null,
+    "description": null,
+    "autosaved": false,
+    "createdAt": "2025-12-16T23:48:57.308Z",
+    "updatedAt": "2025-12-16T23:48:57.308Z"
+  }
+}
