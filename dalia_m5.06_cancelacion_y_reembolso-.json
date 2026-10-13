@@ -1,0 +1,853 @@
+{
+  "id": "FWyiAvR8pfnLFbMM",
+  "name": "DALIA_M5.06_Cancelacion_y_reembolso",
+  "active": true,
+  "activeVersionId": "7b3a7b3d-8aba-450c-8bae-7e9bc193e621",
+  "createdAt": "2026-10-05T20:01:14.183Z",
+  "updatedAt": "2026-10-05T20:03:28.983Z",
+  "isArchived": false,
+  "versionId": "7b3a7b3d-8aba-450c-8bae-7e9bc193e621",
+  "triggerCount": 0,
+  "nodes": [
+    {
+      "id": "1bb6ddcd-2907-4397-8926-83c97a4e290e",
+      "name": "Entrada",
+      "type": "n8n-nodes-base.executeWorkflowTrigger",
+      "typeVersion": 1.2,
+      "position": [
+        0,
+        192
+      ],
+      "parameters": {
+        "inputSource": "passthrough"
+      }
+    },
+    {
+      "id": "5e98401a-b58c-4348-88d4-25f1ca638a29",
+      "name": "Tipo",
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 3.2,
+      "position": [
+        224,
+        192
+      ],
+      "parameters": {
+        "rules": {
+          "values": [
+            {
+              "outputKey": "ejecutar",
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict"
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $json.type ?? \"m5.execute\" }}",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    },
+                    "rightValue": "m5.execute"
+                  },
+                  {
+                    "leftValue": "={{ $json.type ?? \"m5.execute\" }}",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    },
+                    "rightValue": "m5.cancel_op"
+                  }
+                ],
+                "combinator": "or"
+              }
+            }
+          ]
+        },
+        "options": {
+          "fallbackOutput": "extra",
+          "renameFallbackOutput": "Desconocido"
+        }
+      }
+    },
+    {
+      "id": "a764da10-28a0-4e08-90e8-9e06fe593509",
+      "name": "Reclamar operacion",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.7,
+      "position": [
+        448,
+        96
+      ],
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "select dalia.m5_claim_operation($1::uuid) as c;",
+        "options": {
+          "queryReplacement": "={{ [ $json.payload?.operation_id ?? $json.operation_id ?? null ] }}"
+        }
+      },
+      "credentials": {
+        "postgres": {
+          "id": "HfCgVAjUygK1vrkU",
+          "name": "DALIA dev Supabase"
+        }
+      }
+    },
+    {
+      "id": "5cf1879e-ba15-42c5-b583-b733d39ce8d5",
+      "name": "Puede ejecutar",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        672,
+        96
+      ],
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose"
+          },
+          "conditions": [
+            {
+              "leftValue": "={{ $json.c.ok === true }}",
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        }
+      }
+    },
+    {
+      "id": "8a32aaa4-a02a-4a73-8616-1879939476e2",
+      "name": "Preparar llamada",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        896,
+        32
+      ],
+      "parameters": {
+        "mode": "manual",
+        "includeOtherFields": false,
+        "assignments": {
+          "assignments": [
+            {
+              "id": "p1",
+              "name": "port",
+              "value": "={{ $json.c.port_request.port }}",
+              "type": "string"
+            },
+            {
+              "id": "p2",
+              "name": "operation",
+              "value": "={{ $json.c.port_request.operation }}",
+              "type": "string"
+            },
+            {
+              "id": "p3",
+              "name": "input",
+              "value": "={{ $json.c.port_request.input }}",
+              "type": "object"
+            },
+            {
+              "id": "p4",
+              "name": "envelope",
+              "value": "={{ $json.c.port_request.envelope ?? {} }}",
+              "type": "object"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "8d73bb15-8d3f-4ab7-8c03-556e801edf21",
+      "name": "Cancelacion o reembolso por INT.port",
+      "type": "n8n-nodes-base.executeWorkflow",
+      "typeVersion": 1.3,
+      "position": [
+        1120,
+        32
+      ],
+      "parameters": {
+        "mode": "each",
+        "source": "database",
+        "workflowId": {
+          "__rl": true,
+          "mode": "id",
+          "value": "5gbpWhv0zIA8bZ0w"
+        },
+        "options": {
+          "waitForSubWorkflow": true
+        }
+      }
+    },
+    {
+      "id": "253a04f5-7cdc-4717-9ba8-850601205923",
+      "name": "Registrar intento",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.7,
+      "position": [
+        1344,
+        32
+      ],
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "select dalia.m5_record_attempt($1::uuid, $2::jsonb) as result;",
+        "options": {
+          "queryReplacement": "={{ [ $(\"Reclamar operacion\").first().json.c.operation_id, JSON.stringify($json) ] }}"
+        }
+      },
+      "credentials": {
+        "postgres": {
+          "id": "HfCgVAjUygK1vrkU",
+          "name": "DALIA dev Supabase"
+        }
+      }
+    },
+    {
+      "id": "3ac90473-e95c-4273-b4e8-f1bb57010b92",
+      "name": "Es job",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        1568,
+        96
+      ],
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose"
+          },
+          "conditions": [
+            {
+              "leftValue": "={{ !!$(\"Entrada\").first().json.job_id }}",
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        }
+      }
+    },
+    {
+      "id": "ee67ab24-073f-4da9-9b32-3c227871b363",
+      "name": "Fallar job (tipo desconocido)",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.7,
+      "position": [
+        448,
+        288
+      ],
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "select dalia.sys_fail_job($1::uuid, $2::jsonb, false) as job_status;",
+        "options": {
+          "queryReplacement": "={{ [ $(\"Entrada\").first().json.job_id, JSON.stringify({ code: \"UNKNOWN_JOB_TYPE\", message: $(\"Entrada\").first().json.type }) ] }}"
+        }
+      },
+      "credentials": {
+        "postgres": {
+          "id": "HfCgVAjUygK1vrkU",
+          "name": "DALIA dev Supabase"
+        }
+      }
+    },
+    {
+      "id": "538343c2-6c19-460c-b4ba-2588c0fbab03",
+      "name": "Completar job",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.7,
+      "position": [
+        1792,
+        0
+      ],
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "select dalia.sys_complete_job($1::uuid, $2::jsonb) as job_status;",
+        "options": {
+          "queryReplacement": "={{ [ $(\"Entrada\").first().json.job_id, JSON.stringify($json.result ?? $json.c ?? $json.step ?? {}) ] }}"
+        }
+      },
+      "credentials": {
+        "postgres": {
+          "id": "HfCgVAjUygK1vrkU",
+          "name": "DALIA dev Supabase"
+        }
+      }
+    },
+    {
+      "id": "c442975a-426b-4e50-aeb4-e3254b75e79f",
+      "name": "Salida",
+      "type": "n8n-nodes-base.noOp",
+      "typeVersion": 1,
+      "position": [
+        1792,
+        192
+      ],
+      "parameters": {},
+      "notes": "H-L9-02: sin job, el resultado sale por la salida 0 hacia quien llamó"
+    }
+  ],
+  "connections": {
+    "Entrada": {
+      "main": [
+        [
+          {
+            "node": "Tipo",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Tipo": {
+      "main": [
+        [
+          {
+            "node": "Reclamar operacion",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Fallar job (tipo desconocido)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Reclamar operacion": {
+      "main": [
+        [
+          {
+            "node": "Puede ejecutar",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Puede ejecutar": {
+      "main": [
+        [
+          {
+            "node": "Preparar llamada",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Es job",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Preparar llamada": {
+      "main": [
+        [
+          {
+            "node": "Cancelacion o reembolso por INT.port",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Cancelacion o reembolso por INT.port": {
+      "main": [
+        [
+          {
+            "node": "Registrar intento",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Registrar intento": {
+      "main": [
+        [
+          {
+            "node": "Es job",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Es job": {
+      "main": [
+        [
+          {
+            "node": "Completar job",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Salida",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "nodeGroups": [],
+  "settings": {
+    "executionOrder": "v1",
+    "availableInMCP": true,
+    "errorWorkflow": "cjjQno2MxMTT3Icc",
+    "timezone": "America/Bogota",
+    "saveDataSuccessExecution": "none",
+    "callerPolicy": "workflowsFromSameOwner"
+  },
+  "staticData": null,
+  "pinData": null,
+  "meta": {
+    "aiBuilderAssisted": true,
+    "builderVariant": "mcp"
+  },
+  "tags": [],
+  "shared": [
+    {
+      "role": "workflow:owner",
+      "workflowId": "FWyiAvR8pfnLFbMM",
+      "projectId": "tRHCC8ts4mkRGXGn",
+      "createdAt": "2026-10-09T21:09:17.840Z",
+      "updatedAt": "2026-10-09T21:09:17.840Z"
+    }
+  ],
+  "activeVersion": {
+    "versionId": "7b3a7b3d-8aba-450c-8bae-7e9bc193e621",
+    "workflowId": "FWyiAvR8pfnLFbMM",
+    "nodes": [
+      {
+        "id": "1bb6ddcd-2907-4397-8926-83c97a4e290e",
+        "name": "Entrada",
+        "type": "n8n-nodes-base.executeWorkflowTrigger",
+        "typeVersion": 1.2,
+        "position": [
+          0,
+          192
+        ],
+        "parameters": {
+          "inputSource": "passthrough"
+        }
+      },
+      {
+        "id": "5e98401a-b58c-4348-88d4-25f1ca638a29",
+        "name": "Tipo",
+        "type": "n8n-nodes-base.switch",
+        "typeVersion": 3.2,
+        "position": [
+          224,
+          192
+        ],
+        "parameters": {
+          "rules": {
+            "values": [
+              {
+                "outputKey": "ejecutar",
+                "conditions": {
+                  "options": {
+                    "caseSensitive": true,
+                    "leftValue": "",
+                    "typeValidation": "strict"
+                  },
+                  "conditions": [
+                    {
+                      "leftValue": "={{ $json.type ?? \"m5.execute\" }}",
+                      "operator": {
+                        "type": "string",
+                        "operation": "equals"
+                      },
+                      "rightValue": "m5.execute"
+                    },
+                    {
+                      "leftValue": "={{ $json.type ?? \"m5.execute\" }}",
+                      "operator": {
+                        "type": "string",
+                        "operation": "equals"
+                      },
+                      "rightValue": "m5.cancel_op"
+                    }
+                  ],
+                  "combinator": "or"
+                }
+              }
+            ]
+          },
+          "options": {
+            "fallbackOutput": "extra",
+            "renameFallbackOutput": "Desconocido"
+          }
+        }
+      },
+      {
+        "id": "a764da10-28a0-4e08-90e8-9e06fe593509",
+        "name": "Reclamar operacion",
+        "type": "n8n-nodes-base.postgres",
+        "typeVersion": 2.7,
+        "position": [
+          448,
+          96
+        ],
+        "parameters": {
+          "operation": "executeQuery",
+          "query": "select dalia.m5_claim_operation($1::uuid) as c;",
+          "options": {
+            "queryReplacement": "={{ [ $json.payload?.operation_id ?? $json.operation_id ?? null ] }}"
+          }
+        },
+        "credentials": {
+          "postgres": {
+            "id": "HfCgVAjUygK1vrkU",
+            "name": "DALIA dev Supabase"
+          }
+        }
+      },
+      {
+        "id": "5cf1879e-ba15-42c5-b583-b733d39ce8d5",
+        "name": "Puede ejecutar",
+        "type": "n8n-nodes-base.if",
+        "typeVersion": 2.2,
+        "position": [
+          672,
+          96
+        ],
+        "parameters": {
+          "conditions": {
+            "options": {
+              "caseSensitive": true,
+              "leftValue": "",
+              "typeValidation": "loose"
+            },
+            "conditions": [
+              {
+                "leftValue": "={{ $json.c.ok === true }}",
+                "operator": {
+                  "type": "boolean",
+                  "operation": "true",
+                  "singleValue": true
+                }
+              }
+            ],
+            "combinator": "and"
+          }
+        }
+      },
+      {
+        "id": "8a32aaa4-a02a-4a73-8616-1879939476e2",
+        "name": "Preparar llamada",
+        "type": "n8n-nodes-base.set",
+        "typeVersion": 3.4,
+        "position": [
+          896,
+          32
+        ],
+        "parameters": {
+          "mode": "manual",
+          "includeOtherFields": false,
+          "assignments": {
+            "assignments": [
+              {
+                "id": "p1",
+                "name": "port",
+                "value": "={{ $json.c.port_request.port }}",
+                "type": "string"
+              },
+              {
+                "id": "p2",
+                "name": "operation",
+                "value": "={{ $json.c.port_request.operation }}",
+                "type": "string"
+              },
+              {
+                "id": "p3",
+                "name": "input",
+                "value": "={{ $json.c.port_request.input }}",
+                "type": "object"
+              },
+              {
+                "id": "p4",
+                "name": "envelope",
+                "value": "={{ $json.c.port_request.envelope ?? {} }}",
+                "type": "object"
+              }
+            ]
+          }
+        }
+      },
+      {
+        "id": "8d73bb15-8d3f-4ab7-8c03-556e801edf21",
+        "name": "Cancelacion o reembolso por INT.port",
+        "type": "n8n-nodes-base.executeWorkflow",
+        "typeVersion": 1.3,
+        "position": [
+          1120,
+          32
+        ],
+        "parameters": {
+          "mode": "each",
+          "source": "database",
+          "workflowId": {
+            "__rl": true,
+            "mode": "id",
+            "value": "5gbpWhv0zIA8bZ0w"
+          },
+          "options": {
+            "waitForSubWorkflow": true
+          }
+        }
+      },
+      {
+        "id": "253a04f5-7cdc-4717-9ba8-850601205923",
+        "name": "Registrar intento",
+        "type": "n8n-nodes-base.postgres",
+        "typeVersion": 2.7,
+        "position": [
+          1344,
+          32
+        ],
+        "parameters": {
+          "operation": "executeQuery",
+          "query": "select dalia.m5_record_attempt($1::uuid, $2::jsonb) as result;",
+          "options": {
+            "queryReplacement": "={{ [ $(\"Reclamar operacion\").first().json.c.operation_id, JSON.stringify($json) ] }}"
+          }
+        },
+        "credentials": {
+          "postgres": {
+            "id": "HfCgVAjUygK1vrkU",
+            "name": "DALIA dev Supabase"
+          }
+        }
+      },
+      {
+        "id": "3ac90473-e95c-4273-b4e8-f1bb57010b92",
+        "name": "Es job",
+        "type": "n8n-nodes-base.if",
+        "typeVersion": 2.2,
+        "position": [
+          1568,
+          96
+        ],
+        "parameters": {
+          "conditions": {
+            "options": {
+              "caseSensitive": true,
+              "leftValue": "",
+              "typeValidation": "loose"
+            },
+            "conditions": [
+              {
+                "leftValue": "={{ !!$(\"Entrada\").first().json.job_id }}",
+                "operator": {
+                  "type": "boolean",
+                  "operation": "true",
+                  "singleValue": true
+                }
+              }
+            ],
+            "combinator": "and"
+          }
+        }
+      },
+      {
+        "id": "ee67ab24-073f-4da9-9b32-3c227871b363",
+        "name": "Fallar job (tipo desconocido)",
+        "type": "n8n-nodes-base.postgres",
+        "typeVersion": 2.7,
+        "position": [
+          448,
+          288
+        ],
+        "parameters": {
+          "operation": "executeQuery",
+          "query": "select dalia.sys_fail_job($1::uuid, $2::jsonb, false) as job_status;",
+          "options": {
+            "queryReplacement": "={{ [ $(\"Entrada\").first().json.job_id, JSON.stringify({ code: \"UNKNOWN_JOB_TYPE\", message: $(\"Entrada\").first().json.type }) ] }}"
+          }
+        },
+        "credentials": {
+          "postgres": {
+            "id": "HfCgVAjUygK1vrkU",
+            "name": "DALIA dev Supabase"
+          }
+        }
+      },
+      {
+        "id": "538343c2-6c19-460c-b4ba-2588c0fbab03",
+        "name": "Completar job",
+        "type": "n8n-nodes-base.postgres",
+        "typeVersion": 2.7,
+        "position": [
+          1792,
+          0
+        ],
+        "parameters": {
+          "operation": "executeQuery",
+          "query": "select dalia.sys_complete_job($1::uuid, $2::jsonb) as job_status;",
+          "options": {
+            "queryReplacement": "={{ [ $(\"Entrada\").first().json.job_id, JSON.stringify($json.result ?? $json.c ?? $json.step ?? {}) ] }}"
+          }
+        },
+        "credentials": {
+          "postgres": {
+            "id": "HfCgVAjUygK1vrkU",
+            "name": "DALIA dev Supabase"
+          }
+        }
+      },
+      {
+        "id": "c442975a-426b-4e50-aeb4-e3254b75e79f",
+        "name": "Salida",
+        "type": "n8n-nodes-base.noOp",
+        "typeVersion": 1,
+        "position": [
+          1792,
+          192
+        ],
+        "parameters": {},
+        "notes": "H-L9-02: sin job, el resultado sale por la salida 0 hacia quien llamó"
+      }
+    ],
+    "connections": {
+      "Entrada": {
+        "main": [
+          [
+            {
+              "node": "Tipo",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Tipo": {
+        "main": [
+          [
+            {
+              "node": "Reclamar operacion",
+              "type": "main",
+              "index": 0
+            }
+          ],
+          [
+            {
+              "node": "Fallar job (tipo desconocido)",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Reclamar operacion": {
+        "main": [
+          [
+            {
+              "node": "Puede ejecutar",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Puede ejecutar": {
+        "main": [
+          [
+            {
+              "node": "Preparar llamada",
+              "type": "main",
+              "index": 0
+            }
+          ],
+          [
+            {
+              "node": "Es job",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Preparar llamada": {
+        "main": [
+          [
+            {
+              "node": "Cancelacion o reembolso por INT.port",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Cancelacion o reembolso por INT.port": {
+        "main": [
+          [
+            {
+              "node": "Registrar intento",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Registrar intento": {
+        "main": [
+          [
+            {
+              "node": "Es job",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Es job": {
+        "main": [
+          [
+            {
+              "node": "Completar job",
+              "type": "main",
+              "index": 0
+            }
+          ],
+          [
+            {
+              "node": "Salida",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      }
+    },
+    "nodeGroups": [],
+    "authors": "Fabian Bocanegra (via MCP)",
+    "name": "Lote 10: M5.06 cancelación y reembolso",
+    "description": "Created with 11 nodes: Entrada, Tipo, Reclamar operacion, Puede ejecutar, Preparar llamada and 6 more",
+    "autosaved": false,
+    "createdAt": "2026-10-05T20:01:14.185Z",
+    "updatedAt": "2026-10-05T20:01:14.185Z"
+  }
+}
