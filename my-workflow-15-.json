@@ -1,0 +1,161 @@
+{
+  "id": "LfQCP3l84vu46BG24pGWh",
+  "name": "My workflow 15",
+  "active": false,
+  "activeVersionId": null,
+  "createdAt": "2026-02-06T01:07:23.313Z",
+  "updatedAt": "2026-02-26T01:22:20.000Z",
+  "isArchived": true,
+  "versionId": "b3ab560c-c994-445f-809c-5f224ad36ef1",
+  "triggerCount": 1,
+  "nodes": [
+    {
+      "parameters": {
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.chatTrigger",
+      "typeVersion": 1.4,
+      "position": [
+        0,
+        0
+      ],
+      "id": "232798be-479b-4049-9377-a2ade54f49c5",
+      "name": "When chat message received",
+      "webhookId": "3ace4bd1-8219-46c9-aa65-d6566847896f"
+    },
+    {
+      "parameters": {
+        "model": {
+          "__rl": true,
+          "mode": "list",
+          "value": "gpt-4.1-mini"
+        },
+        "builtInTools": {},
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatOpenAi",
+      "typeVersion": 1.3,
+      "position": [
+        80,
+        208
+      ],
+      "id": "c02e29fc-33f9-4f93-bd33-2b33842fff84",
+      "name": "OpenAI Chat Model",
+      "credentials": {
+        "openAiApi": {
+          "id": "cm7TdxurmQCEHkxZ",
+          "name": "OpenAi account 4"
+        }
+      }
+    },
+    {
+      "parameters": {},
+      "type": "@n8n/n8n-nodes-langchain.memoryBufferWindow",
+      "typeVersion": 1.3,
+      "position": [
+        224,
+        208
+      ],
+      "id": "5e51ebef-9af6-4862-acc2-ccb0c20301db",
+      "name": "Simple Memory"
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "={{ $json.chatInput }}",
+        "options": {
+          "systemMessage": "=Rol: Especialista en Activos Visuales (Filtro por Carpeta Dinámica)\nRol: Eres un agente de búsqueda técnica que utiliza el servidor mcp-drive. Tu misión es navegar por una estructura de directorios específica para localizar imágenes de producto.\n\nVariables de Entorno:\n\n\nRoot Folder ID: 1hiDjeYmj7r9zZRl59Z9NiWWfT7bm3v6h (Corresponde a la carpeta principal \"02_Fotografia_Productos\").\n\nObjetivo de Búsqueda:\n\n\nLocalización de Carpeta: Recibirás el nombre de una subcarpeta (ej: \"COCHE GEMELAR JM\" o \"ANDADERA 4 EN 1\"). Debes buscar este nombre exclusivamente dentro de las subcarpetas de la carpeta raíz (1hiDjeYmj7r9zZRl59Z9NiWWfT7bm3v6h).\n\nFiltrado de Archivos: Una vez ubicada la carpeta correcta, extrae todos los archivos que cumplan estas condiciones:\n\nNombre del archivo: Debe ser exactamente \"1\" (ej: 1.jpg, 1.png).\n\nTipo de archivo: Solo imágenes (image/*).\n\nInstrucciones Operativas:\n\nPaso 1: Escanea las subcarpetas de la raíz para encontrar la que coincida con el nombre solicitado por el usuario.\n\nPaso 2: Si la carpeta existe, lista su contenido.\n\nPaso 3: Filtra los resultados para mostrar solo los archivos llamados \"1\".\n\nPaso 4: Devuelve el ID del archivo y el enlace de visualización de Google Drive.\n\nReglas de Error:\n\nSi la subcarpeta solicitada no se encuentra dentro de la raíz, responde: \"Carpeta de producto no localizada en el repositorio oficial\".\n\nSi la carpeta existe pero no contiene una imagen llamada \"1\", informa: \"No se encontró la imagen principal (1.jpg) en la carpeta seleccionada\"."
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 3.1,
+      "position": [
+        208,
+        0
+      ],
+      "id": "31cf8fd8-b56c-485a-9cfb-31df71958bdf",
+      "name": "AI Agent"
+    },
+    {
+      "parameters": {
+        "endpointUrl": "https://yoeco.app.n8n.cloud/mcp/d9d06683-b7b5-49d3-a065-877568cd777d",
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.mcpClientTool",
+      "typeVersion": 1.2,
+      "position": [
+        352,
+        208
+      ],
+      "id": "07f62b17-7bc5-4208-a6cc-e8482c0ef226",
+      "name": "MCP Drive"
+    }
+  ],
+  "connections": {
+    "When chat message received": {
+      "main": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "OpenAI Chat Model": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Simple Memory": {
+      "ai_memory": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_memory",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "MCP Drive": {
+      "ai_tool": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "nodeGroups": [],
+  "settings": {
+    "executionOrder": "v1",
+    "availableInMCP": false
+  },
+  "staticData": null,
+  "pinData": {},
+  "meta": {
+    "templateCredsSetupCompleted": true
+  },
+  "tags": [],
+  "shared": [
+    {
+      "role": "workflow:owner",
+      "workflowId": "LfQCP3l84vu46BG24pGWh",
+      "projectId": "8h8pwWGcWlnGEym3",
+      "createdAt": "2026-02-06T01:07:23.315Z",
+      "updatedAt": "2026-02-06T01:07:23.315Z"
+    }
+  ],
+  "activeVersion": null
+}
