@@ -1,0 +1,924 @@
+{
+  "id": "8SNOz1kJQuRxcNp6",
+  "name": "My workflow 23",
+  "active": false,
+  "activeVersionId": null,
+  "createdAt": "2026-09-17T21:14:00.712Z",
+  "updatedAt": "2026-10-05T17:28:04.763Z",
+  "isArchived": false,
+  "versionId": "2a84f98d-364e-4ea2-93d2-9cc1c93cee5e",
+  "triggerCount": 0,
+  "nodes": [
+    {
+      "parameters": {
+        "formTitle": "ID de la imagen en Drive",
+        "formFields": {
+          "values": [
+            {
+              "fieldLabel": "ID de la imagen en Drive"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.formTrigger",
+      "typeVersion": 2.6,
+      "position": [
+        -208,
+        -48
+      ],
+      "id": "d4d33ab9-df63-4a5a-8689-9ccbdec23771",
+      "name": "On form submission",
+      "webhookId": "6f5195bb-6925-45a9-b2d4-5e7b042e2228"
+    },
+    {
+      "parameters": {
+        "operation": "download",
+        "fileId": {
+          "__rl": true,
+          "value": "={{ $json['ID de la imagen en Drive'] }}",
+          "mode": "id"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleDrive",
+      "typeVersion": 3,
+      "position": [
+        16,
+        -48
+      ],
+      "id": "54d98b71-5fc9-460e-b9c8-1382601a17f5",
+      "name": "Download file",
+      "credentials": {
+        "googleDriveOAuth2Api": {
+          "id": "lgNrEQGQeSWc6bsi",
+          "name": "Google Drive OAuth2 API"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "resource": "image",
+        "operation": "analyze",
+        "modelId": {
+          "__rl": true,
+          "value": "gpt-4o-mini",
+          "mode": "list",
+          "cachedResultName": "GPT-4O-MINI"
+        },
+        "text": "Actúa como un experto en marketing digital para una tienda de productos de bebés en Instagram. Mira esta imagen real de nuestro producto. Describe exactamente qué producto es, cuáles son sus beneficios clave y redacta un copy (texto) tierno y persuasivo para Instagram. Incluye 3 hashtags.",
+        "inputType": "base64",
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.openAi",
+      "typeVersion": 2.3,
+      "position": [
+        160,
+        -48
+      ],
+      "id": "be39998f-ec86-4f84-b313-bc7f93df6335",
+      "name": "Analyze image",
+      "credentials": {
+        "openAiApi": {
+          "id": "4YeSn6Yr4kCkAQYP",
+          "name": "OpenAI: dev"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://hook.us2.make.com/b8paypbfflnky0ssaycbhae5nfoybtlo",
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "text",
+              "value": "={{ $json['0'].content[0].text }}{{ $json.text }}"
+            },
+            {
+              "name": "image_url",
+              "value": "=https://drive.google.com/uc?id={{ $('Download file1').item.json.id }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.5,
+      "position": [
+        1648,
+        480
+      ],
+      "id": "9f1492be-8930-4bb3-b9f3-f226b24787b8",
+      "name": "HTTP Request"
+    },
+    {
+      "parameters": {},
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [
+        -128,
+        784
+      ],
+      "id": "ae6ce075-cfe4-4c05-83ad-08beae0c982e",
+      "name": "When clicking ‘Execute workflow’"
+    },
+    {
+      "parameters": {
+        "resource": "fileFolder",
+        "returnAll": true,
+        "filter": {
+          "folderId": {
+            "__rl": true,
+            "value": "1hiDjeYmj7r9zZRl59Z9NiWWfT7bm3v6h",
+            "mode": "list",
+            "cachedResultName": "02_Fotografia_Productos",
+            "cachedResultUrl": "https://drive.google.com/drive/folders/1hiDjeYmj7r9zZRl59Z9NiWWfT7bm3v6h"
+          },
+          "whatToSearch": "folders"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleDrive",
+      "typeVersion": 3,
+      "position": [
+        96,
+        464
+      ],
+      "id": "b96f1599-ad92-473d-bfad-65742971341d",
+      "name": "Search files and folders",
+      "credentials": {
+        "googleDriveOAuth2Api": {
+          "id": "lgNrEQGQeSWc6bsi",
+          "name": "Google Drive OAuth2 API"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "type": "random"
+      },
+      "type": "n8n-nodes-base.sort",
+      "typeVersion": 1,
+      "position": [
+        240,
+        464
+      ],
+      "id": "ddd55915-61a8-4040-a138-a4aaa25fe795",
+      "name": "Sort"
+    },
+    {
+      "parameters": {},
+      "type": "n8n-nodes-base.limit",
+      "typeVersion": 1,
+      "position": [
+        384,
+        464
+      ],
+      "id": "a6d7eb68-c355-4035-9f7c-f1486c9194c1",
+      "name": "Limit"
+    },
+    {
+      "parameters": {
+        "resource": "fileFolder",
+        "returnAll": true,
+        "filter": {
+          "folderId": {
+            "__rl": true,
+            "mode": "id",
+            "value": "={{ $json.id }}"
+          }
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleDrive",
+      "typeVersion": 3,
+      "position": [
+        528,
+        464
+      ],
+      "id": "00223e65-4cba-45f0-b52d-1a93e0bee6c0",
+      "name": "Search files and folders1",
+      "credentials": {
+        "googleDriveOAuth2Api": {
+          "id": "lgNrEQGQeSWc6bsi",
+          "name": "Google Drive OAuth2 API"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "type": "random"
+      },
+      "type": "n8n-nodes-base.sort",
+      "typeVersion": 1,
+      "position": [
+        704,
+        480
+      ],
+      "id": "a84c7850-9aed-469c-9a46-7179994a4c65",
+      "name": "Sort1"
+    },
+    {
+      "parameters": {},
+      "type": "n8n-nodes-base.limit",
+      "typeVersion": 1,
+      "position": [
+        864,
+        480
+      ],
+      "id": "a9c48c89-7896-44dc-b044-dfdebfbdb277",
+      "name": "Limit1"
+    },
+    {
+      "parameters": {
+        "resource": "fileFolder",
+        "returnAll": true,
+        "filter": {
+          "folderId": {
+            "__rl": true,
+            "mode": "id",
+            "value": "={{ $json.id }}"
+          }
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleDrive",
+      "typeVersion": 3,
+      "position": [
+        1024,
+        480
+      ],
+      "id": "01a1f1c3-2b27-47f2-9c98-ea526c6a0946",
+      "name": "Search files and folders2",
+      "credentials": {
+        "googleDriveOAuth2Api": {
+          "id": "lgNrEQGQeSWc6bsi",
+          "name": "Google Drive OAuth2 API"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "download",
+        "fileId": {
+          "__rl": true,
+          "value": "={{ $json.id }}",
+          "mode": "id"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleDrive",
+      "typeVersion": 3,
+      "position": [
+        1312,
+        480
+      ],
+      "id": "61f59fdf-01a2-4bf9-a6a7-78aadadd05b7",
+      "name": "Download file1",
+      "credentials": {
+        "googleDriveOAuth2Api": {
+          "id": "lgNrEQGQeSWc6bsi",
+          "name": "Google Drive OAuth2 API"
+        }
+      }
+    },
+    {
+      "parameters": {},
+      "type": "n8n-nodes-base.limit",
+      "typeVersion": 1,
+      "position": [
+        1168,
+        480
+      ],
+      "id": "831c2d6d-d6a5-4b21-97e7-9da8fef79e62",
+      "name": "Limit2"
+    },
+    {
+      "parameters": {
+        "resource": "image",
+        "operation": "analyze",
+        "modelId": {
+          "__rl": true,
+          "value": "gpt-4o-mini",
+          "mode": "list",
+          "cachedResultName": "GPT-4O-MINI"
+        },
+        "text": "Actúa como el Community Manager estrella de 'Baby's World', una tienda de productos para bebés. Analiza internamente la imagen y redacta el copy final para Instagram. El texto debe ser más extenso, emocional, tierno y contar una pequeña historia sobre cómo este producto hace más felices al bebé y a los papás.\n\nSigue estas reglas vitales de formato:\n\nEscribe en párrafos cortos (máximo 2 o 3 líneas por párrafo) separados por saltos de línea para que sea muy fácil y agradable de leer.\n\nUsa emojis tiernos y variados a lo largo de todo el texto.\n\nCierra siempre con una pregunta amigable que invite a los papás a comentar.\n\nNUNCA uses asteriscos (**), numerales (###) para crear títulos, ni etiquetas como 'Descripción:'. Entrégame SOLO el texto final, listo para copiar y publicar.\n\nTermina con 3 hashtags.",
+        "inputType": "base64",
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.openAi",
+      "typeVersion": 2.3,
+      "position": [
+        1472,
+        480
+      ],
+      "id": "f9451a29-c9f2-4340-95aa-e0ce03588d53",
+      "name": "Analyze image1",
+      "credentials": {
+        "openAiApi": {
+          "id": "4YeSn6Yr4kCkAQYP",
+          "name": "OpenAI: dev"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "resource": "fileFolder",
+        "returnAll": true,
+        "filter": {
+          "folderId": {
+            "__rl": true,
+            "value": "1hiDjeYmj7r9zZRl59Z9NiWWfT7bm3v6h",
+            "mode": "list",
+            "cachedResultName": "02_Fotografia_Productos",
+            "cachedResultUrl": "https://drive.google.com/drive/folders/1hiDjeYmj7r9zZRl59Z9NiWWfT7bm3v6h"
+          },
+          "whatToSearch": "folders"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleDrive",
+      "typeVersion": 3,
+      "position": [
+        80,
+        784
+      ],
+      "id": "9b672d18-0df2-4afa-a067-3245ecb7be1b",
+      "name": "Search files and folders3",
+      "credentials": {
+        "googleDriveOAuth2Api": {
+          "id": "lgNrEQGQeSWc6bsi",
+          "name": "Google Drive OAuth2 API"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "type": "random"
+      },
+      "type": "n8n-nodes-base.sort",
+      "typeVersion": 1,
+      "position": [
+        224,
+        784
+      ],
+      "id": "86514f74-1e3b-4ffa-a174-5f96a9455d48",
+      "name": "Sort2"
+    },
+    {
+      "parameters": {},
+      "type": "n8n-nodes-base.limit",
+      "typeVersion": 1,
+      "position": [
+        368,
+        784
+      ],
+      "id": "c1a87a53-4a7a-4a6e-9fc1-222d55078982",
+      "name": "Limit3"
+    },
+    {
+      "parameters": {
+        "resource": "fileFolder",
+        "returnAll": true,
+        "filter": {
+          "folderId": {
+            "__rl": true,
+            "mode": "id",
+            "value": "={{ $json.id }}"
+          }
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleDrive",
+      "typeVersion": 3,
+      "position": [
+        512,
+        784
+      ],
+      "id": "18690d1d-3641-49bc-a56a-491788b2b8b9",
+      "name": "Search files and folders4",
+      "credentials": {
+        "googleDriveOAuth2Api": {
+          "id": "lgNrEQGQeSWc6bsi",
+          "name": "Google Drive OAuth2 API"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "type": "random"
+      },
+      "type": "n8n-nodes-base.sort",
+      "typeVersion": 1,
+      "position": [
+        688,
+        800
+      ],
+      "id": "4bc9cb2b-cb77-4f8f-b41c-22ccf5ab5280",
+      "name": "Sort3"
+    },
+    {
+      "parameters": {},
+      "type": "n8n-nodes-base.limit",
+      "typeVersion": 1,
+      "position": [
+        848,
+        800
+      ],
+      "id": "e9be8df3-b2aa-4f48-9ead-ebf95cbb9a69",
+      "name": "Limit4"
+    },
+    {
+      "parameters": {
+        "resource": "fileFolder",
+        "returnAll": true,
+        "filter": {
+          "folderId": {
+            "__rl": true,
+            "mode": "id",
+            "value": "={{ $json.id }}"
+          }
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleDrive",
+      "typeVersion": 3,
+      "position": [
+        1008,
+        800
+      ],
+      "id": "7df96d58-8087-4cc3-82ef-e78a8ed94873",
+      "name": "Search files and folders5",
+      "credentials": {
+        "googleDriveOAuth2Api": {
+          "id": "lgNrEQGQeSWc6bsi",
+          "name": "Google Drive OAuth2 API"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "download",
+        "fileId": {
+          "__rl": true,
+          "value": "={{ $json.id }}",
+          "mode": "id"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleDrive",
+      "typeVersion": 3,
+      "position": [
+        1296,
+        800
+      ],
+      "id": "b8e7f8f2-b192-43d1-bec1-6150499736d6",
+      "name": "Download file2",
+      "credentials": {
+        "googleDriveOAuth2Api": {
+          "id": "lgNrEQGQeSWc6bsi",
+          "name": "Google Drive OAuth2 API"
+        }
+      }
+    },
+    {
+      "parameters": {},
+      "type": "n8n-nodes-base.limit",
+      "typeVersion": 1,
+      "position": [
+        1152,
+        800
+      ],
+      "id": "b214c961-84fc-410c-83ed-042c3fc9ff81",
+      "name": "Limit5"
+    },
+    {
+      "parameters": {
+        "resource": "image",
+        "operation": "analyze",
+        "modelId": {
+          "__rl": true,
+          "value": "gpt-4o-mini",
+          "mode": "list",
+          "cachedResultName": "GPT-4O-MINI"
+        },
+        "text": "Actúa como el Community Manager estrella de 'Baby's World', una tienda de productos para bebés. Analiza internamente la imagen y redacta el copy final para Instagram. El texto debe ser más extenso, emocional, tierno y contar una pequeña historia sobre cómo este producto hace más felices al bebé y a los papás.\n\nSigue estas reglas vitales de formato:\n\nEscribe en párrafos cortos (máximo 2 o 3 líneas por párrafo) separados por saltos de línea para que sea muy fácil y agradable de leer.\n\nUsa emojis tiernos y variados a lo largo de todo el texto.\n\nCierra siempre con una pregunta amigable que invite a los papás a comentar.\n\nNUNCA uses asteriscos (**), numerales (###) para crear títulos, ni etiquetas como 'Descripción:'. Entrégame SOLO el texto final, listo para copiar y publicar.\n\nTermina con 3 hashtags.",
+        "inputType": "base64",
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.openAi",
+      "typeVersion": 2.3,
+      "position": [
+        1456,
+        800
+      ],
+      "id": "9e66e093-63e2-4ac5-914b-0a851096f594",
+      "name": "Analyze image2",
+      "credentials": {
+        "openAiApi": {
+          "id": "4YeSn6Yr4kCkAQYP",
+          "name": "OpenAI: dev"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "append",
+        "documentId": {
+          "__rl": true,
+          "value": "1eIuCuXBabv37uxi5y--QEuUtxxRS0bclqadmBHBXsls",
+          "mode": "list",
+          "cachedResultName": "Cola_Publicaciones_Instagram",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1eIuCuXBabv37uxi5y--QEuUtxxRS0bclqadmBHBXsls/edit?usp=drivesdk"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "gid=0",
+          "mode": "list",
+          "cachedResultName": "Hoja 1",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1eIuCuXBabv37uxi5y--QEuUtxxRS0bclqadmBHBXsls/edit#gid=0"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "Copy_IA": "={{ $json['0'].content[0].text }}",
+            "Foto_URL": "=https://drive.google.com/uc?id={{ $('Download file2').item.json.id }}",
+            "Estado": "pendiente",
+            "Categoria": "={{ $('Limit3').item.json.name }}",
+            "Fecha": "={{ $now.format('yyyy-MM-dd') }}",
+            "Producto": "={{ $('Limit4').item.json.name }}"
+          },
+          "matchingColumns": [],
+          "schema": [
+            {
+              "id": "Fecha",
+              "displayName": "Fecha",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "Categoria",
+              "displayName": "Categoria",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "Producto",
+              "displayName": "Producto",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "Foto_URL",
+              "displayName": "Foto_URL",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "Copy_IA",
+              "displayName": "Copy_IA",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "Estado",
+              "displayName": "Estado",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [
+        1680,
+        800
+      ],
+      "id": "c17c85a8-f0a3-4fb5-add6-f68272e0a9d6",
+      "name": "Append row in sheet",
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "WFnLF38LKngtpQ0D",
+          "name": "Google Sheets account 2"
+        }
+      }
+    }
+  ],
+  "connections": {
+    "On form submission": {
+      "main": [
+        [
+          {
+            "node": "Download file",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Download file": {
+      "main": [
+        [
+          {
+            "node": "Analyze image",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Analyze image": {
+      "main": [
+        []
+      ]
+    },
+    "When clicking ‘Execute workflow’": {
+      "main": [
+        [
+          {
+            "node": "Search files and folders3",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Search files and folders": {
+      "main": [
+        [
+          {
+            "node": "Sort",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Sort": {
+      "main": [
+        [
+          {
+            "node": "Limit",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Limit": {
+      "main": [
+        [
+          {
+            "node": "Search files and folders1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Search files and folders1": {
+      "main": [
+        [
+          {
+            "node": "Sort1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Sort1": {
+      "main": [
+        [
+          {
+            "node": "Limit1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Limit1": {
+      "main": [
+        [
+          {
+            "node": "Search files and folders2",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Search files and folders2": {
+      "main": [
+        [
+          {
+            "node": "Limit2",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Download file1": {
+      "main": [
+        [
+          {
+            "node": "Analyze image1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Limit2": {
+      "main": [
+        [
+          {
+            "node": "Download file1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Analyze image1": {
+      "main": [
+        [
+          {
+            "node": "HTTP Request",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "HTTP Request": {
+      "main": [
+        []
+      ]
+    },
+    "Search files and folders3": {
+      "main": [
+        [
+          {
+            "node": "Sort2",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Sort2": {
+      "main": [
+        [
+          {
+            "node": "Limit3",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Limit3": {
+      "main": [
+        [
+          {
+            "node": "Search files and folders4",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Search files and folders4": {
+      "main": [
+        [
+          {
+            "node": "Sort3",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Sort3": {
+      "main": [
+        [
+          {
+            "node": "Limit4",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Limit4": {
+      "main": [
+        [
+          {
+            "node": "Search files and folders5",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Search files and folders5": {
+      "main": [
+        [
+          {
+            "node": "Limit5",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Download file2": {
+      "main": [
+        [
+          {
+            "node": "Analyze image2",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Limit5": {
+      "main": [
+        [
+          {
+            "node": "Download file2",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Analyze image2": {
+      "main": [
+        [
+          {
+            "node": "Append row in sheet",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "nodeGroups": [],
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate"
+  },
+  "staticData": null,
+  "pinData": {},
+  "meta": {
+    "templateCredsSetupCompleted": true
+  },
+  "tags": [],
+  "shared": [
+    {
+      "role": "workflow:owner",
+      "workflowId": "8SNOz1kJQuRxcNp6",
+      "projectId": "tRHCC8ts4mkRGXGn",
+      "createdAt": "2026-09-17T21:14:00.714Z",
+      "updatedAt": "2026-09-17T21:14:00.714Z"
+    }
+  ],
+  "activeVersion": null
+}
