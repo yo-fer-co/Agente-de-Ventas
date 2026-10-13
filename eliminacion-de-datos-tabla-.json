@@ -1,0 +1,219 @@
+{
+  "id": "0t1DvH1WQJJib4oR",
+  "name": "Eliminacion De Datos Tabla",
+  "active": false,
+  "activeVersionId": null,
+  "createdAt": "2025-10-23T17:32:10.776Z",
+  "updatedAt": "2026-03-05T04:28:57.535Z",
+  "isArchived": false,
+  "versionId": "4c871bc7-37c7-4256-a072-dcf764ee3f24",
+  "triggerCount": 1,
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "hours"
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [
+        -1312,
+        32
+      ],
+      "id": "c4975f1f-cd22-472c-a1f8-113d830e1f8b",
+      "name": "Schedule Trigger"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "09a0f222-fbdf-4bc2-8f30-75cba42f1d52",
+              "leftValue": "={{ $json.borrar }}",
+              "rightValue": "=true",
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        -672,
+        32
+      ],
+      "id": "9f02a815-0fd9-40e2-9db4-1fbbdd949815",
+      "name": "If"
+    },
+    {
+      "parameters": {
+        "operation": "get",
+        "dataTableId": {
+          "__rl": true,
+          "value": "pPYkms7dSZEi9e0s",
+          "mode": "list",
+          "cachedResultName": "user_status",
+          "cachedResultUrl": "/projects/8h8pwWGcWlnGEym3/datatables/pPYkms7dSZEi9e0s"
+        }
+      },
+      "type": "n8n-nodes-base.dataTable",
+      "typeVersion": 1,
+      "position": [
+        -1104,
+        32
+      ],
+      "id": "2fbb889c-7d69-4420-8918-2efe06008c62",
+      "name": "Get row(s)"
+    },
+    {
+      "parameters": {
+        "jsCode": "const items = $input.all();\nconst now = new Date();\n\nconst results = [];\nfor (let i = 0; i < items.length; i++) {\n  let item = items[i];\n\n  const updatedAt = new Date(item.json.updatedAt);\n  \n  // Calculamos la diferencia en milisegundos\n  const diff = now - updatedAt;\n\n  // Definimos el intervalo de 24 horas (24 * 60 min * 60 seg * 1000 ms)\n  const twelveHours = 24 * 60 * 60 * 1000;\n\n  // Si la diferencia es mayor a 12 horas, marcar para borrar\n  item.json.borrar = diff > twelveHours;\n  \n  results.push(item);\n}\n\nreturn results;"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -896,
+        32
+      ],
+      "id": "8893715e-2dc3-40e5-8288-ad369fdff7b3",
+      "name": "Code in JavaScript"
+    },
+    {
+      "parameters": {
+        "operation": "deleteRows",
+        "dataTableId": {
+          "__rl": true,
+          "value": "pPYkms7dSZEi9e0s",
+          "mode": "list",
+          "cachedResultName": "user_status",
+          "cachedResultUrl": "/projects/8h8pwWGcWlnGEym3/datatables/pPYkms7dSZEi9e0s"
+        },
+        "matchType": "allConditions",
+        "filters": {
+          "conditions": [
+            {
+              "keyValue": "={{ $json.id }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.dataTable",
+      "typeVersion": 1,
+      "position": [
+        -384,
+        16
+      ],
+      "id": "938155dc-fe20-40d6-9a60-741e76a7cdd1",
+      "name": "Delete row(s)"
+    }
+  ],
+  "connections": {
+    "Schedule Trigger": {
+      "main": [
+        [
+          {
+            "node": "Get row(s)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "If": {
+      "main": [
+        [
+          {
+            "node": "Delete row(s)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get row(s)": {
+      "main": [
+        [
+          {
+            "node": "Code in JavaScript",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code in JavaScript": {
+      "main": [
+        [
+          {
+            "node": "If",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "nodeGroups": [],
+  "settings": {
+    "executionOrder": "v1",
+    "callerPolicy": "workflowsFromSameOwner",
+    "errorWorkflow": "5j9hfL5IlhLCpydB"
+  },
+  "staticData": {
+    "node:Schedule Trigger": {
+      "recurrenceRules": []
+    }
+  },
+  "pinData": {
+    "Schedule Trigger": [
+      {
+        "json": {
+          "timestamp": "2026-02-02T15:00:55.006-05:00",
+          "Readable date": "February 2nd 2026, 3:00:55 pm",
+          "Readable time": "3:00:55 pm",
+          "Day of week": "Monday",
+          "Year": "2026",
+          "Month": "February",
+          "Day of month": "02",
+          "Hour": "15",
+          "Minute": "00",
+          "Second": "55",
+          "Timezone": "America/Bogota (UTC-05:00)"
+        },
+        "pairedItem": {
+          "item": 0
+        }
+      }
+    ]
+  },
+  "meta": null,
+  "tags": [],
+  "shared": [
+    {
+      "role": "workflow:owner",
+      "workflowId": "0t1DvH1WQJJib4oR",
+      "projectId": "8h8pwWGcWlnGEym3",
+      "createdAt": "2025-10-23T17:32:10.777Z",
+      "updatedAt": "2025-10-23T17:32:10.777Z"
+    }
+  ],
+  "activeVersion": null
+}
