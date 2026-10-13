@@ -1,0 +1,387 @@
+{
+  "id": "kM8OXa3ZCmieh0Ch",
+  "name": "DALIA_M8.01_Alertas",
+  "active": true,
+  "activeVersionId": "d9a4069f-5b5d-44ef-88a5-edce2b04dfc2",
+  "createdAt": "2026-10-04T02:49:49.488Z",
+  "updatedAt": "2026-10-04T02:58:42.418Z",
+  "isArchived": false,
+  "versionId": "d9a4069f-5b5d-44ef-88a5-edce2b04dfc2",
+  "triggerCount": 1,
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {}
+          ]
+        }
+      },
+      "id": "119ae79a-8d6d-4a72-95da-66bfaa4f65c9",
+      "name": "Cada 5 minutos",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.4,
+      "position": [
+        0,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "select dalia.m8_alert_cycle('M8.01') as report;",
+        "options": {}
+      },
+      "id": "2648ae95-43bc-4164-9c6b-97ac41c26dee",
+      "name": "Evaluar reglas de alerta",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.7,
+      "position": [
+        224,
+        0
+      ],
+      "credentials": {
+        "postgres": {
+          "id": "HfCgVAjUygK1vrkU",
+          "name": "DALIA dev Supabase"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "inputSource": "passthrough"
+      },
+      "id": "4859be67-9da4-40cc-b25a-622fde0b7e58",
+      "name": "Job recibido",
+      "type": "n8n-nodes-base.executeWorkflowTrigger",
+      "typeVersion": 1.2,
+      "position": [
+        0,
+        320
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "select dalia.m8_alert_cycle($1) as report;",
+        "options": {
+          "queryReplacement": "={{ [ $json.payload?.requested_by ?? \"M8.01\" ] }}"
+        }
+      },
+      "id": "b0eee7d0-a382-4174-ae95-37178bfd76cc",
+      "name": "Evaluar reglas (job)",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.7,
+      "position": [
+        224,
+        320
+      ],
+      "credentials": {
+        "postgres": {
+          "id": "HfCgVAjUygK1vrkU",
+          "name": "DALIA dev Supabase"
+        }
+      },
+      "onError": "continueErrorOutput"
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "select dalia.sys_complete_job($1::uuid, $2::jsonb) as job_status;",
+        "options": {
+          "queryReplacement": "={{ [ $(\"Job recibido\").item.json.job_id, JSON.stringify($json.report ?? {}) ] }}"
+        }
+      },
+      "id": "12877a21-887a-429a-9cc0-07b3d5aa4d4f",
+      "name": "Completar job",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.7,
+      "position": [
+        448,
+        224
+      ],
+      "credentials": {
+        "postgres": {
+          "id": "HfCgVAjUygK1vrkU",
+          "name": "DALIA dev Supabase"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "select dalia.sys_fail_job($1::uuid, $2::jsonb, true) as job_status;",
+        "options": {
+          "queryReplacement": "={{ [ $(\"Job recibido\").item.json.job_id, JSON.stringify({ code: \"HANDLER_ERROR\", message: $json.error?.message ?? $json.error ?? \"error\" }) ] }}"
+        }
+      },
+      "id": "4ce2cbe7-3964-4e50-9057-bf0fba158201",
+      "name": "Fallar job (reintentable)",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.7,
+      "position": [
+        448,
+        416
+      ],
+      "credentials": {
+        "postgres": {
+          "id": "HfCgVAjUygK1vrkU",
+          "name": "DALIA dev Supabase"
+        }
+      }
+    }
+  ],
+  "connections": {
+    "Cada 5 minutos": {
+      "main": [
+        [
+          {
+            "node": "Evaluar reglas de alerta",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Job recibido": {
+      "main": [
+        [
+          {
+            "node": "Evaluar reglas (job)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Evaluar reglas (job)": {
+      "main": [
+        [
+          {
+            "node": "Completar job",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Fallar job (reintentable)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "nodeGroups": [],
+  "settings": {
+    "executionOrder": "v1",
+    "availableInMCP": true,
+    "errorWorkflow": "cjjQno2MxMTT3Icc",
+    "timezone": "America/Bogota",
+    "saveDataSuccessExecution": "none",
+    "callerPolicy": "workflowsFromSameOwner",
+    "binaryMode": "separate"
+  },
+  "staticData": {
+    "node:Cada 5 minutos": {
+      "recurrenceRules": [
+        null
+      ],
+      "recurrenceRuleSignatures": [
+        null
+      ]
+    }
+  },
+  "pinData": {},
+  "meta": {
+    "aiBuilderAssisted": true,
+    "builderVariant": "mcp"
+  },
+  "tags": [],
+  "shared": [
+    {
+      "role": "workflow:owner",
+      "workflowId": "kM8OXa3ZCmieh0Ch",
+      "projectId": "tRHCC8ts4mkRGXGn",
+      "createdAt": "2026-10-09T21:09:17.783Z",
+      "updatedAt": "2026-10-09T21:09:17.783Z"
+    }
+  ],
+  "activeVersion": {
+    "versionId": "d9a4069f-5b5d-44ef-88a5-edce2b04dfc2",
+    "workflowId": "kM8OXa3ZCmieh0Ch",
+    "nodes": [
+      {
+        "parameters": {
+          "rule": {
+            "interval": [
+              {}
+            ]
+          }
+        },
+        "id": "119ae79a-8d6d-4a72-95da-66bfaa4f65c9",
+        "name": "Cada 5 minutos",
+        "type": "n8n-nodes-base.scheduleTrigger",
+        "typeVersion": 1.4,
+        "position": [
+          0,
+          0
+        ]
+      },
+      {
+        "parameters": {
+          "operation": "executeQuery",
+          "query": "select dalia.m8_alert_cycle('M8.01') as report;",
+          "options": {}
+        },
+        "id": "2648ae95-43bc-4164-9c6b-97ac41c26dee",
+        "name": "Evaluar reglas de alerta",
+        "type": "n8n-nodes-base.postgres",
+        "typeVersion": 2.7,
+        "position": [
+          224,
+          0
+        ],
+        "credentials": {
+          "postgres": {
+            "id": "HfCgVAjUygK1vrkU",
+            "name": "DALIA dev Supabase"
+          }
+        }
+      },
+      {
+        "parameters": {
+          "inputSource": "passthrough"
+        },
+        "id": "4859be67-9da4-40cc-b25a-622fde0b7e58",
+        "name": "Job recibido",
+        "type": "n8n-nodes-base.executeWorkflowTrigger",
+        "typeVersion": 1.2,
+        "position": [
+          0,
+          320
+        ]
+      },
+      {
+        "parameters": {
+          "operation": "executeQuery",
+          "query": "select dalia.m8_alert_cycle($1) as report;",
+          "options": {
+            "queryReplacement": "={{ [ $json.payload?.requested_by ?? \"M8.01\" ] }}"
+          }
+        },
+        "id": "b0eee7d0-a382-4174-ae95-37178bfd76cc",
+        "name": "Evaluar reglas (job)",
+        "type": "n8n-nodes-base.postgres",
+        "typeVersion": 2.7,
+        "position": [
+          224,
+          320
+        ],
+        "credentials": {
+          "postgres": {
+            "id": "HfCgVAjUygK1vrkU",
+            "name": "DALIA dev Supabase"
+          }
+        },
+        "onError": "continueErrorOutput"
+      },
+      {
+        "parameters": {
+          "operation": "executeQuery",
+          "query": "select dalia.sys_complete_job($1::uuid, $2::jsonb) as job_status;",
+          "options": {
+            "queryReplacement": "={{ [ $(\"Job recibido\").item.json.job_id, JSON.stringify($json.report ?? {}) ] }}"
+          }
+        },
+        "id": "12877a21-887a-429a-9cc0-07b3d5aa4d4f",
+        "name": "Completar job",
+        "type": "n8n-nodes-base.postgres",
+        "typeVersion": 2.7,
+        "position": [
+          448,
+          224
+        ],
+        "credentials": {
+          "postgres": {
+            "id": "HfCgVAjUygK1vrkU",
+            "name": "DALIA dev Supabase"
+          }
+        }
+      },
+      {
+        "parameters": {
+          "operation": "executeQuery",
+          "query": "select dalia.sys_fail_job($1::uuid, $2::jsonb, true) as job_status;",
+          "options": {
+            "queryReplacement": "={{ [ $(\"Job recibido\").item.json.job_id, JSON.stringify({ code: \"HANDLER_ERROR\", message: $json.error?.message ?? $json.error ?? \"error\" }) ] }}"
+          }
+        },
+        "id": "4ce2cbe7-3964-4e50-9057-bf0fba158201",
+        "name": "Fallar job (reintentable)",
+        "type": "n8n-nodes-base.postgres",
+        "typeVersion": 2.7,
+        "position": [
+          448,
+          416
+        ],
+        "credentials": {
+          "postgres": {
+            "id": "HfCgVAjUygK1vrkU",
+            "name": "DALIA dev Supabase"
+          }
+        }
+      }
+    ],
+    "connections": {
+      "Cada 5 minutos": {
+        "main": [
+          [
+            {
+              "node": "Evaluar reglas de alerta",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Job recibido": {
+        "main": [
+          [
+            {
+              "node": "Evaluar reglas (job)",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Evaluar reglas (job)": {
+        "main": [
+          [
+            {
+              "node": "Completar job",
+              "type": "main",
+              "index": 0
+            }
+          ],
+          [
+            {
+              "node": "Fallar job (reintentable)",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      }
+    },
+    "nodeGroups": [],
+    "authors": "Fabian Bocanegra",
+    "name": "Version d9a4069f",
+    "description": "",
+    "autosaved": true,
+    "createdAt": "2026-10-04T02:58:42.419Z",
+    "updatedAt": "2026-10-04T02:58:44.000Z"
+  }
+}
