@@ -1,0 +1,640 @@
+{
+  "id": "KnuSTXLkmUxO7NUk",
+  "name": "Historial",
+  "active": true,
+  "activeVersionId": "3c06ff87-ece4-48c7-b709-8be3a7cd7e15",
+  "createdAt": "2025-10-24T20:53:37.567Z",
+  "updatedAt": "2026-02-27T23:15:42.771Z",
+  "isArchived": false,
+  "versionId": "c5a09b1f-2dde-4a30-924f-4a3dadc8aba3",
+  "triggerCount": 0,
+  "nodes": [
+    {
+      "parameters": {
+        "jsCode": "const items = $input.all();\nconst groupedMessages = items.reduce((acc, item) => {\n  const id = item?.json?.id;\n  const message = `${item?.json?.rol}: ${item?.json?.mensaje}`;\n  const timestamp = item?.json?.timestamp;\n\n  if (!acc[id]) {\n    acc[id] = {\n      session_id: id,\n      messages: message,\n      timestamp: timestamp,\n    };\n  } else {\n    acc[id].messages += message;\n  }\n\n  return acc;\n}, {});\n\nreturn Object.values(groupedMessages);\n"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -704,
+        176
+      ],
+      "id": "dc0a7cfe-6034-4073-be7e-2d267fa65eab",
+      "name": "Consolidar historial"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.openai.com/v1/embeddings",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "openAiApi",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"input\": {{ JSON.stringify($json.message) }},\n  \"model\": \"text-embedding-ada-002\"\n}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        112,
+        192
+      ],
+      "id": "2b4a656d-883f-4971-b7c6-2903b7973940",
+      "name": "Generar Embedding OpenAI",
+      "credentials": {
+        "openAiApi": {
+          "id": "zACGOxtwAjrFvDag",
+          "name": "OpenAi_YoEco_DEV"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "a4700d32-ab9c-4590-8b6e-d81fc3096970",
+              "name": "user_id",
+              "value": "={{ $('Ejecutar por cada item').item.json.session_id }}",
+              "type": "string"
+            },
+            {
+              "id": "9d357839-2123-4501-b7fe-99615f3370d4",
+              "name": "texto_consolidado",
+              "value": "={{ JSON.stringify($('Convertir mensaje a texto').item.json.message) }}",
+              "type": "string"
+            },
+            {
+              "id": "c15f510c-4369-4f8c-b266-8958bf14ad66",
+              "name": "data",
+              "value": "={{$json[\"data\"][0][\"embedding\"]}}",
+              "type": "array"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        368,
+        192
+      ],
+      "id": "389d96e7-2ad9-4d0f-a7a9-59615709a97e",
+      "name": "Edit Fields1"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Loop over input items and add a new field called 'myNewField' to the JSON of each one\nfunction generateUUID() {\n  // genera UUID manualmente\n  return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) {\n    const r = Math.random() * 16 | 0;\n    const v = c === 'x' ? r : (r & 0x3 | 0x8);\n    return v.toString(16);\n  });\n}\n\nreturn [{\n  json: {\n    id: generateUUID(),\n    vector: $input.first().json.data,\n    user_id: $('Ejecutar por cada item').first().json.session_id,\n    texto_consolidado: $('Ejecutar por cada item').first().json.messages,\n    timestamp: $now\n  }\n}];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        592,
+        192
+      ],
+      "id": "df8cd6bf-cddc-45dc-b2a8-9b98eb1b580b",
+      "name": "Preparar para Qdrant"
+    },
+    {
+      "parameters": {
+        "method": "PUT",
+        "url": "https://1537c683-48da-4631-ab76-ad698b6b9881.us-east-1-0.aws.cloud.qdrant.io/collections/BabysWorld_Clientes_TEST/points",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "qdrantApi",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"points\": [\n    {\n      \"id\": {{ JSON.stringify($json.id) }},\n      \"vector\": {{ JSON.stringify($json.vector) }},\n      \"payload\": {\n        \"user_id\": {{ JSON.stringify($json.user_id) }},\n        \"text\": {{ JSON.stringify($json.texto_consolidado) }},\n        \"timestamp\": \"{{ $json.timestamp }}\"\n      }\n    }\n  ]\n}\n",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        832,
+        192
+      ],
+      "id": "4aaf6fe2-bd0c-4e08-b6a6-4183dc5efbf1",
+      "name": "Guardar en Qdrant",
+      "credentials": {
+        "qdrantApi": {
+          "id": "ZYv8vdr6tkTS4jYz",
+          "name": "QdrantApi account 3"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "inputSource": "passthrough"
+      },
+      "type": "n8n-nodes-base.executeWorkflowTrigger",
+      "typeVersion": 1.1,
+      "position": [
+        -960,
+        176
+      ],
+      "id": "cc789fc2-404c-414b-9bb3-5f0ca5010ccc",
+      "name": "When Executed by Another Workflow"
+    },
+    {
+      "parameters": {},
+      "type": "n8n-nodes-base.noOp",
+      "typeVersion": 1,
+      "position": [
+        0,
+        0
+      ],
+      "id": "9116c1f0-afd1-4cda-a9d9-d073010e7201",
+      "name": "Finaliza"
+    },
+    {
+      "parameters": {
+        "batchSize": "=1",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.splitInBatches",
+      "typeVersion": 3,
+      "position": [
+        -432,
+        176
+      ],
+      "id": "cfde2313-4706-4e7e-a3b3-bcd479c385b7",
+      "name": "Ejecutar por cada item"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "7dfe0d42-8f41-49e8-9da8-bfc6457ce43e",
+              "name": "message",
+              "value": "={{ $json.messages.replace(/(\\r\\n|\\n|\\r)/gm, \"\") }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        -144,
+        192
+      ],
+      "id": "7456e3e0-a108-4f91-9808-ca6284cae290",
+      "name": "Convertir mensaje a texto"
+    }
+  ],
+  "connections": {
+    "Consolidar historial": {
+      "main": [
+        [
+          {
+            "node": "Ejecutar por cada item",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Generar Embedding OpenAI": {
+      "main": [
+        [
+          {
+            "node": "Edit Fields1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Edit Fields1": {
+      "main": [
+        [
+          {
+            "node": "Preparar para Qdrant",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Preparar para Qdrant": {
+      "main": [
+        [
+          {
+            "node": "Guardar en Qdrant",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Guardar en Qdrant": {
+      "main": [
+        [
+          {
+            "node": "Ejecutar por cada item",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "When Executed by Another Workflow": {
+      "main": [
+        [
+          {
+            "node": "Consolidar historial",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Ejecutar por cada item": {
+      "main": [
+        [
+          {
+            "node": "Finaliza",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Convertir mensaje a texto",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Convertir mensaje a texto": {
+      "main": [
+        [
+          {
+            "node": "Generar Embedding OpenAI",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "nodeGroups": [],
+  "settings": {
+    "executionOrder": "v1",
+    "callerPolicy": "workflowsFromSameOwner",
+    "errorWorkflow": "5j9hfL5IlhLCpydB"
+  },
+  "staticData": null,
+  "pinData": {
+    "When Executed by Another Workflow": [
+      {
+        "json": {
+          "row_number": 570,
+          "id": 573192563967,
+          "timestamp": "11/10/2025 11:30:01",
+          "rol": "cliente",
+          "mensaje": "si",
+          "fecha": "11/10/2025"
+        }
+      },
+      {
+        "json": {
+          "row_number": 571,
+          "id": 573192563967,
+          "timestamp": "11/10/2025 11:30:32",
+          "rol": "ventas",
+          "mensaje": "Veo que te interesan: 1) cepillo ebony y 2) termo de bambu. ¿Confirmas que quieres continuar con la compra de ambos?",
+          "fecha": "11/10/2025"
+        }
+      },
+      {
+        "json": {
+          "row_number": 572,
+          "id": 573192563967,
+          "timestamp": "11/10/2025 11:30:44",
+          "rol": "cliente",
+          "mensaje": "si",
+          "fecha": "11/10/2025"
+        }
+      },
+      {
+        "json": {
+          "row_number": 573,
+          "id": 573192563967,
+          "timestamp": "11/10/2025 11:33:18",
+          "rol": "ventas",
+          "mensaje": "¡Perfecto! Ya tengo tu orden lista:\n- Cepillo de Bambú YoEco – Ebony Edition x1\n- Termo de Bambú YoEco – 500 ml x1\n\nTotal: $95.800\n\nPuedes completar tu compra aquí: https://checkout.wompi.co/l/test_cRaKJ2\n\n¿Necesitas factura o envío a alguna ciudad en particular?",
+          "fecha": "11/10/2025"
+        }
+      },
+      {
+        "json": {
+          "row_number": 573,
+          "id": 573183779152,
+          "timestamp": "11/10/2025 12:33:18",
+          "rol": "ventas",
+          "mensaje": "test messagew kmilo",
+          "fecha": "11/10/2025"
+        }
+      }
+    ]
+  },
+  "meta": null,
+  "tags": [],
+  "shared": [
+    {
+      "role": "workflow:owner",
+      "workflowId": "KnuSTXLkmUxO7NUk",
+      "projectId": "8h8pwWGcWlnGEym3",
+      "createdAt": "2025-10-24T20:53:37.568Z",
+      "updatedAt": "2025-10-24T20:53:37.568Z"
+    }
+  ],
+  "activeVersion": {
+    "versionId": "3c06ff87-ece4-48c7-b709-8be3a7cd7e15",
+    "workflowId": "KnuSTXLkmUxO7NUk",
+    "nodes": [
+      {
+        "parameters": {
+          "jsCode": "const items = $input.all();\nconst groupedMessages = items.reduce((acc, item) => {\n  const id = item?.json?.id;\n  const message = `${item?.json?.rol}: ${item?.json?.mensaje}`;\n  const timestamp = item?.json?.timestamp;\n\n  if (!acc[id]) {\n    acc[id] = {\n      session_id: id,\n      messages: message,\n      timestamp: timestamp,\n    };\n  } else {\n    acc[id].messages += message;\n  }\n\n  return acc;\n}, {});\n\nreturn Object.values(groupedMessages);\n"
+        },
+        "type": "n8n-nodes-base.code",
+        "typeVersion": 2,
+        "position": [
+          -704,
+          176
+        ],
+        "id": "dc0a7cfe-6034-4073-be7e-2d267fa65eab",
+        "name": "Consolidar historial"
+      },
+      {
+        "parameters": {
+          "method": "POST",
+          "url": "https://api.openai.com/v1/embeddings",
+          "authentication": "predefinedCredentialType",
+          "nodeCredentialType": "openAiApi",
+          "sendBody": true,
+          "specifyBody": "json",
+          "jsonBody": "={\n  \"input\": {{ JSON.stringify($json.message) }},\n  \"model\": \"text-embedding-ada-002\"\n}",
+          "options": {}
+        },
+        "type": "n8n-nodes-base.httpRequest",
+        "typeVersion": 4.2,
+        "position": [
+          112,
+          192
+        ],
+        "id": "2b4a656d-883f-4971-b7c6-2903b7973940",
+        "name": "Generar Embedding OpenAI",
+        "credentials": {
+          "openAiApi": {
+            "id": "cm7TdxurmQCEHkxZ",
+            "name": "OpenAi account 4"
+          }
+        }
+      },
+      {
+        "parameters": {
+          "assignments": {
+            "assignments": [
+              {
+                "id": "a4700d32-ab9c-4590-8b6e-d81fc3096970",
+                "name": "user_id",
+                "value": "={{ $('Ejecutar por cada item').item.json.session_id }}",
+                "type": "string"
+              },
+              {
+                "id": "9d357839-2123-4501-b7fe-99615f3370d4",
+                "name": "texto_consolidado",
+                "value": "={{ JSON.stringify($('Convertir mensaje a texto').item.json.message) }}",
+                "type": "string"
+              },
+              {
+                "id": "c15f510c-4369-4f8c-b266-8958bf14ad66",
+                "name": "data",
+                "value": "={{$json[\"data\"][0][\"embedding\"]}}",
+                "type": "array"
+              }
+            ]
+          },
+          "options": {}
+        },
+        "type": "n8n-nodes-base.set",
+        "typeVersion": 3.4,
+        "position": [
+          368,
+          192
+        ],
+        "id": "389d96e7-2ad9-4d0f-a7a9-59615709a97e",
+        "name": "Edit Fields1"
+      },
+      {
+        "parameters": {
+          "jsCode": "// Loop over input items and add a new field called 'myNewField' to the JSON of each one\nfunction generateUUID() {\n  // genera UUID manualmente\n  return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) {\n    const r = Math.random() * 16 | 0;\n    const v = c === 'x' ? r : (r & 0x3 | 0x8);\n    return v.toString(16);\n  });\n}\n\nreturn [{\n  json: {\n    id: generateUUID(),\n    vector: $input.first().json.data,\n    user_id: $('Ejecutar por cada item').first().json.session_id,\n    texto_consolidado: $('Ejecutar por cada item').first().json.messages,\n    timestamp: $now\n  }\n}];"
+        },
+        "type": "n8n-nodes-base.code",
+        "typeVersion": 2,
+        "position": [
+          592,
+          192
+        ],
+        "id": "df8cd6bf-cddc-45dc-b2a8-9b98eb1b580b",
+        "name": "Preparar para Qdrant"
+      },
+      {
+        "parameters": {
+          "method": "PUT",
+          "url": "https://1537c683-48da-4631-ab76-ad698b6b9881.us-east-1-0.aws.cloud.qdrant.io/collections/BabysWorld_Clientes_TEST/points",
+          "authentication": "predefinedCredentialType",
+          "nodeCredentialType": "qdrantApi",
+          "sendBody": true,
+          "specifyBody": "json",
+          "jsonBody": "={\n  \"points\": [\n    {\n      \"id\": {{ JSON.stringify($json.id) }},\n      \"vector\": {{ JSON.stringify($json.vector) }},\n      \"payload\": {\n        \"user_id\": {{ JSON.stringify($json.user_id) }},\n        \"text\": {{ JSON.stringify($json.texto_consolidado) }},\n        \"timestamp\": \"{{ $json.timestamp }}\"\n      }\n    }\n  ]\n}\n",
+          "options": {}
+        },
+        "type": "n8n-nodes-base.httpRequest",
+        "typeVersion": 4.2,
+        "position": [
+          832,
+          192
+        ],
+        "id": "4aaf6fe2-bd0c-4e08-b6a6-4183dc5efbf1",
+        "name": "Guardar en Qdrant",
+        "credentials": {
+          "qdrantApi": {
+            "id": "ZYv8vdr6tkTS4jYz",
+            "name": "QdrantApi account 3"
+          }
+        }
+      },
+      {
+        "parameters": {
+          "inputSource": "passthrough"
+        },
+        "type": "n8n-nodes-base.executeWorkflowTrigger",
+        "typeVersion": 1.1,
+        "position": [
+          -960,
+          176
+        ],
+        "id": "cc789fc2-404c-414b-9bb3-5f0ca5010ccc",
+        "name": "When Executed by Another Workflow"
+      },
+      {
+        "parameters": {},
+        "type": "n8n-nodes-base.noOp",
+        "typeVersion": 1,
+        "position": [
+          0,
+          0
+        ],
+        "id": "9116c1f0-afd1-4cda-a9d9-d073010e7201",
+        "name": "Finaliza"
+      },
+      {
+        "parameters": {
+          "batchSize": "=1",
+          "options": {}
+        },
+        "type": "n8n-nodes-base.splitInBatches",
+        "typeVersion": 3,
+        "position": [
+          -432,
+          176
+        ],
+        "id": "cfde2313-4706-4e7e-a3b3-bcd479c385b7",
+        "name": "Ejecutar por cada item"
+      },
+      {
+        "parameters": {
+          "assignments": {
+            "assignments": [
+              {
+                "id": "7dfe0d42-8f41-49e8-9da8-bfc6457ce43e",
+                "name": "message",
+                "value": "={{ $json.messages.replace(/(\\r\\n|\\n|\\r)/gm, \"\") }}",
+                "type": "string"
+              }
+            ]
+          },
+          "options": {}
+        },
+        "type": "n8n-nodes-base.set",
+        "typeVersion": 3.4,
+        "position": [
+          -144,
+          192
+        ],
+        "id": "7456e3e0-a108-4f91-9808-ca6284cae290",
+        "name": "Convertir mensaje a texto"
+      }
+    ],
+    "connections": {
+      "Consolidar historial": {
+        "main": [
+          [
+            {
+              "node": "Ejecutar por cada item",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Generar Embedding OpenAI": {
+        "main": [
+          [
+            {
+              "node": "Edit Fields1",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Edit Fields1": {
+        "main": [
+          [
+            {
+              "node": "Preparar para Qdrant",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Preparar para Qdrant": {
+        "main": [
+          [
+            {
+              "node": "Guardar en Qdrant",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Guardar en Qdrant": {
+        "main": [
+          [
+            {
+              "node": "Ejecutar por cada item",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "When Executed by Another Workflow": {
+        "main": [
+          [
+            {
+              "node": "Consolidar historial",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Ejecutar por cada item": {
+        "main": [
+          [
+            {
+              "node": "Finaliza",
+              "type": "main",
+              "index": 0
+            }
+          ],
+          [
+            {
+              "node": "Convertir mensaje a texto",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Convertir mensaje a texto": {
+        "main": [
+          [
+            {
+              "node": "Generar Embedding OpenAI",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      }
+    },
+    "nodeGroups": [],
+    "authors": "system migration",
+    "name": null,
+    "description": null,
+    "autosaved": false,
+    "createdAt": "2025-12-16T23:48:57.308Z",
+    "updatedAt": "2025-12-16T23:48:57.308Z"
+  }
+}
