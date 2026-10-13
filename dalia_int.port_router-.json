@@ -1,0 +1,775 @@
+{
+  "id": "5gbpWhv0zIA8bZ0w",
+  "name": "DALIA_INT.port_router",
+  "active": true,
+  "activeVersionId": "bf72b1d6-23b0-469a-a0ae-6243fb446fa3",
+  "createdAt": "2026-10-03T02:18:19.482Z",
+  "updatedAt": "2026-10-03T16:46:52.704Z",
+  "isArchived": false,
+  "versionId": "bf72b1d6-23b0-469a-a0ae-6243fb446fa3",
+  "triggerCount": 0,
+  "nodes": [
+    {
+      "id": "5a790ffc-c705-4d4e-a8d5-424429f1a777",
+      "name": "Solicitud de puerto",
+      "type": "n8n-nodes-base.executeWorkflowTrigger",
+      "typeVersion": 1.2,
+      "position": [
+        0,
+        192
+      ],
+      "parameters": {
+        "inputSource": "passthrough"
+      }
+    },
+    {
+      "id": "d67705a9-e3ac-40db-bba8-f5415929a13f",
+      "name": "Resolver adaptador",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.7,
+      "position": [
+        224,
+        192
+      ],
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "select dalia.int_resolve($1, $2) as r;",
+        "options": {
+          "queryReplacement": "={{ [ $json.port, $json.operation ] }}"
+        }
+      },
+      "credentials": {
+        "postgres": {
+          "id": "HfCgVAjUygK1vrkU",
+          "name": "DALIA dev Supabase"
+        }
+      }
+    },
+    {
+      "id": "3c268da0-631b-418d-b97d-db5b309e4e3d",
+      "name": "Adaptador disponible",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        448,
+        192
+      ],
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose"
+          },
+          "conditions": [
+            {
+              "leftValue": "={{ $json.r.configured === true && $json.r.supported === true && !!$json.r.workflow_id }}",
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        }
+      }
+    },
+    {
+      "id": "c2d44489-9a43-4fbd-876f-ad7df531ea39",
+      "name": "Preparar llamada",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        672,
+        96
+      ],
+      "parameters": {
+        "mode": "manual",
+        "includeOtherFields": false,
+        "assignments": {
+          "assignments": [
+            {
+              "id": "p1",
+              "name": "port",
+              "value": "={{ $json.r.port }}",
+              "type": "string"
+            },
+            {
+              "id": "p2",
+              "name": "operation",
+              "value": "={{ $json.r.operation }}",
+              "type": "string"
+            },
+            {
+              "id": "p3",
+              "name": "input",
+              "value": "={{ $(\"Solicitud de puerto\").item.json.input ?? {} }}",
+              "type": "object"
+            },
+            {
+              "id": "p4",
+              "name": "settings",
+              "value": "={{ $json.r.settings ?? {} }}",
+              "type": "object"
+            },
+            {
+              "id": "p5",
+              "name": "envelope",
+              "value": "={{ $(\"Solicitud de puerto\").item.json.envelope ?? {} }}",
+              "type": "object"
+            },
+            {
+              "id": "p6",
+              "name": "sensitive",
+              "value": "={{ $json.r.sensitive === true }}",
+              "type": "boolean"
+            },
+            {
+              "id": "p7",
+              "name": "adapter",
+              "value": "={{ $json.r.adapter }}",
+              "type": "string"
+            },
+            {
+              "id": "p8",
+              "name": "adapter_workflow_id",
+              "value": "={{ $json.r.workflow_id }}",
+              "type": "string"
+            },
+            {
+              "id": "p9",
+              "name": "config_version",
+              "value": "={{ $json.r.config_version }}",
+              "type": "number"
+            },
+            {
+              "id": "p10",
+              "name": "started_at_ms",
+              "value": "={{ $now.toMillis() }}",
+              "type": "number"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "b6d9513c-ddf9-4a38-b54c-51c722817cf4",
+      "name": "Invocar adaptador",
+      "type": "n8n-nodes-base.executeWorkflow",
+      "typeVersion": 1.3,
+      "position": [
+        896,
+        96
+      ],
+      "parameters": {
+        "mode": "each",
+        "source": "database",
+        "workflowId": {
+          "__rl": true,
+          "mode": "id",
+          "value": "={{ $json.adapter_workflow_id }}"
+        },
+        "options": {
+          "waitForSubWorkflow": true
+        }
+      },
+      "onError": "continueErrorOutput"
+    },
+    {
+      "id": "5415ae2b-e20d-403f-b271-9efcb8210c39",
+      "name": "Normalizar resultado",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1120,
+        0
+      ],
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "jsCode": "const req = $('Preparar llamada').item.json;\nconst out = $json || {};\nconst allowed = ['OK','NOT_FOUND','NOT_SUPPORTED','RETRYABLE_ERROR','PERMANENT_ERROR','UNKNOWN'];\nlet status = allowed.includes(out.status) ? out.status : (req.sensitive ? 'UNKNOWN' : 'PERMANENT_ERROR');\nconst error = status === 'OK' ? null : (out.error || { code: 'INVALID_ADAPTER_RESPONSE', message: 'el adaptador no devolvió un status válido' });\nconst result = { ok: status === 'OK', status, port: req.port, operation: req.operation, adapter: req.adapter, data: out.data ?? null, error, usage: out.usage ?? null, cost_usd: out.cost_usd ?? null, latency_ms: Date.now() - req.started_at_ms, config_version: req.config_version };\nreturn { json: { result }, binary: $input.item.binary };"
+      }
+    },
+    {
+      "id": "704d269c-5997-4c70-b047-68a18f34e24d",
+      "name": "Registrar llamada",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.7,
+      "position": [
+        1344,
+        192
+      ],
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "select $1::jsonb as result, dalia.sys_log_event('INT', 'int.port.call', $2::jsonb, 'port', $3, $4::jsonb, $5, $6::jsonb) as event_id;",
+        "options": {
+          "queryReplacement": "={{ [ JSON.stringify($json.result), JSON.stringify($(\"Solicitud de puerto\").item.json.envelope ?? {}), $json.result.port + \".\" + $json.result.operation, JSON.stringify({ adapter: $json.result.adapter, status: $json.result.status, error_code: $json.result.error?.code ?? null, config_version: $json.result.config_version }), ($json.result.status === \"OK\" || $json.result.status === \"NOT_FOUND\") ? \"INFO\" : ($json.result.status === \"UNKNOWN\" ? \"ERROR\" : \"WARN\"), JSON.stringify({ latency_ms: $json.result.latency_ms, cost_usd: $json.result.cost_usd }) ] }}"
+        }
+      },
+      "credentials": {
+        "postgres": {
+          "id": "HfCgVAjUygK1vrkU",
+          "name": "DALIA dev Supabase"
+        }
+      }
+    },
+    {
+      "id": "e940263d-b6f9-4b07-8ad9-15edcf4404bd",
+      "name": "Respuesta",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1568,
+        192
+      ],
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "jsCode": "let binary;\ntry { binary = $('Normalizar resultado').item.binary; } catch (e) { binary = undefined; }\nreturn binary ? { json: $json.result, binary } : { json: $json.result };"
+      }
+    },
+    {
+      "id": "076d93bf-be90-49be-bd92-c704b95c2a40",
+      "name": "Puerto no disponible",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1120,
+        384
+      ],
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "jsCode": "const r = $json.r || {};\nconst code = !r.supported ? 'OPERATION_NOT_SUPPORTED' : (!r.configured ? 'PORT_NOT_CONFIGURED' : 'ADAPTER_NOT_INSTALLED');\nconst result = { ok: false, status: 'PERMANENT_ERROR', port: r.port, operation: r.operation, adapter: r.adapter ?? null, data: null, error: { code, message: code + ' para ' + r.port + '.' + r.operation }, usage: null, cost_usd: null, latency_ms: 0, config_version: r.config_version ?? null };\nreturn { json: { result } };"
+      }
+    },
+    {
+      "id": "87de83a6-f73e-42fe-89ce-c7a6ffdb5961",
+      "name": "Resultado por fallo del adaptador",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1120,
+        192
+      ],
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "jsCode": "const req = $('Preparar llamada').item.json;\nconst status = req.sensitive ? 'UNKNOWN' : 'RETRYABLE_ERROR';\nconst msg = $json.error?.message ?? $json.error ?? 'fallo de ejecución del adaptador';\nconst result = { ok: false, status, port: req.port, operation: req.operation, adapter: req.adapter, data: null, error: { code: 'ADAPTER_FAILURE', message: String(msg) }, usage: null, cost_usd: null, latency_ms: Date.now() - req.started_at_ms, config_version: req.config_version };\nreturn { json: { result } };"
+      }
+    }
+  ],
+  "connections": {
+    "Solicitud de puerto": {
+      "main": [
+        [
+          {
+            "node": "Resolver adaptador",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Resolver adaptador": {
+      "main": [
+        [
+          {
+            "node": "Adaptador disponible",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Adaptador disponible": {
+      "main": [
+        [
+          {
+            "node": "Preparar llamada",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Puerto no disponible",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Preparar llamada": {
+      "main": [
+        [
+          {
+            "node": "Invocar adaptador",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Invocar adaptador": {
+      "main": [
+        [
+          {
+            "node": "Normalizar resultado",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Resultado por fallo del adaptador",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Normalizar resultado": {
+      "main": [
+        [
+          {
+            "node": "Registrar llamada",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Registrar llamada": {
+      "main": [
+        [
+          {
+            "node": "Respuesta",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Puerto no disponible": {
+      "main": [
+        [
+          {
+            "node": "Registrar llamada",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Resultado por fallo del adaptador": {
+      "main": [
+        [
+          {
+            "node": "Registrar llamada",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "nodeGroups": [],
+  "settings": {
+    "executionOrder": "v1",
+    "availableInMCP": true,
+    "errorWorkflow": "cjjQno2MxMTT3Icc",
+    "timezone": "America/Bogota",
+    "saveManualExecutions": true,
+    "saveDataErrorExecution": "all",
+    "saveDataSuccessExecution": "all",
+    "callerPolicy": "workflowsFromSameOwner"
+  },
+  "staticData": null,
+  "pinData": null,
+  "meta": {
+    "aiBuilderAssisted": true,
+    "builderVariant": "mcp"
+  },
+  "tags": [],
+  "shared": [
+    {
+      "role": "workflow:owner",
+      "workflowId": "5gbpWhv0zIA8bZ0w",
+      "projectId": "tRHCC8ts4mkRGXGn",
+      "createdAt": "2026-10-09T21:09:17.757Z",
+      "updatedAt": "2026-10-09T21:09:17.757Z"
+    }
+  ],
+  "activeVersion": {
+    "versionId": "bf72b1d6-23b0-469a-a0ae-6243fb446fa3",
+    "workflowId": "5gbpWhv0zIA8bZ0w",
+    "nodes": [
+      {
+        "id": "5a790ffc-c705-4d4e-a8d5-424429f1a777",
+        "name": "Solicitud de puerto",
+        "type": "n8n-nodes-base.executeWorkflowTrigger",
+        "typeVersion": 1.2,
+        "position": [
+          0,
+          192
+        ],
+        "parameters": {
+          "inputSource": "passthrough"
+        }
+      },
+      {
+        "id": "d67705a9-e3ac-40db-bba8-f5415929a13f",
+        "name": "Resolver adaptador",
+        "type": "n8n-nodes-base.postgres",
+        "typeVersion": 2.7,
+        "position": [
+          224,
+          192
+        ],
+        "parameters": {
+          "operation": "executeQuery",
+          "query": "select dalia.int_resolve($1, $2) as r;",
+          "options": {
+            "queryReplacement": "={{ [ $json.port, $json.operation ] }}"
+          }
+        },
+        "credentials": {
+          "postgres": {
+            "id": "HfCgVAjUygK1vrkU",
+            "name": "DALIA dev Supabase"
+          }
+        }
+      },
+      {
+        "id": "3c268da0-631b-418d-b97d-db5b309e4e3d",
+        "name": "Adaptador disponible",
+        "type": "n8n-nodes-base.if",
+        "typeVersion": 2.2,
+        "position": [
+          448,
+          192
+        ],
+        "parameters": {
+          "conditions": {
+            "options": {
+              "caseSensitive": true,
+              "leftValue": "",
+              "typeValidation": "loose"
+            },
+            "conditions": [
+              {
+                "leftValue": "={{ $json.r.configured === true && $json.r.supported === true && !!$json.r.workflow_id }}",
+                "operator": {
+                  "type": "boolean",
+                  "operation": "true",
+                  "singleValue": true
+                }
+              }
+            ],
+            "combinator": "and"
+          }
+        }
+      },
+      {
+        "id": "c2d44489-9a43-4fbd-876f-ad7df531ea39",
+        "name": "Preparar llamada",
+        "type": "n8n-nodes-base.set",
+        "typeVersion": 3.4,
+        "position": [
+          672,
+          96
+        ],
+        "parameters": {
+          "mode": "manual",
+          "includeOtherFields": false,
+          "assignments": {
+            "assignments": [
+              {
+                "id": "p1",
+                "name": "port",
+                "value": "={{ $json.r.port }}",
+                "type": "string"
+              },
+              {
+                "id": "p2",
+                "name": "operation",
+                "value": "={{ $json.r.operation }}",
+                "type": "string"
+              },
+              {
+                "id": "p3",
+                "name": "input",
+                "value": "={{ $(\"Solicitud de puerto\").item.json.input ?? {} }}",
+                "type": "object"
+              },
+              {
+                "id": "p4",
+                "name": "settings",
+                "value": "={{ $json.r.settings ?? {} }}",
+                "type": "object"
+              },
+              {
+                "id": "p5",
+                "name": "envelope",
+                "value": "={{ $(\"Solicitud de puerto\").item.json.envelope ?? {} }}",
+                "type": "object"
+              },
+              {
+                "id": "p6",
+                "name": "sensitive",
+                "value": "={{ $json.r.sensitive === true }}",
+                "type": "boolean"
+              },
+              {
+                "id": "p7",
+                "name": "adapter",
+                "value": "={{ $json.r.adapter }}",
+                "type": "string"
+              },
+              {
+                "id": "p8",
+                "name": "adapter_workflow_id",
+                "value": "={{ $json.r.workflow_id }}",
+                "type": "string"
+              },
+              {
+                "id": "p9",
+                "name": "config_version",
+                "value": "={{ $json.r.config_version }}",
+                "type": "number"
+              },
+              {
+                "id": "p10",
+                "name": "started_at_ms",
+                "value": "={{ $now.toMillis() }}",
+                "type": "number"
+              }
+            ]
+          }
+        }
+      },
+      {
+        "id": "b6d9513c-ddf9-4a38-b54c-51c722817cf4",
+        "name": "Invocar adaptador",
+        "type": "n8n-nodes-base.executeWorkflow",
+        "typeVersion": 1.3,
+        "position": [
+          896,
+          96
+        ],
+        "parameters": {
+          "mode": "each",
+          "source": "database",
+          "workflowId": {
+            "__rl": true,
+            "mode": "id",
+            "value": "={{ $json.adapter_workflow_id }}"
+          },
+          "options": {
+            "waitForSubWorkflow": true
+          }
+        },
+        "onError": "continueErrorOutput"
+      },
+      {
+        "id": "5415ae2b-e20d-403f-b271-9efcb8210c39",
+        "name": "Normalizar resultado",
+        "type": "n8n-nodes-base.code",
+        "typeVersion": 2,
+        "position": [
+          1120,
+          0
+        ],
+        "parameters": {
+          "mode": "runOnceForEachItem",
+          "jsCode": "const req = $('Preparar llamada').item.json;\nconst out = $json || {};\nconst allowed = ['OK','NOT_FOUND','NOT_SUPPORTED','RETRYABLE_ERROR','PERMANENT_ERROR','UNKNOWN'];\nlet status = allowed.includes(out.status) ? out.status : (req.sensitive ? 'UNKNOWN' : 'PERMANENT_ERROR');\nconst error = status === 'OK' ? null : (out.error || { code: 'INVALID_ADAPTER_RESPONSE', message: 'el adaptador no devolvió un status válido' });\nconst result = { ok: status === 'OK', status, port: req.port, operation: req.operation, adapter: req.adapter, data: out.data ?? null, error, usage: out.usage ?? null, cost_usd: out.cost_usd ?? null, latency_ms: Date.now() - req.started_at_ms, config_version: req.config_version };\nreturn { json: { result }, binary: $input.item.binary };"
+        }
+      },
+      {
+        "id": "704d269c-5997-4c70-b047-68a18f34e24d",
+        "name": "Registrar llamada",
+        "type": "n8n-nodes-base.postgres",
+        "typeVersion": 2.7,
+        "position": [
+          1344,
+          192
+        ],
+        "parameters": {
+          "operation": "executeQuery",
+          "query": "select $1::jsonb as result, dalia.sys_log_event('INT', 'int.port.call', $2::jsonb, 'port', $3, $4::jsonb, $5, $6::jsonb) as event_id;",
+          "options": {
+            "queryReplacement": "={{ [ JSON.stringify($json.result), JSON.stringify($(\"Solicitud de puerto\").item.json.envelope ?? {}), $json.result.port + \".\" + $json.result.operation, JSON.stringify({ adapter: $json.result.adapter, status: $json.result.status, error_code: $json.result.error?.code ?? null, config_version: $json.result.config_version }), ($json.result.status === \"OK\" || $json.result.status === \"NOT_FOUND\") ? \"INFO\" : ($json.result.status === \"UNKNOWN\" ? \"ERROR\" : \"WARN\"), JSON.stringify({ latency_ms: $json.result.latency_ms, cost_usd: $json.result.cost_usd }) ] }}"
+          }
+        },
+        "credentials": {
+          "postgres": {
+            "id": "HfCgVAjUygK1vrkU",
+            "name": "DALIA dev Supabase"
+          }
+        }
+      },
+      {
+        "id": "e940263d-b6f9-4b07-8ad9-15edcf4404bd",
+        "name": "Respuesta",
+        "type": "n8n-nodes-base.code",
+        "typeVersion": 2,
+        "position": [
+          1568,
+          192
+        ],
+        "parameters": {
+          "mode": "runOnceForEachItem",
+          "jsCode": "let binary;\ntry { binary = $('Normalizar resultado').item.binary; } catch (e) { binary = undefined; }\nreturn binary ? { json: $json.result, binary } : { json: $json.result };"
+        }
+      },
+      {
+        "id": "076d93bf-be90-49be-bd92-c704b95c2a40",
+        "name": "Puerto no disponible",
+        "type": "n8n-nodes-base.code",
+        "typeVersion": 2,
+        "position": [
+          1120,
+          384
+        ],
+        "parameters": {
+          "mode": "runOnceForEachItem",
+          "jsCode": "const r = $json.r || {};\nconst code = !r.supported ? 'OPERATION_NOT_SUPPORTED' : (!r.configured ? 'PORT_NOT_CONFIGURED' : 'ADAPTER_NOT_INSTALLED');\nconst result = { ok: false, status: 'PERMANENT_ERROR', port: r.port, operation: r.operation, adapter: r.adapter ?? null, data: null, error: { code, message: code + ' para ' + r.port + '.' + r.operation }, usage: null, cost_usd: null, latency_ms: 0, config_version: r.config_version ?? null };\nreturn { json: { result } };"
+        }
+      },
+      {
+        "id": "87de83a6-f73e-42fe-89ce-c7a6ffdb5961",
+        "name": "Resultado por fallo del adaptador",
+        "type": "n8n-nodes-base.code",
+        "typeVersion": 2,
+        "position": [
+          1120,
+          192
+        ],
+        "parameters": {
+          "mode": "runOnceForEachItem",
+          "jsCode": "const req = $('Preparar llamada').item.json;\nconst status = req.sensitive ? 'UNKNOWN' : 'RETRYABLE_ERROR';\nconst msg = $json.error?.message ?? $json.error ?? 'fallo de ejecución del adaptador';\nconst result = { ok: false, status, port: req.port, operation: req.operation, adapter: req.adapter, data: null, error: { code: 'ADAPTER_FAILURE', message: String(msg) }, usage: null, cost_usd: null, latency_ms: Date.now() - req.started_at_ms, config_version: req.config_version };\nreturn { json: { result } };"
+        }
+      }
+    ],
+    "connections": {
+      "Solicitud de puerto": {
+        "main": [
+          [
+            {
+              "node": "Resolver adaptador",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Resolver adaptador": {
+        "main": [
+          [
+            {
+              "node": "Adaptador disponible",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Adaptador disponible": {
+        "main": [
+          [
+            {
+              "node": "Preparar llamada",
+              "type": "main",
+              "index": 0
+            }
+          ],
+          [
+            {
+              "node": "Puerto no disponible",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Preparar llamada": {
+        "main": [
+          [
+            {
+              "node": "Invocar adaptador",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Invocar adaptador": {
+        "main": [
+          [
+            {
+              "node": "Normalizar resultado",
+              "type": "main",
+              "index": 0
+            }
+          ],
+          [
+            {
+              "node": "Resultado por fallo del adaptador",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Normalizar resultado": {
+        "main": [
+          [
+            {
+              "node": "Registrar llamada",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Registrar llamada": {
+        "main": [
+          [
+            {
+              "node": "Respuesta",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Puerto no disponible": {
+        "main": [
+          [
+            {
+              "node": "Registrar llamada",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Resultado por fallo del adaptador": {
+        "main": [
+          [
+            {
+              "node": "Registrar llamada",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      }
+    },
+    "nodeGroups": [],
+    "authors": "Fabian Bocanegra (via MCP)",
+    "name": "DALIA v1.0 lote 2 · instalación DEV",
+    "description": "Created with 10 nodes: Solicitud de puerto, Resolver adaptador, Adaptador disponible, Preparar llamada, Invocar adaptador and 5 more",
+    "autosaved": false,
+    "createdAt": "2026-10-03T02:18:19.487Z",
+    "updatedAt": "2026-10-03T02:18:19.487Z"
+  }
+}
