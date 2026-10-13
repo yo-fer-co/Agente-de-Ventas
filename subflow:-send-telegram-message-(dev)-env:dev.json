@@ -1,0 +1,252 @@
+{
+  "id": "iQKNKvlCIqIBKtrQ",
+  "name": "Subflow: Send Telegram Message (DEV)",
+  "active": true,
+  "activeVersionId": "f6e36d23-0be0-411e-83eb-2105a6203de9",
+  "createdAt": "2026-03-13T00:37:57.932Z",
+  "updatedAt": "2026-03-13T01:42:25.102Z",
+  "isArchived": false,
+  "versionId": "f6e36d23-0be0-411e-83eb-2105a6203de9",
+  "triggerCount": 0,
+  "nodes": [
+    {
+      "parameters": {
+        "workflowInputs": {
+          "values": [
+            {
+              "name": "chat_id"
+            },
+            {
+              "name": "body"
+            },
+            {
+              "name": "reply_markup"
+            },
+            {
+              "name": "conversation_id"
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.executeWorkflowTrigger",
+      "typeVersion": 1.1,
+      "position": [
+        -336,
+        -32
+      ],
+      "id": "bf24a084-5d6b-49b9-94a1-0a0f2c270b2f",
+      "name": "When Executed by Another Workflow"
+    },
+    {
+      "parameters": {
+        "jsCode": "const chat_id = $json.chat_id;\nconst body = $json.body;\nconst reply_markup = $json.reply_markup ? (typeof $json.reply_markup === 'string' ? JSON.parse($json.reply_markup) : $json.reply_markup) : null;\n\nconst payload = {\n  chat_id: chat_id.toString(),\n  text: body,\n  parse_mode: 'HTML'\n};\n\nif (reply_markup) {\n  payload.reply_markup = reply_markup;\n}\n\nreturn { payload };"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -128,
+        -32
+      ],
+      "id": "3b188c80-0061-4301-99db-58ab1c822875",
+      "name": "build_telegram_payload"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.telegram.org/bot8658854172:AAFrcN6TIAVivpGTHSPi5rkk53SJKtD7jRg/sendMessage",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify($json.payload) }}",
+        "options": {
+          "response": {
+            "response": {
+              "fullResponse": true
+            }
+          }
+        }
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [
+        80,
+        -32
+      ],
+      "id": "edc68115-8076-4263-ae8b-bad42c88b88a",
+      "name": "send_via_telegram_api"
+    }
+  ],
+  "connections": {
+    "When Executed by Another Workflow": {
+      "main": [
+        [
+          {
+            "node": "build_telegram_payload",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "build_telegram_payload": {
+      "main": [
+        [
+          {
+            "node": "send_via_telegram_api",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "send_via_telegram_api": {
+      "main": [
+        []
+      ]
+    }
+  },
+  "nodeGroups": [],
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate",
+    "availableInMCP": false
+  },
+  "staticData": null,
+  "pinData": {
+    "When Executed by Another Workflow": [
+      {
+        "json": {
+          "chat_id": "1573830111",
+          "body": "Michelo Vaca Cardozo ha solicitado hablar con un asesor.",
+          "reply_markup": "{\"inline_keyboard\":[[{\"text\":\"Atender Cliente ✅\",\"callback_data\":\"assign_advisor:8e9b549a-a453-42d9-a0e9-2a0f885a4b33\"}]]}"
+        }
+      }
+    ]
+  },
+  "meta": {
+    "templateCredsSetupCompleted": true
+  },
+  "tags": [
+    {
+      "id": "6e1haF3pXukz6KVf",
+      "name": "env:dev",
+      "createdAt": "2025-05-27T01:29:25.680Z",
+      "updatedAt": "2026-02-11T00:17:23.837Z"
+    }
+  ],
+  "shared": [
+    {
+      "role": "workflow:owner",
+      "workflowId": "iQKNKvlCIqIBKtrQ",
+      "projectId": "8h8pwWGcWlnGEym3",
+      "createdAt": "2026-03-13T00:37:57.935Z",
+      "updatedAt": "2026-03-13T00:37:57.935Z"
+    }
+  ],
+  "activeVersion": {
+    "versionId": "f6e36d23-0be0-411e-83eb-2105a6203de9",
+    "workflowId": "iQKNKvlCIqIBKtrQ",
+    "nodes": [
+      {
+        "parameters": {
+          "workflowInputs": {
+            "values": [
+              {
+                "name": "chat_id"
+              },
+              {
+                "name": "body"
+              },
+              {
+                "name": "reply_markup"
+              },
+              {
+                "name": "conversation_id"
+              }
+            ]
+          }
+        },
+        "type": "n8n-nodes-base.executeWorkflowTrigger",
+        "typeVersion": 1.1,
+        "position": [
+          -336,
+          -32
+        ],
+        "id": "bf24a084-5d6b-49b9-94a1-0a0f2c270b2f",
+        "name": "When Executed by Another Workflow"
+      },
+      {
+        "parameters": {
+          "jsCode": "const chat_id = $json.chat_id;\nconst body = $json.body;\nconst reply_markup = $json.reply_markup ? (typeof $json.reply_markup === 'string' ? JSON.parse($json.reply_markup) : $json.reply_markup) : null;\n\nconst payload = {\n  chat_id: chat_id.toString(),\n  text: body,\n  parse_mode: 'HTML'\n};\n\nif (reply_markup) {\n  payload.reply_markup = reply_markup;\n}\n\nreturn { payload };"
+        },
+        "type": "n8n-nodes-base.code",
+        "typeVersion": 2,
+        "position": [
+          -128,
+          -32
+        ],
+        "id": "3b188c80-0061-4301-99db-58ab1c822875",
+        "name": "build_telegram_payload"
+      },
+      {
+        "parameters": {
+          "method": "POST",
+          "url": "https://api.telegram.org/bot8658854172:AAFrcN6TIAVivpGTHSPi5rkk53SJKtD7jRg/sendMessage",
+          "sendBody": true,
+          "specifyBody": "json",
+          "jsonBody": "={{ JSON.stringify($json.payload) }}",
+          "options": {
+            "response": {
+              "response": {
+                "fullResponse": true
+              }
+            }
+          }
+        },
+        "type": "n8n-nodes-base.httpRequest",
+        "typeVersion": 4.4,
+        "position": [
+          80,
+          -32
+        ],
+        "id": "edc68115-8076-4263-ae8b-bad42c88b88a",
+        "name": "send_via_telegram_api"
+      }
+    ],
+    "connections": {
+      "When Executed by Another Workflow": {
+        "main": [
+          [
+            {
+              "node": "build_telegram_payload",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "build_telegram_payload": {
+        "main": [
+          [
+            {
+              "node": "send_via_telegram_api",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "send_via_telegram_api": {
+        "main": [
+          []
+        ]
+      }
+    },
+    "nodeGroups": [],
+    "authors": "Kmilo Guerrero",
+    "name": "Version f6e36d23",
+    "description": "",
+    "autosaved": true,
+    "createdAt": "2026-03-13T01:42:25.102Z",
+    "updatedAt": "2026-03-13T01:42:36.000Z"
+  }
+}
